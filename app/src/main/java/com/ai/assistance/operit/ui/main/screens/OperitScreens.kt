@@ -215,7 +215,8 @@ sealed class Screen(
                     navigateToChatHistorySettings = { navigateTo(ChatHistorySettings) },
                     navigateToLanguageSettings = { navigateTo(LanguageSettings) },
                     navigateToSpeechServicesSettings = { navigateTo(SpeechServicesSettings) },
-                    navigateToCustomHeadersSettings = { navigateTo(CustomHeadersSettings) }
+                    navigateToCustomHeadersSettings = { navigateTo(CustomHeadersSettings) },
+                    navigateToPersonaCardGeneration = { navigateTo(PersonaCardGeneration) }
             )
         }
     }
@@ -442,6 +443,29 @@ sealed class Screen(
             onGestureConsumed: (Boolean) -> Unit
         ) {
             CustomHeadersSettingsScreen(onBackPressed = onGoBack)
+        }
+    }
+    
+    // 新增：人设卡生成页面
+    data object PersonaCardGeneration :
+        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "人设卡生成") {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            com.ai.assistance.operit.ui.features.settings.screens.PersonaCardGenerationScreen(
+                onNavigateToSettings = { navigateTo(Settings) },
+                onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
+                onNavigateToModelConfig = { navigateTo(ModelConfig) },
+                onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) }
+            )
         }
     }
     

@@ -54,7 +54,8 @@ fun SettingsScreen(
         navigateToChatHistorySettings: () -> Unit,
         navigateToLanguageSettings: () -> Unit,
         navigateToSpeechServicesSettings: () -> Unit,
-        navigateToCustomHeadersSettings: () -> Unit
+        navigateToCustomHeadersSettings: () -> Unit,
+        navigateToPersonaCardGeneration: () -> Unit
 ) {
         val context = LocalContext.current
         val apiPreferences = remember { ApiPreferences(context) }
@@ -192,6 +193,14 @@ fun SettingsScreen(
                                 subtitle = "功能专用提示词模板",
                                 icon = Icons.Default.Settings,
                                 onClick = navigateToFunctionalPrompts
+                        )
+                        
+                        // 新增：人设卡生成
+                        CompactSettingsItem(
+                                title = "人设卡生成",
+                                subtitle = "进入与AI对话生成个性人设卡",
+                                icon = Icons.Default.Face,
+                                onClick = navigateToPersonaCardGeneration
                         )
                 }
 
