@@ -9,7 +9,7 @@ METADATA
     tools: [
         {
             name: "workflow_guide",
-            description: "小红书助手工具使用流程指南。要完成复杂任务，请按以下顺序组合使用工具：\n1. **浏览主页**: 使用 `browse_home_feed` 刷新并浏览主页内容，这是了解平台动态的起点。\n2. **搜索内容**: 使用 `search_content` 查找特定主题的帖子或用户。\n3. **查看帖子**: 从搜索结果或主页中，使用 `view_post` 查看具体帖子详情。\n4. **互动操作**: 查看帖子后，可执行 `like_post`, `collect_post`, `follow_user`, `comment_post` 等互动。\n5. **发布内容**: 使用 `publish_post` 发布新的图片或视频帖子。\n6. **返回导航**: `navigate_to_home` 等导航工具可在多数情况下使用。",
+            description: "小红书助手工具使用流程指南。工具主要分为几类：\n1. **内容发现**: 使用 `browse_home_feed` 浏览主页，或用 `search_content` 搜索特定内容。\n2. **查看与互动**: 发现帖子后，用 `view_post` 查看详情。在详情页内可执行 `like_post`, `collect_post`, `comment_post`, `follow_user`, `unfollow_user` 等并列互动操作。\n3. **内容发布**: `publish_post` 是一个独立的发布流程。\n4. **导航**: `navigate_to_home`, `back_to_feed` 等工具用于在各页面间跳转。",
             parameters: []
         },
         {
@@ -89,6 +89,11 @@ METADATA
             parameters: []
         },
         {
+            name: "unfollow_user",
+            description: "取消关注当前帖子的作者",
+            parameters: []
+        },
+        {
             name: "comment_post",
             description: "在当前帖子下发表评论",
             parameters: [
@@ -102,20 +107,8 @@ METADATA
         },
         {
             name: "get_post_info",
-            description: "获取当前帖子的详细信息，包括标题、作者、点赞数、评论数等",
+            description: "获取当前帖子的详细信息，包括标题、作者、点赞数、评论数、发布日期和热门评论等",
             parameters: []
-        },
-        {
-            name: "browse_comments",
-            description: "浏览当前帖子的评论，获取热门评论内容",
-            parameters: [
-                {
-                    name: "comment_count",
-                    description: "获取的评论数量，默认为5条",
-                    type: "number",
-                    required: false
-                }
-            ]
         },
         {
             name: "publish_post",
@@ -205,6 +198,19 @@ const XiaohongshuAssistant = (function () {
         element: UINode;
     }
 
+    interface Comment {
+        author: string;
+        content: string;
+        likes: string;
+        date: string;
+    }
+
+    interface ToolResponse {
+        success: boolean;
+        message: string;
+        [key: string]: unknown;
+    }
+
     // 小红书应用包名和主要Activity
     const XIAOHONGSHU_PACKAGE = "com.xingin.xhs";
     const MAIN_ACTIVITY = "com.xingin.xhs.activity.SplashActivity";
@@ -219,7 +225,7 @@ const XiaohongshuAssistant = (function () {
     }
 
     // Helper to find a UI element and click it
-    async function findAndClick(finder: () => Promise<any>): Promise<boolean> {
+    async function findAndClick(finder: () => Promise<UINode | null | undefined>): Promise<boolean> {
         const element = await finder();
         if (element) {
             await element.click();
@@ -289,17 +295,6 @@ const XiaohongshuAssistant = (function () {
 
         console.error(`无法导航到 ${packageName} 的首页。`);
         return false;
-    }
-
-    async function scrollToTop(maxSwipes: number = 5): Promise<void> {
-        console.log("Scrolling to top...");
-        for (let i = 0; i < maxSwipes; i++) {
-            // Swipe down to scroll the list up to the top
-            await Tools.UI.swipe(540, 800, 540, 1600);
-            await Tools.System.sleep(500);
-        }
-        await Tools.System.sleep(1000);
-        console.log("Finished scrolling to top.");
     }
 
     // --- 小红书自动化逻辑 ---
@@ -381,7 +376,7 @@ const XiaohongshuAssistant = (function () {
         return createResponse(true, "成功浏览主页信息流", { posts: posts });
     }
 
-    async function search_content(params: { keyword: string; search_type?: string }): Promise<any> {
+    async function search_content(params: { keyword: string; search_type?: string }): Promise<ToolResponse> {
         const { keyword, search_type = "comprehensive" } = params;
         console.log(`搜索内容: ${keyword}, 类型: ${search_type}`);
 
@@ -467,7 +462,25 @@ const XiaohongshuAssistant = (function () {
     }
 
     function extractPostInfoFromNode(node: UINode, index: number): PostInfo | null {
+        // 改进视频帖子过滤逻辑
+        const relativeLayout = node.findByClass("RelativeLayout");
+        if (relativeLayout) {
+            const directImageViews = relativeLayout.children.filter(child => child.className === "ImageView");
+            if (directImageViews.length > 1) {
+                // console.log("检测到视频帖子（多个直接ImageView子节点），已跳过。");
+                return null;
+            }
+        }
+
         const allTextViews = node.findAllByClass("TextView");
+
+        // 过滤广告
+        if (allTextViews.some(tv => tv.text === "广告")) {
+            // console.log("检测到广告，已跳过。")
+
+            return null;
+        }
+
         if (allTextViews.length < 2) return null; // 需要标题和其他信息
 
         // 1. 寻找标题：通常是当中最长的文本
@@ -512,6 +525,7 @@ const XiaohongshuAssistant = (function () {
 
         const maxScrolls = 5;
         let lastResultCount = -1;
+        let scrollCount = 0;
 
         for (let i = 0; i < maxScrolls && results.length < desiredCount; i++) {
             const page = await UINode.getCurrentPage();
@@ -542,12 +556,18 @@ const XiaohongshuAssistant = (function () {
 
             await Tools.UI.swipe(540, 1500, 540, 800);
             await Tools.System.sleep(2000);
+            scrollCount++;
         }
 
+        console.log(`Scrolling back up ${scrollCount} times.`);
+        for (let i = 0; i < scrollCount; i++) {
+            await Tools.UI.swipe(540, 800, 540, 1550);
+            await Tools.System.sleep(1000);
+        }
         return results;
     }
 
-    async function view_post(params: { post_title?: string; post_index?: number }): Promise<any> {
+    async function view_post(params: { post_title?: string; post_index?: number }): Promise<ToolResponse> {
         const { post_title, post_index } = params;
 
         if (!post_title && !post_index) {
@@ -600,9 +620,9 @@ const XiaohongshuAssistant = (function () {
         if (targetPost) {
             await targetPost.item.click();
             await Tools.System.sleep(3000); // 等待帖子详情页加载
-            return createResponse(true, `成功打开帖子: "${targetPost.title}"`, {
-                post_title: targetPost.title
-            });
+            let res = await get_post_info({});
+
+            return createResponse(true, `成功打开帖子并完成内容加载: "${targetPost.title}"`, res);
         } else {
             return createResponse(false, "未找到指定的帖子", { post_title, post_index });
         }
@@ -611,28 +631,48 @@ const XiaohongshuAssistant = (function () {
     async function isInPostDetail(): Promise<boolean> {
         const page = await UINode.getCurrentPage();
         // 检测是否在帖子详情页的特征元素
-        const likeButton = page.findById("com.xingin.xhs:id/like_button") ||
-            page.findByContentDesc("点赞") ||
-            page.findByText("赞");
-        const commentButton = page.findById("com.xingin.xhs:id/comment_button") ||
-            page.findByContentDesc("评论") ||
-            page.findByText("评论");
+        const likeButton = page.findByContentDesc("点赞") ||
+            page.findByText("赞") ||
+            page.find(n => n.contentDesc && n.contentDesc.includes("点赞"));
+        const commentButton = page.findByContentDesc("评论") ||
+            page.findByText("评论") ||
+            page.find(n => n.contentDesc && n.contentDesc.includes("评论"));
 
         return !!(likeButton || commentButton);
     }
 
-    async function like_post(params: {}): Promise<any> {
+    async function findLikeButton(): Promise<UINode | null> {
+        const page = await UINode.getCurrentPage();
+        const button = page.findByContentDesc("点赞") ||
+            page.findByText("赞") ||
+            page.find(n => n.contentDesc && n.contentDesc.includes("点赞"));
+        return button || null;
+    }
+
+    async function findCollectButton(): Promise<UINode | null> {
+        const page = await UINode.getCurrentPage();
+        const button = page.findByContentDesc("收藏") ||
+            page.findByText("收藏") ||
+            page.find(n => n.contentDesc && n.contentDesc.includes("收藏"));
+        return button || null;
+    }
+
+    async function findCommentButton(): Promise<UINode | null> {
+        const page = await UINode.getCurrentPage();
+        const button = page.findByContentDesc("评论") ||
+            page.findByText("评论") ||
+            page.find(n => n.contentDesc && n.contentDesc.includes("评论"));
+        return button || null;
+    }
+
+    async function like_post(params: {}): Promise<ToolResponse> {
         if (!await isInPostDetail()) {
             return createResponse(false, "当前不在帖子详情页");
         }
 
         console.log("给帖子点赞");
 
-        const page = await UINode.getCurrentPage();
-        const likeButton = page.findById("com.xingin.xhs:id/like_button") ||
-            page.findById("com.xingin.xhs:id/iv_like") ||
-            page.findByContentDesc("点赞") ||
-            page.findByText("赞");
+        const likeButton = await findLikeButton();
 
         if (likeButton) {
             await likeButton.click();
@@ -643,7 +683,7 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function collect_post(params: { collection_name?: string }): Promise<any> {
+    async function collect_post(params: { collection_name?: string }): Promise<ToolResponse> {
         if (!await isInPostDetail()) {
             return createResponse(false, "当前不在帖子详情页");
         }
@@ -651,11 +691,7 @@ const XiaohongshuAssistant = (function () {
         const { collection_name } = params;
         console.log(`收藏帖子到: ${collection_name || "默认收藏夹"}`);
 
-        const page = await UINode.getCurrentPage();
-        const collectButton = page.findById("com.xingin.xhs:id/collect_button") ||
-            page.findById("com.xingin.xhs:id/iv_collect") ||
-            page.findByContentDesc("收藏") ||
-            page.findByText("收藏");
+        const collectButton = await findCollectButton();
 
         if (collectButton) {
             await collectButton.click();
@@ -677,7 +713,7 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function follow_user(params: {}): Promise<any> {
+    async function follow_user(params: {}): Promise<ToolResponse> {
         if (!await isInPostDetail()) {
             return createResponse(false, "当前不在帖子详情页");
         }
@@ -685,9 +721,7 @@ const XiaohongshuAssistant = (function () {
         console.log("关注用户");
 
         const page = await UINode.getCurrentPage();
-        const followButton = page.findById("com.xingin.xhs:id/follow_button") ||
-            page.findByText("关注") ||
-            page.findByText("+ 关注");
+        const followButton = page.findByText("关注");
 
         if (followButton) {
             await followButton.click();
@@ -697,8 +731,28 @@ const XiaohongshuAssistant = (function () {
             return createResponse(false, "未找到关注按钮或已经关注");
         }
     }
+    async function unfollow_user(params: {}): Promise<ToolResponse> {
+        if (!await isInPostDetail()) {
+            return createResponse(false, "当前不在帖子详情页");
+        }
 
-    async function comment_post(params: { comment_text: string }): Promise<any> {
+        console.log("不关注用户");
+
+        const page = await UINode.getCurrentPage();
+        const followButton = page.findByText("已关注");
+
+        if (followButton) {
+            await followButton.click();
+            await Tools.System.sleep(1000);
+            (await UINode.getCurrentPage()).findByText("不再关注")?.click();
+
+            return createResponse(true, "取消关注成功");
+        } else {
+            return createResponse(false, "未找到不关注按钮或已经不关注");
+        }
+    }
+
+    async function comment_post(params: { comment_text: string }): Promise<ToolResponse> {
         if (!await isInPostDetail()) {
             return createResponse(false, "当前不在帖子详情页");
         }
@@ -707,10 +761,7 @@ const XiaohongshuAssistant = (function () {
         console.log(`发表评论: ${comment_text}`);
 
         const page = await UINode.getCurrentPage();
-        const commentBox = page.findById("com.xingin.xhs:id/comment_input") ||
-            page.findById("com.xingin.xhs:id/edit_comment") ||
-            page.findByText("说点什么吧...") ||
-            page.findByText("写评论...");
+        const commentBox = page.findByContentDesc("评论框")
 
         if (commentBox) {
             await commentBox.click();
@@ -721,9 +772,7 @@ const XiaohongshuAssistant = (function () {
             await Tools.System.sleep(500);
 
             // 查找发送按钮
-            const sendButton = (await UINode.getCurrentPage()).findByText("发送") ||
-                (await UINode.getCurrentPage()).findByText("发布") ||
-                (await UINode.getCurrentPage()).findById("com.xingin.xhs:id/send_button");
+            const sendButton = (await UINode.getCurrentPage()).findByText("发送")
 
             if (sendButton) {
                 await sendButton.click();
@@ -737,103 +786,194 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function get_post_info(params: {}): Promise<any> {
+    async function get_post_info(params: GetPostInfoParams): Promise<ToolResponse> {
         if (!await isInPostDetail()) {
             return createResponse(false, "当前不在帖子详情页");
         }
+        console.log("获取帖子信息...");
 
-        console.log("获取帖子信息");
+        // Initial scroll to load content below the media
+        await Tools.UI.swipe(540, 1600, 540, 1000);
+        await Tools.System.sleep(1500);
 
         const page = await UINode.getCurrentPage();
-        const postInfo = {
-            title: "",
-            author: "",
-            like_count: "",
-            comment_count: "",
-            collect_count: "",
-            content: ""
+
+        const postInfo: {
+            title: string;
+            author: string;
+            content: string;
+            like_count: string;
+            comment_count: string;
+            collect_count: string;
+            publish_date: string;
+            comments: Comment[];
+        } = {
+            title: "未知",
+            author: "未知",
+            content: "",
+            like_count: "未知",
+            comment_count: "未知",
+            collect_count: "未知",
+            publish_date: "未知",
+            comments: [],
         };
 
-        // 获取标题和内容
-        const titleElements = page.findAllByClass("TextView");
-        const mainTextElement = titleElements.find(tv => tv.text && tv.text.length > 10);
-        if (mainTextElement) {
-            // postInfo.title = mainTextElement.text;
+        // 1. Parse static information first
+        const authorButton = page.find(n => n.contentDesc && n.contentDesc.startsWith("作者,"));
+        let authorTextView: UINode | undefined;
+        if (authorButton) {
+            authorTextView = authorButton.findByClass("TextView") ?? undefined;
+            if (authorTextView && authorTextView.text) {
+                postInfo.author = authorTextView.text;
+            } else if (authorButton.contentDesc) {
+                const parts = authorButton.contentDesc.split(',');
+                if (parts.length > 1) {
+                    postInfo.author = parts[1].trim();
+                }
+            }
         }
 
-        // 获取作者信息
-        const authorElement = page.findById("com.xingin.xhs:id/author_name") ||
-            page.findById("com.xingin.xhs:id/user_name");
-        if (authorElement) {
-            postInfo.author = authorElement.text || "";
+        const allNodesWithDesc = page.findAll(n => !!n.contentDesc);
+        const dateNode = allNodesWithDesc.find(n => n.contentDesc && /^\d{2}-\d{2}$/.test(n.contentDesc.trim()));
+        if (dateNode && dateNode.contentDesc) {
+            postInfo.publish_date = dateNode.contentDesc.trim();
         }
 
-        // 获取点赞数
-        const likeCountElement = page.findById("com.xingin.xhs:id/like_count");
-        if (likeCountElement) {
-            postInfo.like_count = likeCountElement.text || "";
+        const findCountFromButton = (button: UINode | null): string => {
+            if (!button) return "未知";
+            if (button.contentDesc) {
+                const match = button.contentDesc.match(/(\d+(\.\d+)?[万wW]?)/);
+                if (match && match[1]) return match[1];
+            }
+            const countNode = button.findByClass("TextView");
+            if (countNode && countNode.text && /^\d+(\.\d+)?[万wW]?$/.test(countNode.text.trim())) {
+                return countNode.text.trim();
+            }
+            return "未知";
+        };
+
+        postInfo.like_count = findCountFromButton(await findLikeButton());
+        postInfo.comment_count = findCountFromButton(await findCommentButton());
+        postInfo.collect_count = findCountFromButton(await findCollectButton());
+
+        // 2. Identify comment section to isolate title/content
+        const allRecyclerViews = page.findAllByClass("RecyclerView");
+        const commentListInitial = allRecyclerViews.find(rv => {
+            const parent = rv.parent;
+            return !(parent && parent.className === 'FrameLayout' && parent.contentDesc && (parent.contentDesc.includes("图片") || parent.contentDesc.includes("视频")));
+        });
+
+        // 3. Extract title and content
+        const commentTextViews = new Set(commentListInitial ? commentListInitial.findAllByClass("TextView") : []);
+        const allTextViews = page.findAllByClass("TextView");
+
+        const mainTextViews = allTextViews.filter(tv => {
+            return tv && !commentTextViews.has(tv);
+        });
+
+        const ignoredTexts = new Set(['关注', '赞', '评论', '收藏', '翻译', '说点什么...', postInfo.author]);
+        if (postInfo.author === '未知') {
+            ignoredTexts.delete('未知');
         }
 
-        // 获取评论数
-        const commentCountElement = page.findById("com.xingin.xhs:id/comment_count");
-        if (commentCountElement) {
-            postInfo.comment_count = commentCountElement.text || "";
+        const contentTextNodes = mainTextViews.filter(tv => {
+            if (!tv.text) return false;
+            const text = tv.text.trim();
+            return text.length > 0 && !ignoredTexts.has(text) && !/^\d+(\.\d+)?[万wW]?$/.test(text) && tv !== authorTextView;
+        });
+
+        if (contentTextNodes.length > 0) {
+            postInfo.title = contentTextNodes[0].text!.trim();
+            if (contentTextNodes.length > 1) {
+                postInfo.content = contentTextNodes.slice(1).map(tv => tv.text!.trim()).join('\n');
+            }
         }
 
-        // 获取收藏数
-        const collectCountElement = page.findById("com.xingin.xhs:id/collect_count");
-        if (collectCountElement) {
-            postInfo.collect_count = collectCountElement.text || "";
+        // 4. Scroll and parse comments iteratively
+        console.log("开始滚动并解析评论...");
+        const seenComments = new Set<string>();
+        let stableScrolls = 0;
+        const maxScrolls = 10;
+
+        for (let i = 0; i < maxScrolls; i++) {
+            const currentCommentCount = postInfo.comments.length;
+            const currentPage = await UINode.getCurrentPage();
+
+            const commentList = currentPage.findAllByClass("RecyclerView").find(rv => {
+                const parent = rv.parent;
+                return !(parent && parent.className === 'FrameLayout' && parent.contentDesc && (parent.contentDesc.includes("图片") || parent.contentDesc.includes("视频")));
+            });
+
+            if (commentList) {
+                for (const item of commentList.children) {
+                    if (postInfo.comments.length >= 20) break;
+
+                    const textViews = item.findAllByClass("TextView");
+                    if (textViews.length < 2) continue;
+
+                    const comment: Comment = { author: "未知", content: "未知", likes: "0", date: "未知" };
+
+                    const likesRegex = /^\d+(\.\d+)?[万wW]?$/;
+                    const likesNode = item.find(n => n.className === 'TextView' && n.text && likesRegex.test(n.text));
+                    comment.likes = likesNode?.text ?? "0";
+
+                    const contentCandidates = textViews.filter(tv => tv.text && tv !== likesNode);
+                    if (contentCandidates.length === 0) continue;
+
+                    contentCandidates.sort((a, b) => (b.text?.length ?? 0) - (a.text?.length ?? 0));
+
+                    let contentText = contentCandidates[0].text ?? "";
+                    const authorNode = contentCandidates.length > 1 ? contentCandidates[1] : undefined;
+
+                    comment.author = authorNode?.text?.replace("作者", "").trim() || "未知";
+
+                    const dateRegex = /(\d{2}-\d{2}( \d{2}:\d{2})?|\d+天前|昨天 \d{2}:\d{2})/;
+                    let dateMatch = contentText.match(dateRegex);
+                    if (dateMatch) {
+                        comment.date = dateMatch[0];
+                        comment.content = contentText.replace(dateRegex, ' ').replace(/回复$/, '').trim();
+                    } else {
+                        comment.content = contentText.replace(/回复$/, '').trim();
+                    }
+
+                    if (comment.content.startsWith(comment.author)) {
+                        comment.content = comment.content.substring(comment.author.length).trim();
+                    }
+
+                    if (comment.content === comment.author || !comment.content) continue;
+
+                    const uniqueKey = `${comment.author}:${comment.content}`;
+                    if (comment.content && comment.content !== "未知" && !seenComments.has(uniqueKey)) {
+                        seenComments.add(uniqueKey);
+                        postInfo.comments.push(comment);
+                    }
+                }
+            }
+
+            if (postInfo.comments.length >= 20) {
+                console.log("已收集到20条评论，停止滚动。");
+                break;
+            }
+
+            if (postInfo.comments.length === currentCommentCount) {
+                stableScrolls++;
+                if (stableScrolls >= 2) {
+                    console.log("滚动两次未发现新评论，停止。");
+                    break;
+                }
+            } else {
+                stableScrolls = 0;
+            }
+
+            console.log(`第 ${i + 1}/${maxScrolls} 次滚动... 当前评论数: ${postInfo.comments.length}`);
+            await Tools.UI.swipe(540, 1600, 540, 800);
+            await Tools.System.sleep(2000);
         }
 
         return createResponse(true, "获取帖子信息成功", { post_info: postInfo });
     }
 
-    async function browse_comments(params: { comment_count?: number }): Promise<any> {
-        if (!await isInPostDetail()) {
-            return createResponse(false, "当前不在帖子详情页");
-        }
-
-        const { comment_count = 5 } = params;
-        console.log(`浏览评论，获取 ${comment_count} 条`);
-
-        // 向下滚动到评论区域
-        await Tools.UI.swipe(540, 1500, 540, 800);
-        await Tools.System.sleep(2000);
-
-        const page = await UINode.getCurrentPage();
-        const comments: any[] = [];
-
-        // 查找评论列表
-        const commentContainer = page.findById("com.xingin.xhs:id/comment_list") ||
-            page.findByClass("RecyclerView");
-
-        if (commentContainer) {
-            const commentItems = commentContainer.children;
-            for (let i = 0; i < Math.min(commentItems.length, comment_count); i++) {
-                const item = commentItems[i];
-                const textElements = item.findAllByClass("TextView");
-
-                const authorElement = textElements.find(tv => tv.text && tv.text.length < 20);
-                const contentElement = textElements.find(tv => tv.text && tv.text.length > 5 && tv.text !== authorElement?.text);
-
-                if (contentElement) {
-                    comments.push({
-                        author: authorElement?.text || "匿名用户",
-                        content: contentElement.text,
-                        index: i + 1
-                    });
-                }
-            }
-        }
-
-        return createResponse(true, `获取到 ${comments.length} 条评论`, {
-            comments: comments,
-            comment_count: comments.length
-        });
-    }
-
-    async function publish_post(params: { content_text: string; image_paths?: string; tags?: string; location?: string }): Promise<any> {
+    async function publish_post(params: { content_text: string; image_paths?: string; tags?: string; location?: string }): Promise<ToolResponse> {
         const { content_text, image_paths, tags, location } = params;
 
         console.log(`发布帖子: ${content_text.substring(0, 20)}...`);
@@ -845,8 +985,7 @@ const XiaohongshuAssistant = (function () {
 
         // 点击发布按钮（通常在底部导航栏中间）
         const page = await UINode.getCurrentPage();
-        const publishButton = page.findById("com.xingin.xhs:id/tab_publish") ||
-            page.findByText("发布") ||
+        const publishButton = page.findByText("发布") ||
             page.findByText("+") ||
             page.findByContentDesc("发布");
 
@@ -876,9 +1015,9 @@ const XiaohongshuAssistant = (function () {
         }
 
         // 输入文字内容
-        const textInput = (await UINode.getCurrentPage()).findById("com.xingin.xhs:id/content_input") ||
-            (await UINode.getCurrentPage()).findById("com.xingin.xhs:id/edit_content") ||
-            (await UINode.getCurrentPage()).findByText("分享你的生活...");
+        const pageForInput = await UINode.getCurrentPage();
+        const textInput = pageForInput.findByClass("EditText") ||
+            pageForInput.findByText("分享你的生活...");
 
         if (textInput) {
             await textInput.click();
@@ -902,8 +1041,7 @@ const XiaohongshuAssistant = (function () {
 
         // 添加位置信息
         if (location) {
-            const locationButton = (await UINode.getCurrentPage()).findByText("添加地点") ||
-                (await UINode.getCurrentPage()).findById("com.xingin.xhs:id/location_button");
+            const locationButton = (await UINode.getCurrentPage()).findByText("添加地点");
             if (locationButton) {
                 await locationButton.click();
                 await Tools.System.sleep(2000);
@@ -919,8 +1057,7 @@ const XiaohongshuAssistant = (function () {
         }
 
         // 发布帖子
-        const finalPublishButton = (await UINode.getCurrentPage()).findByText("发布") ||
-            (await UINode.getCurrentPage()).findById("com.xingin.xhs:id/publish_button");
+        const finalPublishButton = (await UINode.getCurrentPage()).findByText("发布");
 
         if (finalPublishButton) {
             await finalPublishButton.click();
@@ -939,12 +1076,12 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function navigate_to_home(params: {}): Promise<any> {
+    async function navigate_to_home(params: {}): Promise<ToolResponse> {
         console.log("导航到首页");
 
         if (await ensureMain()) {
             const page = await UINode.getCurrentPage();
-            const homeTab = page.findByText("首页") || page.findById("com.xingin.xhs:id/tab_home");
+            const homeTab = page.findByText("首页");
             if (homeTab) {
                 await homeTab.click();
                 await Tools.System.sleep(1000);
@@ -955,13 +1092,12 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function navigate_to_profile(params: {}): Promise<any> {
+    async function navigate_to_profile(params: {}): Promise<ToolResponse> {
         console.log("导航到个人主页");
 
         if (await ensureMain()) {
             const page = await UINode.getCurrentPage();
             const profileTab = page.findByText("我") ||
-                page.findById("com.xingin.xhs:id/tab_profile") ||
                 page.findByText("个人主页");
             if (profileTab) {
                 await profileTab.click();
@@ -975,13 +1111,12 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function navigate_to_search(params: {}): Promise<any> {
+    async function navigate_to_search(params: {}): Promise<ToolResponse> {
         console.log("导航到搜索页面");
 
         if (await ensureMain()) {
             const page = await UINode.getCurrentPage();
             const searchTab = page.findByText("搜索") ||
-                page.findById("com.xingin.xhs:id/tab_search") ||
                 page.findByContentDesc("搜索");
 
             if (searchTab) {
@@ -999,13 +1134,12 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function navigate_to_publish(params: {}): Promise<any> {
+    async function navigate_to_publish(params: {}): Promise<ToolResponse> {
         console.log("导航到发布页面");
 
         if (await ensureMain()) {
             const page = await UINode.getCurrentPage();
-            const publishTab = page.findById("com.xingin.xhs:id/tab_publish") ||
-                page.findByText("发布") ||
+            const publishTab = page.findByText("发布") ||
                 page.findByText("+");
 
             if (publishTab) {
@@ -1020,7 +1154,7 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function back_to_feed(params: {}): Promise<any> {
+    async function back_to_feed(params: {}): Promise<ToolResponse> {
         console.log("从帖子详情页返回到信息流");
 
         if (await isInPostDetail()) {
@@ -1032,46 +1166,75 @@ const XiaohongshuAssistant = (function () {
         }
     }
 
-    async function wrapToolExecution(func: (params: any) => Promise<any>, params: any) {
+    async function wrapToolExecution<P>(func: (params: P) => Promise<ToolResponse | void>, params: P) {
         try {
             const result = await func(params);
-            complete({
-                ...result,
-            });
+            if (result) {
+                complete(result);
+            } else {
+                complete({ success: true, message: "操作成功完成但无返回数据。" });
+            }
         } catch (error) {
             console.error(`Tool ${func.name} failed unexpectedly`, error);
             complete({
                 success: false,
-                message: `工具执行时发生意外错误: ${error.message}`,
+                message: `工具执行时发生意外错误: ${error instanceof Error ? error.message : String(error)}`,
             });
         }
     }
 
-    async function main(params: {}) {
+    async function main(params: {}): Promise<void> {
         console.log("=== 小红书智能助手测试 ===");
         console.log("测试搜索功能...");
-        let res = await search_content({ keyword: "美食" });
-        console.log(JSON.stringify(res, null, 2));
+        // let res = await search_content({ keyword: "美食" });
+        // console.log(JSON.stringify(res, null, 2));
+
+        // if (res.success && (res.result_count as number) > 0) {
+        //     console.log("测试查看帖子功能...");
+        //     let view_res = await view_post({ post_index: 10 });
+        //     console.log(JSON.stringify(view_res, null, 2));
+        // } else {
+        //     console.log("搜索无结果，跳过查看帖子测试。");
+        // }
+        console.log(JSON.stringify(await get_post_info({}), null, 2));
     }
+
+    // Tool parameter interfaces
+    interface BrowseHomeFeedParams { scroll_count?: number; collect_posts?: boolean; }
+    interface SearchContentParams { keyword: string; search_type?: string; }
+    interface ViewPostParams { post_title?: string; post_index?: number; }
+    interface LikePostParams { }
+    interface CollectPostParams { collection_name?: string; }
+    interface FollowUserParams { }
+    interface UnfollowUserParams { }
+    interface CommentPostParams { comment_text: string; }
+    interface GetPostInfoParams { }
+    interface PublishPostParams { content_text: string; image_paths?: string; tags?: string; location?: string; }
+    interface NavigateToHomeParams { }
+    interface NavigateToProfileParams { }
+    interface NavigateToSearchParams { }
+    interface NavigateToPublishParams { }
+    interface BackToFeedParams { }
+    interface MainParams { }
 
     // 导出所有工具
     return {
-        browse_home_feed: async (params) => await wrapToolExecution(browse_home_feed, params),
-        search_content: async (params) => await wrapToolExecution(search_content, params),
-        view_post: async (params) => await wrapToolExecution(view_post, params),
-        like_post: async (params) => await wrapToolExecution(like_post, params),
-        collect_post: async (params) => await wrapToolExecution(collect_post, params),
-        follow_user: async (params) => await wrapToolExecution(follow_user, params),
-        comment_post: async (params) => await wrapToolExecution(comment_post, params),
-        get_post_info: async (params) => await wrapToolExecution(get_post_info, params),
-        browse_comments: async (params) => await wrapToolExecution(browse_comments, params),
-        publish_post: async (params) => await wrapToolExecution(publish_post, params),
-        navigate_to_home: async (params) => await wrapToolExecution(navigate_to_home, params),
-        navigate_to_profile: async (params) => await wrapToolExecution(navigate_to_profile, params),
-        navigate_to_search: async (params) => await wrapToolExecution(navigate_to_search, params),
-        navigate_to_publish: async (params) => await wrapToolExecution(navigate_to_publish, params),
-        back_to_feed: async (params) => await wrapToolExecution(back_to_feed, params),
-        main: async (params) => await wrapToolExecution(main, params),
+        browse_home_feed: async (params: BrowseHomeFeedParams) => await wrapToolExecution(browse_home_feed, params),
+        search_content: async (params: SearchContentParams) => await wrapToolExecution(search_content, params),
+        view_post: async (params: ViewPostParams) => await wrapToolExecution(view_post, params),
+        like_post: async (params: LikePostParams) => await wrapToolExecution(like_post, params),
+        collect_post: async (params: CollectPostParams) => await wrapToolExecution(collect_post, params),
+        follow_user: async (params: FollowUserParams) => await wrapToolExecution(follow_user, params),
+        unfollow_user: async (params: UnfollowUserParams) => await wrapToolExecution(unfollow_user, params),
+        comment_post: async (params: CommentPostParams) => await wrapToolExecution(comment_post, params),
+        get_post_info: async (params: GetPostInfoParams) => await wrapToolExecution(get_post_info, params),
+        publish_post: async (params: PublishPostParams) => await wrapToolExecution(publish_post, params),
+        navigate_to_home: async (params: NavigateToHomeParams) => await wrapToolExecution(navigate_to_home, params),
+        navigate_to_profile: async (params: NavigateToProfileParams) => await wrapToolExecution(navigate_to_profile, params),
+        navigate_to_search: async (params: NavigateToSearchParams) => await wrapToolExecution(navigate_to_search, params),
+        navigate_to_publish: async (params: NavigateToPublishParams) => await wrapToolExecution(navigate_to_publish, params),
+        back_to_feed: async (params: BackToFeedParams) => await wrapToolExecution(back_to_feed, params),
+        main: async (params: MainParams) => await wrapToolExecution(main, params),
     };
 })();
 
@@ -1082,9 +1245,9 @@ exports.view_post = XiaohongshuAssistant.view_post;
 exports.like_post = XiaohongshuAssistant.like_post;
 exports.collect_post = XiaohongshuAssistant.collect_post;
 exports.follow_user = XiaohongshuAssistant.follow_user;
+exports.unfollow_user = XiaohongshuAssistant.unfollow_user;
 exports.comment_post = XiaohongshuAssistant.comment_post;
 exports.get_post_info = XiaohongshuAssistant.get_post_info;
-exports.browse_comments = XiaohongshuAssistant.browse_comments;
 exports.publish_post = XiaohongshuAssistant.publish_post;
 exports.navigate_to_home = XiaohongshuAssistant.navigate_to_home;
 exports.navigate_to_profile = XiaohongshuAssistant.navigate_to_profile;

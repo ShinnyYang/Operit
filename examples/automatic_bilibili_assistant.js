@@ -244,11 +244,11 @@ const BilibiliAssistant = (function () {
         }
         return false;
     }
-    async function scrollToTop(maxSwipes = 8) {
+    async function scrollToTop(maxSwipes = 5) {
         console.log("Scrolling to top...");
         for (let i = 0; i < maxSwipes; i++) {
             // Swipe down to scroll the list up to the top. A longer swipe.
-            await Tools.UI.swipe(540, 800, 540, 1800);
+            await Tools.UI.swipe(540, 1000, 540, 1800);
             await Tools.System.sleep(500); // Increased wait time for animation
         }
         await Tools.System.sleep(1000); // Extra wait to ensure UI is fully settled
@@ -343,6 +343,7 @@ const BilibiliAssistant = (function () {
         await scrollToTop();
         let lastResultCount = -1;
         const maxScrolls = 10; // Safety break to prevent infinite loops
+        let scrollCount = 0;
         for (let i = 0; i < maxScrolls; i++) {
             page = await UINode.getCurrentPage();
             const currentContainer = page.findById('tv.danmaku.bili:id/recycler_view');
@@ -393,6 +394,12 @@ const BilibiliAssistant = (function () {
             // Scroll down to load more
             await Tools.UI.swipe(540, 1500, 540, 800); // Swipe up to scroll down
             await Tools.System.sleep(1500); // Wait for new items to load
+            scrollCount++;
+        }
+        console.log(`Scrolling back up ${scrollCount} times.`);
+        for (let i = 0; i < scrollCount; i++) {
+            await Tools.UI.swipe(540, 800, 540, 1550);
+            await Tools.System.sleep(1000);
         }
         return results.slice(0, desiredCount);
     }
