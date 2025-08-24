@@ -298,4 +298,6 @@ dependencies {
     // ObjectBox
     implementation(libs.objectbox.kotlin)
     kapt(libs.objectbox.processor)
+    
+    // implementation("org.jetbrains.kotlinx:kotlinx-mcp-sdk:0.1.0")
 }

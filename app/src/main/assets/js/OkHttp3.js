@@ -273,7 +273,8 @@ class Response {
         this.statusCode = rawResponse.statusCode;
         this.statusMessage = rawResponse.statusMessage;
         this.headers = this._parseHeaders(rawResponse.headers);
-        this.content = rawResponse.contentBase64 ?? rawResponse.content;
+        this.textContent = rawResponse.content;
+        this.base64Content = rawResponse.contentBase64;
         this.contentType = rawResponse.contentType;
         this.size = rawResponse.size;
     }
@@ -303,7 +304,7 @@ class Response {
     // Parse response as JSON
     async json() {
         try {
-            return JSON.parse(this.content);
+            return JSON.parse(this.textContent);
         } catch (e) {
             throw new Error(`Failed to parse response as JSON: ${e.message}`);
         }
@@ -311,12 +312,12 @@ class Response {
 
     // Parse response as text
     async text() {
-        return this.content;
+        return this.textContent;
     }
 
     // Get response body as Base64 encoded string
     async bodyAsBase64() {
-        return this.content;
+        return this.base64Content;
     }
 
     // Check if response is successful (status code 2xx)

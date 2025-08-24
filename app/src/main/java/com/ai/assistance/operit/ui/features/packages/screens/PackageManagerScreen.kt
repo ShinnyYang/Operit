@@ -3,6 +3,7 @@ package com.ai.assistance.operit.ui.features.packages.screens
 import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,13 +16,18 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.AutoMode
+import androidx.compose.material.icons.filled.Science
+import androidx.compose.material.icons.filled.Widgets
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material3.*
 import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,8 +52,10 @@ import com.ai.assistance.operit.ui.features.packages.dialogs.ScriptExecutionDial
 import com.ai.assistance.operit.ui.features.packages.lists.PackagesList
 import java.io.File
 import kotlinx.coroutines.launch
+import androidx.compose.ui.draw.scale
 
-@OptIn(ExperimentalMaterial3Api::class)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun PackageManagerScreen() {
     val context = LocalContext.current
@@ -378,57 +386,96 @@ fun PackageManagerScreen() {
                                     color = MaterialTheme.colorScheme.background,
                                     shape = MaterialTheme.shapes.medium
                             ) {
-                                PackagesList(
-                                        packages = availablePackages.value,
-                                        importedPackages = visibleImportedPackages.value,
-                                        onPackageClick = { packageName ->
-                                            selectedPackage = packageName
-                                            showDetails = true
-                                        },
-                                        onToggleImport = { packageName, isChecked ->
-                                            // 立即更新UI显示的导入状态列表，使开关立即响应
-                                            val currentImported =
-                                                    visibleImportedPackages.value.toMutableList()
-                                            if (isChecked) {
-                                                if (!currentImported.contains(packageName)) {
-                                                    currentImported.add(packageName)
-                                                }
-                                            } else {
-                                                currentImported.remove(packageName)
-                                            }
-                                            visibleImportedPackages.value = currentImported
+                                val packages = availablePackages.value
 
-                                            // 后台执行实际的导入/移除操作
-                                            scope.launch {
-                                                try {
-                                                    if (isChecked) {
-                                                        packageManager.importPackage(packageName)
-                                                    } else {
-                                                        packageManager.removePackage(packageName)
-                                                    }
-                                                    // 操作成功后，更新真实的导入状态
-                                                    importedPackages.value =
-                                                            packageManager.getImportedPackages()
-                                                } catch (e: Exception) {
-                                                    Log.e(
-                                                            "PackageManagerScreen",
-                                                            if (isChecked) "Failed to import package"
-                                                            else "Failed to remove package",
-                                                            e
-                                                    )
-                                                    // 操作失败时恢复UI显示状态为实际状态
-                                                    visibleImportedPackages.value =
-                                                            importedPackages.value
+                                val automaticPackages = packages.filterKeys { it.lowercase().startsWith("automatic") }
+                                val experimentalPackages = packages.filterKeys { it.lowercase().startsWith("experimental") }
+                                val otherPackages = packages.filterKeys {
+                                    !it.lowercase().startsWith("automatic") && !it.lowercase().startsWith("experimental")
+                                }
 
-                                                    // 只在失败时显示提示
-                                                    snackbarHostState.showSnackbar(
-                                                            message =
-                                                                    if (isChecked) "包导入失败" else "包移除失败"
-                                                    )
-                                                }
-                                            }
+                                val groupedPackages = linkedMapOf<String, Map<String, ToolPackage>>()
+                                if (automaticPackages.isNotEmpty()) {
+                                    groupedPackages["Automatic"] = automaticPackages
+                                }
+                                if (experimentalPackages.isNotEmpty()) {
+                                    groupedPackages["Experimental"] = experimentalPackages
+                                }
+                                if (otherPackages.isNotEmpty()) {
+                                    groupedPackages["Other"] = otherPackages
+                                }
+
+                                // 在Composable上下文中预先获取颜色
+                                val automaticColor = MaterialTheme.colorScheme.primary
+                                val experimentalColor = MaterialTheme.colorScheme.tertiary
+                                val otherColor = MaterialTheme.colorScheme.secondary
+
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                                ) {
+                                    groupedPackages.forEach { (category, packagesInCategory) ->
+                                        val categoryColor = when (category) {
+                                            "Automatic" -> automaticColor
+                                            "Experimental" -> experimentalColor
+                                            else -> otherColor
                                         }
-                                )
+
+                                        items(packagesInCategory.keys.toList(), key = { it }) { packageName ->
+                                            val isFirstInCategory = packageName == packagesInCategory.keys.first()
+                                            
+                                            PackageListItemWithTag(
+                                                packageName = packageName,
+                                                toolPackage = packagesInCategory[packageName],
+                                                isImported = visibleImportedPackages.value.contains(packageName),
+                                                categoryTag = if (isFirstInCategory) category else null,
+                                                category = category, // 传递完整的分类信息
+                                                categoryColor = categoryColor,
+                                                onPackageClick = {
+                                                    selectedPackage = packageName
+                                                    showDetails = true
+                                                },
+                                                onToggleImport = { isChecked ->
+                                                    // 立即更新UI显示的导入状态列表，使开关立即响应
+                                                    val currentImported = visibleImportedPackages.value.toMutableList()
+                                                    if (isChecked) {
+                                                        if (!currentImported.contains(packageName)) {
+                                                            currentImported.add(packageName)
+                                                        }
+                                                    } else {
+                                                        currentImported.remove(packageName)
+                                                    }
+                                                    visibleImportedPackages.value = currentImported
+
+                                                    // 后台执行实际的导入/移除操作
+                                                    scope.launch {
+                                                        try {
+                                                            if (isChecked) {
+                                                                packageManager.importPackage(packageName)
+                                                            } else {
+                                                                packageManager.removePackage(packageName)
+                                                            }
+                                                            // 操作成功后，更新真实的导入状态
+                                                            importedPackages.value = packageManager.getImportedPackages()
+                                                        } catch (e: Exception) {
+                                                            Log.e(
+                                                                "PackageManagerScreen",
+                                                                if (isChecked) "Failed to import package" else "Failed to remove package",
+                                                                e
+                                                            )
+                                                            // 操作失败时恢复UI显示状态为实际状态
+                                                            visibleImportedPackages.value = importedPackages.value
+                                                            // 只在失败时显示提示
+                                                            snackbarHostState.showSnackbar(
+                                                                message = if (isChecked) "包导入失败" else "包移除失败"
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -689,6 +736,99 @@ fun AutomationConfigList(
                         modifier = Modifier.size(16.dp)
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PackageListItemWithTag(
+    packageName: String,
+    toolPackage: ToolPackage?,
+    isImported: Boolean,
+    categoryTag: String?,
+    category: String, // 新增分类参数
+    categoryColor: Color,
+    onPackageClick: () -> Unit,
+    onToggleImport: (Boolean) -> Unit
+) {
+    Surface(
+        onClick = onPackageClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Column {
+            // 分类标签（仅在有标签时显示）
+            if (categoryTag != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(12.dp),
+                        color = categoryColor,
+                        shape = RoundedCornerShape(1.5.dp)
+                    ) {}
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = categoryTag,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = categoryColor,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            
+            // 主要内容行
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(
+                        horizontal = 16.dp, 
+                        vertical = if (categoryTag != null) 4.dp else 8.dp
+                    ),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = when (category) {
+                        "Automatic" -> Icons.Default.AutoMode
+                        "Experimental" -> Icons.Default.Science
+                        "Other" -> Icons.Default.Widgets
+                        else -> Icons.Default.Extension
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = categoryColor
+                )
+                Spacer(modifier = Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = toolPackage?.name ?: packageName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (toolPackage?.description?.isNotBlank() == true) {
+                        Text(
+                            text = toolPackage.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(
+                    checked = isImported,
+                    onCheckedChange = onToggleImport,
+                    modifier = Modifier.scale(0.8f)
+                )
             }
         }
     }

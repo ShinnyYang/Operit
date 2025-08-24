@@ -512,6 +512,9 @@ class JsEngine(private val context: Context) {
             // 加载 OkHttp3 库
             ${loadOkHttp3Js(context)}
             
+            // 加载 pako 库 (原生桥接)
+            ${loadPakoJs(context)}
+            
             // 函数处理异步Promise的辅助函数
             function __handleAsync(possiblePromise) {
                 if (possiblePromise instanceof Promise) {
@@ -908,6 +911,51 @@ class JsEngine(private val context: Context) {
     /** JavaScript 接口，提供 Native 调用方法 */
     @Keep
     inner class JsToolCallInterface {
+
+        @JavascriptInterface
+        fun decompress(data: String, algorithm: String): String {
+            return try {
+                if (algorithm.lowercase() != "deflate") {
+                    throw IllegalArgumentException("Unsupported algorithm: $algorithm. Only 'deflate' is supported.")
+                }
+
+                val compressedData: ByteArray = if (data.startsWith(BINARY_HANDLE_PREFIX)) {
+                    val handle = data.substring(BINARY_HANDLE_PREFIX.length)
+                    binaryDataRegistry.remove(handle)
+                        ?: throw Exception("Invalid or expired binary handle: $handle")
+                } else {
+                    // Assume Base64 encoding if no handle is present
+                    Base64.decode(data, Base64.NO_WRAP)
+                }
+
+                if (compressedData.isEmpty()) {
+                    return ""
+                }
+
+                val inflater = java.util.zip.Inflater(true) // 使用 nowrap=true 来处理没有 zlib头的原始 DEFLATE 数据
+                inflater.setInput(compressedData)
+                val outputStream = ByteArrayOutputStream()
+                val buffer = ByteArray(1024)
+
+                while (!inflater.finished()) {
+                    val count = inflater.inflate(buffer)
+                    if (count == 0 && inflater.needsInput()) {
+                        // This indicates an incomplete or corrupt stream.
+                        throw java.util.zip.DataFormatException("Input is incomplete or corrupt")
+                    }
+                    outputStream.write(buffer, 0, count)
+                }
+
+                outputStream.close()
+                inflater.end()
+                
+                outputStream.toByteArray().toString(Charsets.UTF_8)
+
+            } catch (e: Exception) {
+                Log.e(TAG, "Native decompress operation failed: ${e.message}", e)
+                "{\"nativeError\":\"${e.message?.replace("\"", "'")}\"}"
+            }
+        }
 
         @JavascriptInterface
         fun image_processing(callbackId: String, operation: String, argsJson: String) {
@@ -1668,6 +1716,15 @@ class JsEngine(private val context: Context) {
         } catch (e: Exception) {
             Log.e(TAG, "Error during diagnostics: ${e.message}", e)
         }
+    }
+}
+
+private fun loadPakoJs(context: Context): String {
+    return try {
+        context.assets.open("js/pako.js").bufferedReader().use { it.readText() }
+    } catch (e: Exception) {
+        Log.e("JsEngine", "Failed to load pako.js", e)
+        "// pako.js failed to load"
     }
 }
 

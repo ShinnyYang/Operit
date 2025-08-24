@@ -111,38 +111,6 @@ object SystemPromptConfig {
       - get_notifications: Get device notifications. Parameters: limit (maximum number of notifications to return, default 10), include_ongoing (whether to include ongoing notifications, default false)
       - get_device_location: Get current device location. Parameters: high_accuracy (whether to use high accuracy mode, default false), timeout (timeout in seconds, default 10)
 
-      UI Automation Tools:
-      - get_page_info: Get information about the current UI screen, including the complete UI hierarchy. Parameters: format (format, optional: "xml" or "json", default "xml"), detail (detail level, optional: "minimal", "summary", or "full", default "summary")
-      - tap: Simulate a tap at specific coordinates. Parameters: x (X coordinate), y (Y coordinate)
-      - click_element: Click an element identified by resource ID or class name. Parameters: resourceId (element resource ID, optional), className (element class name, optional), index (which matching element to click, 0-based counting, default 0), partialMatch (whether to enable partial matching, default false), bounds (element bounds in format "[left,top][right,bottom]", optional), at least one identification parameter must be provided
-      - set_input_text: Set text in an input field. Parameters: text (text to input)
-      - press_key: Simulate a key press. Parameters: key_code (key code, e.g., "KEYCODE_BACK", "KEYCODE_HOME", etc.)
-      - swipe: Simulate a swipe gesture. Parameters: start_x (start X coordinate), start_y (start Y coordinate), end_x (end X coordinate), end_y (end Y coordinate), duration (duration in milliseconds, default 300)
-
-      
-      AI Computer Tools:
-      - computer_get_tabs: Gets all open computer tabs.
-      - computer_switch_to_tab: Switches to a computer tab. Parameters: tab_id (optional), tab_index (optional).
-      - computer_open_desktop: Opens a new computer desktop home tab.
-      - computer_open_browser: Opens a new browser tab in the computer. Parameters: url (optional).
-      - computer_get_page_info: Gets interactable elements from the current page, each with an interaction_id.
-      - computer_click_element: Clicks an element on the computer page. Parameters: interaction_id.
-      - computer_scroll_by: Scrolls the page in the currently active tab in the computer. Parameters: x, y.
-      - computer_input_text: Inputs text into an element on the computer page. Parameters: interaction_id, text.
-      - computer_close_tab: Closes a specific computer tab. Parameters: tab_id (optional), tab_index (optional).
-      - computer_go_back: Navigates back to the previous page in the computer browser.
-
-      FFmpeg Tools:
-      - ffmpeg_execute: Execute a custom FFmpeg command. Parameters: command (The FFmpeg command to execute)
-      - ffmpeg_info: Get FFmpeg system information including version, build configuration, and supported codecs. No parameters needed.
-      - ffmpeg_convert: Convert video files with simplified parameters. Parameters:
-        • input_path (source video file path)
-        • output_path (destination video file path)
-        • video_codec (optional, video codec to use)
-        • audio_codec (optional, audio codec to use)
-        • resolution (optional, output resolution, e.g. "1280x720")
-        • bitrate (optional, video bitrate, e.g. "1000k")
-
       UI AUTOMATION ADVICE:
       - Element targeting options:
         • Lists: use index parameter (e.g., "resourceId item 2")
@@ -299,38 +267,6 @@ object SystemPromptConfig {
         - get_notifications: 获取设备通知内容。参数：limit（最大返回条数，默认10），include_ongoing（是否包含常驻通知，默认false）
         - get_device_location: 获取设备当前位置信息。参数：high_accuracy（是否使用高精度模式，默认false），timeout（超时时间（秒），默认10）
 
-        UI自动化工具：
-        - get_page_info: 获取当前UI屏幕的信息，包括完整的UI层次结构。参数：format（格式，可选："xml"或"json"，默认"xml"），detail（详细程度，可选："minimal"、"summary"或"full"，默认"summary"）
-        - tap: 在特定坐标模拟点击。参数：x（X坐标），y（Y坐标）
-        - click_element: 点击由资源ID或类名标识的元素。参数：resourceId（元素资源ID，可选），className（元素类名，可选），index（要点击的匹配元素，从0开始计数，默认0），partialMatch（是否启用部分匹配，默认false），bounds（元素边界，格式为"[left,top][right,bottom]"，可选），必须至少提供一个标识参数
-        - set_input_text: 在输入字段中设置文本。参数：text（要输入的文本）
-        - press_key: 模拟按键。参数：key_code（键码，例如"KEYCODE_BACK"、"KEYCODE_HOME"等）
-        - swipe: 模拟滑动手势。参数：start_x（起始X坐标），start_y（起始Y坐标），end_x（结束X坐标），end_y（结束Y坐标），duration（持续时间，毫秒，默认300）
-
-        
-        AI电脑工具:
-        - computer_get_tabs: 获取所有打开的电脑标签页。
-        - computer_switch_to_tab: 切换到电脑标签页。参数: tab_id (可选), tab_index (可选)。
-        - computer_open_desktop: 打开一个新的电脑桌面主页标签。
-        - computer_open_browser: 在电脑中打开一个新的浏览器标签。参数: url (可选)。
-        - computer_get_page_info: 获取当前页面的可交互元素，每个元素都有一个interaction_id。
-        - computer_click_element: 点击电脑页面上的一个元素。参数: interaction_id。
-        - computer_scroll_by: 在电脑当前激活的标签页中，滚动页面。参数: x, y。
-        - computer_input_text: 在电脑页面上的输入框中输入文本。参数: interaction_id, text。
-        - computer_close_tab: 关闭指定的电脑标签页。参数: tab_id (可选), tab_index (可选)。
-        - computer_go_back: 在电脑浏览器中返回到上一个页面。
-        
-        FFmpeg工具：
-        - ffmpeg_execute: 执行自定义FFmpeg命令。参数：command（要执行的FFmpeg命令）
-        - ffmpeg_info: 获取FFmpeg系统信息，包括版本、构建配置和支持的编解码器。无需参数。
-        - ffmpeg_convert: 使用简化参数转换视频文件。参数：
-          • input_path（源视频文件路径）
-          • output_path（目标视频文件路径）
-          • video_codec（可选，要使用的视频编解码器）
-          • audio_codec（可选，要使用的音频编解码器）
-          • resolution（可选，输出分辨率，例如"1280x720"）
-          • bitrate（可选，视频比特率，例如"1000k"）
-        
         UI自动化建议：
         - 元素定位选项：
           • 列表：使用index参数（例如，"resourceId item 2"）

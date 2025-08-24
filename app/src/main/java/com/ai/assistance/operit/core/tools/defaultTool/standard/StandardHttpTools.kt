@@ -96,12 +96,17 @@ class StandardHttpTools(private val context: Context) {
 
     /** 检查Content-Type是否为文本类型 */
     private fun isTextBasedContentType(contentType: String): Boolean {
-        val lowerContentType = contentType.lowercase()
-        return lowerContentType.startsWith("text/") ||
-               lowerContentType.contains("json") ||
-               lowerContentType.contains("xml") ||
-               lowerContentType.contains("javascript") ||
-               lowerContentType.contains("html")
+        val mediaType = contentType.lowercase().split(';').firstOrNull()?.trim() ?: ""
+        if (mediaType.startsWith("text/")) {
+            return true
+        }
+        return when (mediaType) {
+            "application/json",
+            "application/xml",
+            "application/javascript",
+            "application/xhtml+xml" -> true
+            else -> mediaType.endsWith("+json") || mediaType.endsWith("+xml")
+        }
     }
 
     /** 读取响应体内容，处理编码问题 */
@@ -346,12 +351,19 @@ class StandardHttpTools(private val context: Context) {
                             )
 
             var responseBodyString: String? = null
-            var responseBodyBase64: String? = null
+            var responseBodyBase64: String?
+
+            val bodyBytes = responseBody.bytes()
+            responseBodyBase64 = android.util.Base64.encodeToString(bodyBytes, android.util.Base64.NO_WRAP)
 
             if(isTextContent) {
-                responseBodyString = readResponseBody(responseBody, contentType)
-            } else {
-                responseBodyBase64 = readResponseBodyAsBase64(responseBody)
+                try {
+                    val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
+                    responseBodyString = String(bodyBytes, charset)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
+                    responseBodyString = "[Binary Content, decoding failed]"
+                }
             }
 
             // 返回原始内容
@@ -365,7 +377,7 @@ class StandardHttpTools(private val context: Context) {
                             content = responseBodyString ?: "[Binary Content]",
                             contentBase64 = responseBodyBase64,
                             contentSummary = responseBodyString ?: "[Binary Content]",
-                            size = (responseBodyString?.length ?: responseBodyBase64?.length) ?: 0,
+                            size = bodyBytes.size,
                             cookies = cookiesMap
                     )
 
@@ -760,12 +772,19 @@ class StandardHttpTools(private val context: Context) {
                             )
 
             var responseBodyString: String? = null
-            var responseBodyBase64: String? = null
+            var responseBodyBase64: String?
+
+            val bodyBytes = responseBody.bytes()
+            responseBodyBase64 = android.util.Base64.encodeToString(bodyBytes, android.util.Base64.NO_WRAP)
 
             if(isTextContent) {
-                responseBodyString = readResponseBody(responseBody, contentType)
-            } else {
-                responseBodyBase64 = readResponseBodyAsBase64(responseBody)
+                try {
+                    val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
+                    responseBodyString = String(bodyBytes, charset)
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
+                    responseBodyString = "[Binary Content, decoding failed]"
+                }
             }
 
             // 返回原始内容
@@ -779,7 +798,7 @@ class StandardHttpTools(private val context: Context) {
                             content = responseBodyString ?: "[Binary Content]",
                             contentBase64 = responseBodyBase64,
                             contentSummary = responseBodyString ?: "[Binary Content]",
-                            size = (responseBodyString?.length ?: responseBodyBase64?.length) ?: 0,
+                            size = bodyBytes.size,
                             cookies = cookiesMap
                     )
 
