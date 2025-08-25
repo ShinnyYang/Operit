@@ -1,7 +1,8 @@
 /* METADATA
 {
   name: code_reader
-  description: 提供代码匹配抓取功能
+  description: 提供代码匹配抓取功能,
+  enabledByDefault: true
   
   tools: [
     {

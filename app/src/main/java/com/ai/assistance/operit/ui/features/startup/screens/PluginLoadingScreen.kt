@@ -54,8 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.IntOffset
 import com.ai.assistance.operit.R
-import com.ai.assistance.operit.data.mcp.MCPConfigPreferences
-import com.ai.assistance.operit.data.mcp.MCPInstaller
 import com.ai.assistance.operit.data.mcp.MCPLocalServer
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.mcp.plugins.MCPStarter
@@ -459,7 +457,7 @@ class PluginLoadingState {
     private val _plugins = MutableStateFlow<List<PluginInfo>>(emptyList())
     val plugins: StateFlow<List<PluginInfo>> = _plugins
 
-    // 应用上下文，用于获取MCPInstaller
+    // 应用上下文，用于获取MCP相关服务
     private var appContext: Context? = null
 
     // 是否已超时
@@ -471,6 +469,9 @@ class PluginLoadingState {
 
     // 跳过加载事件回调
     private var onSkipCallback: (() -> Unit)? = null
+
+    // 插件加载完成事件回调
+    private var onPluginsLoadedCallback: ((List<String>) -> Unit)? = null
 
     // 设置应用上下文
     fun setAppContext(context: Context) {
@@ -508,10 +509,10 @@ class PluginLoadingState {
                     // 如果上下文可用，尝试从元数据获取名称
                     if (context != null) {
                         try {
-                            val mcpInstaller = MCPInstaller(context)
-                            val pluginInfo = mcpInstaller.getInstalledPluginInfo(id)
-                            if (pluginInfo?.metadata != null) {
-                                displayName = pluginInfo.metadata.originalName
+                            val mcpLocalServer = MCPLocalServer.getInstance(context)
+                            val pluginInfo = mcpLocalServer.getPluginMetadata(id)
+                            if (pluginInfo != null) {
+                                displayName = pluginInfo.name
                             }
                         } catch (e: Exception) {
                             // 获取元数据失败，使用默认名称
@@ -573,6 +574,11 @@ class PluginLoadingState {
         onSkipCallback = callback
     }
 
+    // 设置插件加载完成回调
+    fun setOnPluginsLoadedCallback(callback: (List<String>) -> Unit) {
+        onPluginsLoadedCallback = callback
+    }
+
     // 触发跳过操作
     fun skip() {
         timeoutJob?.cancel()
@@ -598,12 +604,14 @@ class PluginLoadingState {
     fun show() {
         _isVisible.value = true
         _hasTimedOut.value = false
+        // _isExpanded.value = true // 默认展开
     }
 
     /** 隐藏加载屏幕 */
     fun hide() {
         timeoutJob?.cancel()
         _isVisible.value = false
+        // _isExpanded.value = false // 关闭时重置为折叠状态
     }
 
     /** 重置所有状态 */
@@ -638,24 +646,6 @@ class PluginLoadingState {
                 updateMessage(context.getString(R.string.plugin_configuring_server))
                 updateProgress(0.15f)
 
-                // 启动MCP服务器
-                val serverStartSuccess = mcpLocalServer.startServer()
-
-                if (!serverStartSuccess) {
-                    // 服务器启动失败
-                    updateMessage(context.getString(R.string.plugin_server_failed))
-                    updateProgress(1.0f)
-
-                    // 延迟一会儿后如果用户未跳过，则自动隐藏进度条
-                    lifecycleScope.launch {
-                        delay(5000) // 等待5秒，给用户时间看到错误消息和点击跳过按钮
-                        if (isVisible.value) {
-                            hide()
-                        }
-                    }
-                    return@launch
-                }
-
                 // 服务器启动成功，更新状态
                 updateMessage(context.getString(R.string.plugin_server_success))
                 updateProgress(0.2f)
@@ -667,6 +657,13 @@ class PluginLoadingState {
                 try {
                     // 获取MCPRepository实例
                     val mcpRepository = MCPRepository(context)
+
+                    // 设置回调，以便在插件成功加载后注册其工具
+                    setOnPluginsLoadedCallback { successfulPluginIds ->
+                        Log.d("PluginLoadingState", "所有插件加载完成，开始注册 ${successfulPluginIds.size} 个插件的工具...")
+                        mcpRepository.registerToolsForLoadedPlugins(successfulPluginIds)
+                        Log.d("PluginLoadingState", "工具注册流程已触发")
+                    }
 
                     // 获取已安装的插件列表 (这是一个Set<String>)
                     updateMessage(context.getString(R.string.plugin_loading_list))
@@ -699,7 +696,7 @@ class PluginLoadingState {
                     updateProgress(0.35f)
 
                     val mcpStarter = MCPStarter(context)
-                    val mcpConfigPreferences = MCPConfigPreferences(context)
+                    val mcpLocalServer = MCPLocalServer.getInstance(context)
 
                     // 创建一个适配器匿名类实现插件启动监听器
                     updateMessage(context.getString(R.string.plugin_starting_plugins))
@@ -707,7 +704,7 @@ class PluginLoadingState {
 
                     val progressListener =
                             createPluginStartProgressListener(
-                                    mcpConfigPreferences,
+                                    mcpLocalServer,
                                     lifecycleScope,
                                     context
                             )
@@ -746,16 +743,15 @@ class PluginLoadingState {
 
     // 创建插件启动进度监听器
     private fun createPluginStartProgressListener(
-            mcpConfigPreferences: MCPConfigPreferences,
+            mcpLocalServer: MCPLocalServer,
             lifecycleScope: kotlinx.coroutines.CoroutineScope,
             context: Context
     ): MCPStarter.PluginStartProgressListener {
         return object : MCPStarter.PluginStartProgressListener {
             override fun onPluginStarting(pluginId: String, index: Int, total: Int) {
                 // 在这里检查插件是否被启用
-                val isEnabled = runBlocking {
-                    mcpConfigPreferences.getPluginEnabledFlow(pluginId).first()
-                }
+                val serverStatus = mcpLocalServer.getServerStatus(pluginId)
+                val isEnabled = serverStatus?.isEnabled != false // 默认为true
 
                 // 更新总体状态
                 val disabledSuffix =
@@ -821,6 +817,14 @@ class PluginLoadingState {
                                 } else {
                                     0 // 当没有部署的插件时，成功率为0
                                 }
+
+                        // 触发插件加载完成的回调
+                        if (status == MCPStarter.PluginInitStatus.SUCCESS && successCount > 0) {
+                            val successfulPlugins = _plugins.value
+                                .filter { it.status == PluginStatus.SUCCESS }
+                                .map { it.id }
+                            onPluginsLoadedCallback?.invoke(successfulPlugins)
+                        }
 
                         // 如果有插件加载失败，则特别提示可以跳过
                         if (successCount < totalCount && totalCount > 0) {

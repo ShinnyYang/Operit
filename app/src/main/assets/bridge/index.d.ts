@@ -22,7 +22,6 @@ declare class McpBridge {
     private mcpToolsMap;
     private serviceReadyMap;
     private serviceRegistry;
-    private registryPath;
     private activeConnections;
     private pendingRequests;
     private toolResponseMapping;
@@ -33,14 +32,6 @@ declare class McpBridge {
     private readonly MAX_RESTART_ATTEMPTS;
     private readonly RESTART_DELAY_MS;
     constructor(config?: Partial<BridgeConfig>);
-    /**
-     * 加载MCP服务注册表
-     */
-    private loadRegistry;
-    /**
-     * 保存MCP服务注册表
-     */
-    private saveRegistry;
     /**
      * 注册新的MCP服务
      */

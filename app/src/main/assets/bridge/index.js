@@ -41,8 +41,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const net = __importStar(require("net"));
 const child_process_1 = require("child_process");
 const uuid_1 = require("uuid");
-const fs = __importStar(require("fs"));
-const path = __importStar(require("path"));
 const http = __importStar(require("http"));
 /**
  * MCP Bridge class
@@ -55,7 +53,7 @@ class McpBridge {
         this.remoteServiceConnections = new Map();
         this.mcpToolsMap = new Map();
         this.serviceReadyMap = new Map();
-        // 服务注册表
+        // 服务注册表 (纯内存)
         this.serviceRegistry = new Map();
         // 活跃连接
         this.activeConnections = new Set();
@@ -79,53 +77,8 @@ class McpBridge {
             mcpArgs: ['../your-mcp-server.js'],
             ...config
         };
-        // 设置注册表路径
-        this.registryPath = this.config.registryPath || './mcp-registry.json';
-        // 加载注册表
-        this.loadRegistry();
         // 设置超时检查
         setInterval(() => this.checkRequestTimeouts(), 5000);
-    }
-    /**
-     * 加载MCP服务注册表
-     */
-    loadRegistry() {
-        try {
-            if (fs.existsSync(this.registryPath)) {
-                const data = fs.readFileSync(this.registryPath, 'utf8');
-                const registry = JSON.parse(data);
-                this.serviceRegistry.clear();
-                for (const [key, value] of Object.entries(registry)) {
-                    this.serviceRegistry.set(key, value);
-                }
-            }
-            else {
-                this.serviceRegistry.clear();
-                this.saveRegistry();
-            }
-        }
-        catch (e) {
-            this.serviceRegistry.clear();
-        }
-    }
-    /**
-     * 保存MCP服务注册表
-     */
-    saveRegistry() {
-        try {
-            const registry = {};
-            for (const [key, value] of this.serviceRegistry.entries()) {
-                registry[key] = value;
-            }
-            const dir = path.dirname(this.registryPath);
-            if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, { recursive: true });
-            }
-            fs.writeFileSync(this.registryPath, JSON.stringify(registry, null, 2), 'utf8');
-        }
-        catch (e) {
-            console.error(`Failed to save registry: ${e}`);
-        }
     }
     /**
      * 注册新的MCP服务
@@ -145,6 +98,7 @@ class McpBridge {
             type: info.type,
             command: info.command,
             args: info.args || [],
+            cwd: info.cwd,
             host: info.host,
             port: info.port,
             description: info.description || `MCP Service: ${name}`,
@@ -153,7 +107,6 @@ class McpBridge {
             lastUsed: undefined
         };
         this.serviceRegistry.set(name, serviceInfo);
-        this.saveRegistry();
         return true;
     }
     /**
@@ -164,7 +117,6 @@ class McpBridge {
             return false;
         }
         this.serviceRegistry.delete(name);
-        this.saveRegistry();
         return true;
     }
     /**
@@ -273,7 +225,7 @@ class McpBridge {
     /**
      * 启动特定服务的子进程
      */
-    startMcpProcess(serviceName, command, args, env) {
+    startMcpProcess(serviceName, command, args, env, cwd) {
         var _a, _b;
         if (!command) {
             console.log(`No command specified for service ${serviceName}, skipping startup`);
@@ -284,10 +236,11 @@ class McpBridge {
             console.log(`Service ${serviceName} is already running`);
             return;
         }
-        console.log(`Starting MCP process for ${serviceName}: ${command} ${args.join(' ')}`);
+        console.log(`Starting MCP process for ${serviceName}: ${command} ${args.join(' ')} in ${cwd || '.'}`);
         try {
             const mcpProcess = (0, child_process_1.spawn)(command, args, {
                 stdio: ['pipe', 'pipe', 'pipe'],
+                cwd: cwd,
                 env: {
                     ...process.env,
                     ...env
@@ -333,7 +286,7 @@ class McpBridge {
                     const restartDelay = this.RESTART_DELAY_MS * Math.pow(2, attempts - 1);
                     console.log(`Attempting to restart service ${serviceName} in ${restartDelay / 1000}s (attempt ${attempts})...`);
                     setTimeout(() => {
-                        this.startMcpProcess(serviceName, serviceInfo.command, serviceInfo.args, serviceInfo.env);
+                        this.startMcpProcess(serviceName, serviceInfo.command, serviceInfo.args, serviceInfo.env, serviceInfo.cwd);
                     }, restartDelay);
                 }
                 else {
@@ -520,7 +473,6 @@ class McpBridge {
                             // 更新最后使用时间
                             if (serviceInfo) {
                                 serviceInfo.lastUsed = Date.now();
-                                this.saveRegistry();
                             }
                         }
                         else {
@@ -652,12 +604,13 @@ class McpBridge {
                     let serviceCommand = params.command;
                     let serviceArgs = params.args || [];
                     let serviceEnv = params.env;
+                    let serviceCwd = params.cwd;
                     // 优先从注册表查找服务信息
                     const serviceInfo = this.serviceRegistry.get(spawnServiceName);
                     // 如果未提供命令，但服务已注册，则使用注册表信息
                     if (serviceInfo) {
                         if (serviceInfo.type === 'local') {
-                            this.startMcpProcess(spawnServiceName, serviceInfo.command, serviceInfo.args, serviceInfo.env);
+                            this.startMcpProcess(spawnServiceName, serviceInfo.command, serviceInfo.args, serviceInfo.env, serviceInfo.cwd);
                         }
                         else if (serviceInfo.type === 'remote') {
                             this.connectToRemoteService(spawnServiceName, serviceInfo.host, serviceInfo.port);
@@ -669,11 +622,12 @@ class McpBridge {
                             type: 'local',
                             command: serviceCommand,
                             args: serviceArgs,
+                            cwd: serviceCwd,
                             description: `Auto-registered service ${spawnServiceName}`,
                             env: serviceEnv,
                         });
                         console.log(`Auto-registered new service: ${spawnServiceName}`);
-                        this.startMcpProcess(spawnServiceName, serviceCommand, serviceArgs, serviceEnv);
+                        this.startMcpProcess(spawnServiceName, serviceCommand, serviceArgs, serviceEnv, serviceCwd);
                     }
                     else {
                         // 如果服务未注册且没有提供command，则无法启动
@@ -688,14 +642,16 @@ class McpBridge {
                         socket.write(JSON.stringify(response) + '\n');
                         break;
                     }
+                    const finalServiceInfo = this.serviceRegistry.get(spawnServiceName);
                     response = {
                         id,
                         success: true,
                         result: {
                             status: "started",
                             name: spawnServiceName,
-                            command: serviceCommand,
-                            args: serviceArgs
+                            command: (finalServiceInfo === null || finalServiceInfo === void 0 ? void 0 : finalServiceInfo.command) || serviceCommand,
+                            args: (finalServiceInfo === null || finalServiceInfo === void 0 ? void 0 : finalServiceInfo.args) || serviceArgs,
+                            cwd: (finalServiceInfo === null || finalServiceInfo === void 0 ? void 0 : finalServiceInfo.cwd) || serviceCwd
                         }
                     };
                     socket.write(JSON.stringify(response) + '\n');
@@ -784,6 +740,7 @@ class McpBridge {
                         type: params.type,
                         command: params.command,
                         args: params.args || [],
+                        cwd: params.cwd,
                         description: params.description,
                         env: params.env,
                         host: params.host,

@@ -188,8 +188,6 @@ fun OperitApp(initialNavItem: NavItem = NavItem.AiChat, toolHandler: AIToolHandl
         launch {
             // First scan local installed plugins
             mcpRepository.syncInstalledStatus()
-            // Load server list from cache
-            mcpRepository.fetchMCPServers(forceRefresh = false)
         }
     }
 

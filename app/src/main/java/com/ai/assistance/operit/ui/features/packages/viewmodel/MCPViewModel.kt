@@ -58,6 +58,25 @@ class MCPViewModel(private val repository: MCPRepository) : ViewModel() {
         }
     }
     
+    /** 安装服务器插件 - 使用服务器对象（用于导入Git URL） */
+    fun installServerWithObject(server: MCPServer) {
+        viewModelScope.launch {
+            _currentServer.value = server
+            _installProgress.value = InstallProgress.Preparing
+            _installResult.value = null
+
+            val result =
+                    repository.installMCPServerWithObject(server) { progress ->
+                        _installProgress.value = progress
+                    }
+
+            _installResult.value = result
+
+            // 清除缓存
+            installedPathsCache.remove(server.id)
+        }
+    }
+    
     /** 从ZIP文件安装服务器插件 */
     fun installServerFromZip(server: MCPServer, zipFilePath: String) {
         viewModelScope.launch {
@@ -177,9 +196,6 @@ class MCPViewModel(private val repository: MCPRepository) : ViewModel() {
     /** 刷新插件列表 */
     fun refreshPluginList() {
         viewModelScope.launch {
-            repository.refresh()
-
-            // 同步安装状态
             repository.syncInstalledStatus()
         }
     }

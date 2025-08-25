@@ -2,6 +2,7 @@
 {
   name: code_runner
   description: 提供多语言代码执行能力，支持JavaScript、Python、Ruby、Go和Rust脚本的运行。可直接执行代码字符串或运行外部文件，适用于快速测试、自动化脚本和教学演示。
+  enabledByDefault: true
   
   // Multiple tools in this package
   tools: [

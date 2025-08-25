@@ -2,6 +2,7 @@
 {
     "name": "ffmpeg",
     "description": "提供FFmpeg工具，用于处理多媒体内容。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "ffmpeg_execute",

@@ -2,6 +2,7 @@
 {
   name: time
   description: 提供时间相关功能。实际上，激活本包的同时已经能够获取时间了。
+  enabledByDefault: true
   
   tools: [
     {

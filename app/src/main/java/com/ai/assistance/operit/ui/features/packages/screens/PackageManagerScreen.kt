@@ -44,7 +44,6 @@ import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.ui.features.packages.components.EmptyState
 import com.ai.assistance.operit.ui.features.packages.components.PackageTab
-import com.ai.assistance.operit.ui.features.packages.components.MCPSubTab
 import com.ai.assistance.operit.ui.features.packages.dialogs.AutomationFunctionExecutionDialog
 import com.ai.assistance.operit.ui.features.packages.dialogs.AutomationPackageDetailsDialog
 import com.ai.assistance.operit.ui.features.packages.dialogs.PackageDetailsDialog
@@ -95,7 +94,6 @@ fun PackageManagerScreen() {
 
     // Tab selection state
     var selectedTab by remember { mutableStateOf(PackageTab.PACKAGES) }
-    var selectedMCPSubTab by remember { mutableStateOf(MCPSubTab.MARKETPLACE) }
 
     // File picker launcher for importing external packages
     val packageFilePicker =
@@ -495,81 +493,10 @@ fun PackageManagerScreen() {
                     }
                     */
                     PackageTab.MCP -> {
-                        // MCP界面，包含二级标签页
-                        Column {
-                            // MCP子标签页
-                            TabRow(
-                                selectedTabIndex = selectedMCPSubTab.ordinal,
-                                modifier = Modifier.fillMaxWidth(),
-                                containerColor = MaterialTheme.colorScheme.surface,
-                                contentColor = MaterialTheme.colorScheme.onSurface,
-                                indicator = { tabPositions ->
-                                    Box(
-                                        modifier = Modifier
-                                            .tabIndicatorOffset(tabPositions[selectedMCPSubTab.ordinal])
-                                            .height(2.dp)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                    )
-                                }
-                            ) {
-                                Tab(
-                                    selected = selectedMCPSubTab == MCPSubTab.MARKETPLACE,
-                                    onClick = { selectedMCPSubTab = MCPSubTab.MARKETPLACE },
-                                    modifier = Modifier.height(44.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Cloud,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            "插件市场",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-                                Tab(
-                                    selected = selectedMCPSubTab == MCPSubTab.CONFIG,
-                                    onClick = { selectedMCPSubTab = MCPSubTab.CONFIG },
-                                    modifier = Modifier.height(44.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Settings,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                        Spacer(Modifier.width(6.dp))
-                                        Text(
-                                            "配置",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            softWrap = false
-                                        )
-                                    }
-                                }
-                            }
-                            
-                            // MCP子内容
-                            when (selectedMCPSubTab) {
-                                MCPSubTab.MARKETPLACE -> {
-                        // MCP插件市场界面
-                        MCPScreen(mcpRepository = mcpRepository)
-                    }
-                                MCPSubTab.CONFIG -> {
-                        // MCP配置界面
                         MCPConfigScreen()
-                                }
-                            }
-                        }
+                                
+                            
+                        
                     }
                 }
             }

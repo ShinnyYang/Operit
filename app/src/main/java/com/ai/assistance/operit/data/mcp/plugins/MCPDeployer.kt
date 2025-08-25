@@ -2,9 +2,9 @@ package com.ai.assistance.operit.data.mcp.plugins
 
 import android.content.Context
 import android.util.Log
-import com.ai.assistance.operit.data.mcp.MCPConfigPreferences
 import com.ai.assistance.operit.data.mcp.MCPLocalServer
 import com.ai.assistance.operit.ui.features.toolbox.screens.terminal.model.TerminalSessionManager
+import com.google.gson.JsonParser
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
@@ -33,94 +33,6 @@ class MCPDeployer(private val context: Context) {
         data class Success(val message: String) : DeploymentStatus()
         data class Error(val message: String) : DeploymentStatus()
     }
-
-    /**
-     * 部署MCP插件（使用自动生成的命令）
-     *
-     * @param pluginId 插件ID
-     * @param pluginPath 插件安装路径
-     * @param environmentVariables 环境变量键值对
-     * @param statusCallback 部署状态回调
-     */
-    suspend fun deployPlugin(
-            pluginId: String,
-            pluginPath: String,
-            environmentVariables: Map<String, String> = emptyMap(),
-            statusCallback: (DeploymentStatus) -> Unit
-    ): Boolean =
-            withContext(Dispatchers.IO) {
-                try {
-                    statusCallback(DeploymentStatus.InProgress("开始部署插件: $pluginId"))
-                    Log.d(TAG, "开始部署插件: $pluginId, 路径: $pluginPath")
-
-                    // 验证插件路径
-                    val pluginDir = File(pluginPath)
-                    if (!pluginDir.exists() || !pluginDir.isDirectory) {
-                        Log.e(TAG, "插件目录不存在: $pluginPath")
-                        statusCallback(DeploymentStatus.Error("插件目录不存在: $pluginPath"))
-                        return@withContext false
-                    }
-
-                    // 创建项目分析器
-                    val projectAnalyzer = MCPProjectAnalyzer()
-
-                    // 查找README文件
-                    val readmeFile = projectAnalyzer.findReadmeFile(pluginDir)
-                    val readmeContent = readmeFile?.readText() ?: ""
-
-                    // 分析项目结构
-                    statusCallback(DeploymentStatus.InProgress("分析项目结构..."))
-                    val projectStructure =
-                            projectAnalyzer.analyzeProjectStructure(pluginDir, readmeContent)
-                    Log.d(TAG, "项目类型: ${projectStructure.type}")
-
-                    // 创建命令生成器
-                    val commandGenerator = MCPCommandGenerator()
-
-                    // 生成部署命令
-                    val deployCommands =
-                            commandGenerator.generateDeployCommands(projectStructure, readmeContent)
-                    if (deployCommands.isEmpty()) {
-                        Log.e(TAG, "无法生成部署命令: $pluginId")
-                        statusCallback(DeploymentStatus.Error("无法确定如何部署此插件，请查看README手动部署"))
-                        return@withContext false
-                    }
-
-                    Log.d(TAG, "生成部署命令: $deployCommands")
-
-                    // 创建配置生成器
-                    val configGenerator = MCPConfigGenerator()
-
-                    // 生成MCP配置，包含环境变量
-                    val mcpConfig = configGenerator.generateMcpConfig(pluginId, projectStructure, environmentVariables)
-                    Log.d(TAG, "生成MCP配置: $mcpConfig")
-
-                    // 保存MCP配置
-                    statusCallback(DeploymentStatus.InProgress("保存MCP配置..."))
-                    val mcpLocalServer = MCPLocalServer.getInstance(context)
-                    val configSaveResult = mcpLocalServer.savePluginConfig(pluginId, mcpConfig)
-
-                    if (!configSaveResult) {
-                        Log.e(TAG, "保存MCP配置失败: $pluginId")
-                        statusCallback(DeploymentStatus.Error("保存MCP配置失败"))
-                        return@withContext false
-                    }
-
-                    // 执行部署命令
-                    return@withContext executeDeployCommands(
-                            pluginId, 
-                            pluginPath, 
-                            deployCommands, 
-                            statusCallback,
-                            configGenerator.extractServerNameFromConfig(mcpConfig)
-                    )
-                } catch (e: Exception) {
-                    Log.e(TAG, "部署插件时出错", e)
-                    statusCallback(DeploymentStatus.Error("部署出错: ${e.message}"))
-                    return@withContext false
-                }
-            }
-            
     /**
      * 部署MCP插件（使用自定义命令）
      *
@@ -168,7 +80,9 @@ class MCPDeployer(private val context: Context) {
                     // 保存MCP配置
                     statusCallback(DeploymentStatus.InProgress("保存MCP配置..."))
                     val mcpLocalServer = MCPLocalServer.getInstance(context)
-                    val configSaveResult = mcpLocalServer.savePluginConfig(pluginId, mcpConfig)
+                    
+                    // 解析生成的MCP配置并保存为正确的格式
+                    val configSaveResult = saveMCPConfigToLocalServer(mcpLocalServer, pluginId, mcpConfig)
 
                     if (!configSaveResult) {
                         Log.e(TAG, "保存MCP配置失败: $pluginId")
@@ -380,8 +294,8 @@ class MCPDeployer(private val context: Context) {
 
             // 保存部署成功状态到配置中
             try {
-                val mcpConfigPreferences = MCPConfigPreferences(context)
-                mcpConfigPreferences.saveDeploySuccess(pluginId, true)
+                val mcpLocalServer = MCPLocalServer.getInstance(context)
+                mcpLocalServer.updateServerStatus(pluginId, deploySuccess = true)
                 Log.d(TAG, "已保存部署成功状态: $pluginId")
             } catch (e: Exception) {
                 Log.e(TAG, "保存部署成功状态失败: ${e.message}")
@@ -393,6 +307,65 @@ class MCPDeployer(private val context: Context) {
             Log.e(TAG, "执行部署命令时出错", e)
             statusCallback(DeploymentStatus.Error("部署出错: ${e.message}"))
             return@withContext false
+        }
+    }
+
+    /**
+     * 将生成的MCP配置正确保存到MCPLocalServer
+     */
+    private suspend fun saveMCPConfigToLocalServer(
+        mcpLocalServer: MCPLocalServer,
+        pluginId: String,
+        mcpConfigJson: String
+    ): Boolean {
+        return try {
+            // 解析生成的MCP配置JSON
+            val jsonObject = JsonParser.parseString(mcpConfigJson).asJsonObject
+            val mcpServers = jsonObject.getAsJsonObject("mcpServers")
+            
+            if (mcpServers != null && mcpServers.size() > 0) {
+                // 获取第一个服务器配置（通常是唯一的）
+                val serverName = mcpServers.keySet().first()
+                val serverConfig = mcpServers.getAsJsonObject(serverName)
+                
+                // 提取配置参数
+                val command = serverConfig.get("command")?.asString ?: "python"
+                val args = serverConfig.getAsJsonArray("args")?.map { it.asString } ?: emptyList()
+                val disabled = serverConfig.get("disabled")?.asBoolean ?: false
+                val autoApprove = serverConfig.getAsJsonArray("autoApprove")?.map { it.asString } ?: emptyList()
+                
+                // 提取环境变量
+                val env = mutableMapOf<String, String>()
+                serverConfig.getAsJsonObject("env")?.let { envObject ->
+                    envObject.keySet().forEach { key ->
+                        env[key] = envObject.get(key).asString
+                    }
+                }
+                
+                Log.d(TAG, "解析MCP配置 - 服务器: $serverName, 命令: $command, 参数: $args")
+                
+                // 保存到MCPLocalServer
+                mcpLocalServer.addOrUpdateMCPServer(
+                    serverId = pluginId,
+                    command = command,
+                    args = args,
+                    env = env,
+                    disabled = disabled,
+                    autoApprove = autoApprove,
+                    metadata = mapOf(
+                        "serverName" to serverName,
+                        "deployedTime" to System.currentTimeMillis().toString()
+                    )
+                )
+                
+                true
+            } else {
+                Log.e(TAG, "MCP配置中没有找到服务器配置")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "解析和保存MCP配置失败", e)
+            false
         }
     }
 }

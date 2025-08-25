@@ -3,6 +3,7 @@ METADATA
 {
     "name": "douyin_download",
     "description": "抖音工具包，提供从分享链接或分享口令中提取并下载无水印视频的功能。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "get_douyin_download_link",
@@ -65,11 +66,11 @@ const douyin = (function () {
                 .url(shareUrl)
                 .method('GET')
                 .headers({
-                    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                    "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-                    "Connection": "keep-alive"
-                });
+                "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) EdgiOS/121.0.2277.107 Version/17.0 Mobile/15E148 Safari/604.1",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+                "Connection": "keep-alive"
+            });
             const response = await request.build().execute();
             if (!response.isSuccessful()) {
                 throw new Error(`链接解析失败 (${response.statusCode})`);

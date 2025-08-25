@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import org.json.JSONArray
 
 /**
  * MCPBridge - 用于与TCP桥接器通信的插件类 支持以下命令:
@@ -30,14 +31,25 @@ import org.json.JSONObject
  * - register: 注册新的MCP服务
  * - unregister: 取消注册MCP服务
  */
-class MCPBridge(private val context: Context) {
+class MCPBridge private constructor(private val context: Context) {
     companion object {
         private const val TAG = "MCPBridge"
         private const val DEFAULT_HOST = "127.0.0.1"
         private const val DEFAULT_PORT = 8752
         private const val TERMUX_BRIDGE_PATH = "/data/data/com.termux/files/home/bridge"
-        private const val BRIDGE_LOG_FILE = "$TERMUX_BRIDGE_PATH/bridge.log"
         private var appContext: Context? = null
+        
+        @Volatile
+        private var INSTANCE: MCPBridge? = null
+        
+        fun getInstance(context: Context): MCPBridge {
+            return INSTANCE ?: synchronized(this) {
+                INSTANCE ?: MCPBridge(context.applicationContext).also { 
+                    INSTANCE = it
+                    appContext = context.applicationContext
+                }
+            }
+        }
 
         // 部署桥接器到Termux
         suspend fun deployBridge(context: Context): Boolean {
@@ -268,7 +280,7 @@ class MCPBridge(private val context: Context) {
                         val serviceName = params?.optString("name")
                         val logMessage =
                                 if (serviceName != null && serviceName.isNotEmpty()) {
-                                    "发送桥接器命令[$cmdId]: $cmdType 服务: $serviceName ${if (params.length() > 1) "其他参数: ${params.toString().replace("\"name\":\"$serviceName\",", "")}" else ""}"
+                                    "发送桥接器命令[$cmdId]: $cmdType 服务: $serviceName 其他参数: ${params.toString()}"
                                 } else {
                                     "发送桥接器命令[$cmdId]: $cmdType ${if (params != null) "参数: $params" else ""}"
                                 }
@@ -382,7 +394,8 @@ class MCPBridge(private val context: Context) {
             command: String,
             args: List<String> = emptyList(),
             description: String? = null,
-            env: Map<String, String>? = null
+            env: Map<String, String>? = null,
+            cwd: String? = null
     ): JSONObject? {
         val params =
                 JSONObject().apply {
@@ -390,7 +403,12 @@ class MCPBridge(private val context: Context) {
                     put("name", name)
                     put("command", command)
                     if (args.isNotEmpty()) {
-                        put("args", args)
+                        // 显式创建JSONArray
+                        val argsArray = JSONArray()
+                        for (arg in args) {
+                            argsArray.put(arg)
+                        }
+                        put("args", argsArray)
                     }
                     if (description != null) {
                         put("description", description)
@@ -399,6 +417,9 @@ class MCPBridge(private val context: Context) {
                         val envObj = JSONObject()
                         env.forEach { (key, value) -> envObj.put(key, value) }
                         put("env", envObj)
+                    }
+                    if (cwd != null) {
+                        put("cwd", cwd)
                     }
                 }
 
@@ -468,7 +489,9 @@ class MCPBridge(private val context: Context) {
     suspend fun spawnMcpService(
             name: String? = null,
             command: String? = null,
-            args: List<String>? = null
+            args: List<String>? = null,
+            env: Map<String, String>? = null,
+            cwd: String? = null
     ): JSONObject? {
         val params = JSONObject()
 
@@ -480,13 +503,20 @@ class MCPBridge(private val context: Context) {
             params.put("command", command)
         }
         if (args != null && args.isNotEmpty()) {
-            val argsArray =
-                    args.fold(StringBuilder()) { sb, arg ->
-                        if (sb.isNotEmpty()) sb.append(",")
-                        sb.append("\"").append(arg.replace("\"", "\\\"")).append("\"")
-                        sb
-                    }
-            params.put("args", "[$argsArray]")
+            // 使用JSONArray来正确处理数组
+            val jsonArray = JSONArray()
+            for (arg in args) {
+                jsonArray.put(arg)
+            }
+            params.put("args", jsonArray)
+        }
+        if (env != null && env.isNotEmpty()) {
+            val envObj = JSONObject()
+            env.forEach { (key, value) -> envObj.put(key, value) }
+            params.put("env", envObj)
+        }
+        if (cwd != null) {
+            params.put("cwd", cwd)
         }
 
         val commandObj =
@@ -587,13 +617,13 @@ class MCPBridge(private val context: Context) {
 
                         // 检查服务状态
                         val status = result?.optString("status")
-                        val running = result?.optBoolean("running", false) ?: false
+                        val active = result?.optBoolean("active", false) ?: false
                         val ready = result?.optBoolean("ready", false) ?: false
 
                         if (status == "ok") {
                             Log.d(TAG, "服务 $serviceName 正在运行并响应")
                             return@withContext response
-                        } else if (running) {
+                        } else if (active) {
                             Log.d(TAG, "服务 $serviceName 正在运行但可能尚未完全准备好")
                             return@withContext response
                         } else {

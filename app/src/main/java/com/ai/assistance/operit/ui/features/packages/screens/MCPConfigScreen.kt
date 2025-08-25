@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -14,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,16 +35,27 @@ import com.ai.assistance.operit.data.mcp.MCPLocalServer
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.mcp.plugins.MCPDeployer
 import com.ai.assistance.operit.ui.features.packages.components.dialogs.MCPServerDetailsDialog
+import com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPCommandsEditDialog
+import com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPDeployConfirmDialog
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPDeployProgressDialog
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPInstallProgressDialog
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.viewmodel.MCPDeployViewModel
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.viewmodel.MCPViewModel
+import com.ai.assistance.operit.data.mcp.plugins.MCPBridge
+import com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient
+import com.ai.assistance.operit.data.mcp.plugins.ServiceInfo
+import com.google.gson.JsonParser
+import android.util.Log
+
 import java.util.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.ai.assistance.operit.data.mcp.InstallResult
 import com.ai.assistance.operit.data.mcp.InstallProgress
+import com.ai.assistance.operit.ui.features.startup.screens.PluginLoadingState
+import com.ai.assistance.operit.ui.features.startup.screens.PluginLoadingScreenWithState
+import com.ai.assistance.operit.data.mcp.plugins.MCPStarter
 
 /** MCP配置屏幕 - 极简风格界面，专注于插件快速部署 */
 @SuppressLint("StateFlowValueCalledInComposition")
@@ -52,12 +65,21 @@ fun MCPConfigScreen() {
     val context = LocalContext.current
     val mcpLocalServer = remember { MCPLocalServer.getInstance(context) }
     val mcpRepository = remember { MCPRepository(context) }
-    val mcpConfigPreferences = remember {
-        com.ai.assistance.operit.data.mcp.MCPConfigPreferences(context)
-    }
+
     val scope = rememberCoroutineScope()
 
-    // 实例化两个ViewModel
+    // 插件加载状态管理
+    val pluginLoadingState = remember { PluginLoadingState() }
+    
+    // 设置应用上下文
+    LaunchedEffect(Unit) {
+        pluginLoadingState.setAppContext(context)
+        pluginLoadingState.setOnSkipCallback {
+            // 跳过回调可以为空，或者添加一些逻辑
+        }
+    }
+
+    // 实例化ViewModel
     val viewModel = remember {
         MCPViewModel.Factory(mcpRepository).create(MCPViewModel::class.java)
     }
@@ -65,8 +87,9 @@ fun MCPConfigScreen() {
         MCPDeployViewModel.Factory(context, mcpRepository).create(MCPDeployViewModel::class.java)
     }
 
+
     // 状态收集
-    val isServerRunning = mcpLocalServer.isRunning.collectAsState().value
+    val serverStatus = mcpLocalServer.serverStatus.collectAsState().value
     val installProgress by viewModel.installProgress.collectAsState()
     val installResult by viewModel.installResult.collectAsState()
     val currentInstallingPlugin by viewModel.currentServer.collectAsState()
@@ -74,11 +97,16 @@ fun MCPConfigScreen() {
             mcpRepository.installedPluginIds.collectAsState(initial = emptySet()).value
     val snackbarHostState = remember { SnackbarHostState() }
 
+    // 计算是否有任何服务器在运行
+    val isAnyServerRunning = serverStatus.values.any { it.active }
+
     // 部署状态
     val deploymentStatus by deployViewModel.deploymentStatus.collectAsState()
     val outputMessages by deployViewModel.outputMessages.collectAsState()
     val currentDeployingPlugin by deployViewModel.currentDeployingPlugin.collectAsState()
     val environmentVariables by deployViewModel.environmentVariables.collectAsState()
+    
+
 
     // 标记是否已经执行过初始化时的自动启动
     var initialAutoStartPerformed = remember { mutableStateOf(false) }
@@ -89,8 +117,13 @@ fun MCPConfigScreen() {
         if (!initialAutoStartPerformed.value) {
             android.util.Log.d("MCPConfigScreen", "初始化 - 检查服务器状态")
 
+            // 从桥接器同步最新的服务运行状态
+            mcpRepository.syncBridgeStatus()
+            // 刷新列表以确保UI更新
+            mcpRepository.refreshPluginList()
+
             // 只记录服务器状态，不再重复启动服务器(已由 Application 中的 initAndAutoStartPlugins 控制)
-            if (isServerRunning) {
+            if (isAnyServerRunning) {
                 android.util.Log.d("MCPConfigScreen", "MCP服务器已在运行")
             } else {
                 android.util.Log.d("MCPConfigScreen", "MCP服务器未运行")
@@ -100,7 +133,8 @@ fun MCPConfigScreen() {
             android.util.Log.d("MCPConfigScreen", "已安装的MCP插件列表:")
             installedPlugins.forEach { pluginId ->
                 try {
-                    val isEnabled = mcpConfigPreferences.getPluginEnabledFlow(pluginId).first()
+                    val serverStatus = mcpLocalServer.getServerStatus(pluginId)
+                    val isEnabled = serverStatus?.isEnabled != false // 默认为true
                     android.util.Log.d("MCPConfigScreen", "插件ID: $pluginId, 已启用: $isEnabled")
                 } catch (e: Exception) {
                     android.util.Log.e("MCPConfigScreen", "无法读取插件 $pluginId 的启用状态: ${e.message}")
@@ -130,7 +164,6 @@ fun MCPConfigScreen() {
     var repoUrlInput by remember { mutableStateOf("") }
     var pluginNameInput by remember { mutableStateOf("") }
     var pluginDescriptionInput by remember { mutableStateOf("") }
-    var pluginAuthorInput by remember { mutableStateOf("") }
     var isImporting by remember { mutableStateOf(false) }
     // 新增：导入方式选择和压缩包路径
     var importTabIndex by remember { mutableStateOf(0) } // 0: 仓库导入, 1: 压缩包导入
@@ -146,102 +179,85 @@ fun MCPConfigScreen() {
     var editingRemoteServer by remember { mutableStateOf<com.ai.assistance.operit.data.mcp.MCPServer?>(null) }
 
 
+    // Effect to fetch and display tools when MCP servers start
+    val isPluginLoading by pluginLoadingState.isVisible.collectAsState()
+    val wasPluginLoading = remember { mutableStateOf(isPluginLoading) }
+    var toolRefreshTrigger by remember { mutableStateOf(0) }
+
+    LaunchedEffect(isPluginLoading) {
+        if (wasPluginLoading.value && !isPluginLoading) {
+            // Loading has just finished, trigger a refresh.
+            toolRefreshTrigger++
+        }
+        wasPluginLoading.value = isPluginLoading
+    }
+    
+    // 存储每个插件的工具信息
+    var pluginToolsMap by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+
+    LaunchedEffect(isAnyServerRunning, installedPlugins, toolRefreshTrigger) {
+        // Only run when servers are running
+        if (isAnyServerRunning) {
+            if (installedPlugins.isEmpty()) {
+                Log.d("MCPConfigScreen", "Waiting for installed plugins list before fetching tools.")
+                return@LaunchedEffect
+            }
+
+            // Give services a moment to initialize after starting
+            delay(1000)
+
+            Log.d("MCPConfigScreen", "Fetching tools for running services...")
+            
+            val toolsMap = mutableMapOf<String, List<String>>()
+
+            try {
+                // 遍历已安装的插件，获取每个插件的工具信息
+                for (pluginId in installedPlugins) {
+                    try {
+                        val client = MCPBridgeClient(context, pluginId)
+                        val serviceInfo = client.getServiceInfo()
+                        
+                        if (serviceInfo != null && serviceInfo.active && serviceInfo.toolNames.isNotEmpty()) {
+                            toolsMap[pluginId] = serviceInfo.toolNames
+                            Log.d("MCPConfigScreen", "Plugin $pluginId has ${serviceInfo.toolNames.size} tools: ${serviceInfo.toolNames.joinToString(", ")}")
+                        } else {
+                            Log.d("MCPConfigScreen", "Plugin $pluginId: no tools or not active")
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MCPConfigScreen", "Error getting tools for plugin $pluginId: ${e.message}")
+                    }
+                }
+
+                // 更新工具映射
+                pluginToolsMap = toolsMap
+                
+                if (toolsMap.isNotEmpty()) {
+                    val totalTools = toolsMap.values.sumOf { it.size }
+                    snackbarHostState.showSnackbar("已加载 $totalTools 个工具", duration = SnackbarDuration.Short)
+                    Log.i("MCPConfigScreen", "Loaded $totalTools tools from ${toolsMap.size} plugins")
+                } else {
+                    Log.i("MCPConfigScreen", "No tools found for any running plugins.")
+                }
+            } catch (e: Exception) {
+                Log.e("MCPConfigScreen", "Error fetching tools", e)
+                snackbarHostState.showSnackbar("获取工具列表时出错: ${e.message}")
+            }
+        } else {
+            pluginToolsMap = emptyMap() // 清空工具映射
+        }
+    }
+
+
     // 获取选中插件的配置
     LaunchedEffect(selectedPluginId) {
         selectedPluginId?.let { pluginConfigJson = mcpLocalServer.getPluginConfig(it) }
-    }
-
-    // 从插件ID中提取显示名称
-    fun getPluginDisplayName(pluginId: String): String {
-        val pluginInfo = mcpRepository.getInstalledPluginInfo(pluginId)
-        val originalName = pluginInfo?.getOriginalName()
-
-        if (originalName != null && originalName.isNotBlank()) {
-            return originalName
-        }
-
-        return when {
-            pluginId.contains("/") -> pluginId.split("/").last().replace("-", " ").capitalize()
-            pluginId.startsWith("official_") ->
-                    pluginId.removePrefix("official_").replace("_", " ").capitalize()
-            else -> pluginId
-        }
-    }
-
-    // 获取插件元数据
-    fun getPluginAsServer(
-            pluginId: String
-    ): com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer? {
-        val pluginInfo = mcpRepository.getInstalledPluginInfo(pluginId)
-
-        // 尝试从内存中的服务器列表查找
-        val existingServer = mcpRepository.mcpServers.value.find { it.id == pluginId }
-        
-        // 如果在列表中找到，并且类型是远程，直接使用
-        if (existingServer != null && existingServer.type == "remote") {
-             return com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
-                id = existingServer.id,
-                name = existingServer.name,
-                description = existingServer.description,
-                logoUrl = existingServer.logoUrl,
-                stars = existingServer.stars,
-                category = existingServer.category,
-                requiresApiKey = existingServer.requiresApiKey,
-                author = existingServer.author,
-                isVerified = existingServer.isVerified,
-                isInstalled = true,
-                version = existingServer.version,
-                updatedAt = existingServer.updatedAt,
-                longDescription = existingServer.longDescription,
-                repoUrl = existingServer.repoUrl,
-                type = existingServer.type,
-                host = existingServer.host,
-                port = existingServer.port
-            )
-        }
-
-        val displayName = getPluginDisplayName(pluginId)
-
-        return com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
-                id = pluginId,
-                name = displayName,
-                description = pluginInfo?.getOriginalDescription() ?: "本地安装的插件",
-                logoUrl = "",
-                stars = 0,
-                category = "已安装插件",
-                requiresApiKey = false,
-                author = pluginInfo?.getAuthor() ?: "本地安装",
-                isVerified = false,
-                isInstalled = true,
-                version = pluginInfo?.getVersion() ?: "本地版本",
-                updatedAt = "",
-                longDescription = pluginInfo?.getLongDescription()
-                                ?: (pluginInfo?.getOriginalDescription() ?: "本地安装的插件"),
-                repoUrl = pluginInfo?.getRepoUrl() ?: "",
-                type = pluginInfo?.getType() ?: "local",
-                host = pluginInfo?.getHost(),
-                port = pluginInfo?.getPort()
-        )
-    }
-
-    // 部署插件
-    fun deployPlugin(pluginId: String) {
-        if (!isServerRunning) {
-            mcpLocalServer.startServer()
-        }
-
-        // 使用ViewModel处理部署
-        deployViewModel.deployPlugin(pluginId)
-
-        // 清除部署确认状态
-        pluginToDeploy = null
     }
 
     // 监听部署状态变化，当成功时显示提示
     LaunchedEffect(deploymentStatus) {
         if (deploymentStatus is MCPDeployer.DeploymentStatus.Success) {
             currentDeployingPlugin?.let { pluginId ->
-                snackbarHostState.showSnackbar("插件 ${getPluginDisplayName(pluginId)} 已成功部署")
+                snackbarHostState.showSnackbar("插件 ${getPluginDisplayName(pluginId, mcpRepository)} 已成功部署")
             }
         }
     }
@@ -261,8 +277,10 @@ fun MCPConfigScreen() {
                 pluginConfig = pluginConfigJson,
                 onSaveConfig = {
                     selectedPluginId?.let { pluginId ->
+                        scope.launch {
                         mcpLocalServer.savePluginConfig(pluginId, pluginConfigJson)
-                        scope.launch { snackbarHostState.showSnackbar("配置已保存") }
+                            snackbarHostState.showSnackbar("配置已保存")
+                        }
                     }
                 },
                 onUpdateConfig = { newConfig -> pluginConfigJson = newConfig }
@@ -272,17 +290,12 @@ fun MCPConfigScreen() {
     // 部署确认对话框 - 新增
     if (showConfirmDialog && pluginToDeploy != null) {
         com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPDeployConfirmDialog(
-                pluginName = getPluginDisplayName(pluginToDeploy!!),
+                pluginName = getPluginDisplayName(pluginToDeploy!!, mcpRepository),
                 onDismissRequest = {
                     showConfirmDialog = false
                     pluginToDeploy = null
                 },
                 onConfirm = {
-                    // 直接部署 - 获取命令后立即执行部署
-                    if (!isServerRunning) {
-                        mcpLocalServer.startServer()
-                    }
-
                     // 在协程内部复制当前的pluginId避免外部状态变化导致空指针异常
                     val pluginId = pluginToDeploy!!
                     
@@ -323,7 +336,7 @@ fun MCPConfigScreen() {
 
         // 显示命令编辑对话框，暂时移除isLoading参数
         com.ai.assistance.operit.ui.features.packages.screens.mcp.components.MCPCommandsEditDialog(
-                pluginName = getPluginDisplayName(pluginToDeploy!!),
+                pluginName = getPluginDisplayName(pluginToDeploy!!, mcpRepository),
                 commands = deployViewModel.generatedCommands.value,
                 // 注释掉isLoading参数直到MCPCommandsEditDialog.kt的修改生效
                 // isLoading = !commandsAvailable,
@@ -332,11 +345,6 @@ fun MCPConfigScreen() {
                     pluginToDeploy = null
                 },
                 onConfirm = { customCommands ->
-                    // 使用自定义命令部署
-                    if (!isServerRunning) {
-                        mcpLocalServer.startServer()
-                    }
-                    
                     // 在协程内部复制插件ID以避免空指针异常
                     val pluginId = pluginToDeploy!!
                     deployViewModel.deployPluginWithCommands(pluginId, customCommands)
@@ -385,7 +393,7 @@ fun MCPConfigScreen() {
                         deployViewModel.deployPlugin(pluginId)
                     }
                 },
-                pluginName = currentDeployingPlugin?.let { getPluginDisplayName(it) } ?: "",
+                pluginName = currentDeployingPlugin?.let { getPluginDisplayName(it, mcpRepository) } ?: "",
                 outputMessages = outputMessages,
                 environmentVariables = environmentVariables,
                 onEnvironmentVariablesChange = { newEnvVars ->
@@ -531,15 +539,6 @@ fun MCPConfigScreen() {
                         modifier = Modifier.fillMaxWidth(),
                         maxLines = 3
                     )
-                    
-                    OutlinedTextField(
-                        value = pluginAuthorInput,
-                        onValueChange = { pluginAuthorInput = it },
-                        label = { Text("作者") },
-                        placeholder = { Text("作者名称") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
                 }
             },
             confirmButton = {
@@ -551,9 +550,19 @@ fun MCPConfigScreen() {
                         val isRemoteConnect = isRemote && remoteHostInput.isNotBlank() && remotePortInput.isNotBlank() && pluginNameInput.isNotBlank()
 
                         if (isRepoImport || isZipImport || isRemoteConnect) {
+                            // 检查插件ID是否冲突
+                            val proposedId = if (isRemote) "remote_${pluginNameInput.replace(" ", "_").lowercase()}" 
+                                             else pluginNameInput.replace(" ", "_").lowercase()
+                            if (mcpRepository.isPluginInstalled(proposedId)) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("插件 '$pluginNameInput' 已存在，请使用其他名称。")
+                                }
+                                return@Button
+                            }
+
                             isImporting = true
-                            // 生成一个唯一的ID
-                            val importId = if (isRemote) "remote_${pluginNameInput.replace(" ", "_").lowercase()}" else "import_${java.util.UUID.randomUUID().toString().substring(0, 8)}"
+                            // 生成一个唯一的ID，移除 "import_" 前缀
+                            val importId = proposedId
                             
                             // 创建服务器对象
                             val server = com.ai.assistance.operit.data.mcp.MCPServer(
@@ -564,7 +573,7 @@ fun MCPConfigScreen() {
                                 stars = 0,
                                 category = if(isRemote) "远程服务" else "导入插件",
                                 requiresApiKey = false,
-                                author = pluginAuthorInput,
+                                author = "",
                                 isVerified = false,
                                 isInstalled = isRemote, // 远程服务视为"已安装"
                                 version = "1.0.0",
@@ -584,7 +593,7 @@ fun MCPConfigScreen() {
                                 }
                             } else {
                                 // 本地插件走安装流程
-                            val mcpServer = com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
+                                val mcpServer = com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
                                 id = server.id,
                                 name = server.name,
                                 description = server.description,
@@ -605,7 +614,7 @@ fun MCPConfigScreen() {
                             )
                             
                             if (importTabIndex == 0) {
-                                viewModel.installServer(mcpServer)
+                                viewModel.installServerWithObject(mcpServer)
                             } else {
                                 viewModel.installServerFromZip(mcpServer, zipFilePath)
                                 }
@@ -615,7 +624,6 @@ fun MCPConfigScreen() {
                             repoUrlInput = ""
                             pluginNameInput = ""
                             pluginDescriptionInput = ""
-                            pluginAuthorInput = ""
                             zipFilePath = ""
                             remoteHostInput = ""
                             remotePortInput = ""
@@ -730,7 +738,7 @@ fun MCPConfigScreen() {
                                                 Modifier.size(8.dp)
                                                         .background(
                                                                 color =
-                                                                        if (isServerRunning)
+                                                                        if (isAnyServerRunning)
                                                                                 Color.Green
                                                                         else Color.Red,
                                                                 shape = RoundedCornerShape(4.dp)
@@ -739,6 +747,17 @@ fun MCPConfigScreen() {
                             }
                         },
                         actions = {
+                            // 启动插件按钮
+                            IconButton(
+                                onClick = {
+                                    pluginLoadingState.reset() // 确保每次都重置状态
+                                    pluginLoadingState.show()
+                                    pluginLoadingState.initializeMCPServer(context, scope)
+                                }
+                            ) { 
+                                Icon(Icons.Default.PlayArrow, contentDescription = "启动插件") 
+                            }
+                            
                             IconButton(
                                     onClick = {
                                         showImportDialog = true
@@ -753,51 +772,73 @@ fun MCPConfigScreen() {
             }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+            // 插件加载屏幕覆盖层
+            PluginLoadingScreenWithState(
+                loadingState = pluginLoadingState,
+                modifier = Modifier.fillMaxSize()
+            )
             // 主界面内容
-            if (installedPlugins.isEmpty()) {
-                // 无插件提示
-                Box(
-                        modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-                        contentAlignment = Alignment.Center
-                ) { Text("暂无插件，请前往插件市场安装", style = MaterialTheme.typography.bodyMedium) }
-            } else {
-                // 插件列表
-                LazyColumn(
-                        modifier = Modifier.fillMaxSize()
-                ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(8.dp)
+            ) {
+
+                
+                // 插件列表标题
+                if (installedPlugins.isNotEmpty()) {
+                    
+                    // 插件列表
                     items(installedPlugins.toList()) { pluginId ->
                         val pluginInfo = remember(pluginId) {
                             mcpRepository.getInstalledPluginInfo(pluginId)
                         }
-                        val isRemote = pluginInfo?.getType() == "remote"
+                        val isRemote = pluginInfo?.type == "remote"
+
+                        // 获取插件服务器状态
+                        val serverStatus = mcpLocalServer.getServerStatus(pluginId)
 
                         // 获取插件部署成功状态
-                        val deploySuccessState =
-                                mcpConfigPreferences
-                                        .getDeploySuccessFlow(pluginId)
-                                        .collectAsState(initial = false)
+                        val deploySuccessState = remember(pluginId) {
+                            mutableStateOf(serverStatus?.deploySuccess == true)
+                        }
 
                         // 获取插件启用状态
-                        val pluginEnabledState =
-                                mcpConfigPreferences
-                                        .getPluginEnabledFlow(pluginId)
-                                        .collectAsState(initial = true)
+                        val pluginEnabledState = remember(pluginId) {
+                            mutableStateOf(serverStatus?.isEnabled != false) // 默认为true
+                        }
+
+                        // 获取插件运行状态
+                        val pluginRunningState = remember(pluginId) {
+                            mutableStateOf(serverStatus?.active == true)
+                        }
 
                         // 获取插件最后部署时间
-                        val lastDeployTimeState =
-                                mcpConfigPreferences
-                                        .getLastDeployTimeFlow(pluginId)
-                                        .collectAsState(initial = 0L)
+                        val lastDeployTimeState = remember(pluginId) {
+                            mutableStateOf(serverStatus?.lastDeployTime ?: 0L)
+                        }
+                        
+                        // 监听服务器状态变化
+                        LaunchedEffect(pluginId) {
+                            mcpLocalServer.serverStatus.collect { statusMap ->
+                                val status = statusMap[pluginId]
+                                deploySuccessState.value = status?.deploySuccess == true
+                                pluginEnabledState.value = status?.isEnabled != false
+                                pluginRunningState.value = status?.active == true
+                                lastDeployTimeState.value = status?.lastDeployTime ?: 0L
+                            }
+                        }
 
                         PluginListItem(
                                 pluginId = pluginId,
-                                displayName = getPluginDisplayName(pluginId),
+                                displayName = getPluginDisplayName(pluginId, mcpRepository),
                                 isOfficial = pluginId.startsWith("official_"),
                                 isRemote = isRemote, // 传递插件类型
+                                toolNames = pluginToolsMap[pluginId] ?: emptyList(), // 传递工具信息
                                 onClick = {
                                     selectedPluginId = pluginId
                                     pluginConfigJson = mcpLocalServer.getPluginConfig(pluginId)
-                                    selectedPluginForDetails = getPluginAsServer(pluginId)
+                                    selectedPluginForDetails = getPluginAsServer(pluginId, mcpRepository)
                                 },
                                 onDeploy = {
                                     pluginToDeploy = pluginId
@@ -805,7 +846,7 @@ fun MCPConfigScreen() {
                                 },
                                 onEdit = {
                                     // 设置要编辑的服务器并显示对话框
-                                    val serverToEdit = getPluginAsServer(pluginId)
+                                    val serverToEdit = getPluginAsServer(pluginId, mcpRepository)
                                     if(serverToEdit != null){
                                         editingRemoteServer = com.ai.assistance.operit.data.mcp.MCPServer(
                                             id = serverToEdit.id,
@@ -832,13 +873,53 @@ fun MCPConfigScreen() {
                                 isEnabled = pluginEnabledState.value,
                                 onEnabledChange = { isChecked ->
                                     scope.launch {
-                                        mcpConfigPreferences.savePluginEnabled(pluginId, isChecked)
+                                        mcpLocalServer.updateServerStatus(pluginId, isEnabled = isChecked)
                                     }
                                 },
+                                isRunning = pluginRunningState.value,
                                 isDeployed = deploySuccessState.value,
                                 lastDeployTime = lastDeployTimeState.value
                         )
                         Divider(modifier = Modifier.padding(horizontal = 4.dp))
+                    }
+                } else {
+                    // 无插件提示
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(32.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Extension,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(48.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "暂无插件",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        "请使用导入功能添加MCP插件",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -846,175 +927,324 @@ fun MCPConfigScreen() {
     }
 }
 
+// 从插件ID中提取显示名称
+private fun getPluginDisplayName(pluginId: String, mcpRepository: MCPRepository): String {
+    val pluginInfo = mcpRepository.getInstalledPluginInfo(pluginId)
+    val originalName = pluginInfo?.name
+
+    if (originalName != null && originalName.isNotBlank()) {
+        return originalName
+    }
+
+    return when {
+        pluginId.contains("/") -> pluginId.split("/").last().replace("-", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        pluginId.startsWith("official_") ->
+            pluginId.removePrefix("official_").replace("_", " ").replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+        else -> pluginId
+    }
+}
+
+// 获取插件元数据
+private fun getPluginAsServer(
+    pluginId: String,
+    mcpRepository: MCPRepository
+): com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer? {
+    val pluginInfo = mcpRepository.getInstalledPluginInfo(pluginId)
+
+    // 尝试从内存中的服务器列表查找
+    val existingServer = mcpRepository.mcpServers.value.find { it.id == pluginId }
+
+    // 如果在列表中找到，并且类型是远程，直接使用
+    if (existingServer != null && existingServer.type == "remote") {
+        return com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
+            id = existingServer.id,
+            name = existingServer.name,
+            description = existingServer.description,
+            logoUrl = existingServer.logoUrl,
+            stars = existingServer.stars,
+            category = existingServer.category,
+            requiresApiKey = existingServer.requiresApiKey,
+            author = existingServer.author,
+            isVerified = existingServer.isVerified,
+            isInstalled = true,
+            version = existingServer.version,
+            updatedAt = existingServer.updatedAt,
+            longDescription = existingServer.longDescription,
+            repoUrl = existingServer.repoUrl,
+            type = existingServer.type,
+            host = existingServer.host,
+            port = existingServer.port
+        )
+    }
+
+    val displayName = getPluginDisplayName(pluginId, mcpRepository)
+
+    return com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer(
+        id = pluginId,
+        name = displayName,
+        description = pluginInfo?.description ?: "本地安装的插件",
+        logoUrl = "",
+        stars = 0,
+        category = "已安装插件",
+        requiresApiKey = false,
+        author = pluginInfo?.author ?: "本地安装",
+        isVerified = false,
+        isInstalled = true,
+        version = pluginInfo?.version ?: "本地版本",
+        updatedAt = "",
+        longDescription = pluginInfo?.longDescription
+                ?: (pluginInfo?.description ?: "本地安装的插件"),
+        repoUrl = pluginInfo?.repoUrl ?: "",
+        type = pluginInfo?.type ?: "local",
+        host = pluginInfo?.host,
+        port = pluginInfo?.port
+    )
+}
+
 @Composable
 private fun PluginListItem(
         pluginId: String,
         displayName: String,
         isOfficial: Boolean,
-        isRemote: Boolean, // 新增参数
+        isRemote: Boolean,
+        toolNames: List<String>,
         onClick: () -> Unit,
         onDeploy: () -> Unit,
-        onEdit: () -> Unit, // 新增回调
+        onEdit: () -> Unit,
         isEnabled: Boolean,
         onEnabledChange: (Boolean) -> Unit,
+        isRunning: Boolean = false,
         isDeployed: Boolean = false,
         lastDeployTime: Long = 0L
 ) {
-    // 获取屏幕尺寸以优化开关大小
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp > 600
-    val switchScale = if (isTablet) 0.8f else 0.7f
-
-    Row(
-            modifier =
-                    Modifier.fillMaxWidth()
-                            .clickable(onClick = onClick)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        // 插件图标
-        Box(
-                modifier =
-                        Modifier.size(32.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
         ) {
-            Icon(
-                    imageVector = Icons.Default.Extension,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(18.dp)
-            )
-
-            // 添加启用状态指示徽章 - 右上角
-            if (isEnabled) {
+            // 主要信息行：图标 + 名称 + 开关
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 紧凑的插件图标
                 Box(
-                        modifier =
-                                Modifier.size(10.dp)
-                                        .align(Alignment.TopEnd)
-                                        .offset(x = 4.dp, y = (-4).dp)
-                                        .background(
-                                                color = MaterialTheme.colorScheme.primary,
-                                                shape = RoundedCornerShape(5.dp)
-                                        )
-                )
-            }
-            
-            // 添加部署状态指示徽章 - 右下角
-            if (isDeployed && !isRemote) {
-                Box(
-                        modifier =
-                                Modifier.size(10.dp)
-                                        .align(Alignment.BottomEnd)
-                                        .offset(x = 4.dp, y = 4.dp)
-                                        .background(
-                                                color = MaterialTheme.colorScheme.tertiary,
-                                                shape = RoundedCornerShape(5.dp)
-                                        )
-                )
-            }
-        }
-
-        // 名称和标签
-        Column(modifier = Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                        text = displayName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false)
-                )
-
-                // 移除文本标签，改为使用角标指示
-            }
-
-            if (isOfficial) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                            "官方",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
+                    modifier = Modifier
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Extension,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(16.dp)
                     )
 
-                    // 显示最后部署时间
-                    if (lastDeployTime > 0 && !isRemote) {
-                        Spacer(modifier = Modifier.width(8.dp))
-                        val dateStr =
-                                java.text.SimpleDateFormat(
-                                                "yyyy-MM-dd HH:mm",
-                                                java.util.Locale.getDefault()
-                                        )
-                                        .format(java.util.Date(lastDeployTime))
-                        Text(
-                                "最近部署: $dateStr",
-                                style = MaterialTheme.typography.labelSmall,
-                                color =
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                alpha = 0.7f
-                                        )
+                    // 运行状态指示点
+                    if (isRunning) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .align(Alignment.TopEnd)
+                                .offset(x = 2.dp, y = (-2).dp)
+                                .background(
+                                    color = Color(0xFF4CAF50),
+                                    shape = RoundedCornerShape(3.dp)
+                                )
                         )
                     }
                 }
-            } else if (lastDeployTime > 0 && !isRemote) {
-                // 非官方插件也显示最后部署时间
-                val dateStr =
-                        java.text.SimpleDateFormat(
-                                        "yyyy-MM-dd HH:mm",
-                                        java.util.Locale.getDefault()
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                // 插件名称和状态
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = displayName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false)
+                        )
+                        
+                        // 状态标签
+                        if (isOfficial) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "官方",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 9.sp
                                 )
-                                .format(java.util.Date(lastDeployTime))
-                Text(
-                        "最近部署: $dateStr",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                )
-            }
-        }
+                            }
+                        }
+                        
+                        if (isRemote) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "远程",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                        
+                        if (isDeployed && !isRemote) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "已部署",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
+                    
+                    // 部署时间（如果有）
+                    if (lastDeployTime > 0 && !isRemote) {
+                        val dateStr = java.text.SimpleDateFormat(
+                            "MM-dd HH:mm",
+                            java.util.Locale.getDefault()
+                        ).format(java.util.Date(lastDeployTime))
+                        Text(
+                            text = "部署: $dateStr",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                            fontSize = 10.sp
+                        )
+                    }
+                }
 
-        // 部署/编辑按钮 - 根据插件类型变化
-        if (isRemote) {
-            TextButton(
-                onClick = onEdit,
-                contentPadding = PaddingValues(horizontal = 12.dp),
-                modifier = Modifier.height(36.dp)
-            ) {
-                Text("编辑")
-            }
-        } else {
-            TextButton(
-                    onClick = onDeploy,
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                    modifier = Modifier.height(36.dp),
-                    colors =
-                            ButtonDefaults.textButtonColors(
-                                    contentColor =
-                                            if (isDeployed) MaterialTheme.colorScheme.tertiary
-                                            else MaterialTheme.colorScheme.primary
-                            )
-            ) { Text(if (isDeployed) "重新部署" else "部署") }
-        }
-
-        Spacer(modifier = Modifier.width(4.dp))
-
-        // 启用/禁用开关 - 紧凑样式
-        Box(modifier = Modifier.padding(end = 4.dp), contentAlignment = Alignment.Center) {
-            Switch(
+                // 紧凑的开关
+                Switch(
                     checked = isEnabled,
                     onCheckedChange = onEnabledChange,
-                    modifier =
-                            Modifier.scale(switchScale) // 根据屏幕尺寸调整缩放比例
-                                    .padding(0.dp),
-                    colors =
-                            SwitchDefaults.colors(
-                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
-                                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
-                                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    modifier = Modifier.scale(0.8f),
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary,
+                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                )
+            }
+
+            // 工具标签区域（如果有）
+            if (toolNames.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    items(toolNames.take(5)) { toolName ->
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = toolName,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                fontSize = 9.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-            )
+                        }
+                    }
+                    
+                    // 如果工具数量超过5个，显示"更多"
+                    if (toolNames.size > 5) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.1f)
+                            ) {
+                                Text(
+                                    text = "+${toolNames.size - 5}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                    fontSize = 9.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 操作按钮区域 
+            if (!isRemote || isRemote) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 主要操作按钮
+                    if (!isRemote) {
+                        OutlinedButton(
+                            onClick = onDeploy,
+                            modifier = Modifier.weight(1f).height(32.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = if (isDeployed) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text(
+                                text = if (isDeployed) "重新部署" else "部署",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                    
+                    // 编辑按钮
+                    OutlinedButton(
+                        onClick = onEdit,
+                        modifier = Modifier.weight(1f).height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp)
+                    ) {
+                        Text(
+                            text = "编辑",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -1031,10 +1261,11 @@ fun RemoteServerEditDialog(
     var author by remember { mutableStateOf(server.author) }
     var host by remember { mutableStateOf(server.host ?: "") }
     var port by remember { mutableStateOf(server.port?.toString() ?: "") }
+    val isRemote = server.type == "remote"
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("编辑远程服务") },
+        title = { Text(if(isRemote) "编辑远程服务" else "编辑插件信息") },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -1058,20 +1289,22 @@ fun RemoteServerEditDialog(
                     label = { Text("作者") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
-                    value = host,
-                    onValueChange = { host = it },
-                    label = { Text("主机地址") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
-                )
-                OutlinedTextField(
-                    value = port,
-                    onValueChange = { port = it.filter { char -> char.isDigit() } },
-                    label = { Text("端口") },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                if(isRemote) {
+                    OutlinedTextField(
+                        value = host,
+                        onValueChange = { host = it },
+                        label = { Text("主机地址") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
+                    )
+                    OutlinedTextField(
+                        value = port,
+                        onValueChange = { port = it.filter { char -> char.isDigit() } },
+                        label = { Text("端口") },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    )
+                }
             }
         },
         confirmButton = {
@@ -1081,12 +1314,12 @@ fun RemoteServerEditDialog(
                         name = name,
                         description = description,
                         author = author,
-                        host = host,
-                        port = port.toIntOrNull()
+                        host = if(isRemote) host else server.host,
+                        port = if(isRemote) port.toIntOrNull() else server.port
                     )
                     onSave(updatedServer)
                 },
-                enabled = name.isNotBlank() && host.isNotBlank() && port.isNotBlank()
+                enabled = name.isNotBlank() && if(isRemote) host.isNotBlank() && port.isNotBlank() else true
             ) {
                 Text("保存")
             }

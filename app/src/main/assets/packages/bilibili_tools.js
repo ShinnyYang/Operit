@@ -2,6 +2,7 @@
 {
     "name": "bilibili_tools",
     "description": "提供B站视频信息分析功能，包括获取字幕、弹幕、评论和搜索视频。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "get_subtitles",
@@ -215,7 +216,7 @@ const BilibiliVideoAnalysis = (function () {
             if (!response.isSuccessful()) {
                 return { danmaku: [], error: `Failed to get danmaku, status: ${response.statusCode}` };
             }
-            const compressedData = await response.bodyAsBase64();
+            const compressedData = response.bodyAsBase64();
             console.log("base64" + compressedData);
             if (!compressedData) {
                 return { danmaku: [], error: null };
@@ -418,20 +419,20 @@ const BilibiliVideoAnalysis = (function () {
         const slicedResults = videoResults.slice(0, count);
         const formattedResults = slicedResults
             .map((video, index) => {
-                var _a, _b, _c;
-                const cleanTitle = video.title.replace(/<em class="keyword">|<\/em>/g, "");
-                const cleanDescription = video.description.replace(/<em class="keyword">|<\/em>/g, "");
-                return [
-                    `${index + 1}. "${cleanTitle}" - ${video.author}`,
-                    `   BV ID: ${video.bvid}`,
-                    `   播放: ${(_a = video.play) === null || _a === void 0 ? void 0 : _a.toLocaleString()}`,
-                    `   弹幕: ${(_b = video.danmaku) === null || _b === void 0 ? void 0 : _b.toLocaleString()}`,
-                    `   点赞: ${(_c = video.like) === null || _c === void 0 ? void 0 : _c.toLocaleString()}`,
-                    `   时长: ${video.duration}`,
-                    `   发布于: ${new Date(video.pubdate * 1000).toLocaleDateString()}`,
-                    `   简介: ${cleanDescription === null || cleanDescription === void 0 ? void 0 : cleanDescription.substring(0, 100)}${(cleanDescription === null || cleanDescription === void 0 ? void 0 : cleanDescription.length) > 100 ? "..." : ""}`,
-                ].join("\n");
-            })
+            var _a, _b, _c;
+            const cleanTitle = video.title.replace(/<em class="keyword">|<\/em>/g, "");
+            const cleanDescription = video.description.replace(/<em class="keyword">|<\/em>/g, "");
+            return [
+                `${index + 1}. "${cleanTitle}" - ${video.author}`,
+                `   BV ID: ${video.bvid}`,
+                `   播放: ${(_a = video.play) === null || _a === void 0 ? void 0 : _a.toLocaleString()}`,
+                `   弹幕: ${(_b = video.danmaku) === null || _b === void 0 ? void 0 : _b.toLocaleString()}`,
+                `   点赞: ${(_c = video.like) === null || _c === void 0 ? void 0 : _c.toLocaleString()}`,
+                `   时长: ${video.duration}`,
+                `   发布于: ${new Date(video.pubdate * 1000).toLocaleDateString()}`,
+                `   简介: ${cleanDescription === null || cleanDescription === void 0 ? void 0 : cleanDescription.substring(0, 100)}${(cleanDescription === null || cleanDescription === void 0 ? void 0 : cleanDescription.length) > 100 ? "..." : ""}`,
+            ].join("\n");
+        })
             .join("\n\n");
         return { formatted: formattedResults, result_count: slicedResults.length, total_count: data.numResults || 0 };
     }

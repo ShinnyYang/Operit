@@ -3,6 +3,7 @@ METADATA
 {
     "name": "daily_life",
     "description": "日常生活工具集合，提供丰富的日常功能接口，包括日期时间查询、设备状态监测、天气搜索、提醒闹钟设置、短信电话通讯等。通过系统Intent实现各类日常任务，支持用户便捷地完成日常交互需求。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "get_current_date",

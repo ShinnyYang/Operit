@@ -2,6 +2,7 @@
 {
   name: Experimental_various_output
   description: 提供图片输出功能
+  enabledByDefault: true
   
   tools: [
     {

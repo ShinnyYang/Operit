@@ -2,8 +2,12 @@ package com.ai.assistance.operit.data.mcp
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.os.Environment
 import android.util.Log
 import com.ai.assistance.operit.data.mcp.plugins.MCPStarter
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.google.gson.reflect.TypeToken
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -20,22 +24,28 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 
 /**
- * MCPLocalServer - 工具注册管理器
- *
- * 负责管理MCP工具的配置和状态，不直接创建或管理MCP服务器
+ * 统一的MCP配置管理中心
+ * 
+ * 负责管理所有MCP相关的配置，包括：
+ * - 官方MCP配置格式的读写
+ * - 插件配置管理
+ * - 服务器状态管理
+ * - 统一存储在下载/Operit/mcp_plugins目录
  */
 class MCPLocalServer private constructor(private val context: Context) {
     companion object {
         private const val TAG = "MCPLocalServer"
         private const val PREFS_NAME = "mcp_local_server_prefs"
-        private const val KEY_SERVER_PORT = "server_port"
         private const val KEY_SERVER_PATH = "server_path"
-        private const val KEY_AUTO_START = "auto_start"
-        private const val KEY_LOG_LEVEL = "log_level"
-
-        private const val DEFAULT_PORT = 8752
-        private const val DEFAULT_LOG_LEVEL = "info"
-        private const val MAX_LOG_ENTRIES = 1000
+        
+        // 配置文件名称
+        private const val MCP_CONFIG_FILE = "mcp_config.json"
+        private const val PLUGIN_METADATA_FILE = "plugin_metadata.json"
+        private const val SERVER_STATUS_FILE = "server_status.json"
+        
+        // 默认目录名称
+        private const val OPERIT_DIR_NAME = "Operit"
+        private const val MCP_PLUGINS_DIR_NAME = "mcp_plugins"
 
         @Volatile private var INSTANCE: MCPLocalServer? = null
 
@@ -48,381 +58,509 @@ class MCPLocalServer private constructor(private val context: Context) {
         }
     }
 
-    // 协程作用域
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
-    // 日志队列
-    private val logEntries = ConcurrentLinkedQueue<LogEntry>()
-
     // 持久化配置
     private val prefs: SharedPreferences =
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    // 服务状态流
-    private val _isRunning = MutableStateFlow(false)
-    val isRunning: StateFlow<Boolean> = _isRunning.asStateFlow()
+    // 配置目录路径
+    private val configBaseDir by lazy {
+        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val operitDir = File(downloadsDir, OPERIT_DIR_NAME)
+        val mcpPluginsDir = File(operitDir, MCP_PLUGINS_DIR_NAME)
+        
+        // 确保目录存在
+        if (!operitDir.exists()) {
+            operitDir.mkdirs()
+        }
+        if (!mcpPluginsDir.exists()) {
+            mcpPluginsDir.mkdirs()
+        }
+        
+        mcpPluginsDir
+    }
 
-    // 启动时间戳
-    private val _startTime = MutableStateFlow<Long?>(null)
-    val startTime: StateFlow<Long?> = _startTime.asStateFlow()
-
-    // 服务配置
-    private val _serverPort = MutableStateFlow(prefs.getInt(KEY_SERVER_PORT, DEFAULT_PORT))
-    val serverPort: StateFlow<Int> = _serverPort.asStateFlow()
+    // 配置文件路径
+    private val mcpConfigFile get() = File(configBaseDir, MCP_CONFIG_FILE)
+    private val pluginMetadataFile get() = File(configBaseDir, PLUGIN_METADATA_FILE)
+    private val serverStatusFile get() = File(configBaseDir, SERVER_STATUS_FILE)
 
     // 服务路径
-    private val _serverPath =
-            MutableStateFlow(
-                    prefs.getString(KEY_SERVER_PATH, getDefaultServerPath())
-                            ?: getDefaultServerPath()
-            )
+    private val _serverPath = MutableStateFlow(configBaseDir.absolutePath)
     val serverPath: StateFlow<String> = _serverPath.asStateFlow()
 
-    // 是否自动启动
-    private val _autoStart = MutableStateFlow(prefs.getBoolean(KEY_AUTO_START, false))
-    val autoStart: StateFlow<Boolean> = _autoStart.asStateFlow()
+    // 配置状态
+    private val _mcpConfig = MutableStateFlow(MCPConfig())
+    val mcpConfig: StateFlow<MCPConfig> = _mcpConfig.asStateFlow()
 
-    // 日志级别
-    private val _logLevel =
-            MutableStateFlow(prefs.getString(KEY_LOG_LEVEL, DEFAULT_LOG_LEVEL) ?: DEFAULT_LOG_LEVEL)
-    val logLevel: StateFlow<String> = _logLevel.asStateFlow()
+    // 插件元数据
+    private val _pluginMetadata = MutableStateFlow<Map<String, PluginMetadata>>(emptyMap())
+    val pluginMetadata: StateFlow<Map<String, PluginMetadata>> = _pluginMetadata.asStateFlow()
 
-    // 连接的客户端数
-    private val _connectedClients = MutableStateFlow(0)
-    val connectedClients: StateFlow<Int> = _connectedClients.asStateFlow()
+    // 服务器状态
+    private val _serverStatus = MutableStateFlow<Map<String, ServerStatus>>(emptyMap())
+    val serverStatus: StateFlow<Map<String, ServerStatus>> = _serverStatus.asStateFlow()
 
-    // 最近的日志消息
-    private val _lastLogMessage = MutableStateFlow<String?>(null)
-    val lastLogMessage: StateFlow<String?> = _lastLogMessage.asStateFlow()
-
-    // 已注册的工具列表
-    private val _registeredTools = MutableStateFlow<List<ToolInfo>>(emptyList())
-    val registeredTools: StateFlow<List<ToolInfo>> = _registeredTools.asStateFlow()
+    // Gson实例 - 使用格式化输出
+    private val gson = com.google.gson.GsonBuilder()
+        .setPrettyPrinting()
+        .create()
 
     init {
-        Log.d(TAG, "MCPLocalServer 初始化，默认端口: ${_serverPort.value}")
+        // 初始化时加载所有配置
+        loadAllConfigurations()
     }
 
-    /** 初始化MCP并自动启动已部署的插件 */
-    fun initAndAutoStartPlugins() {
-        Log.d(TAG, "开始初始化MCP并检查自动启动插件")
-
-        scope.launch {
-            try {
-                // 判断是否设置了自动启动
-                val isAutoStart = autoStart.value
-
-                if (isAutoStart) {
-                    Log.d(TAG, "自动启动设置已启用，正在启动MCP服务")
-                    val success = startServer()
-
-                    if (success) {
-                        Log.d(TAG, "MCP服务启动成功，等待服务就绪")
-                        // 等待服务就绪
-                        delay(2000)
-
-                        // 检查服务是否确实运行中
-                        val isServerRunning = isRunning.value
-
-                        if (isServerRunning) {
-                            Log.d(TAG, "MCP服务运行中，准备启动已部署插件")
-
-                            // 使用MCPStarter启动所有已部署的插件
-                            val mcpStarter = MCPStarter(context)
-                            mcpStarter.startAllDeployedPlugins()
-                        } else {
-                            Log.e(TAG, "MCP服务未能成功启动")
-                        }
-                    } else {
-                        Log.e(TAG, "MCP服务启动失败")
-                    }
-                } else {
-                    Log.d(TAG, "MCP服务自动启动未启用")
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "MCP服务自动启动过程中出错", e)
-            }
-        }
-    }
-
-    /** 获取默认服务路径 */
-    private fun getDefaultServerPath(): String {
-        val storageDir = context.getExternalFilesDir(null)
-        return File(storageDir, "mcp_server").absolutePath
-    }
+    // ==================== 官方MCP配置格式支持 ====================
 
     /**
-     * 启动服务
-     *
-     * @return 是否成功启动
+     * 官方MCP配置格式数据结构
      */
-    fun startServer(): Boolean {
-        if (_isRunning.value) {
-            Log.i(TAG, "服务已在运行")
-            return true
-        }
-
-        try {
-            Log.i(TAG, "启动MCP服务")
-
-            // 注册预定义的工具
-            registerTools()
-
-            // 更新状态
-            _isRunning.value = true
-            _startTime.value = System.currentTimeMillis()
-            _connectedClients.value = 1
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "启动服务失败", e)
-            stopServer()
-            return false
-        }
-    }
-
-    /**
-     * 停止服务
-     *
-     * @return 是否成功停止
-     */
-    fun stopServer(): Boolean {
-        if (!_isRunning.value) {
-            Log.i(TAG, "服务当前没有运行")
-            return true
-        }
-
-        try {
-            Log.i(TAG, "正在停止MCP服务")
-
-            // 更新状态
-            _isRunning.value = false
-            _connectedClients.value = 0
-
-            return true
-        } catch (e: Exception) {
-            Log.e(TAG, "停止MCP服务失败", e)
-            return false
-        }
-    }
-
-    /** 注册工具 */
-    private fun registerTools() {
-        val tools = mutableListOf<ToolInfo>()
-
-        // 系统信息工具
-        tools.add(ToolInfo("system_info", "获取系统信息"))
-
-        // 回显工具
-        tools.add(
-                ToolInfo("echo", "回显输入的文本", listOf(ToolParamInfo("text", "要回显的文本", "string", true)))
+    @Serializable
+    data class MCPConfig(
+        @SerializedName("mcpServers")
+        val mcpServers: MutableMap<String, ServerConfig> = mutableMapOf()
+    ) {
+        @Serializable
+        data class ServerConfig(
+            @SerializedName("command")
+            val command: String,
+            @SerializedName("args")
+            val args: List<String> = emptyList(),
+            @SerializedName("disabled")
+            val disabled: Boolean = false,
+            @SerializedName("autoApprove")
+            val autoApprove: List<String> = emptyList(),
+            @SerializedName("env")
+            val env: Map<String, String> = emptyMap(),
+            // 扩展字段，用于存储额外信息，使用String存储JSON
+            @SerializedName("metadata")
+            val metadata: String = "{}"
         )
-
-        // 更新已注册工具列表
-        _registeredTools.value = tools
-
-        Log.d(TAG, "已注册 ${tools.size} 个系统工具")
-    }
-
-    /** 保存服务端口设置 */
-    fun saveServerPort(port: Int): Boolean {
-        if (port < 1024 || port > 65535) {
-            log(LogLevel.ERROR, "无效的端口号: $port")
-            return false
-        }
-
-        _serverPort.value = port
-        prefs.edit().putInt(KEY_SERVER_PORT, port).apply()
-
-        // 如果服务正在运行，需要重启才能应用新端口
-        if (_isRunning.value) {
-            log(LogLevel.WARNING, "端口已更改，服务需要重启以应用新设置")
-        }
-
-        return true
-    }
-
-    /** 保存服务路径设置 */
-    fun saveServerPath(path: String): Boolean {
-        val directory = File(path)
-
-        // 尝试创建目录（如果不存在）
-        if (!directory.exists()) {
-            if (!directory.mkdirs()) {
-                log(LogLevel.ERROR, "无法创建服务目录: $path")
-                return false
-            }
-        }
-
-        // 检查目录是否可写
-        if (!directory.canWrite()) {
-            log(LogLevel.ERROR, "服务目录无写入权限: $path")
-            return false
-        }
-
-        _serverPath.value = path
-        prefs.edit().putString(KEY_SERVER_PATH, path).apply()
-        log(LogLevel.INFO, "已更新服务目录: $path")
-
-        return true
-    }
-
-    /** 保存自动启动设置 */
-    fun saveAutoStart(autoStart: Boolean) {
-        _autoStart.value = autoStart
-        prefs.edit().putBoolean(KEY_AUTO_START, autoStart).apply()
-        log(LogLevel.INFO, "已更新自动启动设置: $autoStart")
-    }
-
-    /** 保存日志级别设置 */
-    fun saveLogLevel(level: String) {
-        try {
-            val logLevel = LogLevel.valueOf(level.uppercase())
-            _logLevel.value = level.lowercase()
-            prefs.edit().putString(KEY_LOG_LEVEL, level.lowercase()).apply()
-            log(LogLevel.INFO, "已更新日志级别: $level")
-        } catch (e: IllegalArgumentException) {
-            Log.e(TAG, "无效的日志级别: $level")
-        }
     }
 
     /**
-     * 检测插件配置文件
-     *
-     * @param pluginId 插件ID
-     * @return 是否存在配置文件
+     * 插件元数据
      */
-    fun hasPluginConfig(pluginId: String): Boolean {
-        val configFile = File(_serverPath.value, "plugins/$pluginId/config.json")
-        return configFile.exists() && configFile.isFile
+    data class PluginMetadata(
+        @SerializedName("id")
+        val id: String,
+        @SerializedName("name")
+        val name: String,
+        @SerializedName("description")
+        val description: String,
+        @SerializedName("version")
+        val version: String = "1.0.0",
+        @SerializedName("author")
+        val author: String = "Unknown",
+        @SerializedName("category")
+        val category: String = "General",
+        @SerializedName("requiresApiKey")
+        val requiresApiKey: Boolean = false,
+        @SerializedName("isVerified")
+        val isVerified: Boolean = false,
+        @SerializedName("logoUrl")
+        val logoUrl: String? = null,
+        @SerializedName("repoUrl")
+        val repoUrl: String = "",
+        @SerializedName("longDescription")
+        val longDescription: String = "",
+        @SerializedName("type")
+        val type: String = "local", // local, remote
+        @SerializedName("host")
+        val host: String? = null,
+        @SerializedName("port")
+        val port: Int? = null,
+        @SerializedName("installedPath")
+        val installedPath: String? = null,
+        @SerializedName("installedTime")
+        val installedTime: Long = System.currentTimeMillis()
+    )
+
+    /**
+     * 服务器运行状态
+     */
+    data class ServerStatus(
+        @SerializedName("serverId")
+        val serverId: String,
+        @SerializedName("active")
+        val active: Boolean = false,
+        @SerializedName("isEnabled")
+        val isEnabled: Boolean = true,
+        @SerializedName("lastStartTime")
+        val lastStartTime: Long = 0L,
+        @SerializedName("lastStopTime")
+        val lastStopTime: Long = 0L,
+        @SerializedName("deploySuccess")
+        val deploySuccess: Boolean = false,
+        @SerializedName("lastDeployTime")
+        val lastDeployTime: Long = 0L,
+        @SerializedName("errorMessage")
+        val errorMessage: String? = null
+    )
+
+    // ==================== 配置文件操作 ====================
+
+    /**
+     * 加载所有配置文件
+     */
+    private fun loadAllConfigurations() {
+        try {
+            // 加载MCP配置
+            if (mcpConfigFile.exists()) {
+                val configJson = mcpConfigFile.readText()
+                val config = gson.fromJson(configJson, MCPConfig::class.java) ?: MCPConfig()
+                _mcpConfig.value = config
+            }
+
+            // 加载插件元数据
+            if (pluginMetadataFile.exists()) {
+                val metadataJson = pluginMetadataFile.readText()
+                val typeToken = object : TypeToken<Map<String, PluginMetadata>>() {}.type
+                val metadata = gson.fromJson<Map<String, PluginMetadata>>(metadataJson, typeToken) ?: emptyMap()
+                _pluginMetadata.value = metadata
+            }
+
+            // 加载服务器状态
+            if (serverStatusFile.exists()) {
+                val statusJson = serverStatusFile.readText()
+                val typeToken = object : TypeToken<Map<String, ServerStatus>>() {}.type
+                val status = gson.fromJson<Map<String, ServerStatus>>(statusJson, typeToken) ?: emptyMap()
+                _serverStatus.value = status
+            }
+
+            Log.d(TAG, "配置加载完成 - MCP服务器: ${_mcpConfig.value.mcpServers.size}, 插件元数据: ${_pluginMetadata.value.size}")
+        } catch (e: Exception) {
+            Log.e(TAG, "加载配置时出错", e)
+        }
     }
 
     /**
-     * 获取插件配置
+     * 保存MCP配置
+     */
+    suspend fun saveMCPConfig() {
+        try {
+            val configJson = gson.toJson(_mcpConfig.value)
+            mcpConfigFile.writeText(configJson)
+            Log.d(TAG, "MCP配置已保存")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存MCP配置时出错", e)
+        }
+    }
+
+    /**
+     * 保存插件元数据
+     */
+    suspend fun savePluginMetadata() {
+        try {
+            val metadataJson = gson.toJson(_pluginMetadata.value)
+            pluginMetadataFile.writeText(metadataJson)
+            Log.d(TAG, "插件元数据已保存")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存插件元数据时出错", e)
+        }
+    }
+
+    /**
+     * 保存服务器状态
+     */
+    suspend fun saveServerStatus() {
+        try {
+            val statusJson = gson.toJson(_serverStatus.value)
+            serverStatusFile.writeText(statusJson)
+            Log.d(TAG, "服务器状态已保存")
+        } catch (e: Exception) {
+            Log.e(TAG, "保存服务器状态时出错", e)
+        }
+    }
+
+    // ==================== MCP服务器管理 ====================
+
+    /**
+     * 添加或更新MCP服务器配置
+     */
+    suspend fun addOrUpdateMCPServer(
+        serverId: String,
+        command: String,
+        args: List<String> = emptyList(),
+        env: Map<String, String> = emptyMap(),
+        disabled: Boolean = false,
+        autoApprove: List<String> = emptyList(),
+        metadata: Map<String, Any> = emptyMap()
+    ) {
+        val config = _mcpConfig.value
+        config.mcpServers[serverId] = MCPConfig.ServerConfig(
+            command = command,
+            args = args,
+            disabled = disabled,
+            autoApprove = autoApprove,
+            env = env,
+            metadata = gson.toJson(metadata) // 将Map<String, Any>转换为JSON字符串
+        )
+        _mcpConfig.value = config
+        saveMCPConfig()
+        Log.d(TAG, "MCP服务器配置已更新: $serverId")
+    }
+
+    /**
+     * 删除MCP服务器配置
+     */
+    suspend fun removeMCPServer(serverId: String) {
+        val config = _mcpConfig.value
+        config.mcpServers.remove(serverId)
+        _mcpConfig.value = config
+        saveMCPConfig()
+
+        // 同时清理相关的元数据和状态
+        removePluginMetadata(serverId)
+        removeServerStatus(serverId)
+        
+        Log.d(TAG, "MCP服务器配置已删除: $serverId")
+    }
+
+    /**
+     * 获取MCP服务器配置
+     */
+    fun getMCPServer(serverId: String): MCPConfig.ServerConfig? {
+        return _mcpConfig.value.mcpServers[serverId]
+    }
+
+    /**
+     * 获取所有MCP服务器配置
+     */
+    fun getAllMCPServers(): Map<String, MCPConfig.ServerConfig> {
+        return _mcpConfig.value.mcpServers.toMap()
+    }
+
+    // ==================== 插件元数据管理 ====================
+
+    /**
+     * 添加或更新插件元数据
+     */
+    suspend fun addOrUpdatePluginMetadata(metadata: PluginMetadata) {
+        val currentMetadata = _pluginMetadata.value.toMutableMap()
+        currentMetadata[metadata.id] = metadata
+        _pluginMetadata.value = currentMetadata
+        savePluginMetadata()
+        Log.d(TAG, "插件元数据已更新: ${metadata.id} - ${metadata.name}")
+    }
+
+    /**
+     * 删除插件元数据
+     */
+    suspend fun removePluginMetadata(pluginId: String) {
+        val currentMetadata = _pluginMetadata.value.toMutableMap()
+        currentMetadata.remove(pluginId)
+        _pluginMetadata.value = currentMetadata
+        savePluginMetadata()
+        Log.d(TAG, "插件元数据已删除: $pluginId")
+    }
+
+    /**
+     * 获取插件元数据
+     */
+    fun getPluginMetadata(pluginId: String): PluginMetadata? {
+        return _pluginMetadata.value[pluginId]
+    }
+
+    /**
+     * 获取所有插件元数据
+     */
+    fun getAllPluginMetadata(): Map<String, PluginMetadata> {
+        return _pluginMetadata.value.toMap()
+    }
+
+    // ==================== 服务器状态管理 ====================
+
+    /**
+     * 更新服务器状态
+     */
+    suspend fun updateServerStatus(
+        serverId: String,
+        active: Boolean? = null,
+        isEnabled: Boolean? = null,
+        deploySuccess: Boolean? = null,
+        errorMessage: String? = null
+    ) {
+        val currentStatus = _serverStatus.value.toMutableMap()
+        val existingStatus = currentStatus[serverId] ?: ServerStatus(serverId)
+        
+        val updatedStatus = existingStatus.copy(
+            active = active ?: existingStatus.active,
+            isEnabled = isEnabled ?: existingStatus.isEnabled,
+            deploySuccess = deploySuccess ?: existingStatus.deploySuccess,
+            errorMessage = errorMessage ?: existingStatus.errorMessage,
+            lastStartTime = if (active == true) System.currentTimeMillis() else existingStatus.lastStartTime,
+            lastStopTime = if (active == false) System.currentTimeMillis() else existingStatus.lastStopTime,
+            lastDeployTime = if (deploySuccess == true) System.currentTimeMillis() else existingStatus.lastDeployTime
+        )
+        
+        currentStatus[serverId] = updatedStatus
+        _serverStatus.value = currentStatus
+        saveServerStatus()
+        Log.d(TAG, "服务器状态已更新: $serverId")
+    }
+
+    /**
+     * 删除服务器状态
+     */
+    suspend fun removeServerStatus(serverId: String) {
+        val currentStatus = _serverStatus.value.toMutableMap()
+        currentStatus.remove(serverId)
+        _serverStatus.value = currentStatus
+        saveServerStatus()
+        Log.d(TAG, "服务器状态已删除: $serverId")
+    }
+
+    /**
+     * 获取服务器状态
+     */
+    fun getServerStatus(serverId: String): ServerStatus? {
+        return _serverStatus.value[serverId]
+    }
+
+    /**
+     * 获取所有服务器状态
+     */
+    fun getAllServerStatus(): Map<String, ServerStatus> {
+        return _serverStatus.value.toMap()
+    }
+
+    // ==================== 兼容性方法 ====================
+
+    /**
+     * 获取插件配置（兼容旧接口）
      *
      * @param pluginId 插件ID
-     * @return 配置内容JSON字符串，如果不存在返回空字符串
+     * @return 配置内容JSON字符串，如果不存在返回空对象
      */
     fun getPluginConfig(pluginId: String): String {
-        val configFile = File(_serverPath.value, "plugins/$pluginId/config.json")
-        return if (configFile.exists() && configFile.isFile) {
-            configFile.readText()
+        val serverConfig = getMCPServer(pluginId)
+        return if (serverConfig != null) {
+            val configForOnePlugin = MCPConfig(
+                mcpServers = mutableMapOf(pluginId to serverConfig)
+            )
+            gson.toJson(configForOnePlugin)
         } else {
-            "{}"
+            gson.toJson(MCPConfig())
         }
     }
 
     /**
-     * 保存插件配置
+     * 保存插件配置（兼容旧接口）
      *
      * @param pluginId 插件ID
      * @param config 配置内容JSON字符串
      * @return 是否保存成功
      */
-    fun savePluginConfig(pluginId: String, config: String): Boolean {
-        try {
-            val pluginDir = File(_serverPath.value, "plugins/$pluginId")
-            if (!pluginDir.exists()) {
-                pluginDir.mkdirs()
-            }
-
-            val configFile = File(pluginDir, "config.json")
-            configFile.writeText(config)
-
-            log(LogLevel.INFO, "已更新插件 $pluginId 的配置")
-            return true
+    suspend fun savePluginConfig(pluginId: String, config: String): Boolean {
+        return try {
+            // 尝试解析为ServerConfig
+            val serverConfig = gson.fromJson(config, MCPConfig.ServerConfig::class.java)
+            val currentConfig = _mcpConfig.value
+            currentConfig.mcpServers[pluginId] = serverConfig
+            _mcpConfig.value = currentConfig
+            saveMCPConfig()
+            true
         } catch (e: Exception) {
             Log.e(TAG, "保存插件配置失败: $pluginId", e)
-            log(LogLevel.ERROR, "保存插件配置失败: ${e.message}")
-            return false
+            false
         }
     }
 
-    /** 记录日志 */
-    private fun log(level: LogLevel, message: String) {
-        // 检查日志级别
-        val currentLevel =
-                try {
-                    LogLevel.valueOf(_logLevel.value.uppercase())
-                } catch (e: IllegalArgumentException) {
-                    LogLevel.INFO
+    // ==================== 工具方法 ====================
+
+    /**
+     * 导出配置为JSON字符串
+     */
+    fun exportConfigAsJson(): String {
+        val exportData = mapOf(
+            "mcpConfig" to _mcpConfig.value,
+            "pluginMetadata" to _pluginMetadata.value,
+            "serverStatus" to _serverStatus.value,
+            "exportTime" to System.currentTimeMillis(),
+            "version" to "1.0"
+        )
+        return gson.toJson(exportData)
+    }
+
+    /**
+     * 从JSON字符串导入配置
+     */
+    suspend fun importConfigFromJson(json: String): Boolean {
+        return try {
+            val typeToken = object : TypeToken<Map<String, Any>>() {}.type
+            val importData = gson.fromJson<Map<String, Any>>(json, typeToken)
+            
+            importData["mcpConfig"]?.let { config ->
+                val configJson = gson.toJson(config)
+                val mcpConfig = gson.fromJson(configJson, MCPConfig::class.java)
+                _mcpConfig.value = mcpConfig
+                saveMCPConfig()
+            }
+            
+            importData["pluginMetadata"]?.let { metadata ->
+                val metadataJson = gson.toJson(metadata)
+                val typeToken2 = object : TypeToken<Map<String, PluginMetadata>>() {}.type
+                val pluginMetadata = gson.fromJson<Map<String, PluginMetadata>>(metadataJson, typeToken2)
+                _pluginMetadata.value = pluginMetadata
+                savePluginMetadata()
+            }
+            
+            importData["serverStatus"]?.let { status ->
+                val statusJson = gson.toJson(status)
+                val typeToken3 = object : TypeToken<Map<String, ServerStatus>>() {}.type
+                val serverStatus = gson.fromJson<Map<String, ServerStatus>>(statusJson, typeToken3)
+                _serverStatus.value = serverStatus
+                saveServerStatus()
+            }
+            
+            Log.d(TAG, "配置导入成功")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "导入配置失败", e)
+            false
+        }
+    }
+
+    /**
+     * 获取配置目录路径
+     */
+    fun getConfigDirectory(): String = configBaseDir.absolutePath
+
+    /**
+     * 清理无效配置
+     */
+    suspend fun cleanupInvalidConfigurations() {
+        try {
+            // 清理不存在的插件配置
+            val validPluginIds = _pluginMetadata.value.keys
+            val mcpConfig = _mcpConfig.value
+            val serversToRemove = mcpConfig.mcpServers.keys.filter { it !in validPluginIds }
+            
+            serversToRemove.forEach { serverId ->
+                mcpConfig.mcpServers.remove(serverId)
+            }
+            
+            if (serversToRemove.isNotEmpty()) {
+                _mcpConfig.value = mcpConfig
+                saveMCPConfig()
+                Log.d(TAG, "清理了 ${serversToRemove.size} 个无效的MCP服务器配置")
+            }
+            
+            // 清理无效的服务器状态
+            val statusToRemove = _serverStatus.value.keys.filter { it !in validPluginIds }
+            if (statusToRemove.isNotEmpty()) {
+                val currentStatus = _serverStatus.value.toMutableMap()
+                statusToRemove.forEach { serverId ->
+                    currentStatus.remove(serverId)
                 }
-
-        // 如果日志级别小于当前设置的级别，不记录
-        if (level.severity < currentLevel.severity) {
-            return
-        }
-
-        // 创建日志条目
-        val logEntry = LogEntry(System.currentTimeMillis(), level, message)
-
-        // 添加到日志队列
-        logEntries.add(logEntry)
-
-        // 如果超过最大条数，移除旧的
-        while (logEntries.size > MAX_LOG_ENTRIES) {
-            logEntries.poll()
-        }
-
-        // 更新最后日志消息
-        _lastLogMessage.value = message
-
-        // 打印到Android日志
-        when (level) {
-            LogLevel.DEBUG -> Log.d(TAG, message)
-            LogLevel.INFO -> Log.i(TAG, message)
-            LogLevel.WARNING -> Log.w(TAG, message)
-            LogLevel.ERROR -> Log.e(TAG, message)
-        }
-    }
-
-    /** 格式化时间戳 */
-    private fun formatTimestamp(timestamp: Long?): String {
-        if (timestamp == null) return "N/A"
-
-        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-        return dateFormat.format(Date(timestamp))
-    }
-
-    /** 格式化持续时间 */
-    private fun formatDuration(seconds: Long): String {
-        val hours = seconds / 3600
-        val minutes = (seconds % 3600) / 60
-        val secs = seconds % 60
-
-        return if (hours > 0) {
-            String.format("%d小时 %d分钟 %d秒", hours, minutes, secs)
-        } else if (minutes > 0) {
-            String.format("%d分钟 %d秒", minutes, secs)
-        } else {
-            String.format("%d秒", secs)
+                _serverStatus.value = currentStatus
+                saveServerStatus()
+                Log.d(TAG, "清理了 ${statusToRemove.size} 个无效的服务器状态")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "清理配置时出错", e)
         }
     }
 }
-
-/** 日志级别 */
-enum class LogLevel(val severity: Int) {
-    DEBUG(0),
-    INFO(1),
-    WARNING(2),
-    ERROR(3)
-}
-
-/** 日志条目 */
-data class LogEntry(val timestamp: Long, val level: LogLevel, val message: String)
-
-/** 工具信息 */
-@Serializable
-data class ToolInfo(
-        val name: String,
-        val description: String,
-        val parameters: List<ToolParamInfo> = emptyList()
-)
-
-/** 工具参数信息 */
-@Serializable
-data class ToolParamInfo(
-        val name: String,
-        val description: String,
-        val type: String = "string",
-        val required: Boolean = false
-)

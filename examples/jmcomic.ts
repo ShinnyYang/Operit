@@ -88,7 +88,8 @@ METADATA
             ]
         }
     ],
-    "category": "NETWORK"
+    "category": "NETWORK",
+    "enabledByDefault": false
 }
 */
 

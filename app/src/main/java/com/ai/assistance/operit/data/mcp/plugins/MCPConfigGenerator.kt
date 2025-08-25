@@ -1,7 +1,6 @@
 package com.ai.assistance.operit.data.mcp.plugins
 
 import android.util.Log
-import com.ai.assistance.operit.data.mcp.MCPVscodeConfig
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
@@ -250,7 +249,16 @@ class MCPConfigGenerator {
      * @return 服务器名称，如果解析失败则返回null
      */
     fun extractServerNameFromConfig(configJson: String): String? {
-        return MCPVscodeConfig.extractServerName(configJson)
+        if (configJson.isBlank()) return null
+
+        try {
+            val jsonObject = JsonParser.parseString(configJson).asJsonObject
+            val mcpServers = jsonObject.getAsJsonObject("mcpServers")
+            return mcpServers?.keySet()?.firstOrNull()
+        } catch (e: Exception) {
+            Log.e(TAG, "解析配置JSON失败", e)
+            return null
+        }
     }
 
     /**

@@ -9,12 +9,12 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
 /** MCPBridgeClient - Client for communicating with MCP services through a bridge */
-class MCPBridgeClient(private val context: Context, private val serviceName: String) {
+class MCPBridgeClient(context: Context, private val serviceName: String) {
     companion object {
         private const val TAG = "MCPBridgeClient"
     }
 
-    private val bridge = MCPBridge(context)
+    private val bridge = MCPBridge.getInstance(context)
     private val isConnected = AtomicBoolean(false)
     private var lastPingTime = 0L
 
@@ -54,12 +54,12 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
 
                     // Fallback to status check
                     val statusResult = bridge.getStatus()
-                    if (statusResult?.optBoolean("success", false) == true &&
-                                    statusResult.optJSONObject("result")?.optString("mcpName") ==
-                                            serviceName
-                    ) {
-                        isConnected.set(true)
-                        return@withContext true
+                    if (statusResult?.optBoolean("success", false) == true) {
+                        val statusName = statusResult.optJSONObject("result")?.optString("name")
+                        if (statusName == serviceName) {
+                            isConnected.set(true)
+                            return@withContext true
+                        }
                     }
 
                     return@withContext false
@@ -82,10 +82,19 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
                     if (result != null) {
                         val responseObj = result.optJSONObject("result")
                         val status = responseObj?.optString("status")
-                        val mcpName = responseObj?.optString("mcpName")
+                        val serviceName_response = responseObj?.optString("name") // 使用正确的字段名 "name"
+                        val active = responseObj?.optBoolean("active") ?: false
+                        val ready = responseObj?.optBoolean("ready") ?: false
 
-                        // Only return true if this service is actually active
-                        if (status == "ok" && mcpName == serviceName) {
+                        // Check if this is the correct service and it's active
+                        if (status == "ok" && serviceName_response == serviceName && active && ready) {
+                            lastPingTime = System.currentTimeMillis() - startTime
+                            isConnected.set(true)
+                            return@withContext true
+                        }
+
+                        // Also consider it connected if active (even if not fully ready)
+                        if (serviceName_response == serviceName && active) {
                             lastPingTime = System.currentTimeMillis() - startTime
                             isConnected.set(true)
                             return@withContext true
@@ -94,7 +103,7 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
                         // If it's registered but not active, we're not truly connected
                         Log.d(
                                 TAG,
-                                "Service $serviceName is registered but not active. Current service: $mcpName"
+                                "Service $serviceName ping response - status: $status, name: $serviceName_response, active: $active, ready: $ready"
                         )
                         return@withContext false
                     }
@@ -185,14 +194,6 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
                     return@withContext null
                 }
             }
-
-    /** Call a tool with Map parameters */
-    suspend fun callTool(method: String, params: Map<String, Any>): JSONObject? {
-        val paramsJson = JSONObject()
-        params.forEach { (key, value) -> paramsJson.put(key, value) }
-        return callTool(method, paramsJson)
-    }
-
     /** Synchronous tool call */
     fun callToolSync(method: String, params: JSONObject): JSONObject? {
         return kotlinx.coroutines.runBlocking { callTool(method, params) }
@@ -268,8 +269,66 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
                 }
             }
 
+    /** Get tool names provided by the service as a simple list of strings */
+    suspend fun getToolNames(): List<String> = 
+            withContext(Dispatchers.IO) {
+                try {
+                    val tools = getTools()
+                    return@withContext tools.mapNotNull { it.optString("name", null) }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error getting tool names: ${e.message}")
+                    return@withContext emptyList()
+                }
+            }
+
+    /** Get service info including tools count and running status */
+    suspend fun getServiceInfo(): ServiceInfo? =
+            withContext(Dispatchers.IO) {
+                try {
+                    val listResponse = bridge.listMcpServices() ?: return@withContext null
+                    
+                    if (listResponse.optBoolean("success", false)) {
+                        val services = listResponse.optJSONObject("result")?.optJSONArray("services")
+                        
+                        if (services != null) {
+                            for (i in 0 until services.length()) {
+                                val service = services.optJSONObject(i)
+                                val name = service?.optString("name", "")
+                                
+                                if (name == serviceName) {
+                                    val active = service.optBoolean("active", false)
+                                    val ready = service.optBoolean("ready", false)
+                                    val toolCount = service.optInt("toolCount", 0)
+                                    
+                                    return@withContext ServiceInfo(
+                                        name = name,
+                                        active = active,
+                                        ready = ready,
+                                        toolCount = toolCount,
+                                        toolNames = if (active && ready && toolCount > 0) getToolNames() else emptyList()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    return@withContext null
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error getting service info: ${e.message}")
+                    return@withContext null
+                }
+            }
+
     /** Disconnect from the service */
     fun disconnect() {
         isConnected.set(false)
     }
 }
+
+/** Data class to hold service information */
+data class ServiceInfo(
+    val name: String,
+    val active: Boolean,
+    val ready: Boolean,
+    val toolCount: Int,
+    val toolNames: List<String>
+)

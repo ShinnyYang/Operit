@@ -40,7 +40,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.ai.assistance.operit.data.mcp.MCPImageCache
 import com.ai.assistance.operit.ui.features.packages.screens.mcp.model.MCPServer
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -76,21 +75,6 @@ fun MCPServerDetailsHeader(
             LaunchedEffect(server.logoUrl) {
                 if (!server.logoUrl.isNullOrBlank()) {
                     imageLoadJob?.cancel()
-                    val cachedBitmap = MCPImageCache.getBitmapFromCache(server.logoUrl)
-                    if (cachedBitmap != null) {
-                        imageBitmap = cachedBitmap
-                    } else {
-                        imageLoadJob = coroutineScope.launch {
-                            try {
-                                val bitmap = MCPImageCache.loadImage(server.logoUrl)
-                                if (bitmap != null) {
-                                    imageBitmap = bitmap
-                                }
-                            } catch (e: Exception) {
-                                Log.w("MCPServerDetailsDialog", "加载图标失败: ${server.name.take(30)}")
-                            }
-                        }
-                    }
                 }
             }
 

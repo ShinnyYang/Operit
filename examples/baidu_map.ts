@@ -3,6 +3,7 @@ METADATA
 {
     "name": "baidu_map",
     "description": "百度地图工具集合，提供AOI（兴趣区域）数据获取接口。通过调用百度地图API，支持按地理范围查询AOI边界坐标，基于位置的路线规划，助力地理信息系统应用开发和空间数据分析。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "search_aoi",

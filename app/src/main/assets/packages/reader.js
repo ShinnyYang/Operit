@@ -1,7 +1,8 @@
 /* METADATA
 {
   name: code_reader
-  description: 提供代码匹配抓取功能
+  description: 提供代码匹配抓取功能,
+  enabledByDefault: true
   
   tools: [
     {
@@ -156,7 +157,7 @@ const writer = (function () {
             return params;
         const result = {};
         for (const key in params) {
-            if (params[key] === undefined || params[key] === null) {
+            if (params[key] === undefined || params[key] === undefined) {
                 result[key] = params[key];
                 continue;
             }
@@ -263,10 +264,10 @@ const writer = (function () {
     async function writer_wrap(func, params, successMessage, failMessage) {
         try {
             console.log(`开始执行函数: ${func.name || '匿名函数'}`);
-            console.log(`参数:`, JSON.stringify(params, null, 2));
+            console.log(`参数:`, JSON.stringify(params, undefined, 2));
             // 执行原始函数
             const result = await func(params);
-            console.log(`函数 ${func.name || '匿名函数'} 执行结果:`, JSON.stringify(result, null, 2));
+            console.log(`函数 ${func.name || '匿名函数'} 执行结果:`, JSON.stringify(result, undefined, 2));
             // 如果原始函数已经调用了complete，就不需要再次调用
             if (result === undefined)
                 return;
@@ -365,7 +366,7 @@ const writer = (function () {
                 const entries = listResult.entries || [];
                 files = entries
                     .filter(entry => !entry.isDirectory &&
-                        extensions.some(ext => entry.name.toLowerCase().endsWith(ext.toLowerCase())))
+                    extensions.some(ext => entry.name.toLowerCase().endsWith(ext.toLowerCase())))
                     .map(entry => `${folder_path}/${entry.name}`);
             }
             // 搜索结果
@@ -379,7 +380,7 @@ const writer = (function () {
                     let match;
                     // 使用正则表达式查找所有匹配项
                     patternRegex.lastIndex = 0; // 重置正则表达式索引
-                    while ((match = patternRegex.exec(content)) !== null) {
+                    while ((match = patternRegex.exec(content)) !== undefined) {
                         const lineNumber = content.substring(0, match.index).split('\n').length;
                         const lineContent = content.split('\n')[lineNumber - 1];
                         matches.push({
@@ -556,7 +557,7 @@ const writer = (function () {
             const matches = [];
             let match;
             // 使用正则表达式查找所有匹配项
-            while ((match = blockRegex.exec(content)) !== null) {
+            while ((match = blockRegex.exec(content)) !== undefined) {
                 const matchText = match[0];
                 const startIndex = match.index;
                 // 查找代码块的开始和结束位置
@@ -643,7 +644,7 @@ const writer = (function () {
             const matches = [];
             let match;
             // 使用正则表达式查找所有匹配项
-            while ((match = pattern.exec(content)) !== null) {
+            while ((match = pattern.exec(content)) !== undefined) {
                 const lineNumber = content.substring(0, match.index).split('\n').length;
                 const lineContent = content.split('\n')[lineNumber - 1];
                 const result = {

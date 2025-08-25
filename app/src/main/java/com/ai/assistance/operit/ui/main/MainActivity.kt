@@ -48,6 +48,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.content.ClipboardManager
 import android.content.ClipData
+import com.ai.assistance.operit.data.mcp.MCPRepository
 
 class MainActivity : ComponentActivity() {
     private val TAG = "MainActivity"
@@ -59,6 +60,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var invitationManager: InvitationManager // Add InvitationManager instance
     private var updateCheckPerformed = false
     private lateinit var anrMonitor: AnrMonitor
+    private lateinit var mcpRepository: MCPRepository
 
     // ======== 对话框状态 ========
     private var showConfirmationDialogState by mutableStateOf<String?>(null)
@@ -315,6 +317,9 @@ class MainActivity : ComponentActivity() {
         // 初始化工具处理器
         toolHandler = AIToolHandler.getInstance(this)
         toolHandler.registerDefaultTools()
+
+        // 初始化MCP仓库
+        mcpRepository = MCPRepository(this)
 
         // Initialize InvitationManager
         invitationManager = InvitationManager(this)

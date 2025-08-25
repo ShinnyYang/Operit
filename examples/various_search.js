@@ -2,6 +2,7 @@
 {
   name: various_search
   description: 提供多平台搜索功能，支持从必应、百度、搜狗、夸克等平台获取搜索结果。
+  enabledByDefault: true
   
   tools: [
     {

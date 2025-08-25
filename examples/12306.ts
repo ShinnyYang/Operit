@@ -2,6 +2,7 @@
 {
     "name": "12306_ticket",
     "description": "提供12306火车票信息查询功能，包括余票、中转、经停站等。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "get_current_date",

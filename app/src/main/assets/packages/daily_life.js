@@ -3,6 +3,7 @@ METADATA
 {
     "name": "daily_life",
     "description": "日常生活工具集合，提供丰富的日常功能接口，包括日期时间查询、设备状态监测、天气搜索、提醒闹钟设置、短信电话通讯等。通过系统Intent实现各类日常任务，支持用户便捷地完成日常交互需求。",
+    "enabledByDefault": true,
     "tools": [
         {
             "name": "get_current_date",
@@ -325,8 +326,8 @@ const dailyLife = (function () {
                 success: true,
                 message: "提醒创建成功",
                 title: params.title,
-                description: params.description || null,
-                due_date: params.due_date || null,
+                description: params.description || undefined,
+                due_date: params.due_date || undefined,
                 method: "implicit_intent",
                 raw_result: result
             };
@@ -338,8 +339,8 @@ const dailyLife = (function () {
                 success: false,
                 message: `创建提醒失败: ${error.message}`,
                 title: params.title,
-                description: params.description || null,
-                due_date: params.due_date || null,
+                description: params.description || undefined,
+                due_date: params.due_date || undefined,
                 error: error.message
             };
         }
@@ -412,8 +413,8 @@ const dailyLife = (function () {
                 success: true,
                 message: "闹钟设置成功",
                 alarm_time: `${params.hour.toString().padStart(2, '0')}:${params.minute.toString().padStart(2, '0')}`,
-                label: params.message || null,
-                repeat_days: params.days || null,
+                label: params.message || undefined,
+                repeat_days: params.days || undefined,
                 method: "implicit_intent",
                 raw_result: result
             };
@@ -425,8 +426,8 @@ const dailyLife = (function () {
                 success: false,
                 message: `设置闹钟失败: ${error.message}`,
                 alarm_time: `${params.hour.toString().padStart(2, '0')}:${params.minute.toString().padStart(2, '0')}`,
-                label: params.message || null,
-                repeat_days: params.days || null,
+                label: params.message || undefined,
+                repeat_days: params.days || undefined,
                 error: error.message
             };
         }
@@ -668,10 +669,10 @@ const dailyLife = (function () {
     async function daily_wrap(func, params, successMessage, failMessage, additionalInfo = "") {
         try {
             console.log(`开始执行函数: ${func.name || '匿名函数'}`);
-            console.log(`参数:`, JSON.stringify(params, null, 2));
+            console.log(`参数:`, JSON.stringify(params, undefined, 2));
             // 执行原始函数
             const result = await func(params);
-            console.log(`函数 ${func.name || '匿名函数'} 执行结果:`, JSON.stringify(result, null, 2));
+            console.log(`函数 ${func.name || '匿名函数'} 执行结果:`, JSON.stringify(result, undefined, 2));
             // 如果原始函数已经调用了complete，就不需要再次调用
             if (result === undefined)
                 return;

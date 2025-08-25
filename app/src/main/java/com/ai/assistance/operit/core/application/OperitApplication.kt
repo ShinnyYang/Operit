@@ -16,7 +16,6 @@ import com.ai.assistance.operit.core.config.SystemPromptConfig
 import com.ai.assistance.operit.core.invitation.InvitationManager
 import com.ai.assistance.operit.core.tools.system.AndroidShellExecutor
 import com.ai.assistance.operit.data.db.AppDatabase
-import com.ai.assistance.operit.data.mcp.MCPImageCache
 import com.ai.assistance.operit.data.preferences.FunctionalPromptManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.preferences.initAndroidPermissionPreferences
@@ -118,9 +117,6 @@ class OperitApplication : Application() {
 
         // 初始化语言支持
         LanguageFactory.init()
-
-        // 初始化图片缓存
-        MCPImageCache.initialize(applicationContext)
 
         // 初始化TextSegmenter
         applicationScope.launch { TextSegmenter.initialize(applicationContext) }
