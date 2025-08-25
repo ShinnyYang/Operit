@@ -110,7 +110,7 @@ const BilibiliVideoAnalysis = (function () {
                 console.error("Failed to get WBI keys, status: " + response.statusCode);
                 return null;
             }
-            const navData = await response.json();
+            const navData = response.json();
             // The API may return a non-zero code for non-logged-in users, but still provide the WBI keys.
             if (!((_b = (_a = navData.data) === null || _a === void 0 ? void 0 : _a.wbi_img) === null || _b === void 0 ? void 0 : _b.img_url) || !((_d = (_c = navData.data) === null || _c === void 0 ? void 0 : _c.wbi_img) === null || _d === void 0 ? void 0 : _d.sub_url)) {
                 console.error("Failed to get WBI keys: " + (navData.message || "No wbi_img in response"));
@@ -158,7 +158,7 @@ const BilibiliVideoAnalysis = (function () {
             if (!response.isSuccessful()) {
                 return { aid: null, cid: null, error: `Failed to get video info, status: ${response.statusCode}` };
             }
-            const data = await response.json();
+            const data = response.json();
             if (data.code !== 0) {
                 return { aid: null, cid: null, error: `Failed to get video info: ${data.message}` };
             }
@@ -178,7 +178,7 @@ const BilibiliVideoAnalysis = (function () {
             if (!response.isSuccessful()) {
                 return { subtitles: [], error: `Could not fetch subtitles list, status: ${response.statusCode}` };
             }
-            const subtitleListData = await response.json();
+            const subtitleListData = response.json();
             if (subtitleListData.code === 0 && ((_b = (_a = subtitleListData.data) === null || _a === void 0 ? void 0 : _a.subtitle) === null || _b === void 0 ? void 0 : _b.subtitles)) {
                 for (const sub_meta of subtitleListData.data.subtitle.subtitles) {
                     if (sub_meta.subtitle_url) {
@@ -215,7 +215,7 @@ const BilibiliVideoAnalysis = (function () {
             if (!response.isSuccessful()) {
                 return { danmaku: [], error: `Failed to get danmaku, status: ${response.statusCode}` };
             }
-            const compressedData = await response.bodyAsBase64();
+            const compressedData = response.bodyAsBase64();
             console.log("base64" + compressedData);
             if (!compressedData) {
                 return { danmaku: [], error: null };
@@ -257,7 +257,7 @@ const BilibiliVideoAnalysis = (function () {
                     page_num++;
                     continue;
                 }
-                const comments_data = await response.json();
+                const comments_data = response.json();
                 if (comments_data.code !== 0) {
                     console.error(`API error on page ${page_num}: ${comments_data.message}`);
                     page_num++;
@@ -395,7 +395,7 @@ const BilibiliVideoAnalysis = (function () {
             if (!response.isSuccessful()) {
                 return { results: null, error: `搜索失败, status: ${response.statusCode}` };
             }
-            const search_data = await response.json();
+            const search_data = response.json();
             if (search_data.code !== 0) {
                 return { results: null, error: `搜索 API 错误: ${search_data.message}` };
             }

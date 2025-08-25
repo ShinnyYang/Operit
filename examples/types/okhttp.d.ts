@@ -75,17 +75,17 @@ interface OkHttpResponse {
     /**
      * Parse response body as JSON
      */
-    json(): Promise<any>;
+    json(): any;
 
     /**
      * Get response body as text
      */
-    text(): Promise<string>;
+    text(): string;
 
     /**
      * Get response body as Base64 encoded string
      */
-    bodyAsBase64(): Promise<string>;
+    bodyAsBase64(): string;
 
     /**
      * Check if response was successful (status 200-299)

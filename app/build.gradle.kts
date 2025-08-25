@@ -235,6 +235,7 @@ dependencies {
 
     // Network dependencies
     implementation(libs.okhttp)
+    implementation(libs.okhttp.sse)
     implementation(libs.jsoup)
 
     // DataStore dependencies
@@ -282,10 +283,17 @@ dependencies {
     testImplementation(libs.coroutines.test)
     androidTestImplementation(libs.coroutines.test)
     
-    // 模拟测试框架
+    // 模拟测试框架 - 保留现有的 mockito 并新增 mockk
     testImplementation(libs.mockito.core)
     testImplementation(libs.mockito.kotlin)
     androidTestImplementation(libs.mockito.android)
+    
+    // // 新增的测试依赖 - mockk 和 kotlin-test
+    // testImplementation(libs.mockk)
+    // testImplementation(libs.ktor.server.test.host)
+    // testImplementation(libs.kotlinx.coroutines.debug)
+    // androidTestImplementation(libs.mockk)
+    
     implementation(libs.reorderable)
 
     // Swipe to reveal actions
@@ -299,5 +307,5 @@ dependencies {
     implementation(libs.objectbox.kotlin)
     kapt(libs.objectbox.processor)
     
-    // implementation("org.jetbrains.kotlinx:kotlinx-mcp-sdk:0.1.0")
+//    implementation(libs.modelcontextprotocol.kotlin.sdk)
 }

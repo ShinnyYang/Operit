@@ -34,7 +34,7 @@ class StandardHttpTools(private val context: Context) {
         private const val TAG = "HttpTools"
         private const val USER_AGENT =
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-        private const val MAX_RESPONSE_SIZE_BYTES = 128 * 1024 // 128kb
+        private const val MAX_RESPONSE_SIZE_BYTES =  126 * 1024 // 1MB
     }
 
     // 内存中的Cookie存储
@@ -93,22 +93,6 @@ class StandardHttpTools(private val context: Context) {
 
         return builder.build()
     }
-
-    /** 检查Content-Type是否为文本类型 */
-    private fun isTextBasedContentType(contentType: String): Boolean {
-        val mediaType = contentType.lowercase().split(';').firstOrNull()?.trim() ?: ""
-        if (mediaType.startsWith("text/")) {
-            return true
-        }
-        return when (mediaType) {
-            "application/json",
-            "application/xml",
-            "application/javascript",
-            "application/xhtml+xml" -> true
-            else -> mediaType.endsWith("+json") || mediaType.endsWith("+xml")
-        }
-    }
-
     /** 读取响应体内容，处理编码问题 */
     private fun readResponseBody(responseBody: ResponseBody, contentType: String): String {
         return try {
@@ -317,7 +301,7 @@ class StandardHttpTools(private val context: Context) {
             val contentType = response.header("Content-Type") ?: ""
             val contentLength = response.header("Content-Length")?.toLongOrNull() ?: -1L
 
-            if (!isTextBasedContentType(contentType) && contentLength > MAX_RESPONSE_SIZE_BYTES) {
+            if (contentLength > MAX_RESPONSE_SIZE_BYTES) {
                 response.body?.close()
                 return ToolResult(
                     toolName = tool.name,
@@ -326,8 +310,6 @@ class StandardHttpTools(private val context: Context) {
                     error = "The content appears to be a large binary file (${contentLength / 1024} KB, type: $contentType). It is recommended to use the 'download_file' tool instead of 'http_request' to save it to a file."
                 )
             }
-
-            val isTextContent = isTextBasedContentType(contentType)
 
             // 处理响应
             val responseHeadersMap =
@@ -356,15 +338,14 @@ class StandardHttpTools(private val context: Context) {
             val bodyBytes = responseBody.bytes()
             responseBodyBase64 = android.util.Base64.encodeToString(bodyBytes, android.util.Base64.NO_WRAP)
 
-            if(isTextContent) {
-                try {
-                    val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
-                    responseBodyString = String(bodyBytes, charset)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
-                    responseBodyString = "[Binary Content, decoding failed]"
-                }
+            try {
+                val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
+                responseBodyString = String(bodyBytes, charset)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
+                responseBodyString = "[Binary Content, decoding failed]"
             }
+            Log.i(TAG, "responseBodyString: $responseBodyString")
 
             // 返回原始内容
             val httpResponseData =
@@ -376,7 +357,6 @@ class StandardHttpTools(private val context: Context) {
                             contentType = contentType,
                             content = responseBodyString ?: "[Binary Content]",
                             contentBase64 = responseBodyBase64,
-                            contentSummary = responseBodyString ?: "[Binary Content]",
                             size = bodyBytes.size,
                             cookies = cookiesMap
                     )
@@ -739,7 +719,7 @@ class StandardHttpTools(private val context: Context) {
             val contentType = response.header("Content-Type") ?: ""
             val contentLength = response.header("Content-Length")?.toLongOrNull() ?: -1L
 
-            if (!isTextBasedContentType(contentType) && contentLength > MAX_RESPONSE_SIZE_BYTES) {
+            if (contentLength > MAX_RESPONSE_SIZE_BYTES) {
                 response.body?.close()
                 return ToolResult(
                     toolName = tool.name,
@@ -748,8 +728,6 @@ class StandardHttpTools(private val context: Context) {
                     error = "The content appears to be a large binary file (${contentLength / 1024} KB, type: $contentType). It is recommended to use the 'download_file' tool instead of 'http_request' to save it to a file."
                 )
             }
-
-            val isTextContent = isTextBasedContentType(contentType)
             // 处理响应
             val responseHeadersMap =
                     response.headers.names().associateWith { name ->
@@ -776,17 +754,14 @@ class StandardHttpTools(private val context: Context) {
 
             val bodyBytes = responseBody.bytes()
             responseBodyBase64 = android.util.Base64.encodeToString(bodyBytes, android.util.Base64.NO_WRAP)
-
-            if(isTextContent) {
-                try {
-                    val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
-                    responseBodyString = String(bodyBytes, charset)
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
-                    responseBodyString = "[Binary Content, decoding failed]"
-                }
+            try {
+                val charset = response.body?.contentType()?.charset(Charsets.UTF_8) ?: Charsets.UTF_8
+                responseBodyString = String(bodyBytes, charset)
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to decode response body as text for content-type $contentType", e)
+                responseBodyString = "[Binary Content, decoding failed]"
             }
-
+            
             // 返回原始内容
             val httpResponseData =
                     HttpResponseData(
@@ -797,7 +772,6 @@ class StandardHttpTools(private val context: Context) {
                             contentType = contentType,
                             content = responseBodyString ?: "[Binary Content]",
                             contentBase64 = responseBodyBase64,
-                            contentSummary = responseBodyString ?: "[Binary Content]",
                             size = bodyBytes.size,
                             cookies = cookiesMap
                     )

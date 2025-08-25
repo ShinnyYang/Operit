@@ -268,7 +268,6 @@ data class HttpResponseData(
         val contentType: String,
         val content: String,
         val contentBase64: String? = null,
-        val contentSummary: String,
         val size: Int,
         val cookies: Map<String, String> = emptyMap()
 ) : ToolResultData() {
@@ -293,7 +292,7 @@ data class HttpResponseData(
 
         sb.appendLine()
         sb.appendLine("Content Summary:")
-        sb.append(contentSummary)
+        sb.append(content)
         return sb.toString()
     }
 }

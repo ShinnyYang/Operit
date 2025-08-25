@@ -108,7 +108,7 @@ async function okHttpGetExample() {
         const response = await client.execute(request);
 
         if (response.isSuccessful()) {
-            const data = await response.json();
+            const data = response.json();
             console.log(`Response Headers: ${JSON.stringify(data.headers)}`);
             complete({ success: true, message: "OkHttp GET 请求成功。" });
         } else {
@@ -132,7 +132,7 @@ async function okHttpPostExample() {
     try {
         const payload = { user: "test", score: 100 };
         const response = await client.post("https://httpbin.org/post", payload);
-        const data = await response.json();
+        const data = response.json();
         
         console.log(`服务器收到的 JSON: ${data.data}`);
         complete({ success: true, message: "OkHttp POST 请求成功。" });

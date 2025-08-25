@@ -188,7 +188,6 @@ export interface HttpResponseData {
     headers: Record<string, string>;
     contentType: string;
     content: string;
-    contentSummary: string;
     size: number;
     toString(): string;
 }

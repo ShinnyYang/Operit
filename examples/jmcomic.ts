@@ -597,7 +597,7 @@ const jmcomic = (function () {
                 if (!response.isSuccessful()) {
                     throw new Error(`HTTP error! status: ${response.statusCode}`);
                 }
-                const imageBase64 = await response.bodyAsBase64();
+                const imageBase64 = response.bodyAsBase64();
                 const dir = dirname(savePath);
                 await ensureDirExists(dir);
 

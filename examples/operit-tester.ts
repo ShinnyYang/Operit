@@ -1003,7 +1003,6 @@ async function testHttpRequest(results: TestResults): Promise<void> {
         console.log(`GET Status: ${getData.statusCode} ${getData.statusMessage}`);
         console.log(`Content type: ${getData.contentType}`);
         console.log(`Content size: ${getData.size} bytes`);
-        console.log(`Content summary: ${getData.contentSummary}`);
 
         // Test POST request with JSON body
         console.log("\nTesting POST request with JSON body...");

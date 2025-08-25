@@ -380,7 +380,7 @@ const networkTest = (function () {
             // 尝试解析JSON
             if (response.contentType && response.contentType.includes('application/json')) {
                 try {
-                    jsonData = await response.json();
+                    jsonData = response.json();
                     if (jsonData) {
                         if (Array.isArray(jsonData)) {
                             console.log(`- 数组数据, 长度: ${jsonData.length}`);

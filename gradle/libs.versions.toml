@@ -67,8 +67,9 @@ reorderable = "2.5.1"
 swipe = "1.2.0"
 objectbox = "3.8.0"
 mediapipe = "0.10.11"
- uiTextAndroid = "1.6.2"
- animationAndroid = "1.6.2"
+uiTextAndroid = "1.6.2"
+animationAndroid = "1.6.2"
+mcp = "0.6.0"
 
  [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -182,6 +183,7 @@ shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref
 
 # Network
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 # DataStore
@@ -223,6 +225,9 @@ swipe = { group = "me.saket.swipe", name = "swipe", version.ref = "swipe" }
 # ObjectBox
 objectbox-kotlin = { group = "io.objectbox", name = "objectbox-kotlin", version.ref = "objectbox" }
 objectbox-processor = { group = "io.objectbox", name = "objectbox-processor", version.ref = "objectbox" }
+
+modelcontextprotocol-kotlin-sdk = { group = "io.modelcontextprotocol", name = "kotlin-sdk", version.ref = "mcp" }
+
  androidx-ui-text-android = { group = "androidx.compose.ui", name = "ui-text-android", version.ref = "uiTextAndroid" }
  androidx-animation-android = { group = "androidx.compose.animation", name = "animation-android", version.ref = "animationAndroid" }
 
