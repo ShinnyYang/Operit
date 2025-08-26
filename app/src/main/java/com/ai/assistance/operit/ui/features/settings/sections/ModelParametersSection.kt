@@ -10,8 +10,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.data.model.ModelConfigData
 import com.ai.assistance.operit.data.model.ModelParameter
@@ -37,6 +40,28 @@ fun ModelParametersSection(
     // 参数错误状态
     val parameterErrors = remember { mutableStateMapOf<String, String>() }
 
+    // 获取字符串资源
+    val maxTokensName = stringResource(R.string.max_tokens_name)
+    val maxTokensDescription = stringResource(R.string.max_tokens_description)
+    val temperatureName = stringResource(R.string.temperature_name)
+    val temperatureDescription = stringResource(R.string.temperature_description)
+    val topPName = stringResource(R.string.top_p_name)
+    val topPDescription = stringResource(R.string.top_p_description)
+    val topKName = stringResource(R.string.top_k_name)
+    val topKDescription = stringResource(R.string.top_k_description)
+    val presencePenaltyName = stringResource(R.string.presence_penalty_name)
+    val presencePenaltyDescription = stringResource(R.string.presence_penalty_description)
+    val frequencyPenaltyName = stringResource(R.string.frequency_penalty_name)
+    val frequencyPenaltyDescription = stringResource(R.string.frequency_penalty_description)
+    val repetitionPenaltyName = stringResource(R.string.repetition_penalty_name)
+    val repetitionPenaltyDescription = stringResource(R.string.repetition_penalty_description)
+    val parametersSavedText = stringResource(R.string.parameters_saved)
+    val parametersResetText = stringResource(R.string.parameters_reset)
+    val resetParametersText = stringResource(R.string.reset_parameters)
+    val saveParametersText = stringResource(R.string.save_parameters)
+    val valueText = stringResource(R.string.value)
+    val rangeFormatText = stringResource(R.string.range_format)
+
     // 初始化参数
     LaunchedEffect(config.id) {
         // 构建参数列表
@@ -46,9 +71,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "max_tokens",
-                        name = "最大生成Token数",
+                        name = maxTokensName,
                         apiName = "max_tokens",
-                        description = "控制AI每次最多生成的Token数量",
+                        description = maxTokensDescription,
                         defaultValue = ApiPreferences.DEFAULT_MAX_TOKENS,
                         currentValue = config.maxTokens,
                         isEnabled = config.maxTokensEnabled,
@@ -63,9 +88,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "temperature",
-                        name = "温度",
+                        name = temperatureName,
                         apiName = "temperature",
-                        description = "控制输出的随机性。较低的值更确定性，较高的值更随机",
+                        description = temperatureDescription,
                         defaultValue = ApiPreferences.DEFAULT_TEMPERATURE,
                         currentValue = config.temperature,
                         isEnabled = config.temperatureEnabled,
@@ -80,9 +105,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "top_p",
-                        name = "Top-P 采样",
+                        name = topPName,
                         apiName = "top_p",
-                        description = "作为温度的替代方案，模型仅考虑概率最高的Top-P比例的token",
+                        description = topPDescription,
                         defaultValue = ApiPreferences.DEFAULT_TOP_P,
                         currentValue = config.topP,
                         isEnabled = config.topPEnabled,
@@ -97,9 +122,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "top_k",
-                        name = "Top-K 采样",
+                        name = topKName,
                         apiName = "top_k",
-                        description = "模型仅考虑概率最高的K个token。0表示禁用",
+                        description = topKDescription,
                         defaultValue = ApiPreferences.DEFAULT_TOP_K,
                         currentValue = config.topK,
                         isEnabled = config.topKEnabled,
@@ -114,9 +139,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "presence_penalty",
-                        name = "存在惩罚",
+                        name = presencePenaltyName,
                         apiName = "presence_penalty",
-                        description = "增强模型谈论新主题的倾向。值越高，惩罚越大",
+                        description = presencePenaltyDescription,
                         defaultValue = ApiPreferences.DEFAULT_PRESENCE_PENALTY,
                         currentValue = config.presencePenalty,
                         isEnabled = config.presencePenaltyEnabled,
@@ -131,9 +156,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "frequency_penalty",
-                        name = "频率惩罚",
+                        name = frequencyPenaltyName,
                         apiName = "frequency_penalty",
-                        description = "减少模型重复同一词语的可能性。值越高，惩罚越大",
+                        description = frequencyPenaltyDescription,
                         defaultValue = ApiPreferences.DEFAULT_FREQUENCY_PENALTY,
                         currentValue = config.frequencyPenalty,
                         isEnabled = config.frequencyPenaltyEnabled,
@@ -148,9 +173,9 @@ fun ModelParametersSection(
         paramList.add(
                 ModelParameter(
                         id = "repetition_penalty",
-                        name = "重复惩罚",
+                        name = repetitionPenaltyName,
                         apiName = "repetition_penalty",
-                        description = "进一步减少重复。1.0表示不惩罚，大于1.0会降低重复可能性",
+                        description = repetitionPenaltyDescription,
                         defaultValue = ApiPreferences.DEFAULT_REPETITION_PENALTY,
                         currentValue = config.repetitionPenalty,
                         isEnabled = config.repetitionPenaltyEnabled,
@@ -430,7 +455,7 @@ fun ModelParametersSection(
                             )
                         }
 
-                showNotification("参数已保存")
+                showNotification(parametersSavedText)
             } catch (e: Exception) {
                 // 处理异常
                 e.printStackTrace()
@@ -495,7 +520,7 @@ fun ModelParametersSection(
                             )
                         }
 
-                showNotification("所有参数已重置为默认值")
+                showNotification(parametersResetText)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -628,7 +653,7 @@ fun ModelParametersSection(
                             modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("重置参数")
+                                            Text(resetParametersText)
                 }
 
                 Button(
@@ -645,7 +670,7 @@ fun ModelParametersSection(
                             modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("保存参数")
+                                            Text(saveParametersText)
                 }
             }
         }
@@ -682,7 +707,11 @@ private fun ParameterItem(
         error: String? = null,
         onErrorChange: (String?) -> Unit
 ) {
+    val context = LocalContext.current
     var expanded by remember { mutableStateOf(false) }
+    
+    val valueText = stringResource(R.string.parameter_value)
+    val rangeFormatText = stringResource(R.string.parameter_range_format)
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
@@ -757,10 +786,10 @@ private fun ParameterItem(
                                         onErrorChange(null)
                                         onValueChange(intValue)
                                     } catch (e: NumberFormatException) {
-                                        onErrorChange("必须是整数")
+                                        onErrorChange(context.getString(R.string.must_be_integer))
                                     }
                                 },
-                                label = { Text("值") },
+                                label = { Text(valueText) },
                                 isError = error != null,
                                 supportingText = {
                                     if (error != null) {
@@ -768,7 +797,7 @@ private fun ParameterItem(
                                     } else if (intParam.minValue != null &&
                                                     intParam.maxValue != null
                                     ) {
-                                        Text("范围: ${intParam.minValue} - ${intParam.maxValue}")
+                                        Text(rangeFormatText.format(intParam.minValue, intParam.maxValue))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -789,10 +818,10 @@ private fun ParameterItem(
                                         onErrorChange(null)
                                         onValueChange(floatValue)
                                     } catch (e: NumberFormatException) {
-                                        onErrorChange("必须是浮点数")
+                                        onErrorChange(context.getString(R.string.must_be_float))
                                     }
                                 },
-                                label = { Text("值") },
+                                label = { Text(valueText) },
                                 isError = error != null,
                                 supportingText = {
                                     if (error != null) {
@@ -800,7 +829,7 @@ private fun ParameterItem(
                                     } else if (floatParam.minValue != null &&
                                                     floatParam.maxValue != null
                                     ) {
-                                        Text("范围: ${floatParam.minValue} - ${floatParam.maxValue}")
+                                        Text(rangeFormatText.format(floatParam.minValue, floatParam.maxValue))
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
@@ -812,7 +841,7 @@ private fun ParameterItem(
                         OutlinedTextField(
                                 value = stringParam.currentValue,
                                 onValueChange = { onValueChange(it) },
-                                label = { Text("值") },
+                                label = { Text(valueText) },
                                 modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -824,7 +853,7 @@ private fun ParameterItem(
                                 verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                    text = "值:",
+                                    text = "$valueText:",
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(end = 16.dp)
                             )
@@ -838,7 +867,7 @@ private fun ParameterItem(
 
                 // 显示默认值
                 Text(
-                        text = "默认值: ${parameter.defaultValue}",
+                        text = stringResource(R.string.default_value_format, parameter.defaultValue.toString()),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(top = 8.dp)

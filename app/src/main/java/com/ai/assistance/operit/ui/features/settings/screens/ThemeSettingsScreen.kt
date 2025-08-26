@@ -1228,7 +1228,7 @@ fun ThemeSettingsScreen() {
                     Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                     Text(
-                        text = "主题文字颜色",
+                        text = stringResource(id = R.string.theme_on_color_mode),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
@@ -1238,7 +1238,7 @@ fun ThemeSettingsScreen() {
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         ThemeModeOption(
-                            title = "自动",
+                            title = stringResource(id = R.string.theme_on_color_auto),
                             selected = onColorModeInput == UserPreferencesManager.ON_COLOR_MODE_AUTO,
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -1250,7 +1250,7 @@ fun ThemeSettingsScreen() {
                             }
                         )
                         ThemeModeOption(
-                            title = "浅色",
+                            title = stringResource(id = R.string.theme_on_color_light),
                             selected = onColorModeInput == UserPreferencesManager.ON_COLOR_MODE_LIGHT,
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -1262,7 +1262,7 @@ fun ThemeSettingsScreen() {
                             }
                         )
                         ThemeModeOption(
-                            title = "深色",
+                            title = stringResource(id = R.string.theme_on_color_dark),
                             selected = onColorModeInput == UserPreferencesManager.ON_COLOR_MODE_DARK,
                             modifier = Modifier.weight(1f),
                             onClick = {
@@ -1357,14 +1357,14 @@ fun ThemeSettingsScreen() {
 
         // ======= SECTION 2: CHAT STYLE =======
         ThemeSectionTitle(
-            title = "聊天风格",
+            title = stringResource(id = R.string.chat_style_title),
             icon = Icons.Default.ColorLens // 您可以根据需要更改图标
         )
 
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "选择聊天界面风格",
+                    text = stringResource(id = R.string.chat_style_desc),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -1374,7 +1374,7 @@ fun ThemeSettingsScreen() {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ChatStyleOption(
-                        title = "命令框",
+                        title = stringResource(id = R.string.chat_style_cursor),
                         selected = chatStyleInput == UserPreferencesManager.CHAT_STYLE_CURSOR,
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1386,7 +1386,7 @@ fun ThemeSettingsScreen() {
                     }
 
                     ChatStyleOption(
-                        title = "对话框",
+                        title = stringResource(id = R.string.chat_style_bubble),
                         selected = chatStyleInput == UserPreferencesManager.CHAT_STYLE_BUBBLE,
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1402,7 +1402,7 @@ fun ThemeSettingsScreen() {
 
         // ======= SECTION 4: DISPLAY OPTIONS =======
         ThemeSectionTitle(
-            title = "显示选项",
+            title = stringResource(id = R.string.display_options_title),
             icon = Icons.Default.ColorLens // Replace with a more appropriate icon if available
         )
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
@@ -1414,9 +1414,9 @@ fun ThemeSettingsScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "显示思考过程", style = MaterialTheme.typography.bodyMedium)
+                        Text(text = stringResource(id = R.string.show_thinking_process), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            text = "切换AI响应中 <think> 标签的可见性",
+                            text = stringResource(id = R.string.show_thinking_process_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1442,9 +1442,9 @@ fun ThemeSettingsScreen() {
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "显示任务状态标签", style = MaterialTheme.typography.bodyMedium)
+                        Text(text = stringResource(id = R.string.show_status_tags), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                            text = "切换任务完成和等待状态标签的可见性",
+                            text = stringResource(id = R.string.show_status_tags_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1470,9 +1470,9 @@ fun ThemeSettingsScreen() {
                         horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(text = "显示输入处理状态", style = MaterialTheme.typography.bodyMedium)
+                        Text(text = stringResource(id = R.string.show_input_processing_status), style = MaterialTheme.typography.bodyMedium)
                         Text(
-                                text = "在输入框上方显示AI正在处理任务的状态",
+                                text = stringResource(id = R.string.show_input_processing_status_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1493,7 +1493,7 @@ fun ThemeSettingsScreen() {
 
         // ======= SECTION 5: AVATAR CUSTOMIZATION =======
         ThemeSectionTitle(
-            title = "自定义头像",
+            title = stringResource(id = R.string.avatar_customization_title),
             icon = Icons.Default.Person // Replace with a more appropriate icon if available
         )
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
@@ -1505,7 +1505,7 @@ fun ThemeSettingsScreen() {
                 ) {
                     // User Avatar Picker
                     AvatarPicker(
-                        label = "用户头像",
+                        label = stringResource(id = R.string.user_avatar_label),
                         avatarUri = userAvatarUriInput,
                         onAvatarChange = {
                             avatarPickerMode = "user"
@@ -1521,7 +1521,7 @@ fun ThemeSettingsScreen() {
 
                     // AI Avatar Picker
                     AvatarPicker(
-                        label = "AI 头像",
+                        label = stringResource(id = R.string.ai_avatar_label),
                         avatarUri = aiAvatarUriInput,
                         onAvatarChange = {
                             avatarPickerMode = "ai"
@@ -1539,7 +1539,7 @@ fun ThemeSettingsScreen() {
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
                 Text(
-                    text = "头像形状",
+                    text = stringResource(id = R.string.avatar_shape_title),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -1548,7 +1548,7 @@ fun ThemeSettingsScreen() {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     ChatStyleOption(
-                        title = "圆形",
+                        title = stringResource(id = R.string.avatar_shape_circle),
                         selected = avatarShapeInput == UserPreferencesManager.AVATAR_SHAPE_CIRCLE,
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1559,7 +1559,7 @@ fun ThemeSettingsScreen() {
                         }
                     }
                     ChatStyleOption(
-                        title = "方形",
+                        title = stringResource(id = R.string.avatar_shape_square),
                         selected = avatarShapeInput == UserPreferencesManager.AVATAR_SHAPE_SQUARE,
                         modifier = Modifier.weight(1f)
                     ) {
@@ -1575,7 +1575,7 @@ fun ThemeSettingsScreen() {
                     Column {
                         Divider(modifier = Modifier.padding(vertical = 8.dp))
                         Text(
-                            text = "头像圆角",
+                            text = stringResource(id = R.string.avatar_corner_radius),
                             style = MaterialTheme.typography.titleMedium,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
@@ -1598,7 +1598,7 @@ fun ThemeSettingsScreen() {
                                 contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Remove, contentDescription = "减小圆角")
+                                Icon(Icons.Default.Remove, contentDescription = stringResource(id = R.string.avatar_corner_decrease))
                             }
 
                             Text(
@@ -1621,7 +1621,7 @@ fun ThemeSettingsScreen() {
                                 contentPadding = PaddingValues(0.dp),
                                 modifier = Modifier.size(36.dp)
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = "增大圆角")
+                                Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.avatar_corner_increase))
                             }
                         }
                     }
@@ -2301,7 +2301,7 @@ fun ThemeSettingsScreen() {
 
         // ======= SECTION: UI TEXT =======
         ThemeSectionTitle(
-            title = "界面文本",
+            title = stringResource(id = R.string.ui_text_title),
             icon = Icons.Default.TextFields
         )
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
@@ -2309,8 +2309,8 @@ fun ThemeSettingsScreen() {
                 OutlinedTextField(
                     value = customChatTitleInput,
                     onValueChange = { customChatTitleInput = it },
-                    label = { Text("自定义聊天标题") },
-                    placeholder = { Text("例如：AI助手") },
+                    label = { Text(stringResource(id = R.string.custom_chat_title_label)) },
+                    placeholder = { Text(stringResource(id = R.string.custom_chat_title_placeholder)) },
                     modifier = Modifier.fillMaxWidth(),
                     trailingIcon = {
                         IconButton(onClick = {
@@ -2319,7 +2319,7 @@ fun ThemeSettingsScreen() {
                                 showSaveSuccessMessage = true
                             }
                         }) {
-                            Icon(Icons.Default.Save, contentDescription = "保存标题")
+                            Icon(Icons.Default.Save, contentDescription = stringResource(id = R.string.save_title_desc))
                         }
                     }
                 )

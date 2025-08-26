@@ -24,6 +24,9 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.EndpointCompleter
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.ModelListFetcher
@@ -43,6 +46,7 @@ fun ModelApiSettingsSection(
         showNotification: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     // 获取每个提供商的默认模型名称
     fun getDefaultModelName(providerType: ApiProviderType): String {
@@ -151,7 +155,7 @@ fun ModelApiSettingsSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                        text = "API设置",
+                        text = stringResource(R.string.api_settings),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                 )
@@ -161,8 +165,8 @@ fun ModelApiSettingsSection(
             OutlinedTextField(
                     value = apiEndpointInput,
                     onValueChange = { apiEndpointInput = it },
-                    label = { Text("API端点") },
-                    placeholder = { Text("例如: https://api.openai.com/v1/chat/completions") },
+                    label = { Text(stringResource(R.string.api_endpoint)) },
+                    placeholder = { Text(stringResource(R.string.api_endpoint_placeholder)) },
                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     singleLine = true
             )
@@ -171,14 +175,14 @@ fun ModelApiSettingsSection(
             val completedEndpoint = EndpointCompleter.completeEndpoint(apiEndpointInput)
             if (completedEndpoint != apiEndpointInput) {
                 Text(
-                    text = "实际请求地址: $completedEndpoint",
+                    text = stringResource(R.string.actual_request_url, completedEndpoint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
                 )
             }
             Text(
-                text = "提示: 如果您输入的是基础URL，系统将自动补全路径。如需禁用，请在URL末尾添加#号。",
+                text = stringResource(R.string.endpoint_completion_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
@@ -199,8 +203,8 @@ fun ModelApiSettingsSection(
                              showModelRestrictionInfo = false
                          }
                      },
-                     label = { Text("API密钥") },
-                     placeholder = { Text(if (isUsingDefaultApiKey) "使用默认Key, 可直接输入" else "输入API密钥") },
+                     label = { Text(stringResource(R.string.api_key)) },
+                     placeholder = { Text(if (isUsingDefaultApiKey) stringResource(R.string.api_key_placeholder_default) else stringResource(R.string.api_key_placeholder_custom)) },
                      visualTransformation =
                              if (isUsingDefaultApiKey) VisualTransformation.None
                              else PasswordVisualTransformation(),
@@ -221,8 +225,8 @@ fun ModelApiSettingsSection(
                                 modelNameInput = it
                             }
                         },
-                        label = { Text("模型名称") },
-                        placeholder = { Text("例如: gpt-4, claude-3-opus-20240229...") },
+                        label = { Text(stringResource(R.string.model_name)) },
+                        placeholder = { Text(stringResource(R.string.model_name_placeholder)) },
                         modifier = Modifier.weight(1f),
                         enabled = !isUsingDefaultApiKey,
                         colors =
@@ -264,7 +268,15 @@ fun ModelApiSettingsSection(
                                     TAG,
                                     "模型列表按钮被点击 - API端点: $apiEndpointInput, API类型: ${selectedApiProvider.name}"
                             )
-                            showNotification("正在获取模型列表...")
+                            val gettingModelsText = context.getString(R.string.getting_models_list)
+                            val unknownErrorText = context.getString(R.string.unknown_error)
+                            val getModelsFailedText = context.getString(R.string.get_models_list_failed)
+                            val defaultConfigNoModelsText = context.getString(R.string.default_config_no_models_list)
+                            val fillEndpointKeyText = context.getString(R.string.fill_endpoint_and_key)
+                            val modelsListSuccessText = context.getString(R.string.models_list_success)
+                            val refreshModelsFailedText = context.getString(R.string.refresh_models_failed)
+                            
+                            showNotification(gettingModelsText)
 
                             scope.launch {
                                 if (apiEndpointInput.isNotBlank() &&
@@ -290,28 +302,28 @@ fun ModelApiSettingsSection(
                                             Log.d(TAG, "模型列表获取成功，共 ${models.size} 个模型")
                                             modelsList = models
                                             showModelsDialog = true
-                                            showNotification("成功获取 ${models.size} 个模型")
+                                            showNotification(modelsListSuccessText.format(models.size))
                                         } else {
                                             val errorMsg =
-                                                    result.exceptionOrNull()?.message ?: "未知错误"
+                                                    result.exceptionOrNull()?.message ?: unknownErrorText
                                             Log.e(TAG, "模型列表获取失败: $errorMsg")
-                                            modelLoadError = "获取模型列表失败: $errorMsg"
-                                            showNotification(modelLoadError ?: "获取模型列表失败")
+                                            modelLoadError = getModelsFailedText.format(errorMsg)
+                                            showNotification(modelLoadError ?: getModelsFailedText.format(""))
                                         }
                                     } catch (e: Exception) {
                                         Log.e(TAG, "获取模型列表发生异常", e)
-                                        modelLoadError = "获取模型列表失败: ${e.message}"
-                                        showNotification(modelLoadError ?: "获取模型列表失败")
+                                        modelLoadError = getModelsFailedText.format(e.message ?: "")
+                                        showNotification(modelLoadError ?: getModelsFailedText.format(""))
                                     } finally {
                                         isLoadingModels = false
                                         Log.d(TAG, "模型列表获取流程完成")
                                     }
                                 } else if (isUsingDefaultApiKey) {
                                     Log.d(TAG, "使用默认配置，不获取模型列表")
-                                    showNotification("使用默认配置时无法获取模型列表")
+                                    showNotification(defaultConfigNoModelsText)
                                 } else {
                                     Log.d(TAG, "API端点或密钥为空")
-                                    showNotification("请先填写API端点和密钥")
+                                    showNotification(fillEndpointKeyText)
                                 }
                             }
                         },
@@ -330,7 +342,7 @@ fun ModelApiSettingsSection(
                     } else {
                         Icon(
                                 imageVector = Icons.Default.FormatListBulleted,
-                                contentDescription = "获取模型列表",
+                                contentDescription = stringResource(R.string.get_models_list),
                                 tint =
                                         if (!isUsingDefaultApiKey) MaterialTheme.colorScheme.primary
                                         else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
@@ -344,7 +356,7 @@ fun ModelApiSettingsSection(
 
             // API提供商选择
             Text(
-                    "API提供商",
+                    stringResource(R.string.api_provider),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 4.dp)
             )
@@ -366,20 +378,20 @@ fun ModelApiSettingsSection(
                 ) {
                     Column {
                         Text(
-                                text = getProviderDisplayName(selectedApiProvider),
+                                text = getProviderDisplayName(selectedApiProvider, context),
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                                text = "点击选择API提供商",
+                                text = stringResource(R.string.select_api_provider),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Icon(
                             Icons.Default.KeyboardArrowDown,
-                            contentDescription = "选择",
+                            contentDescription = stringResource(R.string.select),
                             tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -401,7 +413,7 @@ fun ModelApiSettingsSection(
             // 显示模型限制信息
             if (showModelRestrictionInfo) {
                 Text(
-                        text = "使用默认配置时，只能使用deepseek-chat模型",
+                        text = stringResource(R.string.default_config_model_restriction),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 16.dp),
@@ -441,10 +453,10 @@ fun ModelApiSettingsSection(
                                 )
 
                                 Log.d(TAG, "API设置保存完成并刷新服务")
-                                showNotification("API设置已保存")
+                                showNotification(context.getString(R.string.api_settings_saved))
                             }
                         }
-                ) { Text("保存API设置") }
+                ) { Text(stringResource(R.string.save_api_settings)) }
             }
         }
     }
@@ -473,7 +485,7 @@ fun ModelApiSettingsSection(
                             verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                                "可用模型列表",
+                                stringResource(R.string.available_models_list),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                         )
@@ -496,13 +508,14 @@ fun ModelApiSettingsSection(
                                                 if (result.isSuccess) {
                                                     modelsList = result.getOrThrow()
                                                 } else {
-                                                    modelLoadError =
-                                                            "刷新模型列表失败: ${result.exceptionOrNull()?.message ?: "未知错误"}"
-                                                    showNotification(modelLoadError ?: "刷新模型列表失败")
+                                                    val errorMsg = result.exceptionOrNull()?.message ?: context.getString(R.string.unknown_error)
+                                                    modelLoadError = context.getString(R.string.refresh_models_list_failed, errorMsg)
+                                                    showNotification(modelLoadError ?: context.getString(R.string.refresh_models_failed))
                                                 }
                                             } catch (e: Exception) {
-                                                modelLoadError = "刷新模型列表失败: ${e.message}"
-                                                showNotification(modelLoadError ?: "刷新模型列表失败")
+                                                val errorMsg = e.message ?: context.getString(R.string.unknown_error)
+                                                modelLoadError = context.getString(R.string.refresh_models_list_failed, errorMsg)
+                                                showNotification(modelLoadError ?: context.getString(R.string.refresh_models_failed))
                                             } finally {
                                                 isLoadingModels = false
                                             }
@@ -527,7 +540,7 @@ fun ModelApiSettingsSection(
                             } else {
                                 Icon(
                                         Icons.Default.Refresh,
-                                        contentDescription = "刷新模型列表",
+                                        contentDescription = stringResource(R.string.refresh_models_list),
                                         modifier = Modifier.size(18.dp)
                                 )
                             }
@@ -538,11 +551,11 @@ fun ModelApiSettingsSection(
                     OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("搜索模型", fontSize = 14.sp) },
+                            placeholder = { Text(stringResource(R.string.search_models), fontSize = 14.sp) },
                             leadingIcon = {
                                 Icon(
                                         Icons.Default.Search,
-                                        contentDescription = "搜索",
+                                        contentDescription = stringResource(R.string.search),
                                         modifier = Modifier.size(18.dp)
                                 )
                             },
@@ -554,7 +567,7 @@ fun ModelApiSettingsSection(
                                     ) {
                                         Icon(
                                                 Icons.Default.Clear,
-                                                contentDescription = "清除",
+                                                contentDescription = stringResource(R.string.clear),
                                                 modifier = Modifier.size(18.dp)
                                         )
                                     }
@@ -597,7 +610,7 @@ fun ModelApiSettingsSection(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                        text = modelLoadError ?: "没有找到可用模型",
+                                        text = modelLoadError ?: stringResource(R.string.no_models_found),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -648,8 +661,8 @@ fun ModelApiSettingsSection(
                     if (filteredModelsList.isNotEmpty()) {
                         Text(
                                 text =
-                                        "已显示 ${filteredModelsList.size} 个模型" +
-                                                (if (searchQuery.isNotEmpty()) " (已过滤)" else ""),
+                                        stringResource(R.string.models_displayed, filteredModelsList.size) +
+                                                (if (searchQuery.isNotEmpty()) stringResource(R.string.models_displayed_filtered) else ""),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(top = 6.dp, bottom = 6.dp),
@@ -665,7 +678,7 @@ fun ModelApiSettingsSection(
                         FilledTonalButton(
                                 onClick = { showModelsDialog = false },
                                 modifier = Modifier.height(36.dp)
-                        ) { Text("关闭", fontSize = 14.sp) }
+                        ) { Text(stringResource(R.string.close), fontSize = 14.sp) }
                     }
                 }
             }
@@ -673,23 +686,23 @@ fun ModelApiSettingsSection(
     }
 }
 
-private fun getProviderDisplayName(provider: ApiProviderType): String {
+private fun getProviderDisplayName(provider: ApiProviderType, context: android.content.Context): String {
     return when (provider) {
-        ApiProviderType.OPENAI -> "OpenAI (GPT系列)"
-        ApiProviderType.ANTHROPIC -> "Anthropic (Claude系列)"
-        ApiProviderType.GOOGLE -> "Google (Gemini系列)"
-        ApiProviderType.BAIDU -> "百度 (文心一言系列)"
-        ApiProviderType.ALIYUN -> "阿里云 (通义千问系列)"
-        ApiProviderType.XUNFEI -> "讯飞 (星火认知系列)"
-        ApiProviderType.ZHIPU -> "智谱AI (ChatGLM系列)"
-        ApiProviderType.BAICHUAN -> "百川大模型"
-        ApiProviderType.MOONSHOT -> "月之暗面大模型"
-        ApiProviderType.DEEPSEEK -> "Deepseek大模型"
-        ApiProviderType.SILICONFLOW -> "硅基流动"
-        ApiProviderType.OPENROUTER -> "OpenRouter (多模型聚合)"
-        ApiProviderType.INFINIAI -> "无问芯穹"
-        ApiProviderType.LMSTUDIO -> "LM Studio"
-        ApiProviderType.OTHER -> "其他提供商"
+        ApiProviderType.OPENAI -> context.getString(R.string.provider_openai)
+        ApiProviderType.ANTHROPIC -> context.getString(R.string.provider_anthropic)
+        ApiProviderType.GOOGLE -> context.getString(R.string.provider_google)
+        ApiProviderType.BAIDU -> context.getString(R.string.provider_baidu)
+        ApiProviderType.ALIYUN -> context.getString(R.string.provider_aliyun)
+        ApiProviderType.XUNFEI -> context.getString(R.string.provider_xunfei)
+        ApiProviderType.ZHIPU -> context.getString(R.string.provider_zhipu)
+        ApiProviderType.BAICHUAN -> context.getString(R.string.provider_baichuan)
+        ApiProviderType.MOONSHOT -> context.getString(R.string.provider_moonshot)
+        ApiProviderType.DEEPSEEK -> context.getString(R.string.provider_deepseek)
+        ApiProviderType.SILICONFLOW -> context.getString(R.string.provider_siliconflow)
+        ApiProviderType.OPENROUTER -> context.getString(R.string.provider_openrouter)
+        ApiProviderType.INFINIAI -> context.getString(R.string.provider_infiniai)
+        ApiProviderType.LMSTUDIO -> context.getString(R.string.provider_lmstudio)
+        ApiProviderType.OTHER -> context.getString(R.string.provider_other)
     }
 }
 
@@ -699,6 +712,7 @@ private fun ApiProviderDialog(
         onProviderSelected: (ApiProviderType) -> Unit
 ) {
     val providers = ApiProviderType.values()
+    val context = LocalContext.current
     var searchQuery by remember { mutableStateOf("") }
     
     val filteredProviders = remember(searchQuery) {
@@ -706,7 +720,7 @@ private fun ApiProviderDialog(
             providers.toList()
         } else {
             providers.filter { provider ->
-                getProviderDisplayName(provider).contains(searchQuery, ignoreCase = true)
+                getProviderDisplayName(provider, context).contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -721,7 +735,7 @@ private fun ApiProviderDialog(
             Column(modifier = Modifier.padding(16.dp)) {
                 // 标题和搜索框
                 Text(
-                        "选择API提供商",
+                        stringResource(R.string.select_api_provider_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -731,11 +745,11 @@ private fun ApiProviderDialog(
                 OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("搜索提供商", fontSize = 14.sp) },
+                        placeholder = { Text(stringResource(R.string.search_providers), fontSize = 14.sp) },
                         leadingIcon = {
                             Icon(
                                     Icons.Default.Search,
-                                    contentDescription = "搜索",
+                                    contentDescription = stringResource(R.string.search),
                                     modifier = Modifier.size(18.dp)
                             )
                         },
@@ -747,7 +761,7 @@ private fun ApiProviderDialog(
                                 ) {
                                     Icon(
                                             Icons.Default.Clear,
-                                            contentDescription = "清除",
+                                            contentDescription = stringResource(R.string.clear),
                                             modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -788,7 +802,7 @@ private fun ApiProviderDialog(
                                         contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                            text = getProviderDisplayName(provider).first().toString(),
+                                            text = getProviderDisplayName(provider, context).first().toString(),
                                             color = MaterialTheme.colorScheme.onPrimary,
                                             style = MaterialTheme.typography.bodyLarge,
                                             fontWeight = FontWeight.Bold
@@ -798,7 +812,7 @@ private fun ApiProviderDialog(
                                 Spacer(modifier = Modifier.width(16.dp))
                                 
                                 Text(
-                                        text = getProviderDisplayName(provider),
+                                        text = getProviderDisplayName(provider, context),
                                         style = MaterialTheme.typography.bodyLarge
                                 )
                             }
@@ -812,7 +826,7 @@ private fun ApiProviderDialog(
                         horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onDismissRequest) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             }

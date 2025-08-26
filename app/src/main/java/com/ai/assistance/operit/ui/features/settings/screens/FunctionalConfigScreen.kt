@@ -15,8 +15,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
+import com.ai.assistance.operit.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.api.chat.AIServiceFactory
@@ -98,14 +100,14 @@ fun FunctionalConfigScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                        text = "功能模型配置设置",
+                                        text = stringResource(id = R.string.functional_model_config_title),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                 )
                             }
 
                             Text(
-                                    text = "为不同功能设置单独的模型配置，使每个功能都能使用最适合的API设置。",
+                                    text = stringResource(id = R.string.functional_model_config_desc),
                                     style = MaterialTheme.typography.bodyMedium,
                                     modifier = Modifier.padding(bottom = 8.dp)
                             )
@@ -124,13 +126,13 @@ fun FunctionalConfigScreen(
                                     horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                     Text(
-                                            text = "管理所有模型配置",
+                                            text = stringResource(id = R.string.manage_all_model_configs),
                                             style = MaterialTheme.typography.bodyMedium,
                                             fontWeight = FontWeight.Medium
                                     )
                                     Icon(
                                             imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                                            contentDescription = "管理模型配置",
+                                            contentDescription = stringResource(id = R.string.manage_model_configs_desc),
                                             tint = MaterialTheme.colorScheme.primary
                                     )
                             }
@@ -191,7 +193,7 @@ fun FunctionalConfigScreen(
                                 modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("重置所有功能至默认配置")
+                        Text(stringResource(id = R.string.reset_all_functions_to_default))
                     }
 
                     // 成功提示
@@ -220,7 +222,7 @@ fun FunctionalConfigScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                        text = "配置已保存",
+                                        text = stringResource(id = R.string.config_saved),
                                         color = MaterialTheme.colorScheme.primary,
                                         fontWeight = FontWeight.Bold
                                 )
@@ -299,14 +301,17 @@ fun FunctionConfigCard(
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                    text = "当前配置: ${currentConfig?.name ?: "默认配置"}",
+                                    text = stringResource(
+                                        id = R.string.current_config_label,
+                                        currentConfig?.name ?: stringResource(id = R.string.default_config)
+                                    ),
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                             )
 
                             if (currentConfig != null) {
                                 Text(
-                                        text = "模型: ${currentConfig.modelName}",
+                                        text = stringResource(id = R.string.model_label, currentConfig.modelName),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -321,8 +326,8 @@ fun FunctionConfigCard(
                                 testResult?.let { result ->
                                     val isSuccess = result.isSuccess
                                     val message =
-                                            if (isSuccess) result.getOrNull() ?: "成功"
-                                            else "失败: ${result.exceptionOrNull()?.message?.take(30)}"
+                                            if (isSuccess) result.getOrNull() ?: stringResource(id = R.string.test_connection_success)
+                                            else stringResource(id = R.string.test_connection_failed, result.exceptionOrNull()?.message?.take(30) ?: "")
                                     val color =
                                             if (isSuccess) MaterialTheme.colorScheme.primary
                                             else MaterialTheme.colorScheme.error
@@ -396,12 +401,12 @@ fun FunctionConfigCard(
                                 } else {
                                     Icon(
                                             Icons.Default.Dns,
-                                            contentDescription = "测试连接",
+                                            contentDescription = stringResource(id = R.string.test_connection_desc),
                                             modifier = Modifier.size(16.dp)
                                     )
                                 }
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("测试", style = MaterialTheme.typography.bodySmall)
+                                Text(stringResource(id = R.string.test), style = MaterialTheme.typography.bodySmall)
                             }
                             
                             Spacer(modifier = Modifier.width(8.dp))
@@ -410,7 +415,7 @@ fun FunctionConfigCard(
                                     imageVector =
                                             if (expanded) Icons.Default.KeyboardArrowUp
                                             else Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "展开",
+                                    contentDescription = stringResource(id = R.string.expand_desc),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -423,7 +428,7 @@ fun FunctionConfigCard(
                 androidx.compose.animation.AnimatedVisibility(visible = expanded) {
                     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                         Text(
-                                text = "选择配置",
+                                text = stringResource(id = R.string.select_config),
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.padding(bottom = 8.dp)
@@ -465,7 +470,7 @@ fun FunctionConfigCard(
                                     if (isSelected) {
                                         Icon(
                                                 imageVector = Icons.Default.Check,
-                                                contentDescription = "已选择",
+                                                contentDescription = stringResource(id = R.string.selected_desc),
                                                 tint = MaterialTheme.colorScheme.primary,
                                                 modifier = Modifier.size(16.dp)
                                         )
@@ -510,24 +515,25 @@ fun FunctionConfigCard(
 }
 
 // 获取功能类型的显示名称
+@Composable
 fun getFunctionDisplayName(functionType: FunctionType): String {
     return when (functionType) {
-        FunctionType.CHAT -> "对话功能"
-        FunctionType.SUMMARY -> "对话总结"
-        FunctionType.PROBLEM_LIBRARY -> "问题库管理"
-        FunctionType.FILE_BINDING -> "文件绑定处理"
-        FunctionType.UI_CONTROLLER -> "UI 控制器"
+        FunctionType.CHAT -> stringResource(id = R.string.function_type_chat)
+        FunctionType.SUMMARY -> stringResource(id = R.string.function_type_summary)
+        FunctionType.PROBLEM_LIBRARY -> stringResource(id = R.string.function_type_problem_library)
+        FunctionType.FILE_BINDING -> stringResource(id = R.string.function_type_file_binding)
+        FunctionType.UI_CONTROLLER -> stringResource(id = R.string.function_type_ui_controller)
     }
 }
 
 // 获取功能类型的描述
+@Composable
 fun getFunctionDescription(functionType: FunctionType): String {
     return  when (functionType) {
-        FunctionType.CHAT -> "主要的对话功能，用于与用户进行日常对话交互"
-        FunctionType.SUMMARY -> "生成对话总结，方便追踪重要信息"
-        FunctionType.PROBLEM_LIBRARY -> "用于问题库的分析和管理"
-        FunctionType.FILE_BINDING ->
-                "处理文件内容的智能绑定与混合，提供更精确的代码处理能力。建议使用快速的廉价模型如Gemini Flash，不建议使用DeepSeek R1"
-        FunctionType.UI_CONTROLLER -> "用于UI界面的自动遍历与操作，会被主模型调用。建议使用廉价快速模型。"
+        FunctionType.CHAT -> stringResource(id = R.string.function_desc_chat)
+        FunctionType.SUMMARY -> stringResource(id = R.string.function_desc_summary)
+        FunctionType.PROBLEM_LIBRARY -> stringResource(id = R.string.function_desc_problem_library)
+        FunctionType.FILE_BINDING -> stringResource(id = R.string.function_desc_file_binding)
+        FunctionType.UI_CONTROLLER -> stringResource(id = R.string.function_desc_ui_controller)
     }
 }

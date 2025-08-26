@@ -58,23 +58,23 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.clickable
+import android.content.Context
 
 /** 根据用户选择的关键信息生成偏好描述 */
 private fun generatePreferencesDescription(
         gender: String,
         occupation: String,
-        birthDate: Long
+        birthDate: Long,
+        context: Context
 ): String {
-    val genderDesc =
-            when (gender) {
-                "男" -> "一位男性用户"
-                "女" -> "一位女性用户"
-                else -> "一位用户"
+    val genderDesc = when (gender) {
+        context.getString(R.string.user_male) -> context.getString(R.string.user_male_desc)
+        context.getString(R.string.user_female) -> context.getString(R.string.user_female_desc)
+        else -> context.getString(R.string.user_generic_desc)
             }
 
     // 根据出生日期计算年龄
-    val age =
-            if (birthDate > 0) {
+    val age = if (birthDate > 0) {
                 val today = Calendar.getInstance()
                 val birthCal = Calendar.getInstance().apply { timeInMillis = birthDate }
                 var age = today.get(Calendar.YEAR) - birthCal.get(Calendar.YEAR)
@@ -91,47 +91,41 @@ private fun generatePreferencesDescription(
                 0
             }
 
-    val ageDesc =
-            when {
-                age in 1..12 -> "儿童"
-                age in 13..17 -> "青少年"
-                age in 18..25 -> "年轻人"
-                age in 26..40 -> "壮年人士"
-                age in 41..60 -> "中年人士"
-                age > 60 -> "老年人士"
+    val ageDesc = when {
+        age in 1..12 -> context.getString(R.string.age_child)
+        age in 13..17 -> context.getString(R.string.age_teenager)
+        age in 18..25 -> context.getString(R.string.age_young_adult)
+        age in 26..40 -> context.getString(R.string.age_adult)
+        age in 41..60 -> context.getString(R.string.age_middle_aged)
+        age > 60 -> context.getString(R.string.age_elderly)
                 else -> ""
             }
 
-    val occupationDesc =
-            when (occupation) {
-                "学生" -> "学生身份，关注学习和个人发展"
-                "上班族" -> "职场人士，注重工作效率和专业发展"
-                "自由职业" -> "自由职业者，重视灵活性和创新能力"
-                else -> "工作者"
+    val occupationDesc = when (occupation) {
+        context.getString(R.string.occupation_student) -> context.getString(R.string.occupation_student_desc)
+        context.getString(R.string.occupation_employee) -> context.getString(R.string.occupation_employee_desc)
+        context.getString(R.string.occupation_freelancer) -> context.getString(R.string.occupation_freelancer_desc)
+        else -> context.getString(R.string.occupation_worker_desc)
             }
 
-    val interestTopics =
-            when (occupation) {
-                "学生" -> "学习资源、知识整理、考试准备和个人成长"
-                "上班族" -> "时间管理、专业技能、职场沟通和工作效率提升"
-                "自由职业" -> "创意设计、项目管理、自我提升和技能拓展"
-                else -> "各类实用工具、生活便利和个人提升"
+    val interestTopics = when (occupation) {
+        context.getString(R.string.occupation_student) -> context.getString(R.string.interests_student)
+        context.getString(R.string.occupation_employee) -> context.getString(R.string.interests_employee)
+        context.getString(R.string.occupation_freelancer) -> context.getString(R.string.interests_freelancer)
+        else -> context.getString(R.string.interests_general)
             }
 
-    val preferenceStyle =
-            when (gender) {
-                "男" -> "直接明了的交流方式，偏好简洁高效的解决方案"
-                "女" -> "细致周到的交流方式，注重细节和用户体验"
-                else -> "清晰有条理的交流方式，关注实用性和效率"
+    val preferenceStyle = when (gender) {
+        context.getString(R.string.user_male) -> context.getString(R.string.communication_style_male)
+        context.getString(R.string.user_female) -> context.getString(R.string.communication_style_female)
+        else -> context.getString(R.string.communication_style_general)
             }
 
     // 组装完整描述
-    val description = buildString {
-        append("我是$genderDesc")
-        if (ageDesc.isNotEmpty()) append("，$ageDesc")
-        append("，$occupationDesc。")
-        append("我对$interestTopics 特别感兴趣。")
-        append("在沟通中我喜欢$preferenceStyle。")
+    val description = if (ageDesc.isNotEmpty()) {
+        context.getString(R.string.preferences_intro_template, genderDesc, ageDesc, occupationDesc, interestTopics, preferenceStyle)
+    } else {
+        context.getString(R.string.preferences_intro_template_no_age, genderDesc, occupationDesc, interestTopics, preferenceStyle)
     }
 
     // 确保不超过100字
@@ -192,44 +186,67 @@ fun UserPreferencesGuideScreen(
             )
 
     // 各种选项数据
-    val genderOptions = listOf("男", "女", "其他")
-    val occupationOptions =
-            listOf("学生", "教师", "医生", "工程师", "设计师", "程序员", "企业主", "销售", "客服", "自由职业", "退休人员", "其他")
-    val personalityOptions =
-            listOf(
-                    "外向",
-                    "内向",
-                    "敏感",
-                    "理性",
-                    "感性",
-                    "谨慎",
-                    "冒险",
-                    "耐心",
-                    "急躁",
-                    "乐观",
-                    "悲观",
-                    "好奇",
-                    "保守",
-                    "创新",
-                    "细致",
-                    "粗放"
+    val genderOptions = listOf(
+        stringResource(R.string.user_male), 
+        stringResource(R.string.user_female), 
+        stringResource(R.string.user_other)
+    )
+    val occupationOptions = listOf(
+        stringResource(R.string.occupation_student), 
+        stringResource(R.string.occupation_teacher), 
+        stringResource(R.string.occupation_doctor), 
+        stringResource(R.string.occupation_engineer), 
+        stringResource(R.string.occupation_designer), 
+        stringResource(R.string.occupation_programmer), 
+        stringResource(R.string.occupation_business_owner), 
+        stringResource(R.string.occupation_sales), 
+        stringResource(R.string.occupation_customer_service), 
+        stringResource(R.string.occupation_freelancer), 
+        stringResource(R.string.occupation_retired), 
+        stringResource(R.string.occupation_other)
+    )
+    val personalityOptions = listOf(
+        stringResource(R.string.personality_extroverted),
+        stringResource(R.string.personality_introverted),
+        stringResource(R.string.personality_sensitive),
+        stringResource(R.string.personality_rational),
+        stringResource(R.string.personality_emotional),
+        stringResource(R.string.personality_cautious),
+        stringResource(R.string.personality_adventurous),
+        stringResource(R.string.personality_patient),
+        stringResource(R.string.personality_impatient),
+        stringResource(R.string.personality_optimistic),
+        stringResource(R.string.personality_pessimistic),
+        stringResource(R.string.personality_curious),
+        stringResource(R.string.personality_conservative),
+        stringResource(R.string.personality_innovative),
+        stringResource(R.string.personality_meticulous),
+        stringResource(R.string.personality_rough)
             )
-    val identityOptions =
-            listOf(
-                    "学生",
-                    "教师",
-                    "父母",
-                    "音乐爱好者",
-                    "艺术爱好者",
-                    "游戏玩家",
-                    "运动员",
-                    "技术宅",
-                    "旅行爱好者",
-                    "美食家",
-                    "创业者",
-                    "专业人士"
+    val identityOptions = listOf(
+        stringResource(R.string.identity_student),
+        stringResource(R.string.identity_teacher),
+        stringResource(R.string.identity_parent),
+        stringResource(R.string.identity_music_lover),
+        stringResource(R.string.identity_art_lover),
+        stringResource(R.string.identity_gamer),
+        stringResource(R.string.identity_athlete),
+        stringResource(R.string.identity_tech_enthusiast),
+        stringResource(R.string.identity_traveler),
+        stringResource(R.string.identity_foodie),
+        stringResource(R.string.identity_entrepreneur),
+        stringResource(R.string.identity_professional)
             )
-    val aiStyleOptions = listOf("专业严谨", "活泼幽默", "简洁直接", "耐心细致", "创意思维", "技术导向", "教学指导", "情感支持")
+    val aiStyleOptions = listOf(
+        stringResource(R.string.ai_style_professional), 
+        stringResource(R.string.ai_style_humorous), 
+        stringResource(R.string.ai_style_direct), 
+        stringResource(R.string.ai_style_patient), 
+        stringResource(R.string.ai_style_creative), 
+        stringResource(R.string.ai_style_technical), 
+        stringResource(R.string.ai_style_educational), 
+        stringResource(R.string.ai_style_supportive)
+    )
 
     // 从配置文件加载现有数据
     LaunchedEffect(profileId) {
@@ -240,7 +257,7 @@ fun UserPreferencesGuideScreen(
             // 如果配置列表为空，创建默认配置
             if (profiles.isEmpty()) {
                 // 创建默认配置并设置为活动配置
-                val defaultProfileId = preferencesManager.createProfile("默认配置", isDefault = true)
+                val defaultProfileId = preferencesManager.createProfile(context.getString(R.string.default_profile), isDefault = true)
                 preferencesManager.setActiveProfile(defaultProfileId)
                 // 给一点时间让数据存储更新
                 delay(100)
@@ -283,12 +300,18 @@ fun UserPreferencesGuideScreen(
             var needsUpdate = false
 
             if (selectedAiStyleTags.isEmpty() && customAiStyleTags.isEmpty()) {
-                selectedAiStyleTags = setOf("专业严谨", "简洁直接")
+                selectedAiStyleTags = setOf(
+                    context.getString(R.string.ai_style_professional), 
+                    context.getString(R.string.ai_style_direct)
+                )
                 needsUpdate = true
             }
 
             if (selectedPersonality.isEmpty() && customPersonalityTags.isEmpty()) {
-                selectedPersonality = setOf("理性", "耐心")
+                selectedPersonality = setOf(
+                    context.getString(R.string.personality_rational), 
+                    context.getString(R.string.personality_patient)
+                )
                 needsUpdate = true
             }
 
@@ -313,11 +336,17 @@ fun UserPreferencesGuideScreen(
             // 如果获取配置失败，创建默认配置
             try {
                 // 创建默认配置
-                val defaultProfileId = preferencesManager.createProfile("默认配置", isDefault = true)
+                val defaultProfileId = preferencesManager.createProfile(context.getString(R.string.default_profile), isDefault = true)
 
                 // 设置默认值
-                selectedAiStyleTags = setOf("专业严谨", "简洁直接")
-                selectedPersonality = setOf("理性", "耐心")
+                selectedAiStyleTags = setOf(
+                    context.getString(R.string.ai_style_professional), 
+                    context.getString(R.string.ai_style_direct)
+                )
+                selectedPersonality = setOf(
+                    context.getString(R.string.personality_rational), 
+                    context.getString(R.string.personality_patient)
+                )
 
                 // 保存默认值到配置
                 if (profileId.isNotEmpty()) {
@@ -337,8 +366,14 @@ fun UserPreferencesGuideScreen(
                 }
             } catch (ex: Exception) {
                 // 如果还是失败，至少确保UI有默认值显示
-                selectedAiStyleTags = setOf("专业严谨", "简洁直接")
-                selectedPersonality = setOf("理性", "耐心")
+                selectedAiStyleTags = setOf(
+                    context.getString(R.string.ai_style_professional), 
+                    context.getString(R.string.ai_style_direct)
+                )
+                selectedPersonality = setOf(
+                    context.getString(R.string.personality_rational), 
+                    context.getString(R.string.personality_patient)
+                )
             }
         }
     }
@@ -353,10 +388,10 @@ fun UserPreferencesGuideScreen(
                 title = {
                     Text(
                             when (currentTagCategory) {
-                                "personality" -> "添加自定义性格特点"
-                                "identity" -> "添加自定义身份认同"
-                                "aiStyle" -> "添加自定义AI风格"
-                                else -> "添加自定义标签"
+                                "personality" -> stringResource(R.string.add_custom_personality)
+                                "identity" -> stringResource(R.string.add_custom_identity)
+                                "aiStyle" -> stringResource(R.string.add_custom_ai_style)
+                                else -> stringResource(R.string.add_custom_tag)
                             }
                     )
                 },
@@ -365,7 +400,7 @@ fun UserPreferencesGuideScreen(
                             value = newTagText,
                             onValueChange = { if (it.length <= 10) newTagText = it },
                             modifier = Modifier.fillMaxWidth(),
-                            label = { Text("输入标签名称（最多10字符）") },
+                            label = { Text(stringResource(R.string.enter_tag_name)) },
                             singleLine = true
                     )
                 },
@@ -393,7 +428,7 @@ fun UserPreferencesGuideScreen(
                                 showCustomTagDialog = false
                             },
                             enabled = newTagText.isNotEmpty()
-                    ) { Text("添加") }
+                    ) { Text(stringResource(R.string.add_action)) }
                 },
                 dismissButton = {
                     TextButton(
@@ -401,7 +436,7 @@ fun UserPreferencesGuideScreen(
                                 newTagText = ""
                                 showCustomTagDialog = false
                             }
-                    ) { Text("取消") }
+                    ) { Text(stringResource(R.string.cancel_action)) }
                 }
         )
     }
@@ -416,15 +451,15 @@ fun UserPreferencesGuideScreen(
                                 datePickerState.selectedDateMillis?.let { birthDate = it }
                                 showDatePicker = false
                             }
-                    ) { Text("确定") }
+                    ) { Text(stringResource(R.string.confirm_action)) }
                 },
-                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("取消") } }
+                dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text(stringResource(R.string.cancel_action)) } }
         ) {
             DatePicker(
                     state = datePickerState,
                     title = {
                         Text(
-                                "选择您的出生日期",
+                                stringResource(R.string.select_birth_date_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 16.dp)
                         )
@@ -445,7 +480,7 @@ fun UserPreferencesGuideScreen(
             Column {
                 Text(
                         text =
-                                if (profileName.isNotEmpty()) "配置「$profileName」"
+                                if (profileName.isNotEmpty()) stringResource(R.string.profile_config_title, profileName)
                                 else stringResource(id = R.string.preferences_guide_title),
                         style = MaterialTheme.typography.titleMedium
                 )
@@ -453,7 +488,7 @@ fun UserPreferencesGuideScreen(
                 // 显示当前编辑的配置ID（调试用）
                 if (profileId.isNotEmpty()) {
                     Text(
-                            text = "正在编辑配置ID: $profileId",
+                            text = stringResource(R.string.editing_profile_id, profileId),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(top = 4.dp)
@@ -473,20 +508,20 @@ fun UserPreferencesGuideScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Info,
-                        contentDescription = "信息",
+                        contentDescription = stringResource(R.string.info_icon),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(24.dp)
                     )
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "以下所有选项均为可选，您可以根据自己的偏好自由填写。",
+                        stringResource(R.string.all_options_optional),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
 
             // 性别选择（标签选择）
-            Text("性别 (可选)", style = MaterialTheme.typography.titleSmall)
+            Text(stringResource(R.string.gender_optional), style = MaterialTheme.typography.titleSmall)
             FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     maxItemsInEachRow = 4,
@@ -504,7 +539,7 @@ fun UserPreferencesGuideScreen(
 
             // 职业选择（标签选择）
             Text(
-                    "职业 (可选)",
+                    stringResource(R.string.occupation_optional),
                     style = MaterialTheme.typography.titleSmall
             )
             FlowRow(
@@ -524,7 +559,7 @@ fun UserPreferencesGuideScreen(
 
             // 出生日期选择
             Text(
-                    "出生日期 (可选)",
+                    stringResource(R.string.birth_date_optional),
                     style = MaterialTheme.typography.titleSmall
             )
             OutlinedCard(
@@ -539,7 +574,7 @@ fun UserPreferencesGuideScreen(
                     Text(
                             text =
                                     if (birthDate > 0) dateFormatter.format(Date(birthDate))
-                                    else "请选择出生日期",
+                                    else stringResource(R.string.select_birth_date),
                             style = MaterialTheme.typography.bodyLarge,
                             color =
                                     if (birthDate > 0) MaterialTheme.colorScheme.onSurface
@@ -547,7 +582,7 @@ fun UserPreferencesGuideScreen(
                     )
                     Icon(
                             Icons.Default.CalendarMonth,
-                            contentDescription = "选择日期",
+                            contentDescription = stringResource(R.string.select_date),
                             tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -559,15 +594,15 @@ fun UserPreferencesGuideScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("性格特点 (可选，可多选)", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.personality_optional), style = MaterialTheme.typography.titleSmall)
                 TextButton(
                         onClick = {
                             currentTagCategory = "personality"
                             showCustomTagDialog = true
                         }
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加")
-                    Text("添加自定义")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_icon))
+                    Text(stringResource(R.string.add_custom))
                 }
             }
             FlowRow(
@@ -608,7 +643,7 @@ fun UserPreferencesGuideScreen(
                             trailingIcon = {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "删除",
+                                    contentDescription = stringResource(R.string.delete_icon),
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clickable {
@@ -627,15 +662,15 @@ fun UserPreferencesGuideScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("身份认同 (可选，可多选)", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.identity_optional), style = MaterialTheme.typography.titleSmall)
                 TextButton(
                         onClick = {
                             currentTagCategory = "identity"
                             showCustomTagDialog = true
                         }
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加")
-                    Text("添加自定义")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_icon))
+                    Text(stringResource(R.string.add_custom))
                 }
             }
             FlowRow(
@@ -676,7 +711,7 @@ fun UserPreferencesGuideScreen(
                             trailingIcon = {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "删除",
+                                    contentDescription = stringResource(R.string.delete_icon),
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clickable {
@@ -695,15 +730,15 @@ fun UserPreferencesGuideScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
             ) {
-                Text("期待的AI风格 (可选，可多选)", style = MaterialTheme.typography.titleSmall)
+                Text(stringResource(R.string.ai_style_optional), style = MaterialTheme.typography.titleSmall)
                 TextButton(
                         onClick = {
                             currentTagCategory = "aiStyle"
                             showCustomTagDialog = true
                         }
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "添加")
-                    Text("添加自定义")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.add_icon))
+                    Text(stringResource(R.string.add_custom))
                 }
             }
             FlowRow(
@@ -744,7 +779,7 @@ fun UserPreferencesGuideScreen(
                             trailingIcon = {
                                 Icon(
                                     Icons.Default.Close,
-                                    contentDescription = "删除",
+                                    contentDescription = stringResource(R.string.delete_icon),
                                     modifier = Modifier
                                         .size(16.dp)
                                         .clickable {

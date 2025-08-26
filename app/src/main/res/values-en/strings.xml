@@ -542,7 +542,6 @@
     <!-- ErrorDialog -->
     <string name="request_failed">Request Failed</string>
     <string name="confirm">OK</string>
-    <string name="unknown_error">Unknown error</string>
     <string name="server_connection_failed">Unable to connect to server, please check your network</string>
     <string name="connection_timeout">Server connection timeout, please check your network or try again later</string>
     <string name="connection_refused">Server refused connection, please try again later</string>
@@ -783,6 +782,7 @@
     <!-- Chat History Selector -->
     <string name="chat_history">Chat History</string>
     <string name="new_chat">New Chat</string>
+    <string name="new_conversation">New Conversation</string>
     
     <!-- Chat Screen Header -->
     <string name="exit_edit_mode">Exit Edit Mode</string>
@@ -895,7 +895,6 @@
     <string name="already_latest_version">Already on the latest version: %1$s</string>
     <string name="download">Download</string>
     <string name="ok">OK</string>
-    <string name="close">Close</string>
     <string name="select_download_source">Select Download Source</string>
     <string name="select_download_source_desc">Please select a download source suitable for your network:</string>
     <string name="china_mirror">China Accelerated Mirror</string>
@@ -1723,6 +1722,39 @@
     <string name="perm_desc_receive_wap_push">Allow app to receive WAP push messages</string>
     <string name="perm_desc_receive_mms">Allow app to receive MMS messages</string>
     
+    <!-- Functional Config Screen -->
+    <string name="functional_model_config_title">Functional Model Configuration Settings</string>
+    <string name="functional_model_config_desc">Set separate model configurations for different functions, allowing each function to use the most suitable API settings.</string>
+    <string name="manage_all_model_configs">Manage All Model Configurations</string>
+    <string name="manage_model_configs_desc">Manage Model Configurations</string>
+    <string name="reset_all_functions_to_default">Reset All Functions to Default Configuration</string>
+    <string name="current_config_label">Current Configuration: %1$s</string>
+    <string name="default_config">Default Configuration</string>
+    <string name="model_label">Model: %1$s</string>
+    <string name="test_connection_success">Success</string>
+    <string name="test_connection_failed">Failed: %1$s</string>
+    <string name="test_connection_desc">Test Connection</string>
+    <string name="test">Test</string>
+    <string name="expand_desc">Expand</string>
+    <string name="selected_desc">Selected</string>
+    
+    <!-- Function Types -->
+    <string name="function_type_chat">Chat Function</string>
+    <string name="function_type_summary">Conversation Summary</string>
+    <string name="function_type_problem_library">Problem Library Management</string>
+    <string name="function_type_file_binding">File Binding Processing</string>
+    <string name="function_type_ui_controller">UI Controller</string>
+    
+    <!-- Function Descriptions -->
+    <string name="function_desc_chat">Main chat function for daily conversation interaction with users</string>
+    <string name="function_desc_summary">Generate conversation summaries for tracking important information</string>
+    <string name="function_desc_problem_library">Used for problem library analysis and management</string>
+    <string name="function_desc_file_binding">Process intelligent binding and mixing of file content, providing more precise code processing capabilities. Recommend using fast, inexpensive models like Gemini Flash, not recommended to use DeepSeek R1</string>
+    <string name="function_desc_ui_controller">Used for automatic traversal and operation of UI interfaces, will be called by the main model. Recommend using inexpensive fast models.</string>
+    
+    <!-- Functional Prompt Config Screen -->
+    <string name="advanced_config_notice">For advanced configurations like modifying system prompt templates, please go to the \"Manage All Prompts\" page.</string>
+
     <!-- Additional permission strings -->
     <string name="perm_default_desc">Allow app to access system functions</string>
     <string name="debug_info">Debug Info</string>
@@ -1923,5 +1955,303 @@
     <string name="choose_delete_method">Please choose deletion method:</string>
     <string name="swipe_hint">Swipe left or right to edit or delete (tap to hide)</string>
     <string name="long_press_manage">Long press to manage</string>
+    
+    <!-- Settings Screen Subtitles -->
+    <string name="settings_user_preferences_subtitle">Personal preferences and behavior settings</string>
+    <string name="settings_language_subtitle">Interface language switching</string>
+    <string name="settings_theme_subtitle">Theme and appearance customization</string>
+    <string name="settings_model_params_subtitle">Model parameters and API configuration</string>
+    <string name="settings_functional_model_subtitle">Functional model specific configuration</string>
+    <string name="settings_speech_services">Speech Services Configuration</string>
+    <string name="settings_speech_services_subtitle">TTS/STT service settings</string>
+    <string name="settings_custom_headers">Custom Headers</string>
+    <string name="settings_custom_headers_subtitle">API request header field configuration</string>
+    <string name="settings_system_prompts_subtitle">System and model prompts</string>
+    <string name="settings_functional_prompts_subtitle">Functional prompt templates</string>
+    <string name="settings_context_length">Context Length</string>
+    <string name="settings_context_length_subtitle">Model memory conversation length (k tokens)</string>
+    <string name="settings_summary_threshold">Summary Token Threshold</string>
+    <string name="settings_summary_threshold_subtitle">Threshold for triggering chat summary (0.1-0.95)</string>
+    <string name="settings_data_permissions">Data and Permissions</string>
+    <string name="settings_tool_permissions_subtitle">Tool permissions and security settings</string>
+    <string name="settings_data_backup_subtitle">Chat history backup management</string>
+    <string name="settings_token_usage_stats">Token Usage Statistics</string>
+    <string name="settings_function_label">Function</string>
+    <string name="settings_no_token_records">No token usage records for functional modules yet.</string>
+    <string name="settings_reset_all_counts">Reset All Counts</string>
+    <string name="settings_input_tokens">Input</string>
+    <string name="settings_output_tokens">Output</string>
+    <string name="settings_cost">Cost</string>
+    
+    <!-- User Preferences Guide Screen -->
+    <string name="user_male">Male</string>
+    <string name="user_female">Female</string>
+    <string name="user_other">Other</string>
+    <string name="user_male_desc">A male user</string>
+    <string name="user_female_desc">A female user</string>
+    <string name="user_generic_desc">A user</string>
+    <string name="age_child">Child</string>
+    <string name="age_teenager">Teenager</string>
+    <string name="age_young_adult">Young adult</string>
+    <string name="age_adult">Adult</string>
+    <string name="age_middle_aged">Middle-aged</string>
+    <string name="age_elderly">Elderly</string>
+    <string name="occupation_student_desc">Student identity, focusing on learning and personal development</string>
+    <string name="occupation_employee_desc">Professional, emphasizing work efficiency and career development</string>
+    <string name="occupation_freelancer_desc">Freelancer, valuing flexibility and innovation</string>
+    <string name="occupation_worker_desc">Worker</string>
+    <string name="interests_student">Learning resources, knowledge organization, exam preparation and personal growth</string>
+    <string name="interests_employee">Time management, professional skills, workplace communication and efficiency improvement</string>
+    <string name="interests_freelancer">Creative design, project management, self-improvement and skill expansion</string>
+    <string name="interests_general">Various practical tools, life convenience and personal improvement</string>
+    <string name="communication_style_male">Direct and clear communication style, preferring concise and efficient solutions</string>
+    <string name="communication_style_female">Thoughtful and detailed communication style, focusing on details and user experience</string>
+    <string name="communication_style_general">Clear and organized communication style, focusing on practicality and efficiency</string>
+    <string name="preferences_intro_template">I am %1$s, %2$s. I am particularly interested in %3$s. In communication, I prefer %4$s.</string>
+    <string name="preferences_intro_template_no_age">I am %1$s, %2$s. I am particularly interested in %3$s. In communication, I prefer %4$s.</string>
+    
+    <!-- Occupation Options -->
+    <string name="occupation_student">Student</string>
+    <string name="occupation_employee">Employee</string>
+    <string name="occupation_teacher">Teacher</string>
+    <string name="occupation_doctor">Doctor</string>
+    <string name="occupation_engineer">Engineer</string>
+    <string name="occupation_designer">Designer</string>
+    <string name="occupation_programmer">Programmer</string>
+    <string name="occupation_business_owner">Business Owner</string>
+    <string name="occupation_sales">Sales</string>
+    <string name="occupation_customer_service">Customer Service</string>
+    <string name="occupation_freelancer">Freelancer</string>
+    <string name="occupation_retired">Retired</string>
+    <string name="occupation_other">Other</string>
+    
+    <!-- Personality Traits -->
+    <string name="personality_extroverted">Extroverted</string>
+    <string name="personality_introverted">Introverted</string>
+    <string name="personality_sensitive">Sensitive</string>
+    <string name="personality_rational">Rational</string>
+    <string name="personality_emotional">Emotional</string>
+    <string name="personality_cautious">Cautious</string>
+    <string name="personality_adventurous">Adventurous</string>
+    <string name="personality_patient">Patient</string>
+    <string name="personality_impatient">Impatient</string>
+    <string name="personality_optimistic">Optimistic</string>
+    <string name="personality_pessimistic">Pessimistic</string>
+    <string name="personality_curious">Curious</string>
+    <string name="personality_conservative">Conservative</string>
+    <string name="personality_innovative">Innovative</string>
+    <string name="personality_meticulous">Meticulous</string>
+    <string name="personality_rough">Rough</string>
+    
+    <!-- Identity Options -->
+    <string name="identity_student">Student</string>
+    <string name="identity_teacher">Teacher</string>
+    <string name="identity_parent">Parent</string>
+    <string name="identity_music_lover">Music Lover</string>
+    <string name="identity_art_lover">Art Lover</string>
+    <string name="identity_gamer">Gamer</string>
+    <string name="identity_athlete">Athlete</string>
+    <string name="identity_tech_enthusiast">Tech Enthusiast</string>
+    <string name="identity_traveler">Traveler</string>
+    <string name="identity_foodie">Foodie</string>
+    <string name="identity_entrepreneur">Entrepreneur</string>
+    <string name="identity_professional">Professional</string>
+    
+    <!-- AI Style Options -->
+    <string name="ai_style_professional">Professional &amp; Rigorous</string>
+    <string name="ai_style_humorous">Lively &amp; Humorous</string>
+    <string name="ai_style_direct">Concise &amp; Direct</string>
+    <string name="ai_style_patient">Patient &amp; Detailed</string>
+    <string name="ai_style_creative">Creative Thinking</string>
+    <string name="ai_style_technical">Technical Oriented</string>
+    <string name="ai_style_educational">Educational Guidance</string>
+    <string name="ai_style_supportive">Emotional Support</string>
+    
+    <!-- User Preferences Settings Screen -->
+    <string name="default_profile">Default Profile</string>
+    <string name="date_format_chinese">yyyy/MM/dd</string>
+    <string name="save_action">Save</string>
+    <string name="edit_profile">Edit Profile</string>
+    <string name="select_preference_profile">Please select preference profile</string>
+    <string name="new_action">New</string>
+    <string name="unnamed_profile">Unnamed Profile</string>
+    <string name="select_config">Select Config</string>
+    <string name="set_active">Set Active</string>
+    <string name="rename_action">Rename</string>
+    <string name="delete_action">Delete</string>
+    <string name="config_wizard">Config Wizard</string>
+    <string name="not_set">Not Set</string>
+    <string name="personality_traits">Personality Traits</string>
+    <string name="identity">Identity</string>
+    <string name="ai_style">AI Style</string>
+    <string name="currently_active">Currently Active</string>
+    <string name="activate_action">Activate</string>
+    <string name="locked">Locked</string>
+    <string name="unlocked">Unlocked</string>
+    <string name="select_date">Select Date</string>
+    <string name="input_field_placeholder">Please enter %s information</string>
+    <string name="not_set_field">%s not set</string>
+
+    <string name="new_preference_profile">New Preference Profile</string>
+    <string name="create_new_profile_desc">Create a new preference profile to personalize your AI assistant experience</string>
+    <string name="profile_name">Profile Name</string>
+    <string name="profile_name_placeholder">e.g.: Work, Study, Entertainment...</string>
+    <string name="create_and_configure">Create &amp; Configure</string>
+    <string name="cancel_action">Cancel</string>
+    <string name="rename_profile">Rename Profile</string>
+    <string name="enter_new_profile_name">Please enter new profile name</string>
+    <string name="confirm_rename">Confirm Rename</string>
+    <string name="confirm_delete_profile">Confirm Delete Profile</string>
+    <string name="delete_profile_warning">Are you sure you want to delete this preference profile? This operation will also delete its bound knowledge base data and cannot be recovered.\n\nWe recommend backing up important content beforehand.</string>
+
+    
+    <!-- User Preferences Guide Screen Dialog -->
+    <string name="add_custom_personality">Add Custom Personality Trait</string>
+    <string name="add_custom_identity">Add Custom Identity</string>
+    <string name="add_custom_ai_style">Add Custom AI Style</string>
+    <string name="add_custom_tag">Add Custom Tag</string>
+    <string name="enter_tag_name">Enter tag name (max 10 characters)</string>
+    <string name="add_action">Add</string>
+    <string name="confirm_action">Confirm</string>
+    <string name="profile_config_title">Configure "%s"</string>
+    <string name="editing_profile_id">Editing profile ID: %s</string>
+    <string name="all_options_optional">All the following options are optional. You can fill them according to your preferences.</string>
+    <string name="gender_optional">Gender (Optional)</string>
+    <string name="occupation_optional">Occupation (Optional)</string>
+    <string name="birth_date_optional">Birth Date (Optional)</string>
+    <string name="personality_optional">Personality Traits (Optional, Multiple Selection)</string>
+    <string name="add_custom">Add Custom</string>
+    <string name="identity_optional">Identity (Optional, Multiple Selection)</string>
+    <string name="ai_style_optional">Expected AI Style (Optional, Multiple Selection)</string>
+    <string name="select_birth_date_title">Select your birth date</string>
+    <string name="info_icon">Info</string>
+    <string name="add_icon">Add</string>
+    <string name="delete_icon">Delete</string>
+  
+    <!-- Theme Settings Additional Strings -->
+    <string name="theme_on_color_mode">Theme Text Color</string>
+    <string name="theme_on_color_auto">Auto</string>
+    <string name="theme_on_color_light">Light</string>
+    <string name="theme_on_color_dark">Dark</string>
+    <string name="chat_style_title">Chat Style</string>
+    <string name="chat_style_desc">Choose chat interface style</string>
+    <string name="chat_style_cursor">Command Box</string>
+    <string name="chat_style_bubble">Bubble</string>
+    <string name="display_options_title">Display Options</string>
+    <string name="show_thinking_process">Show Thinking Process</string>
+    <string name="show_thinking_process_desc">Toggle visibility of &lt;think&gt; tags in AI responses</string>
+    <string name="show_status_tags">Show Status Tags</string>
+    <string name="show_status_tags_desc">Toggle visibility of task completion and waiting status tags</string>
+    <string name="show_input_processing_status">Show Input Processing Status</string>
+    <string name="show_input_processing_status_desc">Show AI task processing status above input box</string>
+    <string name="avatar_customization_title">Avatar Customization</string>
+    <string name="user_avatar_label">User Avatar</string>
+    <string name="ai_avatar_label">AI Avatar</string>
+    <string name="avatar_shape_title">Avatar Shape</string>
+    <string name="avatar_shape_circle">Circle</string>
+    <string name="avatar_shape_square">Square</string>
+    <string name="avatar_corner_radius">Avatar Corner Radius</string>
+    <string name="avatar_corner_decrease">Decrease Corner</string>
+    <string name="avatar_corner_increase">Increase Corner</string>
+    <string name="ui_text_title">UI Text</string>
+    <string name="custom_chat_title_label">Custom Chat Title</string>
+    <string name="custom_chat_title_placeholder">e.g.: AI Assistant</string>
+    <string name="save_title_desc">Save Title</string>
+  
+    <!-- Model Configuration Screen -->
+    <string name="select_model_config">Select Model Configuration</string>
+    <string name="connection_test_success">Connection Success</string>
+    <string name="connection_test_failed">Connection Failed: %1$s</string>
+    <string name="no_config_selected">No Configuration Selected</string>
+    <string name="default_config_warning">Please modify the default configuration\'s API Key, otherwise it will be considered as not using your own configuration</string>
+    <string name="config_deleted">Configuration Deleted</string>
+    <string name="new_model_config">New Model Configuration</string>
+    <string name="new_model_config_desc">Create a new model configuration with custom API and parameter settings</string>
+    <string name="model_config_name">Configuration Name</string>
+    <string name="model_config_name_placeholder">e.g.: GPT-4 Config, Claude Config...</string>
+    <string name="create_action">Create</string>
+    <string name="new_config_created">New Configuration Created</string>
+    
+    <!-- ModelApiSettingsSection strings -->
+    <string name="api_endpoint_placeholder">e.g.: https://api.openai.com/v1/chat/completions</string>
+    <string name="actual_request_url">Actual request URL: %s</string>
+    <string name="endpoint_completion_hint">Hint: If you enter a base URL, the system will automatically complete the path. To disable, add # at the end of the URL.</string>
+    <string name="api_key_placeholder_default">Using default key, you can input directly</string>
+    <string name="api_key_placeholder_custom">Enter API key</string>
+    <string name="model_name_placeholder">e.g.: gpt-4, claude-3-opus-20240229...</string>
+    <string name="get_models_list">Get Models List</string>
+    <string name="getting_models_list">Getting models list...</string>
+    <string name="models_list_success">Successfully retrieved %d models</string>
+    <string name="unknown_error">Unknown error</string>
+    <string name="get_models_list_failed">Failed to get models list: %s</string>
+    <string name="default_config_no_models_list">Cannot get models list when using default configuration</string>
+    <string name="fill_endpoint_and_key">Please fill in API endpoint and key first</string>
+    <string name="api_provider">API Provider</string>
+    <string name="select_api_provider">Click to select API provider</string>
+    <string name="select">Select</string>
+    <string name="default_config_model_restriction">When using default configuration, only deepseek-chat model can be used</string>
+    <string name="api_settings_saved">API settings saved</string>
+    <string name="save_api_settings">Save API Settings</string>
+    <string name="available_models_list">Available Models List</string>
+    <string name="refresh_models_list_failed">Failed to refresh models list: %s</string>
+    <string name="refresh_models_failed">Failed to refresh models list</string>
+    <string name="refresh_models_list">Refresh Models List</string>
+    <string name="search_models">Search models</string>
+    <string name="no_models_found">No models found</string>
+    <string name="models_displayed">Showing %d models</string>
+    <string name="models_displayed_filtered"> (filtered)</string>
+    <string name="close">Close</string>
+    
+    <!-- API Provider names -->
+    <string name="provider_openai">OpenAI (GPT Series)</string>
+    <string name="provider_anthropic">Anthropic (Claude Series)</string>
+    <string name="provider_google">Google (Gemini Series)</string>
+    <string name="provider_baidu">Baidu (ERNIE Series)</string>
+    <string name="provider_aliyun">Alibaba Cloud (Qwen Series)</string>
+    <string name="provider_xunfei">iFLYTEK (Spark Series)</string>
+    <string name="provider_zhipu">Zhipu AI (ChatGLM Series)</string>
+    <string name="provider_baichuan">Baichuan Models</string>
+    <string name="provider_moonshot">Moonshot AI</string>
+    <string name="provider_deepseek">Deepseek Models</string>
+    <string name="provider_siliconflow">SiliconFlow</string>
+    <string name="provider_openrouter">OpenRouter (Multi-model Hub)</string>
+    <string name="provider_infiniai">InfiniAI</string>
+    <string name="provider_lmstudio">LM Studio</string>
+    <string name="provider_other">Other Providers</string>
+    <string name="select_api_provider_title">Select API Provider</string>
+    <string name="search_providers">Search providers</string>
+    <!-- ModelParametersSection strings -->
+    <string name="max_tokens_name">Max Tokens</string>
+    <string name="max_tokens_description">Controls the maximum number of tokens AI generates each time</string>
+    <string name="temperature_name">Temperature</string>
+    <string name="temperature_description">Controls output randomness. Lower values are more deterministic, higher values are more random</string>
+    <string name="top_p_name">Top-P Sampling</string>
+    <string name="top_p_description">As an alternative to temperature, the model only considers tokens with the highest Top-P probability</string>
+    <string name="top_k_name">Top-K Sampling</string>
+    <string name="top_k_description">The model only considers the top K tokens with highest probability. 0 means disabled</string>
+    <string name="presence_penalty_name">Presence Penalty</string>
+    <string name="presence_penalty_description">Enhances the model\'s tendency to talk about new topics. Higher values mean greater penalty</string>
+    <string name="frequency_penalty_name">Frequency Penalty</string>
+    <string name="frequency_penalty_description">Reduces the likelihood of the model repeating the same words. Higher values mean greater penalty</string>
+    <string name="repetition_penalty_name">Repetition Penalty</string>
+    <string name="repetition_penalty_description">Further reduces repetition. 1.0 means no penalty, greater than 1.0 reduces repetition likelihood</string>
+    <string name="parameters_saved">Parameters saved</string>
+    <string name="parameters_reset">All parameters reset to default values</string>
+    <string name="model_parameters_settings">Model Parameter Settings</string>
+    <string name="parameters_description">When parameters are enabled, they will be included in API requests. By default, all parameters are disabled and use model defaults.</string>
+    <string name="generation_parameters">Generation Parameters</string>
+    <string name="creativity_parameters">Creativity Parameters</string>
+    <string name="repetition_control_parameters">Repetition Control Parameters</string>
+    <string name="reset_parameters">Reset Parameters</string>
+    <string name="save_parameters">Save Parameters</string>
+    <string name="api_name_format">API name: %s</string>
+    <string name="must_be_integer">Must be an integer</string>
+    <string name="value">Value</string>
+    <string name="range_format">Range: %s - %s</string>
+    <string name="must_be_float">Must be a float</string>
+    <string name="default_value_format">Default value: %s</string>
+    <string name="temperature_recommendation">Temperature Recommendation</string>
+    <string name="parameter_value">Parameter Value</string>
+    <string name="parameter_range_format">Range: %s - %s</string>
   
 </resources> 

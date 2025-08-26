@@ -52,8 +52,6 @@
     <string name="processing">处理中...</string>
     <string name="error_occurred">发生错误: %1$s</string>
     <string name="dragon_bones_config">龙骨配置</string>
-    <string name="collapse">折叠</string>
-    <string name="expand">展开</string>
     <string name="select_model">选择模型</string>
     <string name="current_model">当前模型</string>
     <string name="scale">缩放: %1$s</string>
@@ -62,7 +60,6 @@
     <string name="confirm_delete_model_title">确认删除模型？</string>
     <string name="confirm_delete_model_message">删除后不可恢复，确定要删除该模型吗？</string>
     <string name="delete">删除</string>
-    <string name="cancel">取消</string>
     <string name="no_models_available">没有可用的模型</string>
     <string name="please_select_model">请选择一个模型</string>
     <string name="how_to_import">如何制作和导入模型?</string>
@@ -133,9 +130,6 @@
     
     <!-- AI Chat Screen -->
     <string name="configure_ai">配置 AI 接口</string>
-    <string name="api_endpoint">API 接口地址</string>
-    <string name="api_key">API 密钥</string>
-    <string name="model_name">模型名称</string>
     <string name="save_and_start">保存并开始对话</string>
     <string name="ai_chat">AI 对话</string>
     <string name="start_chat_hint">开始新的对话。输入您的问题以获取AI回复。</string>
@@ -313,7 +307,6 @@
     <!-- Settings Screen -->
     <string name="settings">设置</string>
     <string name="no_settings">暂无设置选项可用</string>
-    <string name="api_settings">API 配置设置</string>
     <string name="save_settings">保存设置</string>
     <string name="settings_saved">设置已保存</string>
     <string name="display_settings">显示设置</string>
@@ -414,7 +407,6 @@
     <string name="custom_description">自定义介绍</string>
     <string name="preferences_hint">请输入您的个人介绍（最多100字）</string>
     <string name="enter_preferences">在此输入您的个人介绍...</string>
-    <string name="save">保存</string>
     <string name="edit_preferences">编辑偏好介绍</string>
     <string name="reset_preferences">重置偏好设置</string>
     <string name="set_preferences">设置偏好</string>
@@ -537,7 +529,6 @@
     <string name="searching">正在搜索...</string>
     <string name="case_sensitive">区分大小写</string>
     <string name="use_wildcard">使用通配符</string>
-    <string name="search">搜索</string>
     
     <!-- File Operations -->
     <string name="new_folder">新建文件夹</string>
@@ -554,7 +545,6 @@
     <!-- ErrorDialog -->
     <string name="request_failed">请求失败</string>
     <string name="confirm">确定</string>
-    <string name="unknown_error">未知错误</string>
     <string name="server_connection_failed">无法连接到服务器，请检查网络连接</string>
     <string name="connection_timeout">连接服务器超时，请检查网络或稍后再试</string>
     <string name="connection_refused">服务器拒绝连接，请稍后再试</string>
@@ -907,7 +897,6 @@
     <string name="already_latest_version">当前已是最新版本: %1$s</string>
     <string name="download">去下载</string>
     <string name="ok">确定</string>
-    <string name="close">关闭</string>
     <string name="select_download_source">选择下载源</string>
     <string name="select_download_source_desc">请选择适合您网络环境的下载源：</string>
     <string name="china_mirror">国内加速镜像</string>
@@ -1417,12 +1406,10 @@
     <string name="stream_speed_format">速度 (x%.1f)</string>
     
     <!-- Additional Actions -->
-    <string name="clear">清除</string>
     <string name="back">返回</string>
     <string name="pause">暂停</string>
     <string name="continue_action">继续</string>
     <string name="start">开始</string>
-    <string name="reset">重置</string>
     <string name="open_file">打开文件</string>
     <string name="system_app">系统应用</string>
     <string name="dangerous_permission">危险权限</string>
@@ -1743,6 +1730,39 @@
     <string name="perm_desc_receive_wap_push">允许应用接收WAP推送消息</string>
     <string name="perm_desc_receive_mms">允许应用接收彩信</string>
     
+    <!-- Functional Config Screen -->
+    <string name="functional_model_config_title">功能模型配置设置</string>
+    <string name="functional_model_config_desc">为不同功能设置单独的模型配置，使每个功能都能使用最适合的API设置。</string>
+    <string name="manage_all_model_configs">管理所有模型配置</string>
+    <string name="manage_model_configs_desc">管理模型配置</string>
+    <string name="reset_all_functions_to_default">重置所有功能至默认配置</string>
+    <string name="current_config_label">当前配置: %1$s</string>
+    <string name="default_config">默认配置</string>
+    <string name="model_label">模型: %1$s</string>
+    <string name="test_connection_success">成功</string>
+    <string name="test_connection_failed">失败: %1$s</string>
+    <string name="test_connection_desc">测试连接</string>
+    <string name="test">测试</string>
+    <string name="expand_desc">展开</string>
+    <string name="selected_desc">已选择</string>
+    
+    <!-- Function Types -->
+    <string name="function_type_chat">对话功能</string>
+    <string name="function_type_summary">对话总结</string>
+    <string name="function_type_problem_library">问题库管理</string>
+    <string name="function_type_file_binding">文件绑定处理</string>
+    <string name="function_type_ui_controller">UI 控制器</string>
+    
+    <!-- Function Descriptions -->
+    <string name="function_desc_chat">主要的对话功能，用于与用户进行日常对话交互</string>
+    <string name="function_desc_summary">生成对话总结，方便追踪重要信息</string>
+    <string name="function_desc_problem_library">用于问题库的分析和管理</string>
+    <string name="function_desc_file_binding">处理文件内容的智能绑定与混合，提供更精确的代码处理能力。建议使用快速的廉价模型如Gemini Flash，不建议使用DeepSeek R1</string>
+    <string name="function_desc_ui_controller">用于UI界面的自动遍历与操作，会被主模型调用。建议使用廉价快速模型。</string>
+    
+    <!-- Functional Prompt Config Screen -->
+    <string name="advanced_config_notice">如需修改系统提示模板等高级配置，请前往「管理所有提示词」页面。</string>
+
     <!-- Additional permission strings -->
     <string name="perm_default_desc">允许应用访问系统功能</string>
     <string name="debug_info">调试信息</string>
@@ -1925,5 +1945,315 @@
     <string name="choose_delete_method">请选择删除方式：</string>
     <string name="swipe_hint">左右滑动可编辑或删除(点击不再显示)</string>
     <string name="long_press_manage">长按管理</string>
+    
+    <!-- Settings Screen Subtitles -->
+    <string name="settings_user_preferences_subtitle">个人偏好和行为设置</string>
+    <string name="settings_language_subtitle">界面语言切换</string>
+    <string name="settings_theme_subtitle">主题和外观定制</string>
+    <string name="settings_model_params_subtitle">模型参数和API配置</string>
+    <string name="settings_functional_model_subtitle">功能模型专项配置</string>
+    <string name="settings_speech_services">语音服务配置</string>
+    <string name="settings_speech_services_subtitle">TTS/STT服务设置</string>
+    <string name="settings_custom_headers">自定义请求头</string>
+    <string name="settings_custom_headers_subtitle">API请求头字段配置</string>
+    <string name="settings_system_prompts_subtitle">系统和模型提示词</string>
+    <string name="settings_functional_prompts_subtitle">功能专用提示词模板</string>
+    <string name="settings_context_length">上下文长度</string>
+    <string name="settings_context_length_subtitle">模型记忆对话长度(k tokens)</string>
+    <string name="settings_summary_threshold">摘要Token阈值</string>
+    <string name="settings_summary_threshold_subtitle">触发聊天摘要的阈值(0.1-0.95)</string>
+    <string name="settings_data_permissions">数据和权限</string>
+    <string name="settings_tool_permissions_subtitle">工具权限和安全设置</string>
+    <string name="settings_data_backup_subtitle">聊天记录备份管理</string>
+    <string name="settings_token_usage_stats">Token使用统计</string>
+    <string name="settings_function_label">功能</string>
+    <string name="settings_no_token_records">暂无功能模块的Token使用记录。</string>
+    <string name="settings_reset_all_counts">重置所有计数</string>
+    <string name="settings_input_tokens">输入</string>
+    <string name="settings_output_tokens">输出</string>
+        <string name="settings_cost">费用</string>
+    
+    <!-- User Preferences Guide Screen -->
+    <string name="user_male">男</string>
+    <string name="user_female">女</string>
+    <string name="user_other">其他</string>
+    <string name="user_male_desc">一位男性用户</string>
+    <string name="user_female_desc">一位女性用户</string>
+    <string name="user_generic_desc">一位用户</string>
+    <string name="age_child">儿童</string>
+    <string name="age_teenager">青少年</string>
+    <string name="age_young_adult">年轻人</string>
+    <string name="age_adult">壮年人士</string>
+    <string name="age_middle_aged">中年人士</string>
+    <string name="age_elderly">老年人士</string>
+    <string name="occupation_student_desc">学生身份，关注学习和个人发展</string>
+    <string name="occupation_employee_desc">职场人士，注重工作效率和专业发展</string>
+    <string name="occupation_freelancer_desc">自由职业者，重视灵活性和创新能力</string>
+    <string name="occupation_worker_desc">工作者</string>
+    <string name="interests_student">学习资源、知识整理、考试准备和个人成长</string>
+    <string name="interests_employee">时间管理、专业技能、职场沟通和工作效率提升</string>
+    <string name="interests_freelancer">创意设计、项目管理、自我提升和技能拓展</string>
+    <string name="interests_general">各类实用工具、生活便利和个人提升</string>
+    <string name="communication_style_male">直接明了的交流方式，偏好简洁高效的解决方案</string>
+    <string name="communication_style_female">细致周到的交流方式，注重细节和用户体验</string>
+    <string name="communication_style_general">清晰有条理的交流方式，关注实用性和效率</string>
+    <string name="preferences_intro_template">我是%1$s，%2$s。我对%3$s特别感兴趣。在沟通中我喜欢%4$s。</string>
+    <string name="preferences_intro_template_no_age">我是%1$s，%2$s。我对%3$s特别感兴趣。在沟通中我喜欢%4$s。</string>
+    
+    <!-- Occupation Options -->
+    <string name="occupation_student">学生</string>
+    <string name="occupation_employee">职员</string>
+    <string name="occupation_teacher">教师</string>
+    <string name="occupation_doctor">医生</string>
+    <string name="occupation_engineer">工程师</string>
+    <string name="occupation_designer">设计师</string>
+    <string name="occupation_programmer">程序员</string>
+    <string name="occupation_business_owner">企业主</string>
+    <string name="occupation_sales">销售</string>
+    <string name="occupation_customer_service">客服</string>
+    <string name="occupation_freelancer">自由职业</string>
+    <string name="occupation_retired">退休人员</string>
+    <string name="occupation_other">其他</string>
+    
+    <!-- Personality Traits -->
+    <string name="personality_extroverted">外向</string>
+    <string name="personality_introverted">内向</string>
+    <string name="personality_sensitive">敏感</string>
+    <string name="personality_rational">理性</string>
+    <string name="personality_emotional">感性</string>
+    <string name="personality_cautious">谨慎</string>
+    <string name="personality_adventurous">冒险</string>
+    <string name="personality_patient">耐心</string>
+    <string name="personality_impatient">急躁</string>
+    <string name="personality_optimistic">乐观</string>
+    <string name="personality_pessimistic">悲观</string>
+    <string name="personality_curious">好奇</string>
+    <string name="personality_conservative">保守</string>
+    <string name="personality_innovative">创新</string>
+    <string name="personality_meticulous">细致</string>
+    <string name="personality_rough">粗放</string>
+    
+    <!-- Identity Options -->
+    <string name="identity_student">学生</string>
+    <string name="identity_teacher">教师</string>
+    <string name="identity_parent">父母</string>
+    <string name="identity_music_lover">音乐爱好者</string>
+    <string name="identity_art_lover">艺术爱好者</string>
+    <string name="identity_gamer">游戏玩家</string>
+    <string name="identity_athlete">运动员</string>
+    <string name="identity_tech_enthusiast">技术宅</string>
+    <string name="identity_traveler">旅行爱好者</string>
+    <string name="identity_foodie">美食家</string>
+    <string name="identity_entrepreneur">创业者</string>
+    <string name="identity_professional">专业人士</string>
+    
+    <!-- AI Style Options -->
+    <string name="ai_style_professional">专业严谨</string>
+    <string name="ai_style_humorous">活泼幽默</string>
+    <string name="ai_style_direct">简洁直接</string>
+    <string name="ai_style_patient">耐心细致</string>
+    <string name="ai_style_creative">创意思维</string>
+    <string name="ai_style_technical">技术导向</string>
+    <string name="ai_style_educational">教学指导</string>
+    <string name="ai_style_supportive">情感支持</string>
+    
+    <!-- User Preferences Settings Screen -->
+    <string name="default_profile">默认配置</string>
+    <string name="date_format_chinese">yyyy年MM月dd日</string>
+    <string name="save_action">保存</string>
+    <string name="edit_profile">编辑配置</string>
+    <string name="select_preference_profile">请选择偏好配置</string>
+    <string name="new_action">新建</string>
+    <string name="unnamed_profile">未命名配置</string>
+    <string name="select_config">选择配置</string>
+    <string name="set_active">设为活跃</string>
+    <string name="rename_action">重命名</string>
+    <string name="delete_action">删除</string>
+    <string name="config_wizard">配置向导</string>
+    <string name="not_set">未设置</string>
+    <string name="personality_traits">性格特点</string>
+    <string name="identity">身份认同</string>
+    <string name="ai_style">AI风格</string>
+    <string name="currently_active">当前激活</string>
+    <string name="activate_action">激活</string>
+    <string name="locked">已锁定</string>
+    <string name="unlocked">未锁定</string>
+    <string name="select_date">选择日期</string>
+    <string name="input_field_placeholder">请输入%s信息</string>
+    <string name="not_set_field">未设置%s</string>
+
+    <string name="new_preference_profile">新建偏好配置</string>
+    <string name="create_new_profile_desc">创建新的偏好配置，个性化AI助手体验</string>
+    <string name="profile_name">配置名称</string>
+    <string name="profile_name_placeholder">例如: 工作、学习、娱乐...</string>
+    <string name="create_and_configure">创建并配置</string>
+    <string name="cancel_action">取消</string>
+    <string name="rename_profile">重命名配置</string>
+    <string name="enter_new_profile_name">请输入新的配置名称</string>
+    <string name="confirm_rename">确认重命名</string>
+    <string name="confirm_delete_profile">确认删除配置</string>
+    <string name="delete_profile_warning">您确定要删除该偏好配置吗？此操作会同时删除其绑定的知识库数据，且无法恢复。\n\n建议您提前备份重要内容。</string>
+
+    
+    <!-- User Preferences Guide Screen Dialog -->
+    <string name="add_custom_personality">添加自定义性格特点</string>
+    <string name="add_custom_identity">添加自定义身份认同</string>
+    <string name="add_custom_ai_style">添加自定义AI风格</string>
+    <string name="add_custom_tag">添加自定义标签</string>
+    <string name="enter_tag_name">输入标签名称（最多10字符）</string>
+    <string name="add_action">添加</string>
+    <string name="confirm_action">确定</string>
+    <string name="profile_config_title">配置「%s」</string>
+    <string name="editing_profile_id">正在编辑配置ID: %s</string>
+    <string name="all_options_optional">以下所有选项均为可选，您可以根据自己的偏好自由填写。</string>
+    <string name="gender_optional">性别 (可选)</string>
+    <string name="occupation_optional">职业 (可选)</string>
+    <string name="birth_date_optional">出生日期 (可选)</string>
+    <string name="personality_optional">性格特点 (可选，可多选)</string>
+    <string name="add_custom">添加自定义</string>
+    <string name="identity_optional">身份认同 (可选，可多选)</string>
+    <string name="ai_style_optional">期待的AI风格 (可选，可多选)</string>
+    <string name="select_birth_date_title">选择您的出生日期</string>
+    <string name="info_icon">信息</string>
+    <string name="add_icon">添加</string>
+    <string name="delete_icon">删除</string>
+    
+    <!-- Theme Settings Additional Strings -->
+    <string name="theme_on_color_mode">主题文字颜色</string>
+    <string name="theme_on_color_auto">自动</string>
+    <string name="theme_on_color_light">浅色</string>
+    <string name="theme_on_color_dark">深色</string>
+    <string name="chat_style_title">聊天风格</string>
+    <string name="chat_style_desc">选择聊天界面风格</string>
+    <string name="chat_style_cursor">命令框</string>
+    <string name="chat_style_bubble">对话框</string>
+    <string name="display_options_title">显示选项</string>
+    <string name="show_thinking_process">显示思考过程</string>
+    <string name="show_thinking_process_desc">切换AI响应中 &lt;think&gt; 标签的可见性</string>
+    <string name="show_status_tags">显示任务状态标签</string>
+    <string name="show_status_tags_desc">切换任务完成和等待状态标签的可见性</string>
+    <string name="show_input_processing_status">显示输入处理状态</string>
+    <string name="show_input_processing_status_desc">在输入框上方显示AI正在处理任务的状态</string>
+    <string name="avatar_customization_title">自定义头像</string>
+    <string name="user_avatar_label">用户头像</string>
+    <string name="ai_avatar_label">AI 头像</string>
+    <string name="avatar_shape_title">头像形状</string>
+    <string name="avatar_shape_circle">圆形</string>
+    <string name="avatar_shape_square">方形</string>
+    <string name="avatar_corner_radius">头像圆角</string>
+    <string name="avatar_corner_decrease">减小圆角</string>
+    <string name="avatar_corner_increase">增大圆角</string>
+    <string name="ui_text_title">界面文本</string>
+    <string name="custom_chat_title_label">自定义聊天标题</string>
+    <string name="custom_chat_title_placeholder">例如：AI助手</string>
+    <string name="save_title_desc">保存标题</string>
+    
+    <!-- Model Configuration Screen -->
+    <string name="select_model_config">选择模型配置</string>
+    <string name="connection_test_success">连接成功</string>
+    <string name="connection_test_failed">连接失败: %1$s</string>
+    <string name="no_config_selected">未选择配置</string>
+    <string name="default_config_warning">请修改默认配置的API Key，否则将被判断为未使用自己的配置</string>
+    <string name="config_deleted">配置已删除</string>
+    <string name="new_model_config">新建模型配置</string>
+    <string name="new_model_config_desc">创建新的模型配置，自定义API和参数设置</string>
+    <string name="model_config_name">配置名称</string>
+    <string name="model_config_name_placeholder">例如: GPT-4配置、Claude配置...</string>
+    <string name="create_action">创建</string>
+    <string name="new_config_created">新配置已创建</string>
+    
+    <!-- ModelApiSettingsSection strings -->
+    <string name="api_settings">API设置</string>
+    <string name="api_endpoint">API端点</string>
+    <string name="api_endpoint_placeholder">例如: https://api.openai.com/v1/chat/completions</string>
+    <string name="actual_request_url">实际请求地址: %s</string>
+    <string name="endpoint_completion_hint">提示: 如果您输入的是基础URL，系统将自动补全路径。如需禁用，请在URL末尾添加#号。</string>
+    <string name="api_key">API密钥</string>
+    <string name="api_key_placeholder_default">使用默认Key, 可直接输入</string>
+    <string name="api_key_placeholder_custom">输入API密钥</string>
+    <string name="model_name">模型名称</string>
+    <string name="model_name_placeholder">例如: gpt-4, claude-3-opus-20240229...</string>
+    <string name="get_models_list">获取模型列表</string>
+    <string name="getting_models_list">正在获取模型列表...</string>
+    <string name="models_list_success">成功获取 %d 个模型</string>
+    <string name="unknown_error">未知错误</string>
+    <string name="get_models_list_failed">获取模型列表失败: %s</string>
+    <string name="default_config_no_models_list">使用默认配置时无法获取模型列表</string>
+    <string name="fill_endpoint_and_key">请先填写API端点和密钥</string>
+    <string name="api_provider">API提供商</string>
+    <string name="select_api_provider">点击选择API提供商</string>
+    <string name="select">选择</string>
+    <string name="default_config_model_restriction">使用默认配置时，只能使用deepseek-chat模型</string>
+    <string name="api_settings_saved">API设置已保存</string>
+    <string name="save_api_settings">保存API设置</string>
+    <string name="available_models_list">可用模型列表</string>
+    <string name="refresh_models_list_failed">刷新模型列表失败: %s</string>
+    <string name="refresh_models_failed">刷新模型列表失败</string>
+    <string name="refresh_models_list">刷新模型列表</string>
+    <string name="search_models">搜索模型</string>
+    <string name="search">搜索</string>
+    <string name="clear">清除</string>
+    <string name="no_models_found">没有找到可用模型</string>
+    <string name="models_displayed">已显示 %d 个模型</string>
+    <string name="models_displayed_filtered"> (已过滤)</string>
+    <string name="close">关闭</string>
+    
+    <!-- API Provider names -->
+    <string name="provider_openai">OpenAI (GPT系列)</string>
+    <string name="provider_anthropic">Anthropic (Claude系列)</string>
+    <string name="provider_google">Google (Gemini系列)</string>
+    <string name="provider_baidu">百度 (文心一言系列)</string>
+    <string name="provider_aliyun">阿里云 (通义千问系列)</string>
+    <string name="provider_xunfei">讯飞 (星火认知系列)</string>
+    <string name="provider_zhipu">智谱AI (ChatGLM系列)</string>
+    <string name="provider_baichuan">百川大模型</string>
+    <string name="provider_moonshot">月之暗面大模型</string>
+    <string name="provider_deepseek">Deepseek大模型</string>
+    <string name="provider_siliconflow">硅基流动</string>
+    <string name="provider_openrouter">OpenRouter (多模型聚合)</string>
+    <string name="provider_infiniai">无问芯穹</string>
+    <string name="provider_lmstudio">LM Studio</string>
+    <string name="provider_other">其他提供商</string>
+    <string name="select_api_provider_title">选择API提供商</string>
+    <string name="search_providers">搜索提供商</string>
+    <string name="cancel">取消</string>
+    
+    <!-- ModelParametersSection strings -->
+    <string name="max_tokens_name">最大生成Token数</string>
+    <string name="max_tokens_description">控制AI每次最多生成的Token数量</string>
+    <string name="temperature_name">温度</string>
+    <string name="temperature_description">控制输出的随机性。较低的值更确定性，较高的值更随机</string>
+    <string name="top_p_name">Top-P 采样</string>
+    <string name="top_p_description">作为温度的替代方案，模型仅考虑概率最高的Top-P比例的token</string>
+    <string name="top_k_name">Top-K 采样</string>
+    <string name="top_k_description">模型仅考虑概率最高的K个token。0表示禁用</string>
+    <string name="presence_penalty_name">存在惩罚</string>
+    <string name="presence_penalty_description">增强模型谈论新主题的倾向。值越高，惩罚越大</string>
+    <string name="frequency_penalty_name">频率惩罚</string>
+    <string name="frequency_penalty_description">减少模型重复同一词语的可能性。值越高，惩罚越大</string>
+    <string name="repetition_penalty_name">重复惩罚</string>
+    <string name="repetition_penalty_description">进一步减少重复。1.0表示不惩罚，大于1.0会降低重复可能性</string>
+    <string name="parameters_saved">参数已保存</string>
+    <string name="parameters_reset">所有参数已重置为默认值</string>
+    <string name="model_parameters_settings">模型参数设置</string>
+    <string name="parameters_description">启用参数时，该参数将被包含在API请求中。默认情况下，所有参数均处于关闭状态，使用模型的默认值。</string>
+    <string name="generation_parameters">生成参数</string>
+    <string name="creativity_parameters">创造性参数</string>
+    <string name="repetition_control_parameters">重复控制参数</string>
+    <string name="reset">重置</string>
+    <string name="reset_parameters">重置参数</string>
+    <string name="save">保存</string>
+    <string name="save_parameters">保存参数</string>
+    <string name="api_name_format">API名称: %s</string>
+    <string name="collapse">收起</string>
+    <string name="expand">展开</string>
+    <string name="must_be_integer">必须是整数</string>
+    <string name="value">值</string>
+    <string name="range_format">范围: %s - %s</string>
+    <string name="must_be_float">必须是浮点数</string>
+    <string name="default_value_format">默认值: %s</string>
+    <string name="temperature_recommendation">温度推荐设置</string>
+    <string name="parameter_value">参数值</string>
+    <string name="parameter_range_format">范围: %s - %s</string>
     
 </resources>

@@ -39,6 +39,8 @@ import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import androidx.compose.ui.res.stringResource
+import com.ai.assistance.operit.R
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -60,12 +62,15 @@ fun UserPreferencesSettingsScreen(
     // 获取所有配置文件的名称映射(id -> name)
     val profileNameMap = remember { mutableStateMapOf<String, String>() }
 
+    // 获取字符串资源
+    val defaultProfileName = stringResource(R.string.default_profile)
+
     // 确保默认配置文件存在并在列表中显示
     LaunchedEffect(Unit) {
         // 检查配置列表是否为空，或者不包含默认配置
         if (profileList.isEmpty() || !profileList.contains("default")) {
             // 创建默认配置
-            val defaultProfileId = preferencesManager.createProfile("默认配置", isDefault = true)
+            val defaultProfileId = preferencesManager.createProfile(defaultProfileName, isDefault = true)
             preferencesManager.setActiveProfile(defaultProfileId)
         }
     }
@@ -105,7 +110,7 @@ fun UserPreferencesSettingsScreen(
     var editAiStyle by remember { mutableStateOf("") }
 
     // 日期选择器状态
-    val dateFormatter = SimpleDateFormat("yyyy年MM月dd日", Locale.getDefault())
+    val dateFormatter = SimpleDateFormat(stringResource(R.string.date_format_chinese), Locale.getDefault())
 
     // 动画状态
     val listState = rememberLazyListState()
@@ -194,7 +199,7 @@ fun UserPreferencesSettingsScreen(
                 ) {
                     Icon(
                             if (editMode) Icons.Default.Save else Icons.Default.Edit,
-                            contentDescription = if (editMode) "保存" else "编辑配置"
+                            contentDescription = if (editMode) stringResource(R.string.save_action) else stringResource(R.string.edit_profile)
                     )
                 }
             }
@@ -232,7 +237,7 @@ fun UserPreferencesSettingsScreen(
                         ) {
                             // 配置文件选择标签
                             Text(
-                                    "请选择偏好配置",
+                                    stringResource(R.string.select_preference_profile),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface,
@@ -259,14 +264,14 @@ fun UserPreferencesSettingsScreen(
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
-                                        "新建",
+                                        stringResource(R.string.new_action),
                                         fontSize = 12.sp,
                                         style = MaterialTheme.typography.labelSmall
                                 )
                             }
                         }
 
-                        val selectedProfileName = profileNameMap[selectedProfileId] ?: "默认配置"
+                        val selectedProfileName = profileNameMap[selectedProfileId] ?: stringResource(R.string.default_profile)
                         val isActive = selectedProfileId == activeProfileId
 
                         Surface(
@@ -323,7 +328,7 @@ fun UserPreferencesSettingsScreen(
                                     Icon(
                                             if (expanded) Icons.Default.KeyboardArrowUp
                                             else Icons.Default.KeyboardArrowDown,
-                                            contentDescription = "选择配置",
+                                            contentDescription = stringResource(R.string.select_config),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -354,7 +359,7 @@ fun UserPreferencesSettingsScreen(
                                             modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("设为活跃", fontSize = 14.sp)
+                                    Text(stringResource(R.string.set_active), fontSize = 14.sp)
                                 }
                             }
 
@@ -374,7 +379,7 @@ fun UserPreferencesSettingsScreen(
                                             modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("重命名", fontSize = 14.sp)
+                                    Text(stringResource(R.string.rename_action), fontSize = 14.sp)
                                 }
                             }
 
@@ -398,7 +403,7 @@ fun UserPreferencesSettingsScreen(
                                             modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("删除", fontSize = 14.sp)
+                                    Text(stringResource(R.string.delete_action), fontSize = 14.sp)
                                 }
                             }
                         }
@@ -411,7 +416,7 @@ fun UserPreferencesSettingsScreen(
                                 properties = PopupProperties(focusable = true)
                         ) {
                             profileList.forEach { profileId ->
-                                val profileName = profileNameMap[profileId] ?: "未命名配置"
+                                val profileName = profileNameMap[profileId] ?: stringResource(R.string.unnamed_profile)
                                 val isCurrentActive = profileId == activeProfileId
                                 val isSelected = profileId == selectedProfileId
 
@@ -560,7 +565,7 @@ fun UserPreferencesSettingsScreen(
                                                     modifier = Modifier.size(16.dp)
                                             )
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("配置向导", fontSize = 14.sp)
+                                            Text(stringResource(R.string.config_wizard), fontSize = 14.sp)
                                         }
                                     }
                                 }
@@ -573,13 +578,13 @@ fun UserPreferencesSettingsScreen(
                                     // 出生日期
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "出生日期",
+                                                title = stringResource(R.string.birth_date),
                                                 value =
                                                         if (profile.birthDate > 0)
                                                                 dateFormatter.format(
                                                                         Date(profile.birthDate)
                                                                 )
-                                                        else "未设置",
+                                                        else stringResource(R.string.not_set),
                                                 editMode = editMode,
                                                 isLocked = categoryLockStatus["birthDate"] ?: false,
                                                 onLockChange = { locked ->
@@ -607,8 +612,8 @@ fun UserPreferencesSettingsScreen(
                                     // 性别
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "性别",
-                                                value = profile.gender.ifEmpty { "未设置" },
+                                                title = stringResource(R.string.gender),
+                                                value = profile.gender.ifEmpty { stringResource(R.string.not_set) },
                                                 editValue = editGender,
                                                 onValueChange = { editGender = it },
                                                 isLocked = categoryLockStatus["gender"] ?: false,
@@ -628,8 +633,8 @@ fun UserPreferencesSettingsScreen(
                                     // 性格特点
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "性格特点",
-                                                value = profile.personality.ifEmpty { "未设置" },
+                                                title = stringResource(R.string.personality_traits),
+                                                value = profile.personality.ifEmpty { stringResource(R.string.not_set) },
                                                 editValue = editPersonality,
                                                 onValueChange = { editPersonality = it },
                                                 isLocked = categoryLockStatus["personality"]
@@ -650,8 +655,8 @@ fun UserPreferencesSettingsScreen(
                                     // 身份认同
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "身份认同",
-                                                value = profile.identity.ifEmpty { "未设置" },
+                                                title = stringResource(R.string.identity),
+                                                value = profile.identity.ifEmpty { stringResource(R.string.not_set) },
                                                 editValue = editIdentity,
                                                 onValueChange = { editIdentity = it },
                                                 isLocked = categoryLockStatus["identity"] ?: false,
@@ -671,8 +676,8 @@ fun UserPreferencesSettingsScreen(
                                     // 职业
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "职业",
-                                                value = profile.occupation.ifEmpty { "未设置" },
+                                                title = stringResource(R.string.occupation),
+                                                value = profile.occupation.ifEmpty { stringResource(R.string.not_set) },
                                                 editValue = editOccupation,
                                                 onValueChange = { editOccupation = it },
                                                 isLocked = categoryLockStatus["occupation"]
@@ -693,8 +698,8 @@ fun UserPreferencesSettingsScreen(
                                     // AI风格偏好
                                     item {
                                         ModernPreferenceCategoryItem(
-                                                title = "AI风格",
-                                                value = profile.aiStyle.ifEmpty { "未设置" },
+                                                title = stringResource(R.string.ai_style),
+                                                value = profile.aiStyle.ifEmpty { stringResource(R.string.not_set) },
                                                 editValue = editAiStyle,
                                                 onValueChange = { editAiStyle = it },
                                                 isLocked = categoryLockStatus["aiStyle"] ?: false,
@@ -725,7 +730,7 @@ fun UserPreferencesSettingsScreen(
                                                     shape = RoundedCornerShape(8.dp)
                                             ) {
                                                 Text(
-                                                        "保存更改",
+                                                        stringResource(R.string.save_changes),
                                                         fontSize = 14.sp,
                                                         fontWeight = FontWeight.Bold
                                                 )
@@ -749,7 +754,7 @@ fun UserPreferencesSettingsScreen(
                     },
                     title = {
                         Text(
-                                "新建偏好配置",
+                                stringResource(R.string.new_preference_profile),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                         )
@@ -757,7 +762,7 @@ fun UserPreferencesSettingsScreen(
                     text = {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                    "创建新的偏好配置，个性化AI助手体验",
+                                    stringResource(R.string.create_new_profile_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -765,8 +770,8 @@ fun UserPreferencesSettingsScreen(
                             OutlinedTextField(
                                     value = newProfileName,
                                     onValueChange = { newProfileName = it },
-                                    label = { Text("配置名称", fontSize = 12.sp) },
-                                    placeholder = { Text("例如: 工作、学习、娱乐...", fontSize = 12.sp) },
+                                    label = { Text(stringResource(R.string.profile_name), fontSize = 12.sp) },
+                                    placeholder = { Text(stringResource(R.string.profile_name_placeholder), fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp),
                                     colors =
@@ -797,7 +802,7 @@ fun UserPreferencesSettingsScreen(
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp)
-                        ) { Text("创建并配置", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.create_and_configure), fontSize = 13.sp) }
                     },
                     dismissButton = {
                         TextButton(
@@ -805,7 +810,7 @@ fun UserPreferencesSettingsScreen(
                                     showAddProfileDialog = false
                                     newProfileName = ""
                                 }
-                        ) { Text("取消", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.cancel_action), fontSize = 13.sp) }
                     },
                     shape = RoundedCornerShape(12.dp)
             )
@@ -826,7 +831,7 @@ fun UserPreferencesSettingsScreen(
                             modifier = Modifier.padding(end = 8.dp).size(24.dp)
                         )
                         Text(
-                            "重命名配置",
+                            stringResource(R.string.rename_profile),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
@@ -835,7 +840,7 @@ fun UserPreferencesSettingsScreen(
                 text = {
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            "请输入新的配置名称",
+                            stringResource(R.string.enter_new_profile_name),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -843,8 +848,8 @@ fun UserPreferencesSettingsScreen(
                         OutlinedTextField(
                             value = editingProfileName,
                             onValueChange = { editingProfileName = it },
-                            label = { Text("配置名称", fontSize = 12.sp) },
-                            placeholder = { Text("例如: 工作、学习、娱乐...", fontSize = 12.sp) },
+                            label = { Text(stringResource(R.string.profile_name), fontSize = 12.sp) },
+                            placeholder = { Text(stringResource(R.string.profile_name_placeholder), fontSize = 12.sp) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(8.dp),
                             colors =
@@ -875,7 +880,7 @@ fun UserPreferencesSettingsScreen(
                         shape = RoundedCornerShape(8.dp),
                         enabled = editingProfileName.isNotBlank()
                     ) { 
-                        Text("确认重命名", fontSize = 13.sp) 
+                        Text(stringResource(R.string.confirm_rename), fontSize = 13.sp) 
                     }
                 },
                 dismissButton = {
@@ -885,7 +890,7 @@ fun UserPreferencesSettingsScreen(
                             editingProfileName = ""
                         }
                     ) { 
-                        Text("取消", fontSize = 13.sp) 
+                        Text(stringResource(R.string.cancel_action), fontSize = 13.sp) 
                     }
                 },
                 shape = RoundedCornerShape(12.dp)
@@ -903,11 +908,11 @@ fun UserPreferencesSettingsScreen(
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(end = 8.dp).size(24.dp)
                         )
-                        Text("确认删除配置")
+                        Text(stringResource(R.string.confirm_delete_profile))
                     }
                 },
                 text = {
-                    Text("您确定要删除该偏好配置吗？此操作会同时删除其绑定的知识库数据，且无法恢复。\n\n建议您提前备份重要内容。")
+                    Text(stringResource(R.string.delete_profile_warning))
                 },
                 confirmButton = {
                     TextButton(
@@ -918,10 +923,10 @@ fun UserPreferencesSettingsScreen(
                                 selectedProfileId = activeProfileId
                             }
                         }
-                    ) { Text("确认删除") }
+                    ) { Text(stringResource(R.string.confirm_delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDeleteProfileDialog = false }) { Text("取消") }
+                    TextButton(onClick = { showDeleteProfileDialog = false }) { Text(stringResource(R.string.cancel_action)) }
                 },
                 shape = RoundedCornerShape(12.dp)
             )
@@ -985,7 +990,7 @@ fun ProfileItem(
 
                 if (isActive) {
                     Text(
-                            text = "当前激活",
+                            text = stringResource(R.string.currently_active),
                             style = MaterialTheme.typography.labelSmall,
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.primary
@@ -1004,7 +1009,7 @@ fun ProfileItem(
                             contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp),
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                             modifier = Modifier.height(28.dp)
-                    ) { Text("激活", style = MaterialTheme.typography.labelMedium, fontSize = 13.sp) }
+                    ) { Text(stringResource(R.string.activate_action), style = MaterialTheme.typography.labelMedium, fontSize = 13.sp) }
                 }
 
                 if (onDelete != null) {
@@ -1014,7 +1019,7 @@ fun ProfileItem(
                     ) {
                         Icon(
                                 Icons.Default.Delete,
-                                contentDescription = "删除",
+                                contentDescription = stringResource(R.string.delete_action),
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(18.dp)
                         )
@@ -1036,7 +1041,7 @@ fun ModernPreferenceCategoryItem(
         editMode: Boolean,
         isNumeric: Boolean = false,
         icon: androidx.compose.ui.graphics.vector.ImageVector,
-        placeholder: String = "请输入${title}信息",
+        placeholder: String = stringResource(R.string.input_field_placeholder, title),
         dateValue: Long = 0L,
         onDatePickerClick: () -> Unit = {}
 ) {
@@ -1093,7 +1098,7 @@ fun ModernPreferenceCategoryItem(
                 ) {
                     Icon(
                             if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
-                            contentDescription = if (isLocked) "已锁定" else "未锁定",
+                            contentDescription = if (isLocked) stringResource(R.string.locked) else stringResource(R.string.unlocked),
                             tint =
                                     if (isLocked) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.outline,
@@ -1129,7 +1134,7 @@ fun ModernPreferenceCategoryItem(
                     label = "edit mode transition"
             ) { isEditMode ->
                 if (isEditMode) {
-                    if (title == "出生日期") {
+                    if (title == stringResource(R.string.birth_date)) {
                         // 出生日期使用点击卡片打开日期选择器
                         Card(
                                 modifier =
@@ -1158,11 +1163,11 @@ fun ModernPreferenceCategoryItem(
                                         text =
                                                 if (dateValue > 0)
                                                         SimpleDateFormat(
-                                                                        "yyyy年MM月dd日",
+                                                                        stringResource(R.string.date_format_chinese),
                                                                         Locale.getDefault()
                                                                 )
                                                                 .format(Date(dateValue))
-                                                else "请选择出生日期",
+                                                else stringResource(R.string.select_birth_date),
                                         style = MaterialTheme.typography.bodyLarge,
                                         color =
                                                 if (isLocked)
@@ -1173,7 +1178,7 @@ fun ModernPreferenceCategoryItem(
                                 )
                                 Icon(
                                         Icons.Default.CalendarMonth,
-                                        contentDescription = "选择日期",
+                                        contentDescription = stringResource(R.string.select_date),
                                         tint =
                                                 if (isLocked)
                                                         MaterialTheme.colorScheme.onSurface.copy(
@@ -1227,8 +1232,8 @@ fun ModernPreferenceCategoryItem(
                     }
                 } else {
                     val displayText =
-                            if (value == "未设置") {
-                                "未设置${title}"
+                            if (value == stringResource(R.string.not_set)) {
+                                stringResource(R.string.not_set_field, title)
                             } else {
                                 value
                             }
@@ -1238,7 +1243,7 @@ fun ModernPreferenceCategoryItem(
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(vertical = 4.dp, horizontal = 2.dp),
                             color =
-                                    if (value == "未设置")
+                                    if (value == stringResource(R.string.not_set))
                                             MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                                     else MaterialTheme.colorScheme.onSurface,
                             fontSize = 16.sp,

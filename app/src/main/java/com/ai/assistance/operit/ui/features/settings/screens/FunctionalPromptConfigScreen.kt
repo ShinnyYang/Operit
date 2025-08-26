@@ -145,12 +145,12 @@ fun FunctionalPromptConfigScreen(
                                                                         )
                                                         )
 
-                                                        Text(
-                                                                text = "如需修改系统提示模板等高级配置，请前往「管理所有提示词」页面。",
-                                                                style = MaterialTheme.typography.bodySmall,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                modifier = Modifier.padding(bottom = 8.dp)
-                                                        )
+                                                                                                Text(
+                                                text = stringResource(id = R.string.advanced_config_notice),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(bottom = 8.dp)
+                                        )
 
                                                         Divider(
                                                                 modifier =

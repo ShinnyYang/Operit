@@ -11,6 +11,7 @@ import androidx.core.os.LocaleListCompat
 import coil.ImageLoader
 import coil.disk.DiskCache
 import coil.request.CachePolicy
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.chat.AIMessageManager
 import com.ai.assistance.operit.core.config.SystemPromptConfig
 import com.ai.assistance.operit.core.invitation.InvitationManager
@@ -96,7 +97,8 @@ class OperitApplication : Application() {
         }
 
         // 初始化用户偏好管理器
-        initUserPreferencesManager(applicationContext)
+        val defaultProfileName = applicationContext.getString(R.string.default_profile)
+        initUserPreferencesManager(applicationContext, defaultProfileName)
 
         // 初始化Android权限偏好管理器
         initAndroidPermissionPreferences(applicationContext)

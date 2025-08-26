@@ -119,21 +119,21 @@ fun SettingsScreen(
                 ) {
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_user_preferences),
-                                subtitle = "个人偏好和行为设置",
+                                subtitle = stringResource(id = R.string.settings_user_preferences_subtitle),
                                 icon = Icons.Default.Face,
                                 onClick = onNavigateToUserPreferences
                         )
                         
                         CompactSettingsItem(
                                 title = stringResource(R.string.language_settings),
-                                subtitle = "界面语言切换",
+                                subtitle = stringResource(id = R.string.settings_language_subtitle),
                                 icon = Icons.Default.Language,
                                 onClick = navigateToLanguageSettings
                         )
                         
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_theme_appearance),
-                                subtitle = "主题和外观定制",
+                                subtitle = stringResource(id = R.string.settings_theme_subtitle),
                                 icon = Icons.Default.Palette,
                                 onClick = navigateToThemeSettings
                         )
@@ -147,28 +147,28 @@ fun SettingsScreen(
                 ) {
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_model_parameters),
-                                subtitle = "模型参数和API配置",
+                                subtitle = stringResource(id = R.string.settings_model_params_subtitle),
                                 icon = Icons.Default.Api,
                                 onClick = navigateToModelConfig
                         )
                         
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_functional_model),
-                                subtitle = "功能模型专项配置",
+                                subtitle = stringResource(id = R.string.settings_functional_model_subtitle),
                                 icon = Icons.Default.Tune,
                                 onClick = navigateToFunctionalConfig
                         )
                         
                         CompactSettingsItem(
-                                title = "语音服务配置",
-                                subtitle = "TTS/STT服务设置",
+                                title = stringResource(id = R.string.settings_speech_services),
+                                subtitle = stringResource(id = R.string.settings_speech_services_subtitle),
                                 icon = Icons.Default.RecordVoiceOver,
                                 onClick = navigateToSpeechServicesSettings
                         )
                         
                         CompactSettingsItem(
-                                title = "自定义请求头",
-                                subtitle = "API请求头字段配置",
+                                title = stringResource(id = R.string.settings_custom_headers),
+                                subtitle = stringResource(id = R.string.settings_custom_headers_subtitle),
                                 icon = Icons.Default.AddModerator,
                                 onClick = navigateToCustomHeadersSettings
                         )
@@ -182,14 +182,14 @@ fun SettingsScreen(
                 ) {
                         CompactSettingsItem(
                                 title = stringResource(R.string.settings_prompt_title),
-                                subtitle = "系统和模型提示词",
+                                subtitle = stringResource(id = R.string.settings_system_prompts_subtitle),
                                 icon = Icons.Default.ChatBubble,
                                 onClick = navigateToModelPrompts
                         )
                         
                         CompactSettingsItem(
                                 title = stringResource(R.string.settings_functional_prompt_title),
-                                subtitle = "功能专用提示词模板",
+                                subtitle = stringResource(id = R.string.settings_functional_prompts_subtitle),
                                 icon = Icons.Default.Settings,
                                 onClick = navigateToFunctionalPrompts
                         )
@@ -203,8 +203,8 @@ fun SettingsScreen(
                 ) {
                         // 滑块控件
                         CompactSlider(
-                                title = "上下文长度",
-                                subtitle = "模型记忆对话长度(k tokens)",
+                                title = stringResource(id = R.string.settings_context_length),
+                                subtitle = stringResource(id = R.string.settings_context_length_subtitle),
                                 value = contextLengthInput,
                                 onValueChange = {
                                         contextLengthInput = it
@@ -221,8 +221,8 @@ fun SettingsScreen(
                         )
 
                         CompactSlider(
-                                title = "摘要Token阈值",
-                                subtitle = "触发聊天摘要的阈值(0.1-0.95)",
+                                title = stringResource(id = R.string.settings_summary_threshold),
+                                subtitle = stringResource(id = R.string.settings_summary_threshold_subtitle),
                                 value = summaryTokenThresholdInput,
                                 onValueChange = {
                                         summaryTokenThresholdInput = it
@@ -276,20 +276,20 @@ fun SettingsScreen(
 
                 // ======= 数据和权限 =======
                 SettingsSection(
-                        title = "数据和权限",
+                        title = stringResource(id = R.string.settings_data_permissions),
                         icon = Icons.Default.Security,
                         containerColor = cardContainerColor
                 ) {
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_tool_permissions),
-                                subtitle = "工具权限和安全设置",
+                                subtitle = stringResource(id = R.string.settings_tool_permissions_subtitle),
                                 icon = Icons.Default.AdminPanelSettings,
                                 onClick = navigateToToolPermissions
                         )
                         
                         CompactSettingsItem(
                                 title = stringResource(id = R.string.settings_data_backup),
-                                subtitle = "聊天记录备份管理",
+                                subtitle = stringResource(id = R.string.settings_data_backup_subtitle),
                                 icon = Icons.Default.History,
                                 onClick = navigateToChatHistorySettings
                         )
@@ -605,7 +605,7 @@ private fun TokenUsageCompactCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                            text = "Token使用统计",
+                            text = stringResource(id = R.string.settings_token_usage_stats),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium
                     )
@@ -627,7 +627,7 @@ private fun TokenUsageCompactCard(
                 Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
                     // Header Row
                     TokenStatRow(
-                            label = "功能",
+                            label = stringResource(id = R.string.settings_function_label),
                             inputTokens = -1, // Use negative as a flag for header
                             outputTokens = -1,
                             cost = -1.0,
@@ -639,7 +639,7 @@ private fun TokenUsageCompactCard(
 
                     if (sortedFunctions.isEmpty()) {
                         Text(
-                                text = "暂无功能模块的Token使用记录。",
+                                text = stringResource(id = R.string.settings_no_token_records),
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally)
                         )
@@ -678,7 +678,7 @@ private fun TokenUsageCompactCard(
                                     }
                                 }
                         ) {
-                            Text("重置所有计数", style = MaterialTheme.typography.bodySmall)
+                            Text(stringResource(id = R.string.settings_reset_all_counts), style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
@@ -734,9 +734,9 @@ private fun TokenStatRow(
                     textAlign = TextAlign.End
             )
         } else { // Header text
-            Text(text = "输入", style = textStyle, modifier = Modifier.weight(0.25f), textAlign = TextAlign.End)
-            Text(text = "输出", style = textStyle, modifier = Modifier.weight(0.25f), textAlign = TextAlign.End)
-            Text(text = "费用", style = textStyle, modifier = Modifier.weight(0.2f), textAlign = TextAlign.End)
+            Text(text = stringResource(id = R.string.settings_input_tokens), style = textStyle, modifier = Modifier.weight(0.25f), textAlign = TextAlign.End)
+            Text(text = stringResource(id = R.string.settings_output_tokens), style = textStyle, modifier = Modifier.weight(0.25f), textAlign = TextAlign.End)
+            Text(text = stringResource(id = R.string.settings_cost), style = textStyle, modifier = Modifier.weight(0.2f), textAlign = TextAlign.End)
         }
     }
 }

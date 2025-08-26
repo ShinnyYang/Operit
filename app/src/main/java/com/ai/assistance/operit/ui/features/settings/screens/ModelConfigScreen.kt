@@ -19,10 +19,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.AIServiceFactory
 import com.ai.assistance.operit.data.model.ModelConfigData
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -122,7 +124,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                     ) {
                         // 选择配置标题
                         Text(
-                                "选择模型配置",
+                                stringResource(R.string.select_model_config),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Medium,
                                 color = MaterialTheme.colorScheme.onSurface,
@@ -146,11 +148,11 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                     modifier = Modifier.size(14.dp)
                             )
                             Spacer(modifier = Modifier.width(2.dp))
-                            Text("新建", fontSize = 12.sp, style = MaterialTheme.typography.labelSmall)
+                            Text(stringResource(R.string.new_action), fontSize = 12.sp, style = MaterialTheme.typography.labelSmall)
                         }
                     }
 
-                    val selectedConfigName = configNameMap[selectedConfigId] ?: "默认配置"
+                    val selectedConfigName = configNameMap[selectedConfigId] ?: stringResource(R.string.default_profile)
 
                     // 当前选中配置显示框
                     Surface(
@@ -189,7 +191,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                 Icon(
                                         if (expanded) Icons.Default.KeyboardArrowUp
                                         else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = "选择配置",
+                                        contentDescription = stringResource(R.string.select_config),
                                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -209,7 +211,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                         scope.launch {
                                             configManager.deleteConfig(selectedConfigId)
                                             selectedConfigId = configList.firstOrNull() ?: "default"
-                                            showNotification("配置已删除")
+                                            showNotification(context.getString(R.string.config_deleted))
                                         }
                                     },
                                     contentPadding = PaddingValues(horizontal = 12.dp),
@@ -225,7 +227,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                         modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("删除", fontSize = 14.sp)
+                                Text(stringResource(R.string.delete_action), fontSize = 14.sp)
                             }
                         }
 
@@ -249,7 +251,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                                         )
                                                 testResult = service.testConnection()
                                             } ?: run {
-                                                testResult = Result.failure(Exception("未选择配置"))
+                                                testResult = Result.failure(Exception(context.getString(R.string.no_config_selected)))
                                             }
                                         } catch (e: Exception) {
                                             testResult = Result.failure(e)
@@ -273,7 +275,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                 )
                             }
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("测试连接", fontSize = 14.sp)
+                            Text(stringResource(R.string.test_connection_desc), fontSize = 14.sp)
                         }
                     }
 
@@ -286,8 +288,8 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                         testResult?.let { result ->
                             val isSuccess = result.isSuccess
                             val message =
-                                    if (isSuccess) result.getOrNull() ?: "连接成功"
-                                    else "连接失败: ${result.exceptionOrNull()?.message}"
+                                    if (isSuccess) result.getOrNull() ?: context.getString(R.string.connection_test_success)
+                                    else context.getString(R.string.connection_test_failed, result.exceptionOrNull()?.message ?: "")
                             val containerColor =
                                     if (isSuccess)
                                             MaterialTheme.colorScheme.primaryContainer
@@ -348,7 +350,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                    text = "请修改默认配置的API Key，否则将被判断为未使用自己的配置",
+                                    text = stringResource(R.string.default_config_warning),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -364,7 +366,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                         properties = PopupProperties(focusable = true)
                 ) {
                     configList.forEach { configId ->
-                        val configName = configNameMap[configId] ?: "未命名配置"
+                        val configName = configNameMap[configId] ?: stringResource(R.string.unnamed_profile)
                         val isSelected = configId == selectedConfigId
 
                         DropdownMenuItem(
@@ -384,7 +386,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                             {
                                                 Icon(
                                                         Icons.Default.Check,
-                                                        contentDescription = "Selected",
+                                                        contentDescription = stringResource(R.string.selected_desc),
                                                         modifier = Modifier.size(16.dp)
                                                 )
                                             }
@@ -469,7 +471,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                     },
                     title = {
                         Text(
-                                "新建模型配置",
+                                stringResource(R.string.new_model_config),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                         )
@@ -477,7 +479,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                     text = {
                         Column(modifier = Modifier.fillMaxWidth()) {
                             Text(
-                                    "创建新的模型配置，自定义API和参数设置",
+                                    stringResource(R.string.new_model_config_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -485,8 +487,8 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                             OutlinedTextField(
                                     value = newConfigName,
                                     onValueChange = { newConfigName = it },
-                                    label = { Text("配置名称", fontSize = 12.sp) },
-                                    placeholder = { Text("例如: GPT-4配置、Claude配置...", fontSize = 12.sp) },
+                                    label = { Text(stringResource(R.string.model_config_name), fontSize = 12.sp) },
+                                    placeholder = { Text(stringResource(R.string.model_config_name_placeholder), fontSize = 12.sp) },
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(8.dp),
                                     singleLine = true
@@ -502,12 +504,12 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                             selectedConfigId = configId
                                             showAddConfigDialog = false
                                             newConfigName = ""
-                                            showNotification("新配置已创建")
+                                            showNotification(context.getString(R.string.new_config_created))
                                         }
                                     }
                                 },
                                 shape = RoundedCornerShape(8.dp)
-                        ) { Text("创建", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.create_action), fontSize = 13.sp) }
                     },
                     dismissButton = {
                         TextButton(
@@ -515,7 +517,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                                     showAddConfigDialog = false
                                     newConfigName = ""
                                 }
-                        ) { Text("取消", fontSize = 13.sp) }
+                        ) { Text(stringResource(R.string.cancel_action), fontSize = 13.sp) }
                     },
                     shape = RoundedCornerShape(12.dp)
             )

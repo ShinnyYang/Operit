@@ -28,14 +28,14 @@ private val Context.userPreferencesDataStore: DataStore<Preferences> by
 lateinit var preferencesManager: UserPreferencesManager
     private set
 
-fun initUserPreferencesManager(context: Context) {
+fun initUserPreferencesManager(context: Context, defaultProfileName: String = "Default") {
     preferencesManager = UserPreferencesManager(context)
 
     // 在后台初始化默认配置
     GlobalScope.launch {
         val profiles = preferencesManager.profileListFlow.first()
         if (profiles.isEmpty() || !profiles.contains("default")) {
-            preferencesManager.createProfile("默认配置", isDefault = true)
+            preferencesManager.createProfile(defaultProfileName, isDefault = true)
         }
     }
 }
@@ -505,7 +505,7 @@ class UserPreferencesManager(private val context: Context) {
     private fun createDefaultProfile(profileId: String): PreferenceProfile {
         return PreferenceProfile(
                 id = profileId,
-                name = if (profileId == DEFAULT_PROFILE_ID) "默认配置" else profileId,
+                name = if (profileId == DEFAULT_PROFILE_ID) "Default" else profileId,
                 birthDate = 0L,
                 gender = "",
                 occupation = "",
@@ -560,7 +560,7 @@ class UserPreferencesManager(private val context: Context) {
     // 创建新的配置文件
     suspend fun createProfile(name: String, isDefault: Boolean = false): String {
         val profileId =
-                if (isDefault && name == "默认配置") DEFAULT_PROFILE_ID
+                if (isDefault) DEFAULT_PROFILE_ID
                 else "profile_${System.currentTimeMillis()}"
         val newProfile =
                 PreferenceProfile(
