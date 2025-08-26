@@ -533,7 +533,7 @@ fun ThemeSettingsScreen() {
                             )
                             // Update the local state
                             backgroundImageUriInput = internalUri.toString()
-                            Toast.makeText(context, "背景图片已迁移到内部存储", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.background_image_migrated), Toast.LENGTH_SHORT).show()
                         }
                     }
                 } catch (e: Exception) {
@@ -543,7 +543,7 @@ fun ThemeSettingsScreen() {
                     scope.launch {
                         preferencesManager.saveThemeSettings(useBackgroundImage = false)
                         useBackgroundImageInput = false
-                        Toast.makeText(context, "无法访问旧的背景图片，已关闭背景图片功能", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, context.getString(R.string.background_image_access_failed), Toast.LENGTH_LONG).show()
                     }
                 }
             }
@@ -648,14 +648,14 @@ fun ThemeSettingsScreen() {
                             preferencesManager.saveThemeSettings(customAiAvatarUri = internalUri.toString())
                         }
                         showSaveSuccessMessage = true
-                        Toast.makeText(context, "头像已更新", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.avatar_updated), Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, context.getString(R.string.theme_copy_failed), Toast.LENGTH_LONG).show()
                     }
                 }
             }
         } else if (result.error != null) {
-            Toast.makeText(context, "头像裁剪失败: ${result.error!!.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, context.getString(R.string.avatar_crop_failed, result.error!!.message), Toast.LENGTH_LONG).show()
         }
     }
 

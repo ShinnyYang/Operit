@@ -34,6 +34,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -59,6 +60,7 @@ import com.ai.assistance.operit.ui.permissions.PermissionLevel
 import java.text.DecimalFormat
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.ai.assistance.operit.R
 
 @Composable
 fun ChatSettingsBar(
@@ -168,7 +170,7 @@ fun ChatSettingsBar(
                 AnimatedVisibility(visible = enableMemoryAttachment) {
                     Icon(
                         imageVector = Icons.Rounded.Link,
-                        contentDescription = "记忆附着已激活",
+                        contentDescription = stringResource(R.string.memory_attachment_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -176,7 +178,7 @@ fun ChatSettingsBar(
                 AnimatedVisibility(visible = enableThinkingMode) {
                     Icon(
                         imageVector = Icons.Rounded.Psychology,
-                        contentDescription = "思考模式已激活",
+                        contentDescription = stringResource(R.string.thinking_mode_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -184,7 +186,7 @@ fun ChatSettingsBar(
                 AnimatedVisibility(visible = enableThinkingGuidance) {
                     Icon(
                         imageVector = Icons.Rounded.TipsAndUpdates,
-                        contentDescription = "思考引导已激活",
+                        contentDescription = stringResource(R.string.thinking_guidance_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -192,7 +194,7 @@ fun ChatSettingsBar(
                 AnimatedVisibility(visible = enableAiPlanning) {
                     Icon(
                         imageVector = Icons.Rounded.AutoAwesome,
-                        contentDescription = "AI计划模式已激活",
+                        contentDescription = stringResource(R.string.ai_planning_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -200,7 +202,7 @@ fun ChatSettingsBar(
                 AnimatedVisibility(visible = permissionLevel == PermissionLevel.ALLOW) {
                     Icon(
                         imageVector = Icons.Rounded.Security,
-                        contentDescription = "自动批准已激活",
+                        contentDescription = stringResource(R.string.auto_approve_active),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                     )
@@ -209,7 +211,7 @@ fun ChatSettingsBar(
                 IconButton(onClick = { showMenu = !showMenu }, modifier = Modifier.size(28.dp)) {
                     Icon(
                         imageVector = Icons.Outlined.Tune,
-                        contentDescription = "设置选项",
+                        contentDescription = stringResource(R.string.settings_options),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(22.dp).scale(iconScale)
                     )
@@ -235,7 +237,7 @@ fun ChatSettingsBar(
             ) {
                 Box(modifier = Modifier.padding(top = 0.dp, bottom = 76.dp)) {
                     Card(
-                        modifier = Modifier.width(220.dp), // 加宽一级菜单
+                        modifier = Modifier.width(280.dp), // 加宽一级菜单以适应英文显示
                         shape = RoundedCornerShape(8.dp),
                             colors =
                                     CardDefaults.cardColors(
@@ -264,7 +266,7 @@ fun ChatSettingsBar(
                                     },
                                     onInfoClick = {
                                         infoPopupContent =
-                                                "模型配置" to "在这里选择一个已经配置好的模型，或者点击下方的管理配置去新建或修改模型"
+                                                context.getString(R.string.model_config) to context.getString(R.string.model_config_desc)
                                         showMenu = false
                                     }
                             )
@@ -282,7 +284,7 @@ fun ChatSettingsBar(
                                     },
                                     onInfoClick = {
                                         infoPopupContent =
-                                                "提示词" to "在这里选择一个已经配置好的提示词，或者点击下方的管理配置去新建或修改提示词"
+                                                context.getString(R.string.prompt) to context.getString(R.string.prompt_desc)
                                         showMenu = false
                                     }
                             )
@@ -296,8 +298,7 @@ fun ChatSettingsBar(
                                 onExpandedChange = { showMemoryDropdown = it },
                                 onInfoClick = {
                                         infoPopupContent =
-                                                "记忆" to
-                                                        "记忆选择包括了用户偏好和该偏好下的记忆库。如果想要新的记忆库，可以去设置新建一个用户偏好并在这里选择"
+                                                context.getString(R.string.memory) to context.getString(R.string.memory_desc)
                                         showMenu = false
                                     },
                                     onManageClick = {
@@ -308,7 +309,7 @@ fun ChatSettingsBar(
 
                             // 记忆附着
                             SettingItem(
-                                title = "记忆附着",
+                                title = stringResource(R.string.memory_attachment),
                                     icon =
                                             if (enableMemoryAttachment) Icons.Rounded.Link
                                             else Icons.Outlined.LinkOff,
@@ -323,8 +324,7 @@ fun ChatSettingsBar(
                                 onToggle = onToggleMemoryAttachment,
                                 onInfoClick = {
                                         infoPopupContent =
-                                                "记忆附着" to
-                                                        "开启后，发送消息时会自动从记忆库中检索并附加相关内容，但这可能会影响AI回答的焦点。"
+                                                context.getString(R.string.memory_attachment) to context.getString(R.string.memory_attachment_desc)
                                     showMenu = false
                                 }
                             )
@@ -374,7 +374,7 @@ fun ChatSettingsBar(
                             )
                             // AI计划模式
                             SettingItem(
-                                title = "AI计划模式",
+                                title = stringResource(R.string.ai_planning_mode),
                                     icon =
                                             if (enableAiPlanning) Icons.Rounded.AutoAwesome
                                             else Icons.Outlined.AutoAwesome,
@@ -388,7 +388,7 @@ fun ChatSettingsBar(
                                 onToggle = onToggleAiPlanning,
                                 onInfoClick = {
                                         infoPopupContent =
-                                                "AI计划模式" to "能够生成一系列计划进行执行（效果一般，不建议启用，未来将会进行替换）。"
+                                                context.getString(R.string.ai_planning_mode) to context.getString(R.string.ai_planning_desc)
                                     showMenu = false
                                 }
                             )
@@ -404,7 +404,7 @@ fun ChatSettingsBar(
 
                             // 自动批准
                             SettingItem(
-                                title = "自动批准",
+                                title = stringResource(R.string.auto_approve),
                                     icon =
                                             if (permissionLevel == PermissionLevel.ALLOW)
                                                     Icons.Rounded.Security
@@ -420,8 +420,7 @@ fun ChatSettingsBar(
                                 onToggle = onTogglePermission,
                                 onInfoClick = {
                                         infoPopupContent =
-                                                "自动批准" to
-                                                        "将会自动把较为安全的工具直接执行而不询问。对于具体的分组批准，请前往设置-工具权限管理进行操作。"
+                                                context.getString(R.string.auto_approve) to context.getString(R.string.auto_approve_desc)
                                     showMenu = false
                                 }
                             )
@@ -437,7 +436,7 @@ fun ChatSettingsBar(
 
                             // 思考模式
                             SettingItem(
-                                title = "思考模式",
+                                title = stringResource(R.string.thinking_mode),
                                     icon =
                                             if (enableThinkingMode) Icons.Rounded.Psychology
                                             else Icons.Outlined.Psychology,
@@ -451,7 +450,7 @@ fun ChatSettingsBar(
                                 isChecked = enableThinkingMode,
                                 onToggle = onToggleThinkingMode,
                                 onInfoClick = {
-                                    infoPopupContent = "思考模式" to "目前只支持Gemini、Qwen3和Claude，能够启用内置的思考。"
+                                    infoPopupContent = context.getString(R.string.thinking_mode) to context.getString(R.string.thinking_mode_desc)
                                     showMenu = false
                                 }
                             )
@@ -467,7 +466,7 @@ fun ChatSettingsBar(
 
                             // 思考引导
                             SettingItem(
-                                title = "思考引导",
+                                title = stringResource(R.string.thinking_guidance),
                                     icon =
                                             if (enableThinkingGuidance) Icons.Rounded.TipsAndUpdates
                                             else Icons.Outlined.TipsAndUpdates,
@@ -482,7 +481,7 @@ fun ChatSettingsBar(
                                 onToggle = onToggleThinkingGuidance,
                                 onInfoClick = {
                                         infoPopupContent =
-                                                "思考引导" to "能够让不能思考的模型强制进行思考。该选项不建议对思考模型开启。"
+                                                context.getString(R.string.thinking_guidance) to context.getString(R.string.thinking_guidance_desc)
                                     showMenu = false
                                 }
                             )
@@ -586,7 +585,7 @@ private fun SettingItem(
         IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
             Icon(
                 imageVector = Icons.Outlined.Info,
-                contentDescription = "详情",
+                contentDescription = stringResource(R.string.details),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.size(16.dp)
             )
@@ -650,7 +649,7 @@ private fun SettingSliderItem(
             IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.Info,
-                    contentDescription = "详情",
+                    contentDescription = stringResource(R.string.details),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                     modifier = Modifier.size(16.dp)
                 )
@@ -750,7 +749,7 @@ private fun MemorySelectorItem(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Portrait,
-                contentDescription = "记忆选择",
+                contentDescription = stringResource(R.string.memory_selection),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.size(16.dp)
             )
@@ -768,14 +767,14 @@ private fun MemorySelectorItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "记忆:",
+                    text = stringResource(R.string.memory) + ":",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = currentProfile?.name ?: "未选择",
+                    text = currentProfile?.name ?: stringResource(R.string.not_selected),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -787,7 +786,7 @@ private fun MemorySelectorItem(
                     imageVector =
                             if (expanded) Icons.Filled.KeyboardArrowUp
                             else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "收起" else "展开",
+                contentDescription = if (expanded) stringResource(R.string.collapse_verb) else stringResource(R.string.expand_verb),
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -848,7 +847,7 @@ private fun MemorySelectorItem(
                         .clickable(onClick = onManageClick),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("管理配置", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text(stringResource(R.string.manage_config), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                 }
             }
         }
@@ -878,7 +877,7 @@ private fun ModelSelectorItem(
         ) {
             Icon(
                 imageVector = Icons.Outlined.DataObject,
-                contentDescription = "模型选择",
+                contentDescription = stringResource(R.string.model_selection),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.size(16.dp)
             )
@@ -896,14 +895,14 @@ private fun ModelSelectorItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "模型:",
+                    text = stringResource(R.string.model) + ":",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = currentConfig?.name ?: "未选择",
+                    text = currentConfig?.name ?: stringResource(R.string.not_selected),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -913,7 +912,7 @@ private fun ModelSelectorItem(
             }
             Icon(
                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "收起" else "展开",
+                contentDescription = if (expanded) stringResource(R.string.collapse_verb) else stringResource(R.string.expand_verb),
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -990,7 +989,7 @@ private fun ModelSelectorItem(
                         .clickable(onClick = onManageClick),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("管理配置", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text(stringResource(R.string.manage_config), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                 }
             }
         }
@@ -1016,7 +1015,7 @@ private fun PromptSelectorItem(
         ) {
             Icon(
                 imageVector = Icons.Outlined.Message,
-                contentDescription = "提示词选择",
+                contentDescription = stringResource(R.string.prompt_selection),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
                 modifier = Modifier.size(16.dp)
             )
@@ -1034,14 +1033,14 @@ private fun PromptSelectorItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "提示词:",
+                    text = stringResource(R.string.prompt) + ":",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Normal,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = currentProfile?.name ?: "未选择",
+                    text = currentProfile?.name ?: stringResource(R.string.not_selected),
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.primary,
                     maxLines = 1,
@@ -1051,7 +1050,7 @@ private fun PromptSelectorItem(
             }
             Icon(
                 imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
-                contentDescription = if (expanded) "收起" else "展开",
+                contentDescription = if (expanded) stringResource(R.string.collapse_verb) else stringResource(R.string.expand_verb),
                 modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
@@ -1112,7 +1111,7 @@ private fun PromptSelectorItem(
                         .clickable(onClick = onManageClick),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("管理配置", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                    Text(stringResource(R.string.manage_config), color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
                 }
             }
         }

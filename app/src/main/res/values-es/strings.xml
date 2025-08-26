@@ -26,6 +26,16 @@
     <string name="token_config_title">Configuración de token DeepSeek</string>
     <string name="chat_history_settings">Gestión del historial de chat</string>
 
+    <!-- Attachment Panel -->
+    <string name="screen_content">Contenido de pantalla</string>
+    <string name="current_notifications">Notificaciones actuales</string>
+    <string name="current_location">Ubicación actual</string>
+    
+    <!-- Permission Request -->
+    <string name="requested_operation">Operación solicitada</string>
+    <string name="used_tool">Herramienta utilizada</string>
+    <string name="tool_category">Categoría de herramienta</string>
+
     <!-- 聊天记录管理界面 -->
     <string name="chat_history_manager">Gestión del historial de chat</string>
     <string name="export_chat_history">Exportar historial de chat</string>
@@ -335,4 +345,561 @@
     <string name="plugin_complete_success">Finalización completa, tasa de éxito: %1$d%%</string>
     <string name="plugin_no_plugins_to_start">No hay plugins para iniciar</string>
     <string name="plugin_copyright">© 2023 AI Assistance</string>
+
+    <!-- Toast Messages -->
+    <string name="pip_package_install_success">Instalación de paquete PIP exitosa</string>
+    <string name="pip_package_install_failed">Error en la instalación del paquete PIP</string>
+    <string name="please_press_back_to_return">Por favor presione el botón atrás para regresar</string>
+    <string name="please_input_command">Por favor ingrese comando</string>
+    <string name="background_image_migrated">Imagen de fondo migrada al almacenamiento interno</string>
+    <string name="background_image_access_failed">No se puede acceder a la imagen de fondo anterior, la función de imagen de fondo ha sido deshabilitada</string>
+    <string name="avatar_updated">Avatar actualizado</string>
+    <string name="avatar_crop_failed">Error al recortar avatar: %1$s</string>
+    <string name="cannot_open_file">No se puede abrir el archivo: %1$s</string>
+    <string name="message_copied_to_clipboard">Mensaje copiado al portapapeles</string>
+    <string name="selected_content_copied">Contenido seleccionado copiado</string>
+    <string name="requesting_root_permission">Solicitando permiso Root...</string>
+    <string name="root_permission_granted">Permiso Root concedido</string>
+    <string name="root_permission_denied">Solicitud de permiso Root denegada</string>
+    <string name="command_execution_success">Ejecución de comando exitosa</string>
+    <string name="command_execution_failed">Error en la ejecución del comando</string>
+    <string name="please_start_termux_first">Por favor inicie Termux primero</string>
+    <string name="all_tools_reregistered">Todas las herramientas re-registradas</string>
+    <string name="downloaded_file">Descargado: %1$s</string>
+    <string name="download_failed">Error en la descarga: %1$s</string>
+    <string name="download_started">Descarga iniciada: %1$s</string>
+    <string name="download_success">Descarga exitosa: %1$s</string>
+    <string name="download_start">Descarga iniciada: %1$s</string>
+    <string name="deploy_date">Implementación: %1$s</string>
+    <string name="plugin_loading_skipped">Carga de plugins omitida</string>
+    <string name="press_back_again_to_exit">Presione atrás nuevamente para salir</string>
+    <string name="return_code_copied">¡Código de retorno copiado!</string>
+
+    <!-- UI Text -->
+    <string name="permission_request">Solicitud de Permiso</string>
+    <string name="ai_assistant_requests_operation">El Asistente IA solicita realizar la siguiente operación</string>
+    <string name="permission_change_reminder">* Puede cambiar los permisos en configuración en cualquier momento</string>
+    <string name="parameter_details">Detalles de Parámetros</string>
+    <string name="floating_window_attachment_note">Nota: Solo se admiten archivos adjuntos especiales en la ventana flotante\nPara agregar archivos o imágenes, abra la interfaz de chat completa</string>
+    <string name="ai_assistant">Asistente IA</string>
+    <string name="send_message">Enviar Mensaje</string>
+    <string name="chat_with_pet">Charlar con Mascota</string>
+    <string name="dragonbones_mode">Modo DragonBones</string>
+    <string name="loading_failed">Error de carga: %1$s</string>
+    <string name="loading">Cargando...</string>
+    <string name="floating_service_description">Mostrar servicio de ventana flotante del asistente IA</string>
+
+    <!-- Theme Options -->
+    <string name="auto">Automático</string>
+    <string name="light">Claro</string>
+    <string name="dark">Oscuro</string>
+    <string name="chat_style">Estilo de Chat</string>
+    <string name="command_box">Caja de Comandos</string>
+    <string name="dialog_box">Caja de Diálogo</string>
+    <string name="display_options">Opciones de Visualización</string>
+    <string name="custom_avatar">Avatar Personalizado</string>
+    <string name="circular">Circular</string>
+    <string name="square">Cuadrado</string>
+    <string name="interface_text">Texto de Interfaz</string>
+
+    <!-- More common strings -->
+    <string name="latest">Último</string>
+    <string name="close">Cerrar</string>
+    <string name="undo">Deshacer</string>
+    <string name="redo">Rehacer</string>
+    <string name="files">Archivos</string>
+    <string name="export">Exportar</string>
+    <string name="update_history">Historial de Actualizaciones</string>
+    <string name="nav_memory_base">Base de Memoria</string>
+    
+    <!-- MCP and Plugin Related -->
+    <string name="uninstall">Desinstalar</string>
+    <string name="install">Instalar</string>
+    <string name="import_from_repo">Importar desde Repositorio</string>
+    <string name="import_from_zip">Importar desde ZIP</string>
+    <string name="connect_remote_service">Conectar Servicio Remoto</string>
+    <string name="enter_repo_info">Por favor ingrese información del repositorio</string>
+    <string name="repo_link">Enlace del Repositorio</string>
+
+    <!-- Speech to Text -->
+    <string name="speech_recognition_demo">Demostración de Reconocimiento de Voz</string>
+    <string name="microphone_permission_required">Permiso de Micrófono Requerido</string>
+    <string name="microphone_permission_description">El reconocimiento de voz requiere acceso al micrófono para grabar su voz. Por favor otorgue permiso de micrófono para continuar usando esta función.</string>
+    <string name="request_microphone_permission">Solicitar Permiso de Micrófono</string>
+    <string name="recognition_result">Resultado de Reconocimiento</string>
+    <string name="speech_recognition_result_placeholder">Los resultados del reconocimiento de voz se mostrarán aquí</string>
+    <string name="recognition_settings">Configuración de Reconocimiento</string>
+    <string name="recognition_engine">Motor de Reconocimiento</string>
+    <string name="sherpa_ncnn_best">Sherpa-ncnn (Mejor)</string>
+    <string name="switch_engine">Cambiar Motor</string>
+    <string name="recognition_language">Idioma de Reconocimiento</string>
+    <string name="start_recording">Iniciar Grabación</string>
+    <string name="stop_recording">Detener Grabación</string>
+    <string name="start_recognition">Iniciar Reconocimiento</string>
+    <string name="stop_recognition">Detener Reconocimiento</string>
+    <string name="speech_engine_initialized">Motor de reconocimiento de voz inicializado</string>
+    <string name="speech_engine_not_initialized">Motor de reconocimiento de voz no inicializado</string>
+    <string name="recognizing">Reconociendo...</string>
+    <string name="not_recognizing">No reconociendo</string>
+    <string name="engine_init_failed">Fallo en la inicialización del motor %s.</string>
+    <string name="recognition_error">Error de reconocimiento: %s</string>
+    <string name="start_recognition_error">Error al iniciar reconocimiento: %s</string>
+    <string name="stop_recognition_error">Error al detener reconocimiento: %s</string>
+    <string name="speech_usage_steps">1. Seleccionar motor de voz\n2. Hacer clic en el botón de iniciar grabación\n3. Hablar claramente\n4. Hacer clic en detener grabación\n5. Esperar los resultados de transcripción</string>
+    <string name="speech_engine_note">Nota: Diferentes motores de voz pueden tener diferente precisión e idiomas soportados</string>
+    
+    <!-- Free Usage -->
+    <string name="free_usage_title">Confirmar uso de recursos gratuitos</string>
+    <string name="free_usage_interval_tip">Para evitar que el autor vaya a la bancarrota, el tiempo de espera se duplica después de cada uso～</string>
+    
+    <!-- Accessibility Risk Warning -->
+    <string name="accessibility_risk_warning_title">Advertencia de riesgo del servicio de accesibilidad</string>
+    <string name="accessibility_risk_warning_message">Aunque habilitar el servicio de accesibilidad puede acelerar las operaciones de UI, algunas aplicaciones pueden detectar este servicio e imponer restricciones, incluyendo prohibiciones de cuenta. Habilítelo solo después de entender y aceptar los riesgos relacionados.</string>
+    <string name="accessibility_risk_warning_additional">Tenga en cuenta: El modo de depuración ya tiene capacidades de operación de UI por defecto. Habilitar el servicio de accesibilidad solo se usa para acelerar operaciones de UI, pero aumenta el riesgo de prohibición de cuenta. Si no necesita velocidad extrema, se recomienda no habilitarlo. Si ya está habilitado, se recomienda deshabilitarlo inmediatamente después del uso.</string>
+    <string name="accessibility_risk_warning_input">Escriba \"entiendo\" u \"ok\" para confirmar</string>
+    <string name="accessibility_risk_warning_input_error">Escriba \"entiendo\" u \"ok\" para confirmar que entiende los riesgos</string>
+    <string name="accessibility_risk_warning_confirm">Confirmar continuar</string>
+    <string name="accessibility_risk_warning_cancel">Cancelar</string>
+    
+    <!-- Usage Instructions -->
+    <string name="usage_instructions">Instrucciones de uso</string>
+    
+    <!-- Plugin Status Messages -->
+    <string name="plugin_termux_not_running">Termux no está ejecutándose, no se pueden iniciar los plugins</string>
+    <string name="plugin_termux_not_authorized">Termux no está autorizado, por favor autorice Termux primero antes de usar plugins</string>
+    <string name="plugin_nodejs_missing">Node.js no está instalado en Termux, por favor instale Node.js primero antes de usar plugins</string>
+    <string name="plugin_bridge_failed">Error en la inicialización del puente, no se pueden iniciar los plugins</string>
+    <string name="plugin_other_error">Ocurrió un error al iniciar plugins, puede hacer clic en \"Omitir\" en la esquina superior derecha para continuar</string>
+    
+    <!-- Agreement Screen -->
+    <string name="agreement_subtitle">Por favor lea cuidadosamente y acepte los siguientes términos antes de usar.</string>
+    <string name="agreement_human_readable_title">Acuerdo en lenguaje simple (versión no legal)</string>
+    <string name="agreement_human_readable_content">Al igual que usted, no nos gustan los acuerdos largos y aburridos. En pocas palabras:\n\nOperitAI es un software gratuito y de código abierto. Sus funciones de automatización y otras son muy potentes, por favor úselo solo para aprendizaje personal y asistencia diaria, no para ningún uso comercial o irregular.\n\nUsted es responsable de todas sus acciones. No somos responsables de las extensiones que agregue o modificaciones al software.\n\nEn cuanto a la privacidad: Su procesamiento de voz se completa localmente en su teléfono, es muy seguro. Los datos de chat de IA se envían directamente a las empresas de IA, nosotros no los manejamos.</string>
+    <string name="agreement_serious_title">Acuerdo legal riguroso</string>
+    <string name="agreement_serious_content"><![CDATA[
+        <p>Bienvenido a OperitAI. Este software se modifica y distribuye bajo los términos de la Licencia Pública General Menor de GNU versión 3 (LGPLv3).</p>
+        <p><b>1. Exención de garantía</b><br>Este software se proporciona "tal como está", sin garantías de ningún tipo, expresas o implícitas, incluyendo pero no limitándose a garantías de comerciabilidad, idoneidad para un propósito particular o no infracción. Todos los riesgos relacionados con la calidad y rendimiento del software son asumidos por usted.</p>
+        <p><b>2. Limitación de responsabilidad</b><br>En ninguna circunstancia, excepto cuando lo requiera la ley aplicable o acordado por escrito, ningún contribuyente será responsable de daños directos, indirectos, incidentales, especiales, punitivos o consecuenciales causados por el uso o la incapacidad de usar este software (incluyendo pero no limitándose a la adquisición de bienes o servicios sustitutos, pérdida de datos o ganancias, o interrupción de negocios). <b>Además, el equipo de desarrollo no es responsable de las consecuencias de cualquier paquete de extensión (como MCP) instalado por el usuario o modificaciones realizadas a este software.</b></p>
+        <p><b>3. Responsabilidad del usuario y limitaciones de uso</b><br>Usted es completamente responsable de cualquier operación realizada a través de este software y todas sus consecuencias. Se compromete a usar este software para uso personal legal y apropiado, y acepta:<br>
+        a. Las funciones de automatización incluidas en este software están limitadas a uso personal de aprendizaje, investigación y asistencia diaria.<br>
+        b. <b>Está estrictamente prohibido usar este software y sus funciones para cualquier forma de actividad comercial, con fines de lucro o operaciones de automatización a gran escala que puedan afectar indebidamente servicios de terceros.</b><br>
+        c. Usted será responsable de compensar cualquier daño causado a terceros debido al uso de este software. La comunidad se reserva el derecho de perseguir comportamientos abusivos.</p>
+        <p><b>4. Protección de privacidad</b><br>Respetamos y protegemos los derechos de privacidad personal de todos los usuarios que usan el servicio. Nos comprometemos a:<br>a. <b>Procesamiento local:</b> Las funciones de reconocimiento de voz y síntesis de voz de esta aplicación se ejecutan completamente localmente en su dispositivo, los datos relacionados no se cargan a ningún servidor en la nube.<br>b. <b>Servicios de IA de terceros:</b> Los servicios de conversación de IA utilizados por esta aplicación son proporcionados por proveedores de modelos grandes de terceros (como DeepSeek, etc.). Cuando use esta función, sus datos de conversación se enviarán directamente al proveedor de servicios correspondiente, no pasarán por nuestros servidores ni se almacenarán. Le recomendamos que también revise y comprenda las políticas de privacidad de los proveedores de servicios de IA correspondientes.<br>c. <b>Seguridad de datos:</b> Excepto en las situaciones mencionadas anteriormente, no recopilamos ni almacenamos activamente ninguna de su información personal, y tomaremos medidas razonables de seguridad de datos para proteger los datos locales necesarios para el funcionamiento de la aplicación.</p>
+        <p><b>5. Modificación del acuerdo</b><br>Tenemos el derecho de modificar los términos de este acuerdo cuando sea necesario. Puede revisar la última versión de los términos del acuerdo dentro de la aplicación. Si continúa usando este servicio, se considera que ha aceptado el acuerdo modificado.</p>
+    ]]></string>
+    <string name="agreement_disclaimer">Si existe alguna inconsistencia o conflicto entre la versión "en lenguaje simple" y la versión "rigurosa" del acuerdo, todo se basa en la versión china "rigurosa". Nos reservamos el derecho de interpretación final de este acuerdo.</string>
+    <string name="agreement_accept">He leído y acepto</string>
+    <string name="agreement_wait">Por favor espere... (%1$d)</string>
+    
+    <!-- Sherpa Speech Engine -->
+    <string name="sherpa_k2_ncnn_init_failed">Error en la inicialización del motor de reconocimiento de voz en tiempo real</string>
+    <string name="sherpa_k2_ncnn_init_success">Motor de reconocimiento de voz en tiempo real inicializado exitosamente</string>
+
+    <!-- Theme Settings -->
+    <string name="theme_title_mode">Modo de tema</string>
+    <string name="theme_system_title">Tema del sistema</string>
+    <string name="theme_follow_system">Seguir el tema del sistema</string>
+    <string name="theme_follow_system_desc">Cuando está activado, el tema cambiará automáticamente según el modo oscuro del sistema</string>
+    <string name="theme_select">Seleccionar tema</string>
+    <string name="theme_light">Tema claro</string>
+    <string name="theme_dark">Tema oscuro</string>
+    <string name="theme_title_color">Personalización de color</string>
+    <string name="theme_custom_color">Colores personalizados</string>
+    <string name="theme_use_custom_color">Usar colores personalizados</string>
+    <string name="theme_custom_color_desc">Cuando está activado, puedes personalizar los colores principales de la aplicación</string>
+    <string name="theme_select_color">Seleccionar color</string>
+    <string name="theme_primary_color">Color primario</string>
+    <string name="theme_secondary_color">Color secundario</string>
+    <string name="theme_preview">Vista previa del efecto de color</string>
+    <string name="theme_primary_button">Botón primario</string>
+    <string name="theme_secondary_button">Botón secundario</string>
+    <string name="theme_contrast_tip">Consejo: Para obtener los mejores resultados, elija una combinación de colores con alto contraste</string>
+    <string name="theme_save_colors">Guardar configuración de color</string>
+    <string name="theme_title_background">Personalización de fondo</string>
+    <string name="theme_bg_media">Configuración de medios de fondo</string>
+    <string name="theme_use_custom_bg">Usar fondo personalizado</string>
+    <string name="theme_custom_bg_desc">Cuando está activado, puedes seleccionar una imagen o video de fondo personalizado</string>
+    <string name="theme_media_type">Tipo de medio</string>
+    <string name="theme_media_image">Imagen</string>
+    <string name="theme_media_video">Video</string>
+    <string name="theme_no_bg_selected">Haz clic en el botón de selección para agregar un fondo</string>
+    <string name="theme_select_video">Seleccionar video</string>
+    <string name="theme_select_image">Seleccionar imagen</string>
+    <string name="theme_bg_opacity">Opacidad del fondo: %1$d%%</string>
+    <string name="theme_reset">Restablecer al tema predeterminado</string>
+    <string name="theme_saved">Configuración guardada</string>
+    <string name="theme_video_too_large">El archivo de video es demasiado grande, lo que puede causar que la aplicación se retrase o se bloquee. Por favor, seleccione un video de menos de 30MB.</string>
+    <string name="theme_video_saved">Video de fondo guardado</string>
+    <string name="theme_image_saved">Imagen de fondo guardada</string>
+    <string name="theme_copy_failed">No se pudo copiar el video, por favor seleccione otro video</string>
+    <string name="theme_image_crop_failed">Error al recortar la imagen: %1$s</string>
+    <string name="theme_image_migrated">Imagen de fondo migrada al almacenamiento interno</string>
+    <string name="theme_old_image_failed">No se pudo acceder a la imagen de fondo anterior, la función de imagen de fondo ha sido deshabilitada</string>
+    <string name="theme_crop_image">Recortar imagen</string>
+    <string name="theme_crop_done">Hecho</string>
+    <string name="theme_unmute">Quitar silencio</string>
+    <string name="theme_mute">Silenciar</string>
+    <string name="theme_loop_off">Activar bucle</string>
+    <string name="theme_loop_on">Desactivar bucle</string>
+    <string name="theme_loop_enabled">Reproducción en bucle activada</string>
+    <string name="theme_loop_disabled">Reproducción en bucle desactivada</string>
+    <string name="theme_toolbar_transparent">Configuración de la barra de herramientas</string>
+    <string name="theme_toolbar_transparent_desc">Barra de herramientas transparente</string>
+    <string name="theme_toolbar_transparent_desc_desc">Cuando está activado, la barra de herramientas se volverá transparente</string>
+    <string name="theme_statusbar_color">Color de la barra de estado</string>
+    <string name="theme_use_custom_statusbar_color">Personalizar color de la barra de estado</string>
+    <string name="theme_use_custom_statusbar_color_desc">Cuando está activado, puedes personalizar el color de la barra de estado</string>
+    <string name="theme_statusbar_transparent">Barra de estado transparente</string>
+    <string name="theme_statusbar_transparent_desc">Cuando está activado, la barra de estado se volverá transparente, mezclándose con el fondo</string>
+    <string name="theme_chat_history_selector_transparent">Selector de historial de chat transparente</string>
+    <string name="theme_chat_history_selector_transparent_desc">Cuando está activado, el selector de historial de chat se volverá transparente</string>
+    <string name="theme_chat_header_transparent">Barra de chat transparente</string>
+    <string name="theme_chat_header_transparent_desc">Cuando está activado, la barra superior de chat se volverá transparente</string>
+    <string name="theme_chat_header_transparent_title">Configuración de la barra superior de chat</string>
+    <string name="theme_chat_input_transparent_title">Configuración del cuadro de entrada</string>
+    <string name="theme_chat_input_transparent">Cuadro de entrada transparente</string>
+    <string name="theme_chat_input_transparent_desc">Cuando está activado, el cuadro de entrada de chat se volverá transparente</string>
+    <string name="theme_appbar_content_color_title">Color del contenido de la barra de aplicaciones</string>
+    <string name="theme_force_appbar_content_color">Forzar uso del color del contenido de la barra de aplicaciones</string>
+    <string name="theme_force_appbar_content_color_desc">Cuando está activado, el color del título y los iconos de la barra de aplicaciones será fijo, sin verse afectado por el fondo</string>
+    <string name="theme_appbar_content_color_mode">Modo de color</string>
+    <string name="theme_appbar_content_color_light">Claro (esquema de color blanco)</string>
+    <string name="theme_appbar_content_color_dark">Oscuro (esquema de color negro)</string>
+    <string name="theme_chat_header_icons_color_title">Color de los iconos de la barra superior de chat</string>
+    <string name="theme_chat_header_history_icon_color">Color del icono de historial</string>
+    <string name="theme_chat_header_pip_icon_color">Color del icono de ventana flotante</string>
+    <string name="theme_chat_header_overlay_mode">Modo de superposición</string>
+    <string name="theme_chat_header_overlay_mode_desc">Cuando está activado, la barra superior transparente se mostrará como una capa de superposición, sin ocupar espacio de los mensajes</string>
+    <string name="theme_background_blur">Desenfoque de fondo</string>
+    <string name="theme_background_blur_desc">Añadir un efecto de desenfoque gaussiano a la imagen o video de fondo</string>
+    <string name="theme_background_blur_radius">Radio de desenfoque</string>
+    
+    <!-- Toolbox Categories -->
+    <string name="tool_category_all">Todas las herramientas</string>
+    <string name="tool_category_file_management">Gestión de archivos</string>
+    <string name="tool_category_development">Herramientas de desarrollo</string>
+    <string name="tool_category_system">Herramientas del sistema</string>
+    
+    <!-- Tool Names -->
+    <string name="tool_test_center">Centro de pruebas de herramientas</string>
+    <string name="tool_test_center_desc">Probar la disponibilidad y funcionalidad de las herramientas de IA</string>
+    <string name="tool_format_converter">Conversor de formato universal</string>
+    <string name="tool_format_converter_desc">Soporte para conversión entre múltiples formatos de archivo, conveniente y rápido</string>
+    <string name="tool_file_manager">Gestor de archivos</string>
+    <string name="tool_file_manager_desc">Navegar y gestionar archivos del dispositivo con soporte para varias operaciones</string>
+    <string name="tool_tts">Texto a voz</string>
+    <string name="tool_tts_desc">Convertir texto a voz con velocidad y tono ajustables</string>
+    <string name="tool_speech_recognition">Reconocimiento de voz</string>
+    <string name="tool_speech_recognition_desc">Convertir voz a texto con soporte para múltiples motores e idiomas</string>
+    <string name="tool_permission_manager">Gestor de permisos de aplicaciones</string>
+    <string name="tool_permission_manager_desc">Gestionar permisos para todas las aplicaciones del dispositivo para proteger la privacidad</string>
+    <string name="tool_user_agreement">Acuerdo de usuario</string>
+    <string name="tool_user_agreement_desc">Ver el acuerdo de usuario y política de privacidad de la aplicación</string>
+    <string name="tool_terminal">Terminal de comandos</string>
+    <string name="tool_terminal_desc">Terminal de línea de comandos potente para ejecutar comandos del sistema</string>
+    <string name="tool_terminal_auto_config">Configuración automática de terminal</string>
+    <string name="tool_terminal_auto_config_desc">Instalar y configurar automáticamente Python, PIP y otras herramientas de desarrollo</string>
+    <string name="tool_ui_debugger">Herramienta de depuración de UI</string>
+    <string name="tool_ui_debugger_desc">Depurar y analizar elementos de interfaz con búsqueda de elementos y soporte de interacción</string>
+    <string name="tool_ffmpeg_toolbox">Caja de herramientas FFmpeg</string>
+    <string name="tool_ffmpeg_toolbox_desc">Herramienta potente de procesamiento de audio/video con soporte para conversión, recorte, fusión y más</string>
+    <string name="tool_stream_markdown_demo">Demo de Markdown en streaming</string>
+    <string name="tool_stream_markdown_demo_desc">Demo de renderizado de Markdown en streaming de alto rendimiento con efectos de flujo de caracteres en tiempo real</string>
+    <string name="tool_shell_executor">Ejecutor de comandos</string>
+    <string name="tool_shell_executor_desc">Ejecutar comandos Shell y ver resultados de salida con comandos preestablecidos comunes</string>
+    <string name="tool_log_viewer">Visor de registros</string>
+    <string name="tool_log_viewer_desc">Captura y visualización en tiempo real de registros del sistema y aplicaciones con filtrado y búsqueda</string>
+    <string name="toolbox_description">Colección de herramientas convenientes y prácticas para mejorar la eficiencia del trabajo</string>
+    
+    <!-- MCP Config Screen -->
+    <string name="import_or_connect_mcp_service">Importar o conectar servicio MCP</string>
+    <string name="select_mcp_plugin_zip">Por favor seleccione el paquete zip del plugin MCP</string>
+    <string name="plugin_zip_package">Paquete ZIP del plugin</string>
+    <string name="select_zip_file">Seleccionar archivo .zip</string>
+    <string name="select_file">Seleccionar archivo</string>
+    <string name="enter_remote_service_info">Por favor ingrese la dirección del servicio remoto e información relacionada</string>
+    <string name="host_address">Dirección del host</string>
+    <string name="port">Puerto</string>
+    <string name="service_metadata">Metadatos del servicio</string>
+    <string name="plugin_name">Nombre del plugin</string>
+    <string name="my_mcp_plugin">Mi plugin MCP</string>
+    <string name="plugin_description">Descripción del plugin</string>
+    <string name="this_is_mcp_plugin">Este es un plugin MCP</string>
+    <string name="plugin_already_exists">El plugin \'%1$s\' ya existe, por favor use un nombre diferente.</string>
+    <string name="remote_service">Servicio remoto</string>
+    <string name="import_plugin">Importar plugin</string>
+    <string name="remote_service_added">El servicio remoto %1$s ha sido agregado</string>
+    <string name="enter_repo_link_and_name">Por favor ingrese al menos el enlace del repositorio y el nombre del plugin</string>
+    <string name="select_zip_and_enter_name">Por favor seleccione el paquete ZIP e ingrese el nombre del plugin</string>
+    <string name="enter_complete_remote_info">Por favor ingrese la información completa del servicio remoto y el nombre</string>
+    <string name="connect">Conectar</string>
+    <string name="import_action">Importar</string>
+    <string name="select_mcp_plugin_zip_title">Seleccionar paquete ZIP del plugin MCP</string>
+    <string name="use_system_file_picker">Por favor use el selector de archivos del sistema para seleccionar un paquete de plugin MCP en formato .zip</string>
+    <string name="choose_mcp_plugin_zip">Elegir paquete ZIP del plugin MCP</string>
+    <string name="open_file_picker">Abrir selector de archivos</string>
+    <string name="start_plugin">Iniciar plugin</string>
+    <string name="mcp_management">Gestión MCP</string>
+    <string name="running">Ejecutándose</string>
+    <string name="not_running">No ejecutándose</string>
+    <string name="no_plugins">Sin plugins</string>
+    <string name="use_import_function_to_add">Por favor use la función de importación para agregar plugins MCP</string>
+    <string name="local_installed_plugin">Plugin instalado localmente</string>
+    <string name="installed_plugins">Plugins instalados</string>
+    <string name="local_installation">Instalación local</string>
+    <string name="local_version">Versión local</string>
+    <string name="official">Oficial</string>
+    <string name="remote">Remoto</string>
+    <string name="deployed">Desplegado</string>
+    <string name="deployment_date">Desplegado: %1$s</string>
+    <string name="redeploy">Redesplegar</string>
+    <string name="deploy">Desplegar</string>
+    <string name="edit">Editar</string>
+    <string name="edit_remote_service">Editar servicio remoto</string>
+    <string name="edit_plugin_info">Editar información del plugin</string>
+    <string name="name">Nombre</string>
+    <string name="description">Descripción</string>
+    <string name="author">Autor</string>
+    
+    <!-- Speech Services Settings -->
+    <string name="speech_services_settings">Configuración de Servicios de Voz</string>
+    <string name="speech_services_settings_desc">Configurar texto a voz y reconocimiento de voz</string>
+    <string name="configure_speech_services">Configurar Servicios de Voz</string>
+    
+    <!-- Settings Screen Sections -->
+    <string name="settings_section_personalization">Personalización</string>
+    <string name="settings_user_preferences">Preferencias de Usuario</string>
+    <string name="settings_user_preferences_desc">Configurar información personal y preferencias para ayudar a la IA a entenderte mejor, incluye edad, personalidad, identidad, ocupación y estilo de IA esperado</string>
+    <string name="settings_configure_preferences">Configurar Preferencias</string>
+    <string name="settings_model_prompts">Configuración de Prompts del Modelo</string>
+    <string name="settings_model_prompts_desc">Personalizar prompts del sistema del asistente IA, incluye auto-presentación y estilo de tono, para que la IA cumpla mejor tus expectativas</string>
+    <string name="settings_configure_prompts">Configurar Prompts</string>
+    <string name="settings_theme_appearance">Tema y Apariencia</string>
+    <string name="settings_theme_appearance_desc">Personalizar apariencia de la aplicación, incluye modo oscuro/claro y esquemas de color personalizados</string>
+    <string name="settings_customize_theme">Personalizar Tema</string>
+    <string name="settings_data_backup">Respaldo y Recuperación de Datos</string>
+    <string name="settings_data_backup_desc">Importar, exportar o eliminar historial de chat y datos de biblioteca de problemas para facilitar respaldo y recuperación</string>
+    <string name="settings_manage_backup">Gestionar Respaldo</string>
+    
+    <string name="settings_section_ai_model">Configuración del Modelo IA</string>
+    <string name="settings_model_parameters">Configuración de Modelo y Parámetros</string>
+    <string name="settings_model_parameters_desc">Configurar ajustes de API, nombres de modelo y parámetros, con soporte para gestión de múltiples configuraciones</string>
+    <string name="settings_configure_model">Configurar Modelo</string>
+    <string name="settings_functional_model">Configuración de Modelo Funcional</string>
+    <string name="settings_functional_model_desc">Configurar modelos especializados y ajustes de API para diferentes funciones (chat, resumen, biblioteca de problemas, etc.)</string>
+    <string name="settings_configure_function">Configurar Función</string>
+    
+    <string name="settings_section_display">Visualización y Comportamiento</string>
+    <string name="settings_keep_screen_on">Mantener Pantalla Encendida</string>
+    <string name="settings_keep_screen_on_desc">Mantener pantalla encendida durante salida de IA para evitar que se apague</string>
+    <string name="settings_auto_accessibility">Auto-conceder Permiso de Accesibilidad</string>
+    <string name="settings_auto_accessibility_desc">Cuando esté deshabilitado, se requiere autorización manual cada vez que se abre la aplicación</string>
+    
+    <string name="settings_section_permissions">Permisos y Seguridad</string>
+    <string name="settings_tool_permissions">Configuración de Permisos de Herramientas</string>
+    <string name="settings_tool_permissions_desc">Configurar niveles de permiso para herramientas del asistente IA, puede establecerse como auto-permitir, preguntar o denegar</string>
+    <string name="settings_configure_permissions">Configurar Permisos</string>
+    
+    <string name="settings_section_usage">Estadísticas de Uso</string>
+    <string name="settings_token_statistics">Estadísticas de Tokens</string>
+    <string name="settings_reset_analysis_count">Reiniciar Contador de Análisis de Preferencias</string>
+    <string name="settings_why_token_stats">¿Por qué debería importarme las Estadísticas de Tokens?</string>
+    <string name="settings_token_stats_explanation">¡Porque es como una cuenta de restaurante, excepto que la \'comida\' es el pensamiento de la IA y el \'dinero\' se calcula en yuan! El análisis de preferencias es la IA observando tus gustos para personalizar tu próximo \'menú\'. No te preocupes, incluso si chateas hasta que te acalambren los dedos, estos costos podrían no ser suficientes para comprar un té de burbujas~</string>
+    <string name="settings_chat_input_token">Tokens de Entrada de Chat</string>
+    <string name="settings_chat_output_token">Tokens de Salida de Chat</string>
+    <string name="settings_preference_input_token">Tokens de Entrada de Análisis de Preferencias</string>
+    <string name="settings_preference_output_token">Tokens de Salida de Análisis de Preferencias</string>
+    <string name="settings_total">Total</string>
+    
+    <!-- Permission Guide Screen -->
+    <string name="permission_guide_previous">Anterior</string>
+    <string name="permission_guide_next">Siguiente</string>
+    <string name="permission_guide_complete">Completar</string>
+    <string name="permission_guide_welcome">Bienvenido</string>
+    <string name="permission_guide_basic_permissions">Permisos Básicos</string>
+    <string name="permission_guide_permission_level">Nivel de Permisos</string>
+    
+    <string name="permission_guide_welcome_title">Bienvenido</string>
+    <string name="permission_guide_welcome_desc">Antes de usar la aplicación, necesitamos configurar algunos permisos básicos y seleccionar tu nivel de permisos preferido.</string>
+    <string name="permission_guide_welcome_hint">Este proceso toma solo unos minutos y ayudará a la aplicación a servirte mejor.</string>
+    <string name="permission_guide_welcome_start">Haga clic en el botón en la esquina inferior derecha para comenzar</string>
+    
+    <string name="permission_guide_basic_title">Permisos Básicos</string>
+    <string name="permission_guide_basic_desc">Por favor conceda los siguientes permisos básicos para asegurar el funcionamiento correcto de la aplicación</string>
+    <string name="permission_guide_storage_title">Permiso de Almacenamiento</string>
+    <string name="permission_guide_storage_desc">Permitir a la aplicación leer y escribir archivos</string>
+    <string name="permission_guide_overlay_title">Permiso de Superposición</string>
+    <string name="permission_guide_overlay_desc">Permitir a la aplicación mostrar ventanas flotantes</string>
+    <string name="permission_guide_battery_title">Exención de Optimización de Batería</string>
+    <string name="permission_guide_battery_desc">Permitir a la aplicación ejecutarse en segundo plano</string>
+    <string name="permission_guide_location_title">Permiso de Ubicación</string>
+    <string name="permission_guide_location_desc">Permitir a la aplicación acceder a información de ubicación</string>
+    <string name="permission_guide_check_permissions">Verificar Estado de Permisos</string>
+    <string name="permission_guide_all_granted">Todos los permisos básicos concedidos, puede continuar al siguiente paso</string>
+    
+    <string name="permission_guide_warning_title">Permisos Incompletos</string>
+    <string name="permission_guide_warning_message">No ha concedido todos los permisos necesarios, lo que puede resultar en funcionalidad incompleta o comportamiento anormal de la aplicación. ¿Está seguro de que desea continuar?</string>
+    <string name="permission_guide_warning_continue">Continuar</string>
+    <string name="permission_guide_warning_return">Volver a Permisos</string>
+    
+    <string name="permission_guide_level_title">Seleccionar Nivel de Permisos</string>
+    <string name="permission_guide_level_desc">Por favor seleccione su nivel de permisos preferido, que determinará el rango de funciones que la aplicación puede usar</string>
+    <string name="permission_guide_standard_title">Permisos Estándar</string>
+    <string name="permission_guide_standard_desc">Permisos básicos de operación de aplicación, no se requieren permisos especiales</string>
+    <string name="permission_guide_accessibility_title">Permisos de Accesibilidad</string>
+    <string name="permission_guide_accessibility_desc">Habilita análisis de contenido de pantalla y simulación de operaciones a través del servicio de accesibilidad</string>
+    <string name="permission_guide_debugger_title">Permisos de Depuración</string>
+    <string name="permission_guide_debugger_desc">Proporciona acceso al sistema a nivel ADB a través de Shizuku</string>
+    <string name="permission_guide_root_title">Permisos Root</string>
+    <string name="permission_guide_root_desc">Permisos de superusuario, puede realizar cualquier operación del sistema</string>
+    <string name="permission_guide_confirm">Confirmar Selección</string>
+    <string name="permission_guide_change_anytime">Puede cambiar el nivel de permisos en configuración en cualquier momento</string>
+    
+    <!-- Permission Guide Toast Messages -->
+    <string name="permission_guide_storage_setting_failed">No se puede abrir configuración de permisos de almacenamiento, autorizar manualmente</string>
+    <string name="permission_guide_overlay_setting_failed">No se puede abrir configuración de superposición, autorizar manualmente</string>
+    <string name="permission_guide_battery_hint">Encuentre la aplicación en la lista y configúrela como "Sin optimizar"</string>
+    <string name="permission_guide_battery_setting_failed">No se puede abrir configuración de optimización de batería, configurar manualmente</string>
+    
+    <!-- Permission Status Description -->
+    <string name="permission_guide_granted">Concedido</string>
+    <string name="permission_guide_not_granted">No Concedido</string>
+    <string name="permission_guide_selected">Seleccionado</string>
+    
+    <!-- Network Related -->
+    <string name="wifi">WiFi</string>
+    
+    <!-- Additional Text-to-Speech and Speech Recognition -->
+    <string name="text_to_speech_engine_initialized">Motor de texto a voz inicializado</string>
+    <string name="text_to_speech_engine_init_failed">Error al inicializar motor de texto a voz</string>
+    <string name="text_to_speech_not_supported">Texto a voz no es compatible en este dispositivo</string>
+    <string name="speech_error_model_not_found">Modelo de voz no encontrado en assets: %s</string>
+    <string name="speech_error_init_failed">Error al inicializar motor de reconocimiento de voz</string>
+    <string name="speech_error_not_initialized">Motor de reconocimiento de voz no inicializado</string>
+    <string name="title_activity_crash_report">Error de Aplicación</string>
+    
+    <!-- Crash Report Screen -->
+    <string name="crash_report_header">La aplicación ha encontrado un error irrecuperable y necesita reiniciarse.</string>
+    <string name="crash_report_restart_button">Reiniciar Aplicación</string>
+    <string name="crash_report_details_title">Detalles del Error</string>
+    <string name="crash_report_copy_button">Copiar</string>
+    <string name="crash_report_export_button">Exportar</string>
+    <string name="crash_report_copy_success">Copiado al portapapeles</string>
+    <string name="crash_report_export_success">Reporte de error exportado a\n%1$s</string>
+    <string name="crash_report_export_failed">Error al exportar: %1$s</string>
+    
+    <!-- Toolbox Permission Manager -->
+    <string name="toolbox_permissions_search_hint">Buscar aplicaciones</string>
+    <string name="toolbox_permissions_system_apps">Aplicaciones del sistema</string>
+    <string name="toolbox_permissions_app_count">%d aplicaciones en total</string>
+    <string name="toolbox_permissions_loading_apps">Cargando lista de aplicaciones…</string>
+    <string name="toolbox_permissions_no_match">No se encontraron aplicaciones coincidentes</string>
+    <string name="toolbox_permissions_try_other_keywords">Pruebe con otras palabras clave</string>
+    <string name="toolbox_permissions_try_system_apps">Pruebe marcar "Aplicaciones del sistema" para ver más</string>
+    <string name="toolbox_permissions_no_apps">No se encontraron aplicaciones</string>
+    <string name="toolbox_permissions_reset">Restablecer permisos</string>
+    <string name="toolbox_permissions_overview">Resumen de permisos</string>
+    <string name="toolbox_permissions_total">Permisos totales</string>
+    <string name="toolbox_permissions_granted">Concedidos</string>
+    <string name="toolbox_permissions_dangerous">Permisos peligrosos</string>
+    <string name="toolbox_permissions_loading_info">Cargando información de permisos…</string>
+    <string name="toolbox_permissions_no_special">Esta aplicación no tiene permisos especiales</string>
+    <string name="toolbox_permissions_no_special_desc">Esto significa que la aplicación no necesita acceso a datos o funciones sensibles</string>
+    <string name="toolbox_permissions_count_suffix"> permisos</string>
+    <string name="toolbox_permissions_view">Ver permisos</string>
+    <string name="toolbox_permissions_get_error">Error al obtener permisos: %s</string>
+    <string name="toolbox_permissions_modify_error">Error al modificar permisos: %s</string>
+    <string name="toolbox_permissions_reset_error">Error al restablecer permisos: %s</string>
+    <string name="try_different_keywords">Pruebe con palabras clave diferentes</string>
+    <string name="try_show_system_apps">Pruebe marcar "Aplicaciones del sistema" para ver más aplicaciones</string>
+    <string name="no_apps_found_anywhere">No se encontraron aplicaciones</string>
+    
+    <!-- Permission Groups -->
+    <string name="permission_group_activity">Reconocimiento de actividad</string>
+    <string name="permission_group_calendar">Calendario</string>
+    <string name="permission_group_call_log">Registro de llamadas</string>
+    <string name="permission_group_camera">Cámara</string>
+    <string name="permission_group_contacts">Contactos</string>
+    <string name="permission_group_location">Ubicación</string>
+    <string name="permission_group_microphone">Micrófono</string>
+    <string name="permission_group_phone">Teléfono</string>
+    <string name="permission_group_sensors">Sensores</string>
+    <string name="permission_group_sms">SMS</string>
+    <string name="permission_group_storage">Almacenamiento</string>
+    <string name="permission_group_other_granted">Otros permisos concedidos</string>
+    <string name="permission_group_other_denied">Otros permisos denegados</string>
+    <string name="permission_group_other">Otros permisos</string>
+    
+    <!-- Permission Names -->
+    <string name="perm_name_camera">Cámara</string>
+    <string name="perm_name_read_contacts">Leer Contactos</string>
+    <string name="perm_name_write_contacts">Escribir Contactos</string>
+    <string name="perm_name_get_accounts">Obtener Cuentas</string>
+    <string name="perm_name_access_fine_location">Ubicación Precisa</string>
+    <string name="perm_name_access_coarse_location">Ubicación Aproximada</string>
+    <string name="perm_name_access_background_location">Ubicación en Segundo Plano</string>
+    <string name="perm_name_read_call_log">Leer Registro de Llamadas</string>
+    <string name="perm_name_write_call_log">Escribir Registro de Llamadas</string>
+    <string name="perm_name_process_outgoing_calls">Procesar Llamadas Salientes</string>
+    <string name="perm_name_read_phone_state">Leer Estado del Teléfono</string>
+    <string name="perm_name_read_phone_numbers">Leer Números de Teléfono</string>
+    <string name="perm_name_call_phone">Realizar Llamadas</string>
+    <string name="perm_name_answer_phone_calls">Contestar Llamadas</string>
+    <string name="perm_name_add_voicemail">Agregar Buzón de Voz</string>
+    <string name="perm_name_use_sip">Usar SIP</string>
+    <string name="perm_name_accept_handover">Aceptar Transferencia de Llamada</string>
+    <string name="perm_name_body_sensors">Sensores Corporales</string>
+    <string name="perm_name_body_sensors_background">Sensores Corporales en Segundo Plano</string>
+    <string name="perm_name_activity_recognition">Reconocimiento de Actividad</string>
+    <string name="perm_name_read_calendar">Leer Calendario</string>
+    <string name="perm_name_write_calendar">Escribir Calendario</string>
+    <string name="perm_name_read_external_storage">Leer Almacenamiento</string>
+    <string name="perm_name_write_external_storage">Escribir Almacenamiento</string>
+    <string name="perm_name_manage_external_storage">Gestionar Todos los Archivos</string>
+    <string name="perm_name_read_media_images">Leer Imágenes</string>
+    <string name="perm_name_read_media_video">Leer Videos</string>
+    <string name="perm_name_read_media_audio">Leer Archivos de Audio</string>
+    <string name="perm_name_record_audio">Grabar Audio</string>
+    <string name="perm_name_send_sms">Enviar SMS</string>
+    <string name="perm_name_receive_sms">Recibir SMS</string>
+    <string name="perm_name_read_sms">Leer SMS</string>
+    <string name="perm_name_receive_wap_push">Recibir WAP Push</string>
+    <string name="perm_name_receive_mms">Recibir MMS</string>
+    
+    <!-- Permission Descriptions -->
+    <string name="perm_desc_camera">Permitir que la aplicación tome fotos y grabe videos</string>
+    <string name="perm_desc_read_contacts">Permitir que la aplicación lea sus contactos</string>
+    <string name="perm_desc_write_contacts">Permitir que la aplicación modifique sus contactos</string>
+    <string name="perm_desc_get_accounts">Permitir acceso a la lista de cuentas</string>
+    <string name="perm_desc_access_fine_location">Permitir que la aplicación obtenga su ubicación precisa</string>
+    <string name="perm_desc_access_coarse_location">Permitir que la aplicación obtenga su ubicación aproximada</string>
+    <string name="perm_desc_access_background_location">Permitir que la aplicación acceda a la ubicación en segundo plano</string>
+    <string name="perm_desc_read_call_log">Permitir que la aplicación lea su historial de llamadas</string>
+    <string name="perm_desc_write_call_log">Permitir que la aplicación escriba su historial de llamadas</string>
+    <string name="perm_desc_process_outgoing_calls">Permitir que la aplicación procese llamadas salientes</string>
+    <string name="perm_desc_read_phone_state">Permitir acceso al estado del teléfono</string>
+    <string name="perm_desc_read_phone_numbers">Permitir leer números de teléfono del dispositivo</string>
+    <string name="perm_desc_call_phone">Permitir que la aplicación haga llamadas telefónicas directamente</string>
+    <string name="perm_desc_answer_phone_calls">Permitir que la aplicación conteste llamadas entrantes</string>
+    <string name="perm_desc_add_voicemail">Permitir que la aplicación agregue buzón de voz</string>
+    <string name="perm_desc_use_sip">Permitir que la aplicación use servicio SIP</string>
+    <string name="perm_desc_accept_handover">Permitir que las llamadas se transfieran entre aplicaciones</string>
+    <string name="perm_desc_body_sensors">Permitir acceso a datos de sensores corporales (como frecuencia cardíaca)</string>
+    <string name="perm_desc_body_sensors_background">Permitir acceso en segundo plano a sensores corporales</string>
+    <string name="perm_desc_activity_recognition">Permitir que la aplicación reconozca su actividad física</string>
+    <string name="perm_desc_read_calendar">Permitir que la aplicación lea sus eventos de calendario</string>
+    <string name="perm_desc_write_calendar">Permitir que la aplicación agregue o modifique eventos de calendario</string>
+    <string name="perm_desc_read_external_storage">Permitir que la aplicación lea su almacenamiento</string>
+    <string name="perm_desc_write_external_storage">Permitir que la aplicación escriba en su almacenamiento</string>
+    <string name="perm_desc_manage_external_storage">Permitir gestión de todos los archivos</string>
+    <string name="perm_desc_read_media_images">Permitir que la aplicación lea sus fotos</string>
+    <string name="perm_desc_read_media_video">Permitir que la aplicación lea sus videos</string>
+    <string name="perm_desc_read_media_audio">Permitir que la aplicación lea sus archivos de audio</string>
+    <string name="perm_desc_record_audio">Permitir que la aplicación grabe audio</string>
+    <string name="perm_desc_send_sms">Permitir que la aplicación envíe mensajes SMS</string>
+    <string name="perm_desc_receive_sms">Permitir que la aplicación reciba mensajes SMS</string>
+    <string name="perm_desc_read_sms">Permitir que la aplicación lea mensajes SMS</string>
+    <string name="perm_desc_receive_wap_push">Permitir que la aplicación reciba mensajes WAP push</string>
+    <string name="perm_desc_receive_mms">Permitir que la aplicación reciba mensajes MMS</string>
+    
 </resources>

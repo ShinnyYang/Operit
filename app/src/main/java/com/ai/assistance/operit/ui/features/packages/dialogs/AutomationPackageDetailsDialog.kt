@@ -11,10 +11,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.automatic.UIFunction
 import com.ai.assistance.operit.core.tools.automatic.config.AutomationPackageInfo
 import com.ai.assistance.operit.core.tools.automatic.config.AutomationPackageManager
@@ -86,7 +88,7 @@ fun AutomationPackageDetailsDialog(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = if (packageInfo.isBuiltIn) "内置" else "外部",
+                                    text = if (packageInfo.isBuiltIn) stringResource(R.string.builtin) else stringResource(R.string.external),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (packageInfo.isBuiltIn)
                                         MaterialTheme.colorScheme.onPrimaryContainer

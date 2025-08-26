@@ -3,6 +3,7 @@ package com.ai.assistance.operit.util
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.ai.assistance.operit.R
 
 object NetworkUtils {
     /**
@@ -24,14 +25,14 @@ object NetworkUtils {
      */
     fun getNetworkType(context: Context): String {
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = connectivityManager.activeNetwork ?: return "未连接"
-        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return "未连接"
+        val network = connectivityManager.activeNetwork ?: return context.getString(R.string.not_connected)
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return context.getString(R.string.not_connected)
         
         return when {
             capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "WiFi"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "移动数据"
-            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "以太网"
-            else -> "其他"
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> context.getString(R.string.mobile_data)
+            capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> context.getString(R.string.ethernet)
+            else -> context.getString(R.string.other_network)
         }
     }
 } 

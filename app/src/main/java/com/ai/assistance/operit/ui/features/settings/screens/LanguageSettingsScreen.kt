@@ -27,7 +27,6 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -70,21 +69,7 @@ fun LanguageSettingsScreen(
         currentLanguage = LocaleUtils.getCurrentLanguage(context)
     }
 
-    CustomScaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(text = stringResource(id = R.string.language_settings)) },
-                navigationIcon = {
-                    androidx.compose.material3.IconButton(onClick = onBackPressed) {
-                        Icon(
-                            imageVector = Icons.Default.ArrowBack,
-                            contentDescription = null
-                        )
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
+    CustomScaffold() { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()

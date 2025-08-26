@@ -12,7 +12,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.ai.assistance.operit.R
 
 @Composable
 fun ChatHeader(
@@ -49,7 +51,7 @@ fun ChatHeader(
                                 Icon(
                                         imageVector = Icons.Default.History,
                                         contentDescription =
-                                                if (showChatHistorySelector) "隐藏历史" else "显示历史",
+                                                if (showChatHistorySelector) stringResource(R.string.hide_history) else stringResource(R.string.show_history),
                                         tint =
                                                 historyIconColor?.let { Color(it) }
                                                         ?: if (showChatHistorySelector)
@@ -81,7 +83,7 @@ fun ChatHeader(
                                 Icon(
                                         imageVector = Icons.Default.PictureInPicture,
                                         contentDescription =
-                                                if (isFloatingMode) "关闭悬浮窗" else "开启悬浮窗",
+                                                if (isFloatingMode) stringResource(R.string.close_floating_window) else stringResource(R.string.open_floating_window),
                                         tint =
                                                 pipIconColor?.let { Color(it) }
                                                         ?: if (isFloatingMode)

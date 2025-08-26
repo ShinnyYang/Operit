@@ -3,6 +3,7 @@ package com.ai.assistance.operit.ui.features.chat.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.core.chat.AIMessageManager
 import com.ai.assistance.operit.data.model.*
@@ -103,7 +104,7 @@ class MessageProcessingDelegate(
                     when {
                         messageText.isNotBlank() -> messageText
                         attachments.isNotEmpty() -> attachments.first().fileName
-                        else -> "新对话"
+                        else -> context.getString(R.string.new_conversation)
                     }
                 updateChatTitle(chatId, newTitle)
             }

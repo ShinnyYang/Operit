@@ -32,7 +32,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
+import com.ai.assistance.operit.R
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -54,25 +56,23 @@ fun FloatingAttachmentPanel(
     onDismiss: () -> Unit
 ) {
     // 定义附件选项列表，便于使用LazyRow
-    val attachmentOptions = remember {
-        listOf(
-            AttachmentOptionData(
-                icon = Icons.Default.ScreenshotMonitor,
-                label = "屏幕内容",
-                onClick = onAttachScreenContent
-            ),
-            AttachmentOptionData(
-                icon = Icons.Default.Notifications,
-                label = "当前通知",
-                onClick = onAttachNotifications
-            ),
-            AttachmentOptionData(
-                icon = Icons.Default.LocationOn,
-                label = "当前位置",
-                onClick = onAttachLocation
-            )
+    val attachmentOptions = listOf(
+        AttachmentOptionData(
+            icon = Icons.Default.ScreenshotMonitor,
+            label = stringResource(R.string.screen_content),
+            onClick = onAttachScreenContent
+        ),
+        AttachmentOptionData(
+            icon = Icons.Default.Notifications,
+            label = stringResource(R.string.current_notifications),
+            onClick = onAttachNotifications
+        ),
+        AttachmentOptionData(
+            icon = Icons.Default.LocationOn,
+            label = stringResource(R.string.current_location),
+            onClick = onAttachLocation
         )
-    }
+    )
 
     // 附件选择面板 - 使用展开动画，从下方向上展开
     AnimatedVisibility(
@@ -128,7 +128,7 @@ fun FloatingAttachmentPanel(
 
                 // 说明文本 - 添加水平padding并居中对齐
                 Text(
-                    text = "注意: 在浮动窗口中只支持特殊附件\n要添加文件或图片，请打开完整聊天界面",
+                    text = stringResource(R.string.floating_window_attachment_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,

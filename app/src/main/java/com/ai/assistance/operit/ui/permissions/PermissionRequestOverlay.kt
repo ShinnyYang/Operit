@@ -63,6 +63,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -133,7 +134,7 @@ private fun PermissionRequestContent(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "权限请求",
+                            text = stringResource(R.string.permission_request),
                             style = MaterialTheme.typography.titleLarge.copy(
                                 fontSize = 20.sp
                             ),
@@ -144,7 +145,7 @@ private fun PermissionRequestContent(
                         Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
-                            text = "AI 助手请求执行以下操作",
+                            text = stringResource(R.string.ai_assistant_requests_operation),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontSize = 15.sp
                             ),
@@ -208,7 +209,7 @@ private fun PermissionRequestContent(
                         Spacer(modifier = Modifier.height(8.dp))
 
                         Text(
-                            text = "* 您可以在设置中随时更改权限",
+                            text = stringResource(R.string.permission_change_reminder),
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontSize = 12.sp
                             ),
@@ -240,15 +241,15 @@ private fun PermissionDetails(
             .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        DetailItem(label = "请求的操作", value = operationDescription)
-        DetailItem(label = "使用的工具", value = toolName)
+        DetailItem(label = stringResource(R.string.requested_operation), value = operationDescription)
+        DetailItem(label = stringResource(R.string.used_tool), value = toolName)
         toolCategory?.let {
-            DetailItem(label = "工具类别", value = it)
+            DetailItem(label = stringResource(R.string.tool_category), value = it)
         }
         
         if (!toolParameters.isNullOrEmpty()) {
             Text(
-                text = "参数详情",
+                text = stringResource(R.string.parameter_details),
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontSize = 17.sp
                 ),

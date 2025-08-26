@@ -288,11 +288,12 @@ fun AssistantConfigScreen(
                                                                 Modifier.fillMaxWidth()
                                                                         .padding(vertical = 4.dp),
                                                         horizontalArrangement =
-                                                                Arrangement.spacedBy(8.dp)
+                                                                Arrangement.spacedBy(6.dp)
                                                 ) {
                                                         PromptFunctionType.values().forEach {
                                                                 functionType ->
                                                                 FilterChip(
+                                                                        modifier = Modifier.weight(1f),
                                                                         selected =
                                                                                 selectedFunctionType ==
                                                                                         functionType,
@@ -302,11 +303,13 @@ fun AssistantConfigScreen(
                                                                         },
                                                                         label = {
                                                                                 Text(
-                                                                                        when (functionType) {
+                                                                                        text = when (functionType) {
                                                                                             PromptFunctionType.CHAT -> context.getString(R.string.chat_function)
                                                                                             PromptFunctionType.VOICE -> context.getString(R.string.voice_function)
                                                                                             PromptFunctionType.DESKTOP_PET -> context.getString(R.string.desktop_pet_function)
-                                                                                        }
+                                                                                        },
+                                                                                        maxLines = 1,
+                                                                                        style = MaterialTheme.typography.bodySmall
                                                                                 )
                                                                         }
                                                                 )

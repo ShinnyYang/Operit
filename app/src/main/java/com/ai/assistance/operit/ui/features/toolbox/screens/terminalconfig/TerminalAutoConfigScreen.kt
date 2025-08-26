@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.system.AndroidShellExecutor.CommandResult
 import com.ai.assistance.operit.core.tools.system.TermuxCommandExecutor
 import com.ai.assistance.operit.core.tools.system.termux.TermuxCommandOutputReceiver
@@ -195,10 +196,10 @@ fun TerminalAutoConfigScreen(navController: NavController) {
                                     onComplete = { success ->
                                         isExecuting = false
                                         if (success) {
-                                            Toast.makeText(context, "PIP 包安装成功", Toast.LENGTH_SHORT)
+                                            Toast.makeText(context, context.getString(R.string.pip_package_install_success), Toast.LENGTH_SHORT)
                                                     .show()
                                         } else {
-                                            Toast.makeText(context, "PIP 包安装失败", Toast.LENGTH_SHORT)
+                                            Toast.makeText(context, context.getString(R.string.pip_package_install_failed), Toast.LENGTH_SHORT)
                                                     .show()
                                         }
                                     }

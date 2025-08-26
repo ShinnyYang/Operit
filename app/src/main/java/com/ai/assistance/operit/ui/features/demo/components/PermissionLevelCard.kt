@@ -215,7 +215,7 @@ fun PermissionLevelCard(
                                     )
                                     Toast.makeText(
                                                     context,
-                                                    "已将${displayedPermissionLevel.name}设为当前活动权限级别",
+                                                    context.getString(R.string.permission_level_set_active, displayedPermissionLevel.name),
                                                     Toast.LENGTH_SHORT
                                             )
                                             .show()
@@ -1402,19 +1402,20 @@ private fun PermissionLevelVisualDescription(level: AndroidPermissionLevel) {
 
 @Composable
 private fun FeatureGrid(level: AndroidPermissionLevel) {
+    val context = LocalContext.current
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // 在这里定义不同权限级别支持的功能
         val features =
                 listOf(
-                        "悬浮窗" to isFeatureSupported(level, true, true, true, true, true),
-                        "文件操作" to isFeatureSupported(level, true, true, true, true, true),
+                        context.getString(R.string.feature_overlay_window) to isFeatureSupported(level, true, true, true, true, true),
+                        context.getString(R.string.feature_file_operations) to isFeatureSupported(level, true, true, true, true, true),
                         "Android/data" to isFeatureSupported(level, false, false, true, true, true),
                         "data/data" to isFeatureSupported(level, false, false, false, false, true),
-                        "屏幕自动点击" to isFeatureSupported(level, false, true, true, true, true),
-                        "系统权限修改" to isFeatureSupported(level, false, false, false, true, true),
-                        "Termux支持" to isFeatureSupported(level, false, false, true, true, true),
-                        "运行JS" to isFeatureSupported(level, true, true, true, true, true),
-                        "插件市场MCP" to isFeatureSupported(level, false, false, false, true, true)
+                        context.getString(R.string.feature_screen_auto_click) to isFeatureSupported(level, false, true, true, true, true),
+                        context.getString(R.string.feature_system_permission_modification) to isFeatureSupported(level, false, false, false, true, true),
+                        context.getString(R.string.feature_termux_support) to isFeatureSupported(level, false, false, true, true, true),
+                        context.getString(R.string.feature_run_js) to isFeatureSupported(level, true, true, true, true, true),
+                        context.getString(R.string.feature_plugin_market_mcp) to isFeatureSupported(level, false, false, false, true, true)
                 )
 
         // 每行3个功能项
@@ -1496,23 +1497,24 @@ private fun FeatureItem(name: String, isSupported: Boolean, modifier: Modifier =
                 contentAlignment = Alignment.Center
         ) {
             // 根据功能名称显示不同的图标
+            val context = LocalContext.current
             val icon =
                     when (name) {
-                        "悬浮窗" -> Icons.Default.Web
-                        "文件操作" -> Icons.Default.Folder
+                        context.getString(R.string.feature_overlay_window) -> Icons.Default.Web
+                        context.getString(R.string.feature_file_operations) -> Icons.Default.Folder
                         "Android/data" -> Icons.Default.Storage
                         "data/data" -> Icons.Default.Storage
-                        "屏幕自动点击" -> Icons.Default.TouchApp
-                        "系统权限修改" -> Icons.Default.Settings
-                        "Termux支持" -> Icons.Default.Terminal
-                        "运行JS" -> Icons.Default.Code
-                        "插件市场MCP" -> Icons.Default.Store
+                        context.getString(R.string.feature_screen_auto_click) -> Icons.Default.TouchApp
+                        context.getString(R.string.feature_system_permission_modification) -> Icons.Default.Settings
+                        context.getString(R.string.feature_termux_support) -> Icons.Default.Terminal
+                        context.getString(R.string.feature_run_js) -> Icons.Default.Code
+                        context.getString(R.string.feature_plugin_market_mcp) -> Icons.Default.Store
                         else -> Icons.Default.CheckCircle
                     }
 
             Icon(
                     imageVector = if (isSupported) icon else Icons.Default.Lock,
-                    contentDescription = if (isSupported) "支持" else "不支持",
+                    contentDescription = if (isSupported) context.getString(R.string.supported) else context.getString(R.string.not_supported),
                     tint =
                             if (isSupported) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),

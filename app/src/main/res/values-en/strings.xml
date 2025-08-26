@@ -24,6 +24,16 @@
     <string name="menu">Menu</string>
     <string name="token_config">Get API Key</string>
     
+    <!-- Attachment Panel -->
+    <string name="screen_content">Screen Content</string>
+    <string name="current_notifications">Current Notifications</string>
+    <string name="current_location">Current Location</string>
+    
+    <!-- Permission Request -->
+    <string name="requested_operation">Requested Operation</string>
+    <string name="used_tool">Used Tool</string>
+    <string name="tool_category">Tool Category</string>
+    
     <!-- Assistant Config Screen -->
     <string name="assistant_config_title">Assistant Config</string>
     <string name="import_model">Import Model</string>
@@ -440,6 +450,14 @@
     <string name="path_copied_to_clipboard">Path copied to clipboard</string>
     <string name="open_file_manager">Open File Manager</string>
     <string name="navigate_to_external_files">Please navigate to Android/data/com.ai.assistance.operit/files/packages directory</string>
+    <string name="package_js_only">Only JavaScript files supported</string>
+    <string name="automation_json_only">Only JSON files supported</string>
+    <string name="no_filename">Unable to get filename</string>
+    <string name="external_package_imported">External package imported</string>
+    <string name="current_tab_not_support_import">Current tab does not support import</string>
+    <string name="import_failed">Import failed: %1$s</string>
+    <string name="package_import_failed">Package import failed</string>
+    <string name="package_remove_failed">Package removal failed</string>
     
     <!-- OperScript Execution -->
     <string name="run_script">Run Script</string>
@@ -775,6 +793,7 @@
     <string name="output_tokens">Output: %1$s</string>
     <string name="context_window">Context: %1$s</string>
     <string name="auto_approve">Auto-approve:</string>
+    <string name="auto_approve_desc">Safe tools will be executed automatically without prompting. For specific group approvals, please go to Settings - Tool Permission Management.</string>
     <string name="enabled">Enabled</string>
     <string name="ask">Ask</string>
     <string name="ai_planning_mode">AI Planning:</string>
@@ -846,11 +865,11 @@
     <string name="select_prompt_config_title">Select Prompt Configuration</string>
     <string name="reset_all_functions">Reset All Functions to Default Prompt Configurations</string>
     <string name="config_saved">Configuration Saved</string>
-    <string name="chat_function">Chat Function</string>
+    <string name="chat_function">Chat</string>
     <string name="chat_function_desc">Main conversation function, customize chatbot prompt configuration</string>
-    <string name="voice_function">Voice Function</string>
+    <string name="voice_function">Voice</string>
     <string name="voice_function_desc">Voice interaction function, customize voice assistant prompt configuration</string>
-    <string name="desktop_pet_function">Desktop Pet Function</string>
+    <string name="desktop_pet_function">Desktop Pet</string>
     <string name="desktop_pet_function_desc">Desktop pet function, customize pet personality and interaction style</string>
     
     <!-- Settings Screen Additional Strings -->
@@ -915,4 +934,994 @@
     <string name="accessibility_risk_warning_input_error">Please type \"ok\" to confirm you understand the risks</string>
     <string name="accessibility_risk_warning_confirm">Confirm</string>
     <string name="accessibility_risk_warning_cancel">Cancel</string>
+
+    <!-- Toast Messages -->
+    <string name="pip_package_install_success">PIP package installation successful</string>
+    <string name="pip_package_install_failed">PIP package installation failed</string>
+    <string name="please_press_back_to_return">Please press back button to return</string>
+    <string name="please_input_command">Please enter command</string>
+    <string name="background_image_migrated">Background image migrated to internal storage</string>
+    <string name="background_image_access_failed">Unable to access old background image, background image feature has been disabled</string>
+    <string name="avatar_updated">Avatar updated</string>
+    <string name="avatar_crop_failed">Avatar crop failed: %1$s</string>
+    <string name="cannot_open_file">Cannot open file: %1$s</string>
+    <string name="message_copied_to_clipboard">Message copied to clipboard</string>
+    <string name="selected_content_copied">Selected content copied</string>
+    <string name="requesting_root_permission">Requesting Root permission...</string>
+    <string name="root_permission_granted">Root permission granted</string>
+    <string name="root_permission_denied">Root permission request denied</string>
+    <string name="command_execution_success">Command execution successful</string>
+    <string name="command_execution_failed">Command execution failed</string>
+    <string name="please_start_termux_first">Please start Termux first</string>
+    <string name="all_tools_reregistered">All tools reregistered</string>
+    <string name="downloaded_file">Downloaded: %1$s</string>
+    <string name="download_failed">Download failed: %1$s</string>
+    <string name="download_started">Download started: %1$s</string>
+    <string name="download_success">Download successful: %1$s</string>
+    <string name="download_start">Download started: %1$s</string>
+    <string name="deploy_date">Deploy: %1$s</string>
+    <string name="termux_start_command_sent">Termux start command sent</string>
+    <string name="termux_start_failed">Termux start failed</string>
+    <string name="termux_already_running">Termux is already running</string>
+    <string name="termux_authorized_success">Termux authorization successful</string>
+    <string name="termux_authorization_failed">Termux authorization failed, please check Termux settings</string>
+    <string name="tuna_source_setup_success">Tuna mirror setup successful</string>
+    <string name="tuna_source_setup_failed">Tuna mirror setup failed</string>
+    <string name="tuna_source_setup_error">Error configuring Tuna mirror</string>
+    <string name="python_install_success">Python installation successful</string>
+    <string name="python_install_failed">Python installation failed</string>
+    <string name="python_install_error">Error installing Python environment</string>
+    <string name="uv_install_success">UV installation successful</string>
+    <string name="uv_install_failed">UV installation failed</string>
+    <string name="uv_install_error">Error installing UV package manager</string>
+    <string name="nodejs_install_success">Node.js installation successful</string>
+    <string name="nodejs_install_failed">Node.js installation failed</string>
+    <string name="nodejs_install_error">Error installing Node.js environment</string>
+    <string name="battery_optimization_reminder">Please allow Termux battery optimization exemption in system settings</string>
+    <string name="cannot_open_termux_battery_settings">Cannot open Termux battery optimization settings</string>
+    <string name="copied_to_clipboard">Copied to clipboard</string>
+    <string name="cannot_open_permission_settings">Cannot open permission settings</string>
+    <string name="cannot_open_overlay_settings">Cannot open overlay settings</string>
+    <string name="cannot_open_battery_settings">Cannot open battery optimization settings</string>
+    <string name="cannot_open_accessibility_settings">Cannot open accessibility service settings</string>
+    <string name="accessibility_provider_installed">Service provider installed</string>
+    <string name="cannot_open_root_tutorial">Cannot open Root tutorial link</string>
+    <string name="cannot_find_shizuku_app">Cannot find Shizuku app</string>
+    <string name="cannot_launch_shizuku_app">Cannot launch Shizuku app</string>
+    <string name="cannot_open_docs_link">Cannot open documentation link</string>
+    <string name="plugin_loading_skipped">Plugin loading skipped</string>
+    <string name="press_back_again_to_exit">Press back again to exit</string>
+    <string name="return_code_copied">Return code copied!</string>
+    <string name="cannot_find_termux_app">Cannot find Termux app</string>
+    <string name="cannot_launch_termux_app">Cannot launch Termux app</string>
+
+    <!-- UI Text -->
+    <string name="permission_request">Permission Request</string>
+    <string name="ai_assistant_requests_operation">AI Assistant requests to perform the following operation</string>
+    <string name="permission_change_reminder">* You can change permissions in settings at any time</string>
+    <string name="parameter_details">Parameter Details</string>
+    <string name="floating_window_attachment_note">Note: Only special attachments are supported in floating window\nTo add files or images, please open the full chat interface</string>
+    <string name="ai_assistant">AI Assistant</string>
+    <string name="send_message">Send Message</string>
+    <string name="chat_with_pet">Chat with Pet</string>
+    <string name="dragonbones_mode">DragonBones Mode</string>
+    <string name="loading_failed">Loading failed: %1$s</string>
+    <string name="loading">Loading...</string>
+    <string name="floating_service_description">Display AI assistant floating window service</string>
+    <string name="undo">Undo</string>
+    <string name="redo">Redo</string>
+    <string name="files">Files</string>
+    <string name="export">Export</string>
+    <string name="setup_workspace">Setup Workspace</string>
+    <string name="workspace_description">Provide a dedicated file environment for your AI projects</string>
+    <string name="please_select_or_create_conversation">Please select or create a conversation first</string>
+    <string name="latest">Latest</string>
+    <string name="main_highlights">✨ Main Highlights</string>
+    <string name="complete_update_content">📋 Complete Update Content</string>
+    <string name="view_release">View Release</string>
+    <string name="streaming_rendering">Streaming Rendering</string>
+    <string name="microphone_permission_required_title">Microphone Permission Required</string>
+    <string name="microphone_permission_description">Voice recognition feature requires microphone access to record your voice. Please grant microphone permission to continue using this feature.</string>
+    <string name="speech_recognition_demo">Speech Recognition Demo</string>
+    <string name="request_microphone_permission">Request Microphone Permission</string>
+    <string name="recognition_result">Recognition Result</string>
+    <string name="speech_recognition_result_placeholder">Speech recognition results will be displayed here</string>
+    <string name="recognition_settings">Recognition Settings</string>
+    <string name="recognition_engine">Recognition Engine</string>
+    <string name="sherpa_ncnn_best">Sherpa-ncnn (Best)</string>
+    <string name="switch_engine">Switch Engine</string>
+    <string name="recognition_language">Recognition Language</string>
+    <string name="start_recording">Start Recording</string>
+    <string name="stop_recording">Stop Recording</string>
+    <string name="start_recognition">Start Recognition</string>
+    <string name="stop_recognition">Stop Recognition</string>
+    <string name="speech_engine_initialized">Speech recognition engine initialized</string>
+    <string name="speech_engine_not_initialized">Speech recognition engine not initialized</string>
+    <string name="recognizing">Recognizing...</string>
+    <string name="not_recognizing">Not recognizing</string>
+    <string name="engine_init_failed">Engine %s initialization failed.</string>
+    <string name="recognition_error">Recognition error: %s</string>
+    <string name="start_recognition_error">Start recognition error: %s</string>
+    <string name="stop_recognition_error">Stop recognition error: %s</string>
+    <string name="speech_usage_steps">1. Select speech engine\n2. Click start recording button\n3. Speak clearly\n4. Click stop recording\n5. Wait for transcription results</string>
+    <string name="speech_engine_note">Note: Different speech engines may have different accuracy and supported languages</string>
+    <string name="usage_instructions">Usage Instructions</string>
+    <string name="speech_recognition_instructions">1. Select recognition engine (Android Native/Sherpa-ncnn/Whisper Offline)\n2. Select recognition language (Chinese/English etc.)\n3. Click start recording button\n4. Click stop button after speaking\n5. View recognition results</string>
+    <string name="activity_monitor">Activity Monitor</string>
+    <string name="smart_build">Smart Build</string>
+    <string name="target_app">Target: %1$s</string>
+    <string name="auto_record_page_transitions">Automatically record page transitions when operating target app</string>
+    <string name="generated_nodes">Generated nodes: %1$d</string>
+    <string name="edges">Edges: %1$d</string>
+    <string name="current_activity">Current Activity</string>
+    <string name="event_record">Event Record (%1$d)</string>
+    <string name="activity_info">Activity: %1$s</string>
+    <string name="operation_config">Operation Configuration</string>
+    <string name="match_conditions_optional">Match Conditions (Optional)</string>
+    <string name="match_conditions_description">If set, these conditions will be used preferentially to identify the page</string>
+    <string name="function_details">Function Details</string>
+    <string name="function_info">Function Info</string>
+    <string name="function_operations">Function Operations</string>
+    <string name="or_select_builtin_config">Or select built-in configuration package</string>
+    <string name="builtin_config">Built-in Configuration</string>
+    <string name="external_config">External Configuration</string>
+    <string name="operation_details">Operation Details</string>
+    <string name="path">Path</string>
+    <string name="from_node">From node: %1$s</string>
+    <string name="operation_sequence">Operation Sequence</string>
+    <string name="verification_steps_optional">Verification Steps (Optional)</string>
+    <string name="selector_info">Selector: %1$s</string>
+    <string name="position_info">Position: (%1$s, %2$s)</string>
+    <string name="text_variable_info">Text Variable: %1$s</string>
+    <string name="contains_sub_operations">Contains %1$d sub-operations</string>
+    <string name="operation_type">Operation Type: %1$s</string>
+    <string name="tts_demo">Text-to-Speech Demo</string>
+    <string name="input_text">Input Text</string>
+    <string name="speech_settings">Speech Settings</string>
+    <string name="speech_rate">Speech Rate: %1$sx</string>
+    <string name="speech_pitch">Speech Pitch: %1$sx</string>
+    <string name="tts_usage_note">Note: First-time use requires enabling accessibility service in system settings</string>
+    <string name="ui_debug_tool">UI Debug Tool</string>
+    <string name="ui_debug_description">Click the button in the bottom right corner to launch floating window for UI debugging</string>
+    <string name="current_interface_analysis">Current Interface Analysis</string>
+    <string name="package_name">Package Name: %1$s</string>
+    <string name="page_nodes">%1$s - Page Nodes</string>
+    <string name="no_page_nodes_found">No page nodes found</string>
+    <string name="type_info">Type: %1$s</string>
+    <string name="control_info">Control Info</string>
+    <string name="current_activity_title">Current Activity</string>
+    <string name="dimensions">Dimensions: %1$d×%2$dpx</string>
+    <string name="ffmpeg_command">FFmpeg Command</string>
+    <string name="common_command_templates">Common Command Templates</string>
+    <string name="ffmpeg_template_note">Note: When using templates, please replace input.mp4 and output.mp4 with actual file paths</string>
+    <string name="ffmpeg_help">FFmpeg Help</string>
+    <string name="ffmpeg_description">FFmpeg is a powerful audio/video processing tool. In this interface, you can execute FFmpeg commands directly.</string>
+
+    <!-- Status and Error Messages -->
+    <string name="check_video_size_error">Error checking video size</string>
+    <string name="cannot_read_image_file">Cannot read image file: %1$s</string>
+    <string name="cannot_decode_bitmap_from_uri">Cannot decode Bitmap from URI</string>
+    <string name="cannot_open_uri_input_stream">Cannot open URI input stream</string>
+    <string name="not_connected">Not connected</string>
+    <string name="mobile_data">Mobile Data</string>
+    <string name="ethernet">Ethernet</string>
+    <string name="other_network">Other</string>
+    <string name="start_node_not_exist">Start node \"%1$s\" does not exist</string>
+    <string name="target_node_not_exist">Target node \"%1$s\" does not exist</string>
+    <string name="start_target_same">Start node and target node are the same</string>
+    <string name="path_found_with_algorithm">Path found using %1$s algorithm</string>
+    <string name="no_path_found">No path found from \"%1$s\" to \"%2$s\"</string>
+    <string name="state_path_cannot_be_empty">State path cannot be empty</string>
+    <string name="edge_count_mismatch">Edge count should be node count minus 1, states=%1$d, edges=%2$d</string>
+    <string name="path_search_success">State path search successful</string>
+    <string name="start_state_is_target">Start state is the target state</string>
+    <string name="path_found_with_backtrack">Path found using %1$s algorithm</string>
+    <string name="no_valid_state_path">No valid state path found from \"%1$s\" to \"%2$s\"</string>
+    <string name="path_cannot_be_empty">Path cannot be empty</string>
+    <string name="node_edge_count_mismatch">Edge count should be node count minus 1, nodes=%1$d, edges=%2$d</string>
+    <string name="path_search_success_simple">Path search successful</string>
+    <string name="chinese_language">Chinese</string>
+    <string name="tag_must_be_set">Tag must be set</string>
+    <string name="stream_must_be_set">Stream must be set</string>
+
+    <!-- Crop Activity -->
+    <string name="crop_avatar">Crop Avatar</string>
+
+    <!-- Theme Options -->
+    <string name="auto">Auto</string>
+    <string name="light">Light</string>
+    <string name="dark">Dark</string>
+    <string name="chat_style">Chat Style</string>
+    <string name="command_box">Command Box</string>
+    <string name="dialog_box">Dialog Box</string>
+    <string name="display_options">Display Options</string>
+    <string name="custom_avatar">Custom Avatar</string>
+    <string name="circular">Circular</string>
+    <string name="square">Square</string>
+    <string name="interface_text">Interface Text</string>
+
+    <!-- Update History -->
+    <string name="update_history">Update History</string>
+    <string name="nav_memory_base">Memory Base</string>
+    
+    <!-- MCP and Plugin Related -->
+    <string name="uninstall">Uninstall</string>
+    <string name="install">Install</string>
+    <string name="import_from_repo">Import from Repository</string>
+    <string name="import_from_zip">Import from ZIP</string>
+    <string name="connect_remote_service">Connect Remote Service</string>
+    <string name="enter_repo_info">Please enter repository information</string>
+    <string name="repo_link">Repository Link</string>
+
+    <!-- Toolbox Categories -->
+    <string name="tool_category_all">All Tools</string>
+    <string name="tool_category_file_management">File Management</string>
+    <string name="tool_category_development">Development Tools</string>
+    <string name="tool_category_system">System Tools</string>
+    
+    <!-- Tool Names -->
+    <string name="tool_test_center">Tool Test Center</string>
+    <string name="tool_test_center_desc">Test the availability and functionality of AI tools</string>
+    <string name="tool_format_converter">Universal Format Converter</string>
+    <string name="tool_format_converter_desc">Support conversion between multiple file formats, convenient and fast</string>
+    <string name="tool_file_manager">File Manager</string>
+    <string name="tool_file_manager_desc">Browse and manage device files with various operations support</string>
+    <string name="tool_tts">Text-to-Speech</string>
+    <string name="tool_tts_desc">Convert text to speech with adjustable speed and pitch</string>
+    <string name="tool_speech_recognition">Speech Recognition</string>
+    <string name="tool_speech_recognition_desc">Convert speech to text with multiple engines and languages support</string>
+    <string name="tool_permission_manager">App Permission Manager</string>
+    <string name="tool_permission_manager_desc">Manage permissions for all device applications to protect privacy</string>
+    <string name="tool_user_agreement">User Agreement</string>
+    <string name="tool_user_agreement_desc">View the application\'s user agreement and privacy policy</string>
+    <string name="tool_terminal">Command Terminal</string>
+    <string name="tool_terminal_desc">Powerful command-line terminal for executing system commands</string>
+    <string name="tool_terminal_auto_config">Terminal Auto Configuration</string>
+    <string name="tool_terminal_auto_config_desc">Automatically install and configure Python, PIP and other development tools</string>
+    <string name="tool_ui_debugger">UI Debug Tool</string>
+    <string name="tool_ui_debugger_desc">Debug and analyze interface elements with element search and interaction support</string>
+    <string name="tool_ffmpeg_toolbox">FFmpeg Toolbox</string>
+    <string name="tool_ffmpeg_toolbox_desc">Powerful audio/video processing tool supporting conversion, cropping, merging and more</string>
+    <string name="tool_stream_markdown_demo">Streaming Markdown Demo</string>
+    <string name="tool_stream_markdown_demo_desc">High-performance streaming Markdown rendering demo with real-time character flow effects</string>
+    <string name="tool_shell_executor">Command Executor</string>
+    <string name="tool_shell_executor_desc">Execute Shell commands and view output results with common command presets</string>
+    <string name="tool_log_viewer">Log Viewer</string>
+    <string name="tool_log_viewer_desc">Real-time capture and view system and application logs with filtering and search support</string>
+    <string name="toolbox_description">Convenient and practical tool collection to improve your work efficiency</string>
+    
+    <!-- MCP Config Screen -->
+    <string name="import_or_connect_mcp_service">Import or Connect MCP Service</string>
+    <string name="select_mcp_plugin_zip">Please select MCP plugin zip package</string>
+    <string name="plugin_zip_package">Plugin ZIP Package</string>
+    <string name="select_zip_file">Select .zip file</string>
+    <string name="select_file">Select File</string>
+    <string name="enter_remote_service_info">Please enter remote service address and related information</string>
+    <string name="host_address">Host Address</string>
+    <string name="port">Port</string>
+    <string name="service_metadata">Service Metadata</string>
+    <string name="plugin_name">Plugin Name</string>
+    <string name="my_mcp_plugin">My MCP Plugin</string>
+    <string name="plugin_description">Plugin Description</string>
+    <string name="this_is_mcp_plugin">This is an MCP plugin</string>
+    <string name="plugin_already_exists">Plugin \'%1$s\' already exists, please use a different name.</string>
+    <string name="remote_service">Remote Service</string>
+    <string name="import_plugin">Import Plugin</string>
+    <string name="remote_service_added">Remote service %1$s has been added</string>
+    <string name="enter_repo_link_and_name">Please enter at least repository link and plugin name</string>
+    <string name="select_zip_and_enter_name">Please select ZIP package and enter plugin name</string>
+    <string name="enter_complete_remote_info">Please enter complete remote service information and name</string>
+    <string name="connect">Connect</string>
+    <string name="import_action">Import</string>
+    <string name="select_mcp_plugin_zip_title">Select MCP Plugin ZIP Package</string>
+    <string name="use_system_file_picker">Please use the system file picker to select a .zip format MCP plugin package</string>
+    <string name="choose_mcp_plugin_zip">Choose MCP Plugin ZIP Package</string>
+    <string name="open_file_picker">Open File Picker</string>
+    <string name="start_plugin">Start Plugin</string>
+    <string name="mcp_management">MCP Management</string>
+    <string name="running">Running</string>
+    <string name="not_running">Not Running</string>
+    <string name="no_plugins">No Plugins</string>
+    <string name="use_import_function_to_add">Please use the import function to add MCP plugins</string>
+    <string name="local_installed_plugin">Locally installed plugin</string>
+    <string name="installed_plugins">Installed Plugins</string>
+    <string name="local_installation">Local Installation</string>
+    <string name="local_version">Local Version</string>
+    <string name="official">Official</string>
+    <string name="remote">Remote</string>
+    <string name="deployed">Deployed</string>
+    <string name="deployment_date">Deployed: %1$s</string>
+    <string name="redeploy">Redeploy</string>
+    <string name="deploy">Deploy</string>
+    <string name="edit">Edit</string>
+    <string name="edit_remote_service">Edit Remote Service</string>
+    <string name="edit_plugin_info">Edit Plugin Info</string>
+    <string name="name">Name</string>
+    <string name="description">Description</string>
+    <string name="author">Author</string>
+    
+    <!-- Speech Services Settings -->
+    <string name="speech_services_settings">Speech Services Settings</string>
+    <string name="speech_services_settings_desc">Configure text-to-speech and speech recognition settings</string>
+    <string name="configure_speech_services">Configure Speech Services</string>
+    
+    
+    
+    <!-- Network Related -->
+    <string name="wifi">WiFi</string>
+    <string name="ui_automation_in_progress">UI automation in progress...</string>
+    
+    <!-- Missing strings -->
+    <string name="sherpa_k2_ncnn_init_failed">Real-time speech recognition engine initialization failed</string>
+    <string name="sherpa_k2_ncnn_init_success">Real-time speech recognition engine initialization successful</string>
+    <string name="floating_chat_window_desc">Display a floating window on screen for quick access to chat functionality</string>
+    <string name="rename">Rename</string>
+    
+    <!-- Theme Settings -->
+    <string name="theme_appbar_content_color_title">App Bar Content Color</string>
+    <string name="theme_appbar_content_color_mode">Color Mode</string>
+    <string name="theme_appbar_content_color_light">Light (White Scheme)</string>
+    <string name="theme_appbar_content_color_dark">Dark (Black Scheme)</string>
+    <string name="theme_background_blur">Background Blur</string>
+    <string name="theme_background_blur_desc">Add Gaussian blur effect to background images or videos</string>
+    <string name="theme_background_blur_radius">Blur Radius</string>
+    <string name="theme_chat_header_history_icon_color">Chat Header History Icon Color</string>
+    <string name="theme_chat_header_pip_icon_color">Chat Header PIP Icon Color</string>
+    <string name="theme_chat_header_overlay_mode">Overlay Mode</string>
+    <string name="theme_chat_header_overlay_mode_desc">When enabled, transparent header will be displayed as overlay without taking up message space</string>
+    <string name="theme_force_appbar_content_color">Force App Bar Content Color</string>
+    <string name="theme_force_appbar_content_color_desc">When enabled, app bar title and icon colors will be fixed and not affected by background</string>
+    <string name="theme_chat_header_icons_color_title">Chat Header Icons Color</string>
+    <string name="theme_statusbar_color">Status Bar Color</string>
+    <string name="theme_use_custom_statusbar_color">Custom Status Bar Color</string>
+    <string name="theme_use_custom_statusbar_color_desc">When enabled, you can customize the status bar color</string>
+    <string name="theme_statusbar_transparent">Transparent Status Bar</string>
+    <string name="theme_statusbar_transparent_desc">When enabled, the status bar will become transparent and blend with the background</string>
+    <string name="theme_chat_history_selector_transparent">Transparent History Selector</string>
+    <string name="theme_chat_history_selector_transparent_desc">When enabled, the chat history selector will become transparent</string>
+    <string name="theme_chat_header_transparent">Transparent Chat Header</string>
+    <string name="theme_chat_header_transparent_desc">When enabled, the chat header will become transparent</string>
+    <string name="theme_chat_header_transparent_title">Chat Header Settings</string>
+    <string name="theme_chat_input_transparent_title">Input Box Settings</string>
+    <string name="theme_chat_input_transparent">Transparent Input Box</string>
+    <string name="theme_chat_input_transparent_desc">When enabled, the chat input box will become transparent</string>
+    <string name="theme_toolbar_transparent">Toolbar Settings</string>
+    <string name="theme_toolbar_transparent_desc">Transparent Toolbar</string>
+    <string name="theme_toolbar_transparent_desc_desc">When enabled, the toolbar will become transparent</string>
+
+    <!-- Toast Messages -->
+    <string name="confirmation_code_copied">Confirmation code copied!</string>
+    <string name="message_copied">Message copied to clipboard</string>
+    <string name="selection_copied">Selection copied</string>
+    <string name="requesting_root">Requesting Root permission...</string>
+    <string name="root_granted">Root permission granted</string>
+    <string name="root_denied">Root permission denied</string>
+    <string name="command_failed">Command execution failed</string>
+    <string name="start_termux_first">Please start Termux first</string>
+    <string name="termux_not_found">Termux app not found</string>
+    <string name="termux_auth_failed">Termux authorization failed, please check Termux settings</string>
+    <string name="tsinghua_source_success">Tsinghua source configured successfully</string>
+    <string name="tsinghua_source_failed">Tsinghua source configuration failed</string>
+    <string name="tsinghua_source_error">Error configuring Tsinghua source</string>
+    <string name="termux_battery_optimization">Please allow Termux battery optimization exemption in system settings</string>
+    <string name="termux_battery_settings_failed">Failed to open Termux battery optimization settings</string>
+    <string name="permission_settings_failed">Failed to open permission settings</string>
+    <string name="overlay_settings_failed">Failed to open overlay settings</string>
+    <string name="battery_settings_failed">Failed to open battery optimization settings</string>
+    <string name="accessibility_settings_failed">Failed to open accessibility service settings</string>
+    <string name="provider_installed">Service provider is installed</string>
+    <string name="shizuku_not_found">Shizuku app not found</string>
+    <string name="shizuku_start_failed">Failed to start Shizuku app</string>
+    <string name="doc_link_failed">Failed to open documentation link</string>
+    <string name="root_tutorial_failed">Failed to open Root tutorial link</string>
+    <string name="file_open_failed">Failed to open file: %1$s</string>
+    
+    <!-- Snackbar Messages -->
+    <string name="automation_config_imported">Automation configuration imported successfully</string>
+    <string name="tab_import_not_supported">Current tab does not support import</string>
+    <string name="automation_config_deleted">Automation configuration deleted successfully</string>
+    <string name="tools_loaded">Loaded %1$d tools</string>
+    <string name="tools_load_error">Error loading tools: %1$s</string>
+    <string name="plugin_deployed_success">Plugin %1$s deployed successfully</string>
+    <string name="remote_service_updated">Remote service %1$s updated</string>
+    
+    <!-- UI Text -->
+    <string name="plugin_zip_file">Plugin ZIP File</string>
+    <string name="mcp_plugin">MCP Plugin</string>
+
+    <!-- Toolbox Permission Manager -->
+    <string name="toolbox_permissions_search_hint">Search apps</string>
+    <string name="toolbox_permissions_system_apps">System apps</string>
+    <string name="toolbox_permissions_app_count">%d apps total</string>
+    <string name="toolbox_permissions_loading_apps">Loading app list…</string>
+    <string name="toolbox_permissions_no_match">No matching apps found</string>
+    <string name="toolbox_permissions_try_other_keywords">Try other keywords</string>
+    <string name="toolbox_permissions_try_system_apps">Try checking "System apps" to see more</string>
+    <string name="toolbox_permissions_no_apps">No apps found</string>
+    <string name="toolbox_permissions_reset">Reset permissions</string>
+    <string name="toolbox_permissions_overview">Permissions overview</string>
+    <string name="toolbox_permissions_total">Total permissions</string>
+    <string name="toolbox_permissions_granted">Granted</string>
+    <string name="toolbox_permissions_dangerous">Dangerous permissions</string>
+    <string name="toolbox_permissions_loading_info">Loading permission info…</string>
+    <string name="toolbox_permissions_no_special">This app has no special permissions</string>
+    <string name="toolbox_permissions_no_special_desc">This means the app doesn\'t need access to sensitive data or features</string>
+    <string name="toolbox_permissions_count_suffix"> permissions</string>
+    <string name="toolbox_permissions_view">View permissions</string>
+    <string name="toolbox_permissions_get_error">Failed to get permissions: %s</string>
+    <string name="toolbox_permissions_modify_error">Failed to modify permissions: %s</string>
+    <string name="toolbox_permissions_reset_error">Failed to reset permissions: %s</string>
+    <string name="try_different_keywords">Try different keywords</string>
+    <string name="try_show_system_apps">Try checking "System apps" to see more apps</string>
+    <string name="no_apps_found_anywhere">No apps found anywhere</string>
+    
+    <!-- Permission Groups -->
+    <string name="permission_group_activity">Activity Recognition</string>
+    <string name="permission_group_calendar">Calendar</string>
+    <string name="permission_group_call_log">Call Log</string>
+    <string name="permission_group_camera">Camera</string>
+    <string name="permission_group_contacts">Contacts</string>
+    <string name="permission_group_location">Location</string>
+    <string name="permission_group_microphone">Microphone</string>
+    <string name="permission_group_phone">Phone</string>
+    <string name="permission_group_sensors">Sensors</string>
+    <string name="permission_group_sms">SMS</string>
+    <string name="permission_group_storage">Storage</string>
+    <string name="permission_group_other_granted">Other granted permissions</string>
+    <string name="permission_group_other_denied">Other denied permissions</string>
+    <string name="permission_group_other">Other permissions</string>
+    
+    <!-- Format Converter -->
+    <string name="format_converter_no_file_path">Cannot get file path</string>
+    <string name="format_converter_select_file_error">File selection failed: %s</string>
+    <string name="format_converter_complete_selection">Please complete all necessary selections</string>
+    <string name="format_converter_failed">Conversion failed, please try again</string>
+    <string name="format_converter_open_file_error">Cannot open file: %s</string>
+    <string name="format_converter_select_format">Select conversion format</string>
+    <string name="target_format">Target format</string>
+    <string name="start_conversion">Start conversion</string>
+    <string name="conversion_success">Conversion successful</string>
+    <string name="unknown_file">Unknown file</string>
+    
+    <!-- File Types -->
+    <string name="file_type_document">Document</string>
+    <string name="file_type_image">Image</string>
+    <string name="file_type_audio">Audio</string>
+    <string name="file_type_video">Video</string>
+    <string name="file_type_archive">Archive</string>
+    
+    <!-- Stream Markdown Demo -->
+    <string name="stream_markdown_title">Streaming Rendering</string>
+    <string name="stream_markdown_demo_title">Stream Markdown Rendering Demo</string>
+    <string name="static_rendering">Static rendering</string>
+    <string name="stream_speed_format">Speed (x%.1f)</string>
+    
+    <!-- Additional Actions -->
+    <string name="clear">Clear</string>
+    <string name="back">Back</string>
+    <string name="pause">Pause</string>
+    <string name="continue_action">Continue</string>
+    <string name="start">Start</string>
+    <string name="reset">Reset</string>
+    <string name="open_file">Open file</string>
+    <string name="system_app">System app</string>
+    <string name="dangerous_permission">Dangerous permission</string>
+        <string name="granted">Granted</string>
+    <string name="not_granted">Not granted</string>
+    
+    <!-- Toolbox Screen -->
+    <string name="toolbox_title">Toolbox</string>
+    <string name="toolbox_subtitle">Collection of development and system management tools</string>
+    <string name="toolbox_no_tools">No tools in this category</string>
+    <string name="toolbox_animation_loading">Loading tools...</string>
+    
+    <!-- File Manager -->
+    <string name="file_manager_title">File Manager</string>
+    <string name="file_manager_dual_pane">Dual pane mode</string>
+    <string name="file_manager_multi_select">Multi-select mode</string>
+    <string name="file_manager_search">Search files</string>
+    <string name="file_manager_search_hint">Enter filename or keywords</string>
+    <string name="file_manager_new_folder">New folder</string>
+    <string name="file_manager_copy">Copy</string>
+    <string name="file_manager_cut">Cut</string>
+    <string name="file_manager_paste">Paste</string>
+    <string name="file_manager_delete">Delete</string>
+    <string name="file_manager_properties">Properties</string>
+    <string name="file_manager_refresh">Refresh</string>
+    <string name="file_manager_sort_by">Sort by</string>
+    <string name="file_manager_sort_name">Name</string>
+    <string name="file_manager_sort_size">Size</string>
+    <string name="file_manager_sort_date">Date</string>
+    <string name="file_manager_sort_type">Type</string>
+    <string name="file_manager_loading">Loading file list...</string>
+    <string name="file_manager_empty_folder">This folder is empty</string>
+    <string name="file_manager_permission_denied">Permission denied, cannot access this directory</string>
+    <string name="file_manager_operation_failed">File operation failed</string>
+    <string name="file_manager_zoom_in">Zoom in</string>
+    <string name="file_manager_zoom_out">Zoom out</string>
+    <string name="file_manager_view_grid">Grid view</string>
+    <string name="file_manager_view_list">List view</string>
+    <string name="file_manager_navigate_up">Go to parent directory</string>
+    <string name="file_manager_show_hidden">Show hidden files</string>
+    <string name="file_manager_items_selected">%d items selected</string>
+    <string name="file_manager_clipboard_empty">Clipboard is empty</string>
+    
+    <!-- File Operations -->
+    <string name="file_op_copy_success">Copy successful</string>
+    <string name="file_op_cut_success">Cut successful</string>
+    <string name="file_op_paste_success">Paste successful</string>
+    <string name="file_op_delete_success">Delete successful</string>
+    <string name="file_op_create_folder_success">Folder created successfully</string>
+    <string name="file_op_rename_success">Rename successful</string>
+    <string name="file_op_failed">Operation failed: %s</string>
+    <string name="file_op_confirm_delete">Confirm delete</string>
+    <string name="file_op_confirm_delete_message">Are you sure you want to delete the selected files? This action cannot be undone.</string>
+    <string name="file_op_confirm_overwrite">File exists</string>
+    <string name="file_op_confirm_overwrite_message">A file with the same name already exists at the destination. Do you want to overwrite it?</string>
+    
+    <!-- Terminal -->
+    <string name="terminal_title">Terminal Emulator</string>
+    <string name="terminal_new_session">New session</string>
+    <string name="terminal_close_session">Close session</string>
+    <string name="terminal_clear_screen">Clear screen</string>
+    <string name="terminal_font_size">Font size</string>
+    <string name="terminal_zoom_in">Zoom in font</string>
+    <string name="terminal_zoom_out">Zoom out font</string>
+    <string name="terminal_copy">Copy</string>
+    <string name="terminal_paste">Paste</string>
+    <string name="terminal_select_all">Select all</string>
+    <string name="terminal_search">Search</string>
+    <string name="terminal_settings">Settings</string>
+    <string name="terminal_session">Session %d</string>
+    <string name="terminal_working_dir">Working directory: %s</string>
+    <string name="terminal_command_history">Command history</string>
+    <string name="terminal_no_history">No command history</string>
+    <string name="terminal_interactive_input">Interactive input</string>
+    <string name="terminal_input_prompt">Please enter: %s</string>
+    <string name="terminal_input_confirm">Confirm</string>
+    <string name="terminal_input_cancel">Cancel</string>
+    <string name="terminal_execution_error">Command execution error</string>
+    <string name="terminal_permission_required">Permission required</string>
+    <string name="terminal_root_access">Root permission required to execute this command</string>
+    <string name="terminal_command_not_found">Command not found</string>
+    <string name="terminal_process_running">Process is running...</string>
+    <string name="terminal_process_completed">Process completed</string>
+    
+    <!-- Terminal Auto Config -->
+    <string name="terminal_auto_config_title">Terminal Auto Config</string>
+    <string name="terminal_auto_config_desc">Automatically detect and configure terminal environment</string>
+    <string name="terminal_auto_config_detect">Detect environment</string>
+    <string name="terminal_auto_config_apply">Apply configuration</string>
+    <string name="terminal_auto_config_reset">Reset configuration</string>
+    <string name="terminal_auto_config_status">Configuration status</string>
+    <string name="terminal_auto_config_completed">Configuration completed</string>
+    <string name="terminal_auto_config_failed">Configuration failed</string>
+    <string name="terminal_auto_config_detecting">Detecting environment...</string>
+        <string name="terminal_auto_config_applying">Applying configuration...</string>
+    
+    <!-- FFmpeg Toolbox -->
+    <string name="ffmpeg_toolbox_title">FFmpeg Toolbox</string>
+    <string name="ffmpeg_input_file">Input file</string>
+    <string name="ffmpeg_output_file">Output file</string>
+    <string name="ffmpeg_select_input">Select input file</string>
+    <string name="ffmpeg_select_output">Select output path</string>
+    <string name="ffmpeg_conversion_type">Conversion type</string>
+    <string name="ffmpeg_video_conversion">Video conversion</string>
+    <string name="ffmpeg_audio_conversion">Audio conversion</string>
+    <string name="ffmpeg_image_conversion">Image conversion</string>
+    <string name="ffmpeg_start_conversion">Start conversion</string>
+    <string name="ffmpeg_conversion_progress">Conversion progress</string>
+    <string name="ffmpeg_conversion_completed">Conversion completed</string>
+    <string name="ffmpeg_conversion_failed">Conversion failed</string>
+    <string name="ffmpeg_quality_settings">Quality settings</string>
+    <string name="ffmpeg_bitrate">Bitrate</string>
+    <string name="ffmpeg_resolution">Resolution</string>
+    <string name="ffmpeg_frame_rate">Frame rate</string>
+    <string name="ffmpeg_codec">Codec</string>
+    <string name="ffmpeg_advanced_options">Advanced options</string>
+    <string name="ffmpeg_custom_parameters">Custom parameters</string>
+    <string name="ffmpeg_preview">Preview</string>
+    <string name="ffmpeg_file_info">File info</string>
+    <string name="ffmpeg_duration">Duration</string>
+    <string name="ffmpeg_file_size">File size</string>
+    <string name="ffmpeg_format">Format</string>
+    <string name="ffmpeg_processing">Processing...</string>
+    <string name="ffmpeg_cancel">Cancel</string>
+    <string name="ffmpeg_no_file_selected">No file selected</string>
+    <string name="ffmpeg_invalid_file">Invalid file format</string>
+    <string name="ffmpeg_permission_error">Permission error, cannot access file</string>
+    
+    <!-- Log Viewer (Logcat) -->
+    <string name="logcat_title">Log Viewer</string>
+    <string name="logcat_start">Start logging</string>
+    <string name="logcat_stop">Stop logging</string>
+    <string name="logcat_clear">Clear logs</string>
+    <string name="logcat_filter">Filter</string>
+    <string name="logcat_search">Search logs</string>
+    <string name="logcat_search_hint">Enter keywords to search</string>
+    <string name="logcat_log_level">Log level</string>
+    <string name="logcat_verbose">Verbose</string>
+    <string name="logcat_debug">Debug</string>
+    <string name="logcat_info">Info</string>
+    <string name="logcat_warning">Warning</string>
+    <string name="logcat_error">Error</string>
+    <string name="logcat_save_logs">Save logs</string>
+    <string name="logcat_export_logs">Export logs</string>
+    <string name="logcat_auto_scroll">Auto scroll</string>
+    <string name="logcat_word_wrap">Word wrap</string>
+    <string name="logcat_timestamp">Timestamp</string>
+    <string name="logcat_package_filter">Package filter</string>
+    <string name="logcat_tag_filter">Tag filter</string>
+    <string name="logcat_no_logs">No log data</string>
+    <string name="logcat_permission_required">Log read permission required</string>
+    <string name="logcat_logs_saved">Logs saved to %s</string>
+    <string name="logcat_save_failed">Failed to save logs</string>
+    
+    <!-- Shell Executor -->
+    <string name="shell_executor_title">Shell Executor</string>
+    <string name="shell_executor_command">Command</string>
+    <string name="shell_executor_execute">Execute</string>
+    <string name="shell_executor_clear">Clear</string>
+    <string name="shell_executor_output">Output</string>
+    <string name="shell_executor_error">Error</string>
+    <string name="shell_executor_working_dir">Working directory</string>
+    <string name="shell_executor_change_dir">Change directory</string>
+    <string name="shell_executor_command_history">Command history</string>
+    <string name="shell_executor_save_output">Save output</string>
+    <string name="shell_executor_copy_output">Copy output</string>
+    <string name="shell_executor_running">Executing...</string>
+    <string name="shell_executor_completed">Execution completed</string>
+    <string name="shell_executor_failed">Execution failed</string>
+    <string name="shell_executor_timeout">Execution timeout</string>
+    <string name="shell_executor_interrupted">Execution interrupted</string>
+    <string name="shell_executor_no_permission">Insufficient permissions</string>
+    <string name="shell_executor_command_empty">Command cannot be empty</string>
+    <string name="shell_executor_exit_code">Exit code: %d</string>
+    
+    <!-- Text-to-Speech -->
+    <string name="tts_title">Text-to-Speech</string>
+    <string name="tts_text_input">Text input</string>
+    <string name="tts_text_hint">Enter text to convert to speech</string>
+    <string name="tts_speak">Speak</string>
+    <string name="tts_stop">Stop</string>
+    <string name="tts_pause">Pause</string>
+    <string name="tts_resume">Resume</string>
+    <string name="tts_language">Language</string>
+    <string name="tts_voice">Voice</string>
+    <string name="tts_speed">Speed</string>
+    <string name="tts_pitch">Pitch</string>
+    <string name="tts_volume">Volume</string>
+    <string name="tts_save_audio">Save audio</string>
+    <string name="tts_preview">Preview</string>
+    <string name="tts_settings">Voice settings</string>
+    <string name="tts_engine">Speech engine</string>
+    <string name="tts_no_engine">No speech engine found</string>
+    <string name="tts_engine_error">Speech engine error</string>
+    <string name="tts_initializing">Initializing speech engine...</string>
+    <string name="tts_speaking">Speaking...</string>
+    <string name="tts_completed">Speech completed</string>
+    <string name="tts_text_empty">Please enter text</string>
+    <string name="tts_audio_saved">Audio saved to %s</string>
+    <string name="tts_save_failed">Failed to save audio</string>
+    
+    <!-- Speech-to-Text -->
+    <string name="stt_title">Speech Recognition</string>
+    <string name="stt_start_recording">Start recording</string>
+    <string name="stt_stop_recording">Stop recording</string>
+    <string name="stt_recording">Recording...</string>
+    <string name="stt_processing">Processing...</string>
+    <string name="stt_result">Recognition result</string>
+    <string name="stt_copy_result">Copy result</string>
+    <string name="stt_clear_result">Clear result</string>
+    <string name="stt_save_result">Save result</string>
+    <string name="stt_language">Recognition language</string>
+    <string name="stt_engine">Recognition engine</string>
+    <string name="stt_confidence">Confidence</string>
+    <string name="stt_no_result">No content recognized</string>
+    <string name="stt_error">Recognition error</string>
+    <string name="stt_permission_required">Microphone permission required</string>
+    <string name="stt_no_engine">No speech recognition engine found</string>
+    <string name="stt_engine_error">Speech recognition engine error</string>
+    <string name="stt_network_error">Network error, please check connection</string>
+    <string name="stt_timeout">Recognition timeout</string>
+    <string name="stt_result_saved">Recognition result saved</string>
+    <string name="stt_save_failed">Failed to save result</string>
+    
+    <!-- UI Debugger -->
+    <string name="ui_debugger_title">UI Debugger</string>
+    <string name="ui_debugger_start">Start debugging</string>
+    <string name="ui_debugger_stop">Stop debugging</string>
+    <string name="ui_debugger_inspect">Inspect element</string>
+    <string name="ui_debugger_hierarchy">View hierarchy</string>
+    <string name="ui_debugger_properties">Properties</string>
+    <string name="ui_debugger_layout">Layout</string>
+    <string name="ui_debugger_events">Events</string>
+    <string name="ui_debugger_capture">Capture</string>
+    <string name="ui_debugger_export">Export</string>
+    <string name="ui_debugger_settings">Debug settings</string>
+    <string name="ui_debugger_overlay">Debug overlay</string>
+    <string name="ui_debugger_highlight">Highlight</string>
+    <string name="ui_debugger_bounds">Bounds</string>
+    <string name="ui_debugger_margins">Margins</string>
+    <string name="ui_debugger_padding">Padding</string>
+    <string name="ui_debugger_no_activity">No activity detected</string>
+    <string name="ui_debugger_permission_required">Overlay permission required</string>
+    <string name="ui_debugger_accessibility_required">Accessibility permission required</string>
+    <string name="ui_debugger_capture_saved">Capture saved to %s</string>
+    <string name="ui_debugger_export_completed">Export completed</string>
+    <string name="ui_debugger_export_failed">Export failed</string>
+  
+    <!-- Permission Names -->
+    <string name="perm_name_camera">Camera</string>
+    <string name="perm_name_read_contacts">Read Contacts</string>
+    <string name="perm_name_write_contacts">Write Contacts</string>
+    <string name="perm_name_get_accounts">Get Accounts</string>
+    <string name="perm_name_access_fine_location">Precise Location</string>
+    <string name="perm_name_access_coarse_location">Approximate Location</string>
+    <string name="perm_name_access_background_location">Background Location</string>
+    <string name="perm_name_read_call_log">Read Call Log</string>
+    <string name="perm_name_write_call_log">Write Call Log</string>
+    <string name="perm_name_process_outgoing_calls">Process Outgoing Calls</string>
+    <string name="perm_name_read_phone_state">Read Phone State</string>
+    <string name="perm_name_read_phone_numbers">Read Phone Numbers</string>
+    <string name="perm_name_call_phone">Make Phone Calls</string>
+    <string name="perm_name_answer_phone_calls">Answer Phone Calls</string>
+    <string name="perm_name_add_voicemail">Add Voicemail</string>
+    <string name="perm_name_use_sip">Use SIP</string>
+    <string name="perm_name_accept_handover">Accept Call Handover</string>
+    <string name="perm_name_body_sensors">Body Sensors</string>
+    <string name="perm_name_body_sensors_background">Background Body Sensors</string>
+    <string name="perm_name_activity_recognition">Activity Recognition</string>
+    <string name="perm_name_read_calendar">Read Calendar</string>
+    <string name="perm_name_write_calendar">Write Calendar</string>
+    <string name="perm_name_read_external_storage">Read Storage</string>
+    <string name="perm_name_write_external_storage">Write Storage</string>
+    <string name="perm_name_manage_external_storage">Manage All Files</string>
+    <string name="perm_name_read_media_images">Read Images</string>
+    <string name="perm_name_read_media_video">Read Videos</string>
+    <string name="perm_name_read_media_audio">Read Audio Files</string>
+    <string name="perm_name_record_audio">Record Audio</string>
+    <string name="perm_name_send_sms">Send SMS</string>
+    <string name="perm_name_receive_sms">Receive SMS</string>
+    <string name="perm_name_read_sms">Read SMS</string>
+    <string name="perm_name_receive_wap_push">Receive WAP Push</string>
+    <string name="perm_name_receive_mms">Receive MMS</string>
+    
+    <!-- Permission Descriptions -->
+    <string name="perm_desc_camera">Allow app to take pictures and record videos</string>
+    <string name="perm_desc_read_contacts">Allow app to read your contacts</string>
+    <string name="perm_desc_write_contacts">Allow app to modify your contacts</string>
+    <string name="perm_desc_get_accounts">Allow access to the list of accounts</string>
+    <string name="perm_desc_access_fine_location">Allow app to get your precise location</string>
+    <string name="perm_desc_access_coarse_location">Allow app to get your approximate location</string>
+    <string name="perm_desc_access_background_location">Allow app to access location in the background</string>
+    <string name="perm_desc_read_call_log">Allow app to read your call history</string>
+    <string name="perm_desc_write_call_log">Allow app to write your call history</string>
+    <string name="perm_desc_process_outgoing_calls">Allow app to process outgoing calls</string>
+    <string name="perm_desc_read_phone_state">Allow access to phone state</string>
+    <string name="perm_desc_read_phone_numbers">Allow reading device phone numbers</string>
+    <string name="perm_desc_call_phone">Allow app to make phone calls directly</string>
+    <string name="perm_desc_answer_phone_calls">Allow app to answer incoming calls</string>
+    <string name="perm_desc_add_voicemail">Allow app to add voicemail</string>
+    <string name="perm_desc_use_sip">Allow app to use SIP service</string>
+    <string name="perm_desc_accept_handover">Allow calls to be handed over between apps</string>
+    <string name="perm_desc_body_sensors">Allow access to body sensor data (like heart rate)</string>
+    <string name="perm_desc_body_sensors_background">Allow background access to body sensors</string>
+    <string name="perm_desc_activity_recognition">Allow app to recognize your physical activity</string>
+    <string name="perm_desc_read_calendar">Allow app to read your calendar events</string>
+    <string name="perm_desc_write_calendar">Allow app to add or modify calendar events</string>
+    <string name="perm_desc_read_external_storage">Allow app to read your storage</string>
+    <string name="perm_desc_write_external_storage">Allow app to write to your storage</string>
+    <string name="perm_desc_manage_external_storage">Allow management of all files</string>
+    <string name="perm_desc_read_media_images">Allow app to read your photos</string>
+    <string name="perm_desc_read_media_video">Allow app to read your videos</string>
+    <string name="perm_desc_read_media_audio">Allow app to read your audio files</string>
+    <string name="perm_desc_record_audio">Allow app to record audio</string>
+    <string name="perm_desc_send_sms">Allow app to send SMS messages</string>
+    <string name="perm_desc_receive_sms">Allow app to receive SMS messages</string>
+    <string name="perm_desc_read_sms">Allow app to read SMS messages</string>
+    <string name="perm_desc_receive_wap_push">Allow app to receive WAP push messages</string>
+    <string name="perm_desc_receive_mms">Allow app to receive MMS messages</string>
+    
+    <!-- Additional permission strings -->
+    <string name="perm_default_desc">Allow app to access system functions</string>
+    <string name="debug_info">Debug Info</string>
+    <string name="error_info">Error Info</string>
+    <string name="requested_permissions_count">Requested permissions: %1$d, Granted: %2$d</string>
+    <string name="requested_permissions_list">Requested permissions: %s</string>
+    <string name="granted_permissions_list">Granted permissions: %s</string>
+    <string name="permission_error_desc">Error getting permissions: %s</string>
+    
+    <!-- Tool Tester Screen -->
+    <string name="parameters_label">Parameters:</string>
+    <string name="detailed_result">Detailed Result:</string>
+    <string name="retest">Retest</string>
+    
+    <!-- Tool Test Groups -->
+    <string name="env_setup_group">Environment Setup (Sequential)</string>
+    <string name="basic_http_group">Basic &amp; HTTP (Parallel)</string>
+    <string name="file_readonly_group">File Read-only (Parallel)</string>
+    <string name="file_write_group">File Write (Sequential)</string>
+    <string name="system_group">System (Parallel)</string>
+    <string name="ui_automation_group">UI Automation (Parallel, May Fail)</string>
+    <string name="cleanup_group">Cleanup (Auto Execute)</string>
+    
+    <!-- Tool Test Names -->
+    <string name="create_test_dir">Create Test Directory</string>
+    <string name="download_test_image">Download Test Image</string>
+    <string name="create_text_file">Create Text File</string>
+    <string name="delay_test">Delay</string>
+    <string name="device_info_test">Device Info</string>
+    <string name="http_get_test">HTTP GET</string>
+    <string name="file_upload_test">File Upload</string>
+    <string name="manage_cookies_test">Manage Cookies</string>
+    <string name="visit_web_test">Visit Web</string>
+    <string name="use_package_test">Use Package</string>
+    <string name="query_knowledge_test">Query Knowledge</string>
+    <string name="list_files_test">List Files</string>
+    <string name="file_exists_test">File Exists</string>
+    <string name="ocr_read_test">OCR Read</string>
+    <string name="chunk_read_test">Chunk Read</string>
+    <string name="file_info_test">File Info</string>
+    <string name="find_files_test">Find Files</string>
+    <string name="copy_file_test">Copy File</string>
+    <string name="move_file_test">Move File</string>
+    <string name="zip_files_test">Zip Files</string>
+    <string name="unzip_files_test">Unzip Files</string>
+    <string name="convert_file_test">Convert File</string>
+    <string name="list_apps_test">List Apps</string>
+    <string name="get_notifications_test">Get Notifications</string>
+    <string name="device_location_test">Device Location</string>
+    <string name="read_system_setting_test">Read System Setting</string>
+    <string name="write_system_setting_test">Write System Setting</string>
+    <string name="page_info_test">Page Info</string>
+    <string name="simulate_key_test">Simulate Key</string>
+    <string name="text_input_test">Text Input</string>
+    <string name="click_input_test">Click Input (ID)</string>
+    <string name="simulate_tap_test">Simulate Tap</string>
+    <string name="simulate_swipe_test">Simulate Swipe</string>
+    <string name="cleanup_test_dir">Cleanup Test Directory</string>
+    
+    <!-- Tool Test Descriptions -->
+    <string name="create_test_dir_desc">Create root directory for all test files.</string>
+    <string name="download_test_image_desc">Download an image for subsequent tests.</string>
+    <string name="create_text_file_desc">Create a text file for testing.</string>
+    <string name="delay_test_desc">Test tool call delay</string>
+    <string name="device_info_test_desc">Get detailed device information</string>
+    <string name="http_get_test_desc">Test GET request</string>
+    <string name="file_upload_test_desc">Test file upload to httpbin</string>
+    <string name="manage_cookies_test_desc">Get google.com cookies</string>
+    <string name="visit_web_test_desc">Visit Baidu and extract content</string>
+    <string name="use_package_test_desc">Test activating a non-existent package</string>
+    <string name="query_knowledge_test_desc">Test querying knowledge base</string>
+    <string name="list_files_test_desc">List files in test directory</string>
+    <string name="file_exists_test_desc">Check if test file exists</string>
+    <string name="ocr_read_test_desc">Read test image content</string>
+    <string name="chunk_read_test_desc">Read first part of test file</string>
+    <string name="file_info_test_desc">Get test file information</string>
+    <string name="find_files_test_desc">Find files in test directory</string>
+    <string name="copy_file_test_desc">Copy test file</string>
+    <string name="move_file_test_desc">Move and rename file</string>
+    <string name="zip_files_test_desc">Compress test directory</string>
+    <string name="unzip_files_test_desc">Extract test files</string>
+    <string name="convert_file_test_desc">Convert PNG to JPG</string>
+    <string name="list_apps_test_desc">Get user installed app list</string>
+    <string name="get_notifications_test_desc">Get latest 5 notifications</string>
+    <string name="device_location_test_desc">Get low-precision device location</string>
+    <string name="read_system_setting_test_desc">Get screen off timeout</string>
+    <string name="write_system_setting_test_desc">Try writing a harmless setting</string>
+    <string name="page_info_test_desc">Get current screen UI structure</string>
+    <string name="simulate_key_test_desc">Simulate pressing volume+</string>
+    <string name="text_input_test_desc">Input text in test field above</string>
+    <string name="click_input_test_desc">Click input field using testTag as ID, expected to succeed.</string>
+    <string name="simulate_tap_test_desc">Tap at (1,1), expected to fail</string>
+    <string name="simulate_swipe_test_desc">Short swipe at screen center</string>
+    <string name="cleanup_test_dir_desc">Delete all test files and directories.</string>
+    
+    <!-- Additional missing strings -->
+    <string name="ai_tools_availability_test">AI Tools Availability Test</string>
+    <string name="ai_tools_grouped_desc">AI tools grouped by category</string>
+    <string name="batch_testing_in_progress">Batch testing in progress</string>
+    <string name="ffmpeg_common_parameters">FFmpeg Common Parameters</string>
+    <string name="ffmpeg_create_gif">Create GIF</string>
+    <string name="ffmpeg_create_gif_desc">Convert video to animated GIF</string>
+    <string name="ffmpeg_executing_command">Executing FFmpeg command</string>
+    <string name="ffmpeg_extract_audio">Extract Audio</string>
+    <string name="ffmpeg_extract_audio_desc">Extract audio track from video</string>
+    <string name="ffmpeg_get_info_failed">Failed to get video information</string>
+    <string name="ffmpeg_input_placeholder">Input file path or URL</string>
+    <string name="ffmpeg_video_compression">Video Compression</string>
+    <string name="ffmpeg_video_compression_desc">Compress video to reduce file size</string>
+    <string name="ffmpeg_video_info">Video Information</string>
+    <string name="ffmpeg_video_info_desc">Get detailed video file information</string>
+    <string name="ffmpeg_video_output_placeholder">Output file path (optional)</string>
+    <string name="ffmpeg_video_transcode">Video Transcoding</string>
+    <string name="ffmpeg_video_conversion_desc">Convert video to different format</string>
+    <string name="ffmpeg_video_trim">Video Trimming</string>
+    <string name="ffmpeg_video_trim_desc">Trim video to specific duration</string>
+    <string name="ffmpeg_view_more_info">View More Information</string>
+    <string name="start_comprehensive_test">Start Comprehensive Test</string>
+    <string name="terminal_no_n">No (N)</string>
+    <string name="terminal_send_custom_input">Send Custom Input</string>
+    <string name="terminal_yes_y">Yes (Y)</string>
+    <string name="test_input_field">Test Input Field</string>
+    
+    <!-- ShizukuDemoScreen strings -->
+    <string name="loading_app_state">Loading application state...</string>
+    <string name="setup_wizard">Setup Wizard</string>
+    <string name="setup_wizard_icon_desc">Setup wizard icon</string>
+    <string name="cannot_start_shizuku_app">Cannot start Shizuku app</string>
+    <string name="cannot_open_doc_link">Cannot open documentation link</string>
+    <string name="welcome_termux_config">Welcome to Termux configuration tool\nClick the corresponding button to start configuration</string>
+    <string name="executing_task">Executing: %1$s...</string>
+    
+    <!-- Permission Level Features -->
+    <string name="feature_overlay_window">Overlay Window</string>
+    <string name="feature_file_operations">File Operations</string>
+    <string name="feature_screen_auto_click">Screen Auto Click</string>
+    <string name="feature_system_permission_modification">System Permission Modification</string>
+    <string name="feature_termux_support">Termux Support</string>
+    <string name="feature_run_js">Run JavaScript</string>
+    <string name="feature_plugin_market_mcp">Plugin Market MCP</string>
+    <string name="supported">Supported</string>
+    <string name="not_supported">Not Supported</string>
+    <string name="permission_level_set_active">Set %1$s as the current active permission level</string>
+    <string name="no_description">No description</string>
+    <string name="view_details">View Details</string>
+    <string name="builtin">Built-in</string>
+    <string name="external">External</string>
+    
+    <!-- Chat Components -->
+    <string name="memory_attachment_active">Memory attachment activated</string>
+    <string name="thinking_mode_active">Thinking mode activated</string>
+    <string name="thinking_guidance_active">Thinking guidance activated</string>
+    <string name="ai_planning_active">AI planning mode activated</string>
+    <string name="auto_approve_active">Auto approve activated</string>
+    <string name="settings_options">Settings options</string>
+    <string name="model_config">Model Configuration</string>
+    <string name="model_config_desc">Select a configured model here, or click Manage Configuration below to create or modify models</string>
+    <string name="prompt">Prompt</string>
+    <string name="prompt_desc">Select a configured prompt here, or click Manage Configuration below to create or modify prompts</string>
+    <string name="memory">Memory</string>
+    <string name="memory_desc">Memory selection includes user preferences and memory base under that preference. To create a new memory base, go to settings to create a new user preference and select it here</string>
+    <string name="memory_attachment">Memory Attachment</string>
+    <string name="memory_attachment_desc">When enabled, relevant content will be automatically retrieved from the memory base and attached when sending messages, but this may affect AI response focus.</string>
+    <string name="ai_planning_desc">Can generate a series of plans for execution (mediocre effectiveness, not recommended, will be replaced in the future).</string>
+    <string name="thinking_mode">Thinking Mode</string>
+    <string name="thinking_mode_desc">Currently only supports Gemini, Qwen3 and Claude, enabling built-in thinking.</string>
+    <string name="thinking_guidance">Thinking Guidance</string>
+    <string name="thinking_guidance_desc">Can force models that can\'t think to perform thinking. This option is not recommended for thinking models.</string>
+    <string name="details">Details</string>
+    <string name="model_selection">Model Selection</string>
+    <string name="prompt_selection">Prompt Selection</string>
+    <string name="memory_selection">Memory Selection</string>
+    <string name="not_selected">Not selected</string>
+    <string name="manage_config">Manage Configuration</string>
+    <string name="collapse_verb">Collapse</string>
+    <string name="expand_verb">Expand</string>
+    <string name="hide_history">Hide history</string>
+    <string name="show_history">Show history</string>
+    <string name="open_floating_window">Open floating window</string>
+    <string name="ungrouped">Ungrouped</string>
+    <string name="manage_group">Manage Group</string>
+    <string name="rename_group">Rename Group</string>
+    <string name="delete_group">Delete Group</string>
+    <string name="new_group_name">New group name</string>
+    <string name="confirm_delete_group">Confirm Delete Group</string>
+    <string name="delete_group_and_chats">Delete group and all chats</string>
+    <string name="delete_operation_irreversible">This operation cannot be undone</string>
+    <string name="delete_group_only">Delete group only</string>
+    <string name="chats_move_to_ungrouped">Chats will be moved to \"Ungrouped\"</string>
+    <string name="edit_title">Edit Title</string>
+    <string name="new_title">New title</string>
+    <string name="new_group">New Group</string>
+    <string name="group_name">Group name</string>
+    <string name="create_new_group">Create new group</string>
+    <string name="long_press_to_manage">Long press to manage</string>
+    <string name="edit_title_desc">Edit title</string>
+    <string name="reorder">Reorder</string>
+    <string name="choose_delete_method">Please choose deletion method:</string>
+    <string name="swipe_hint">Swipe left or right to edit or delete (tap to hide)</string>
+    <string name="long_press_manage">Long press to manage</string>
+  
 </resources> 

@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity() {
         // 设置跳过加载的回调
         pluginLoadingState.setOnSkipCallback {
             Log.d(TAG, "用户跳过了插件加载过程")
-            Toast.makeText(this, "已跳过插件加载", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, getString(R.string.plugin_loading_skipped), Toast.LENGTH_SHORT).show()
         }
 
         // 设置初始界面 - 显示加载占位符
@@ -234,7 +234,7 @@ class MainActivity : ComponentActivity() {
                         if (currentTime - backPressedTime > backPressedInterval) {
                             // 第一次点击，显示提示
                             backPressedTime = currentTime
-                            Toast.makeText(this@MainActivity, "再按一次退出应用", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this@MainActivity, getString(R.string.press_back_again_to_exit), Toast.LENGTH_SHORT).show()
                         } else {
                             // 第二次点击，退出应用
                             finish()
@@ -654,7 +654,7 @@ private fun InvitationResultDialog(
                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clip = ClipData.newPlainText("Confirmation Code", confirmationCode)
                     clipboard.setPrimaryClip(clip)
-                    Toast.makeText(context, "返回码已复制！", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.confirmation_code_copied), Toast.LENGTH_SHORT).show()
                     onDismiss()
                 }
             ) {

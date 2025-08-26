@@ -20,7 +20,9 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import com.ai.assistance.operit.ui.features.toolbox.screens.terminal.utils.TerminalColors
+import com.ai.assistance.operit.R
 
 /**
  * 交互式输入对话框
@@ -33,6 +35,7 @@ fun InteractiveInputDialog(
     onDismissRequest: () -> Unit,
     onInputSubmit: (String) -> Unit
 ) {
+    val context = LocalContext.current
     var inputText by remember { mutableStateOf(initialInput) }
     
     Dialog(
@@ -97,7 +100,7 @@ fun InteractiveInputDialog(
                                 onInputSubmit(cleanInput) 
                             }
                         ) {
-                            Icon(Icons.Default.Send, contentDescription = "发送", tint = TerminalColors.ParrotAccent)
+                            Icon(Icons.Default.Send, contentDescription = context.getString(R.string.send), tint = TerminalColors.ParrotAccent)
                         }
                     },
                     colors = OutlinedTextFieldDefaults.colors(
@@ -131,7 +134,7 @@ fun InteractiveInputDialog(
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("是 (Y)", fontWeight = FontWeight.Bold)
+                        Text(context.getString(R.string.terminal_yes_y), fontWeight = FontWeight.Bold)
                     }
                     
                     Button(
@@ -143,7 +146,7 @@ fun InteractiveInputDialog(
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("否 (N)", fontWeight = FontWeight.Bold)
+                        Text(context.getString(R.string.terminal_no_n), fontWeight = FontWeight.Bold)
                     }
                 }
                 
@@ -160,7 +163,7 @@ fun InteractiveInputDialog(
                     ),
                     shape = RoundedCornerShape(8.dp)
                 ) {
-                    Text("发送自定义输入", fontWeight = FontWeight.Bold)
+                    Text(context.getString(R.string.terminal_send_custom_input), fontWeight = FontWeight.Bold)
                 }
                 
                 TextButton(
@@ -172,7 +175,7 @@ fun InteractiveInputDialog(
                         contentColor = Color.White.copy(alpha = 0.7f)
                     )
                 ) {
-                    Text("取消")
+                    Text(context.getString(R.string.cancel))
                 }
             }
         }

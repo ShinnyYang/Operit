@@ -3,6 +3,7 @@ package com.ai.assistance.operit.ui.features.chat.viewmodel
 import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ChatMessage
@@ -274,7 +275,7 @@ class ChatHistoryDelegate(
                 firstUserMessage
             }
         } else {
-            "新对话"
+            context.getString(R.string.new_conversation)
         }
     }
 

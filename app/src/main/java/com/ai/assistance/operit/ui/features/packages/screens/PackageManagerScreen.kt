@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ import com.ai.assistance.operit.ui.features.packages.lists.PackagesList
 import java.io.File
 import kotlinx.coroutines.launch
 import androidx.compose.ui.draw.scale
+import com.ai.assistance.operit.R
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -112,7 +114,7 @@ fun PackageManagerScreen() {
                             }
 
                             if (fileName == null) {
-                                snackbarHostState.showSnackbar("无法获取文件名")
+                                snackbarHostState.showSnackbar(context.getString(R.string.no_filename))
                                 return@launch
                             }
 
@@ -120,7 +122,7 @@ fun PackageManagerScreen() {
                             when (selectedTab) {
                                 PackageTab.PACKAGES -> {
                             if (!fileName!!.endsWith(".js")) {
-                                        snackbarHostState.showSnackbar(message = "包管理只支持.js文件")
+                                        snackbarHostState.showSnackbar(message = context.getString(R.string.package_js_only))
                                 return@launch
                             }
 
@@ -141,7 +143,7 @@ fun PackageManagerScreen() {
                             availablePackages.value = packageManager.getAvailablePackages()
                             importedPackages.value = packageManager.getImportedPackages()
 
-                            snackbarHostState.showSnackbar(message = "外部包导入成功")
+                            snackbarHostState.showSnackbar(message = context.getString(R.string.external_package_imported))
 
                             // Clean up the temporary file
                             tempFile.delete()
@@ -149,7 +151,7 @@ fun PackageManagerScreen() {
                                 /*
                                 PackageTab.AUTOMATION_CONFIGS -> {
                                     if (!fileName!!.endsWith(".json")) {
-                                        snackbarHostState.showSnackbar(message = "自动化配置只支持.json文件")
+                                        snackbarHostState.showSnackbar(message = context.getString(R.string.automation_json_only))
                                         return@launch
                                     }
 
@@ -177,12 +179,12 @@ fun PackageManagerScreen() {
                                 }
                                 */
                                 else -> {
-                                    snackbarHostState.showSnackbar("当前标签页不支持导入")
+                                    snackbarHostState.showSnackbar(context.getString(R.string.current_tab_not_support_import))
                                 }
                             }
                         } catch (e: Exception) {
                             Log.e("PackageManagerScreen", "Failed to import file", e)
-                            snackbarHostState.showSnackbar(message = "导入失败: ${e.message}")
+                            snackbarHostState.showSnackbar(message = context.getString(R.string.import_failed, e.message))
                         }
                     }
                 }
@@ -234,9 +236,9 @@ fun PackageManagerScreen() {
                         Icon(
                             imageVector = Icons.Rounded.Add, 
                             contentDescription = when (selectedTab) {
-                                PackageTab.PACKAGES -> "导入外部包"
+                                PackageTab.PACKAGES -> context.getString(R.string.import_external_package)
                                 // PackageTab.AUTOMATION_CONFIGS -> "导入自动化配置"
-                                else -> "导入"
+                                else -> context.getString(R.string.import_action)
                             }
                         ) 
                     }
@@ -292,7 +294,7 @@ fun PackageManagerScreen() {
                                 )
                         Spacer(Modifier.width(6.dp))
                                 Text(
-                                        "包管理",
+                                        context.getString(R.string.packages),
                             style = MaterialTheme.typography.bodySmall,
                             softWrap = false,
                             color = if (selectedTab == PackageTab.PACKAGES) 
@@ -358,7 +360,7 @@ fun PackageManagerScreen() {
                                 )
                         Spacer(Modifier.width(6.dp))
                                 Text(
-                            "MCP",
+                            context.getString(R.string.mcp),
                             style = MaterialTheme.typography.bodySmall,
                             softWrap = false,
                             color = if (selectedTab == PackageTab.MCP) 
@@ -378,7 +380,7 @@ fun PackageManagerScreen() {
                     PackageTab.PACKAGES -> {
                         // 显示包列表
                         if (availablePackages.value.isEmpty()) {
-                            EmptyState(message = "没有可用的包")
+                            EmptyState(message = context.getString(R.string.no_packages_available))
                         } else {
                             Surface(
                                     modifier = Modifier.fillMaxSize(),
@@ -466,7 +468,7 @@ fun PackageManagerScreen() {
                                                             visibleImportedPackages.value = importedPackages.value
                                                             // 只在失败时显示提示
                                                             snackbarHostState.showSnackbar(
-                                                                message = if (isChecked) "包导入失败" else "包移除失败"
+                                                                message = if (isChecked) context.getString(R.string.package_import_failed) else context.getString(R.string.package_remove_failed)
                                                             )
                                                         }
                                                     }
@@ -620,7 +622,7 @@ fun AutomationConfigList(
                             fontWeight = FontWeight.Medium
                         )
                         Text(
-                            text = config.description.takeIf { it.isNotBlank() } ?: "暂无描述",
+                            text = config.description.takeIf { it.isNotBlank() } ?: stringResource(R.string.no_description),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -637,7 +639,7 @@ fun AutomationConfigList(
                                 shape = RoundedCornerShape(4.dp)
                             ) {
                                 Text(
-                                    text = if (config.isBuiltIn) "内置" else "外部",
+                                    text = if (config.isBuiltIn) stringResource(R.string.builtin) else stringResource(R.string.external),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = if (config.isBuiltIn)
                                         MaterialTheme.colorScheme.onPrimaryContainer
@@ -657,12 +659,12 @@ fun AutomationConfigList(
                         }
                     }
                     
-                    Icon(
-                        imageVector = Icons.Default.ChevronRight,
-                        contentDescription = "查看详情",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                        modifier = Modifier.size(16.dp)
-                    )
+                                                Icon(
+                                imageVector = Icons.Default.ChevronRight,
+                                contentDescription = stringResource(R.string.view_details),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier.size(16.dp)
+                            )
                 }
             }
         }

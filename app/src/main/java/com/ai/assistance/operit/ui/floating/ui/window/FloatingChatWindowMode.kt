@@ -223,7 +223,7 @@ fun FloatingChatWindowMode(floatContext: FloatContext) {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "AI助手",
+                                    text = stringResource(R.string.ai_assistant),
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontWeight = FontWeight.Medium
                                     ),
@@ -453,7 +453,7 @@ fun FloatingChatWindowMode(floatContext: FloatContext) {
                                                 verticalAlignment = Alignment.CenterVertically
                                         ) {
                                             Text(
-                                                    text = "发送消息",
+                                                    text = stringResource(R.string.send_message),
                                                     style = MaterialTheme.typography.titleMedium,
                                                     color = MaterialTheme.colorScheme.onSurface
                                             )

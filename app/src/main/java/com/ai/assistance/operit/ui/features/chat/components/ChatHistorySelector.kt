@@ -100,10 +100,11 @@ fun ChatHistorySelector(
     var hasLongPressedGroup by rememberLocal("has_long_pressed_group", defaultValue = false)
 
     val lazyListState = rememberLazyListState()
+    val ungroupedText = stringResource(R.string.ungrouped)
 
-    val flatItems = remember(chatHistories, collapsedGroups) {
+    val flatItems = remember(chatHistories, collapsedGroups, ungroupedText) {
         chatHistories
-            .groupBy { it.group ?: "未分组" }
+            .groupBy { it.group ?: ungroupedText }
             .flatMap { (group, histories) ->
                 val header = HistoryListItem.Header(group)
                 val items =
@@ -128,7 +129,7 @@ fun ChatHistorySelector(
             .mapNotNull {
                 when (it) {
                     is HistoryListItem.Header -> {
-                        newGroup = it.name.takeIf { name -> name != "未分组" }
+                        newGroup = it.name.takeIf { name -> name != ungroupedText }
                         null
                     }
                     is HistoryListItem.Item -> it.history.copy(group = newGroup)
@@ -160,7 +161,7 @@ fun ChatHistorySelector(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "管理分组",
+                        text = stringResource(R.string.manage_group),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(horizontal = 24.dp)
@@ -195,13 +196,13 @@ fun ChatHistorySelector(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.DriveFileRenameOutline,
-                                contentDescription = "重命名",
+                                contentDescription = stringResource(R.string.rename),
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                "重命名分组", 
+                                stringResource(R.string.rename_group), 
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -228,13 +229,13 @@ fun ChatHistorySelector(
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Delete,
-                                contentDescription = "删除",
+                                contentDescription = stringResource(R.string.delete),
                                 tint = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(
-                                "删除分组", 
+                                stringResource(R.string.delete_group), 
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onErrorContainer
                             )
@@ -247,7 +248,7 @@ fun ChatHistorySelector(
                         onClick = { groupActionTarget = null },
                         modifier = Modifier.align(Alignment.End).padding(horizontal = 16.dp)
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             }
@@ -258,12 +259,12 @@ fun ChatHistorySelector(
         var newGroupNameText by remember(groupToRename) { mutableStateOf(groupToRename!!) }
         AlertDialog(
             onDismissRequest = { groupToRename = null },
-            title = { Text("重命名分组") },
+            title = { Text(stringResource(R.string.rename_group)) },
             text = {
                 OutlinedTextField(
                     value = newGroupNameText,
                     onValueChange = { newGroupNameText = it },
-                    label = { Text("新分组名称") },
+                    label = { Text(stringResource(R.string.new_group_name)) },
                     modifier = Modifier.fillMaxWidth()
                 )
             },
@@ -275,10 +276,10 @@ fun ChatHistorySelector(
                         }
                         groupToRename = null
                     }
-                ) { Text("保存") }
+                ) { Text(stringResource(R.string.save)) }
             },
             dismissButton = {
-                TextButton(onClick = { groupToRename = null }) { Text("取消") }
+                TextButton(onClick = { groupToRename = null }) { Text(stringResource(R.string.cancel)) }
             }
         )
     }
@@ -311,7 +312,7 @@ fun ChatHistorySelector(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "确认删除分组",
+                        text = stringResource(R.string.confirm_delete_group),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
@@ -327,7 +328,7 @@ fun ChatHistorySelector(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     Text(
-                        text = "请选择删除方式：",
+                        text = stringResource(R.string.choose_delete_method),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -355,12 +356,12 @@ fun ChatHistorySelector(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    text = "删除分组和所有对话",
+                                    text = stringResource(R.string.delete_group_and_chats),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    text = "此操作无法撤销",
+                                    text = stringResource(R.string.delete_operation_irreversible),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                                 )
@@ -390,11 +391,11 @@ fun ChatHistorySelector(
                             Spacer(modifier = Modifier.width(16.dp))
                             Column {
                                 Text(
-                                    text = "仅删除分组",
+                                    text = stringResource(R.string.delete_group_only),
                                     style = MaterialTheme.typography.bodyLarge
                                 )
                                 Text(
-                                    text = "对话将移至“未分组”",
+                                    text = stringResource(R.string.chats_move_to_ungrouped),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -408,7 +409,7 @@ fun ChatHistorySelector(
                         onClick = { groupToDelete = null },
                         modifier = Modifier.align(Alignment.End)
                     ) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
             }
@@ -419,12 +420,12 @@ fun ChatHistorySelector(
         var newTitle by remember { mutableStateOf(chatToEdit!!.title) }
         AlertDialog(
                 onDismissRequest = { chatToEdit = null },
-                title = { Text("编辑标题") },
+                title = { Text(stringResource(R.string.edit_title)) },
                 text = {
                     OutlinedTextField(
                             value = newTitle,
                             onValueChange = { newTitle = it },
-                            label = { Text("新标题") },
+                            label = { Text(stringResource(R.string.new_title)) },
                             modifier = Modifier.fillMaxWidth()
                     )
                 },
@@ -435,12 +436,12 @@ fun ChatHistorySelector(
                                 chatToEdit = null
                             }
                     ) {
-                        Text("保存")
+                        Text(stringResource(R.string.save))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { chatToEdit = null }) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
         )
@@ -449,12 +450,12 @@ fun ChatHistorySelector(
     if (showNewGroupDialog) {
         AlertDialog(
                 onDismissRequest = { showNewGroupDialog = false },
-                title = { Text("新建分组") },
+                title = { Text(stringResource(R.string.new_group)) },
                 text = {
                     OutlinedTextField(
                             value = newGroupName,
                             onValueChange = { newGroupName = it },
-                            label = { Text("分组名称") },
+                            label = { Text(stringResource(R.string.group_name)) },
                             modifier = Modifier.fillMaxWidth()
                     )
                 },
@@ -468,12 +469,12 @@ fun ChatHistorySelector(
                                 }
                             }
                     ) {
-                        Text("创建")
+                        Text(stringResource(R.string.create))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showNewGroupDialog = false }) {
-                        Text("取消")
+                        Text(stringResource(R.string.cancel))
                     }
                 }
         )
@@ -504,7 +505,7 @@ fun ChatHistorySelector(
             IconButton(onClick = { showNewGroupDialog = true }) {
                 Icon(
                         Icons.Default.AddCircleOutline,
-                        contentDescription = "新建分组"
+                        contentDescription = stringResource(R.string.new_group)
                 )
             }
         }
@@ -529,7 +530,7 @@ fun ChatHistorySelector(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "左右滑动可编辑或删除(点击不再显示)",
+                    text = stringResource(R.string.swipe_hint),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -570,7 +571,7 @@ fun ChatHistorySelector(
                                             }
                                         },
                                         onLongPress = {
-                                            if (item.name != "未分组") {
+                                            if (item.name != ungroupedText) {
                                                 groupActionTarget = item.name
                                                 hasLongPressedGroup = true
                                             }
@@ -603,9 +604,9 @@ fun ChatHistorySelector(
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
-                                    if (item.name != "未分组" && !hasLongPressedGroup) {
+                                    if (item.name != ungroupedText && !hasLongPressedGroup) {
                                         Text(
-                                            text = " (长按管理)",
+                                            text = " (" + stringResource(R.string.long_press_manage) + ")",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                                         )
@@ -614,7 +615,7 @@ fun ChatHistorySelector(
                             }
                             Icon(
                                     imageVector = if (collapsedGroups.contains(item.name)) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                                    contentDescription = if (collapsedGroups.contains(item.name)) "展开" else "折叠"
+                                    contentDescription = if (collapsedGroups.contains(item.name)) stringResource(R.string.expand) else stringResource(R.string.collapse)
                             )
                         }
                     }
@@ -639,7 +640,7 @@ fun ChatHistorySelector(
                                 Icon(
                                     modifier = Modifier.padding(16.dp),
                                     imageVector = Icons.Default.Edit,
-                                    contentDescription = "编辑标题",
+                                    contentDescription = stringResource(R.string.edit_title),
                                     tint = Color.White
                                 )
                             },

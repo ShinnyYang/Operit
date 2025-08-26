@@ -1,5 +1,6 @@
 package com.ai.assistance.operit.ui.features.toolbox.screens.apppermissions
 
+import android.content.Context
 import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import androidx.compose.animation.*
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.navigation.NavController
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.system.AndroidShellExecutor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -143,10 +145,10 @@ fun AppPermissionsScreen(navController: NavController) {
         isPermissionLoading = true
         coroutineScope.launch {
             try {
-                val permissions = getAppPermissions(packageName)
+                val permissions = getAppPermissions(packageName, context)
                 selectedAppPermissions = permissions
             } catch (e: Exception) {
-                errorMessage = "获取权限失败: ${e.message}"
+                                            errorMessage = context.getString(R.string.toolbox_permissions_get_error, e.message ?: "")
                 showError = true
             } finally {
                 isPermissionLoading = false
@@ -172,11 +174,11 @@ fun AppPermissionsScreen(navController: NavController) {
                     // 刷新权限列表
                     loadAppPermissions(packageName)
                 } else {
-                    errorMessage = "修改权限失败: ${result.stderr}"
+                                                errorMessage = context.getString(R.string.toolbox_permissions_modify_error, result.stderr)
                     showError = true
                 }
             } catch (e: Exception) {
-                errorMessage = "修改权限失败: ${e.message}"
+                                            errorMessage = context.getString(R.string.toolbox_permissions_modify_error, e.message ?: "")
                 showError = true
             }
         }
@@ -199,11 +201,11 @@ fun AppPermissionsScreen(navController: NavController) {
                     // 刷新权限列表
                     loadAppPermissions(packageName)
                 } else {
-                    errorMessage = "重置权限失败: ${result.stderr}"
+                                                errorMessage = context.getString(R.string.toolbox_permissions_reset_error, result.stderr)
                     showError = true
                 }
             } catch (e: Exception) {
-                errorMessage = "重置权限失败: ${e.message}"
+                                        errorMessage = context.getString(R.string.toolbox_permissions_reset_error, e.message ?: "")
                 showError = true
             }
         }
@@ -247,12 +249,12 @@ fun AppPermissionsScreen(navController: NavController) {
                                     OutlinedTextField(
                                             value = searchQuery,
                                             onValueChange = { searchQuery = it },
-                                            modifier = Modifier.weight(1f),
-                                            placeholder = { Text("搜索应用") },
+                                            modifier = Modifier.weight(1f).height(56.dp),
+                                            placeholder = { Text(context.getString(R.string.file_manager_search_hint)) },
                                             leadingIcon = {
                                                 Icon(
                                                         Icons.Default.Search,
-                                                        contentDescription = "搜索"
+                                                        contentDescription = context.getString(R.string.search)
                                                 )
                                             },
                                             trailingIcon = {
@@ -260,12 +262,13 @@ fun AppPermissionsScreen(navController: NavController) {
                                                     IconButton(onClick = { searchQuery = "" }) {
                                                         Icon(
                                                                 Icons.Default.Clear,
-                                                                contentDescription = "清除"
+                                                                contentDescription = context.getString(R.string.clear)
                                                         )
                                                     }
                                                 }
                                             },
                                             singleLine = true,
+                                            maxLines = 1,
                                             shape = RoundedCornerShape(24.dp),
                                             colors =
                                                     TextFieldDefaults.outlinedTextFieldColors(
@@ -305,7 +308,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                                         )
                                         )
                                         Text(
-                                                "系统应用",
+                                                context.getString(R.string.file_manager_show_hidden),
                                                 style = MaterialTheme.typography.bodyMedium,
                                                 color = colorScheme.onSurface
                                         )
@@ -317,7 +320,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                 ) {
                                     // 应用计数信息
                                     Text(
-                                            text = "共 ${filteredApps.size} 个应用",
+                                            text = context.getString(R.string.file_count, filteredApps.size),
                                             style = MaterialTheme.typography.labelMedium,
                                             color = colorScheme.onSurfaceVariant,
                                             modifier =
@@ -337,7 +340,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                            "正在加载应用列表...",
+                                            context.getString(R.string.file_manager_loading),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = colorScheme.onSurfaceVariant
                                     )
@@ -361,16 +364,16 @@ fun AppPermissionsScreen(navController: NavController) {
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                            text = "未找到匹配的应用",
+                                            text = context.getString(R.string.no_apps_found_anywhere),
                                             style = MaterialTheme.typography.titleLarge,
                                             color = colorScheme.onSurface
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
                                             text =
-                                                    if (searchQuery.isNotEmpty()) "尝试使用其他关键词搜索"
-                                                    else if (!showSystemApps) "尝试勾选\"系统应用\"查看更多应用"
-                                                    else "未找到任何应用",
+                                                    if (searchQuery.isNotEmpty()) context.getString(R.string.try_different_keywords)
+                                                    else if (!showSystemApps) context.getString(R.string.try_show_system_apps)
+                                                    else context.getString(R.string.no_apps_found_anywhere),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = colorScheme.onSurfaceVariant,
                                             textAlign = TextAlign.Center
@@ -419,7 +422,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                 ) {
                                     Icon(
                                             imageVector = Icons.Default.ArrowBack,
-                                            contentDescription = "返回",
+                                            contentDescription = context.getString(R.string.back),
                                             tint = colorScheme.primary
                                     )
                                 }
@@ -482,7 +485,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                 ) {
                                     Icon(
                                             imageVector = Icons.Default.RestartAlt,
-                                            contentDescription = "重置权限",
+                                            contentDescription = context.getString(R.string.toolbox_permissions_reset),
                                             tint = colorScheme.onSecondaryContainer,
                                             modifier = Modifier.size(20.dp)
                                     )
@@ -514,7 +517,7 @@ fun AppPermissionsScreen(navController: NavController) {
                             ) {
                                 Column(modifier = Modifier.padding(16.dp)) {
                                     Text(
-                                            "权限概况",
+                                            context.getString(R.string.toolbox_permissions_overview),
                                             style = MaterialTheme.typography.titleMedium,
                                             color = colorScheme.onPrimaryContainer
                                     )
@@ -528,7 +531,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                         // 总权限数
                                         PermissionStat(
                                                 count = totalPerms,
-                                                label = "总权限",
+                                                label = context.getString(R.string.toolbox_permissions_total),
                                                 icon = Icons.Default.List,
                                                 iconTint = colorScheme.onPrimaryContainer
                                         )
@@ -536,7 +539,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                         // 已授权数
                                         PermissionStat(
                                                 count = grantedPerms,
-                                                label = "已授权",
+                                                label = context.getString(R.string.toolbox_permissions_granted),
                                                 icon = Icons.Default.Check,
                                                 iconTint = Color(0xFF4CAF50)
                                         )
@@ -544,7 +547,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                         // 危险权限数
                                         PermissionStat(
                                                 count = dangerousPerms,
-                                                label = "危险权限",
+                                                label = context.getString(R.string.toolbox_permissions_dangerous),
                                                 icon = Icons.Default.Warning,
                                                 iconTint = Color(0xFFFF9800)
                                         )
@@ -563,7 +566,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                     CircularProgressIndicator()
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                            "正在加载权限信息...",
+                                            context.getString(R.string.toolbox_permissions_loading_info),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = colorScheme.onSurfaceVariant
                                     )
@@ -586,13 +589,13 @@ fun AppPermissionsScreen(navController: NavController) {
                                     )
                                     Spacer(modifier = Modifier.height(16.dp))
                                     Text(
-                                            text = "该应用没有请求任何特殊权限",
+                                            text = context.getString(R.string.toolbox_permissions_no_special),
                                             style = MaterialTheme.typography.titleMedium,
                                             textAlign = TextAlign.Center
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                            text = "这意味着应用不需要访问敏感数据或功能",
+                                            text = context.getString(R.string.toolbox_permissions_no_special_desc),
                                             style = MaterialTheme.typography.bodyMedium,
                                             color = colorScheme.onSurfaceVariant,
                                             textAlign = TextAlign.Center
@@ -611,20 +614,20 @@ fun AppPermissionsScreen(navController: NavController) {
                                         // 权限组标题
                                         val groupName =
                                                 when (group) {
-                                                    "ACTIVITY_RECOGNITION" -> "活动识别"
-                                                    "CALENDAR" -> "日历"
-                                                    "CALL_LOG" -> "通话记录"
-                                                    "CAMERA" -> "相机"
-                                                    "CONTACTS" -> "联系人"
-                                                    "LOCATION" -> "位置"
-                                                    "MICROPHONE" -> "麦克风"
-                                                    "PHONE" -> "电话"
-                                                    "SENSORS" -> "传感器"
-                                                    "SMS" -> "短信"
-                                                    "STORAGE" -> "存储"
-                                                    "OTHER_GRANTED" -> "其他已授权权限"
-                                                    "OTHER_DENIED" -> "其他未授权权限"
-                                                    else -> "其他权限"
+                                                                    "ACTIVITY_RECOGNITION" -> context.getString(R.string.permission_group_activity)
+                "CALENDAR" -> context.getString(R.string.permission_group_calendar)
+                "CALL_LOG" -> context.getString(R.string.permission_group_call_log)
+                "CAMERA" -> context.getString(R.string.permission_group_camera)
+                "CONTACTS" -> context.getString(R.string.permission_group_contacts)
+                "LOCATION" -> context.getString(R.string.permission_group_location)
+                "MICROPHONE" -> context.getString(R.string.permission_group_microphone)
+                "PHONE" -> context.getString(R.string.permission_group_phone)
+                "SENSORS" -> context.getString(R.string.permission_group_sensors)
+                "SMS" -> context.getString(R.string.permission_group_sms)
+                "STORAGE" -> context.getString(R.string.permission_group_storage)
+                "OTHER_GRANTED" -> context.getString(R.string.permission_group_other_granted)
+                "OTHER_DENIED" -> context.getString(R.string.permission_group_other_denied)
+                else -> context.getString(R.string.permission_group_other)
                                                 }
 
                                         Surface(
@@ -686,7 +689,7 @@ fun AppPermissionsScreen(navController: NavController) {
 
                                                     Text(
                                                             text =
-                                                                    "${permissions.size} ${if (permissions.size > 1) "个权限" else "个权限"}",
+                                                                    "${permissions.size} ${context.getString(R.string.toolbox_permissions_count_suffix)}",
                                                             style =
                                                                     MaterialTheme.typography
                                                                             .bodySmall,
@@ -750,11 +753,11 @@ fun AppPermissionsScreen(navController: NavController) {
                                                                 }
                                                             } else {
                                                                 errorMessage =
-                                                                        "修改权限失败: ${result.stderr}"
+                                                                        context.getString(R.string.toolbox_permissions_modify_error, result.stderr)
                                                                 showError = true
                                                             }
                                                         } catch (e: Exception) {
-                                                            errorMessage = "修改权限失败: ${e.message}"
+                                                            errorMessage = context.getString(R.string.toolbox_permissions_modify_error, e.message ?: "")
                                                             showError = true
                                                         }
                                                     }
@@ -787,7 +790,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                 modifier = Modifier.size(28.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("操作失败")
+                        Text(context.getString(R.string.operation_failed))
                     }
                 },
                 text = { Text(errorMessage!!, style = MaterialTheme.typography.bodyMedium) },
@@ -798,7 +801,7 @@ fun AppPermissionsScreen(navController: NavController) {
                                     ButtonDefaults.textButtonColors(
                                             contentColor = colorScheme.primary
                                     )
-                    ) { Text("确定") }
+                    ) { Text(context.getString(R.string.confirm)) }
                 },
                 shape = RoundedCornerShape(16.dp),
                 containerColor = colorScheme.surface,
@@ -844,6 +847,7 @@ fun PermissionStat(count: Int, label: String, icon: ImageVector, iconTint: Color
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppItem(app: AppInfo, onClick: () -> Unit) {
+    val context = LocalContext.current
     Card(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
@@ -922,7 +926,7 @@ fun AppItem(app: AppInfo, onClick: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                                text = "系统应用",
+                                                                    text = context.getString(R.string.toolbox_permissions_system_apps),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = colorScheme.error.copy(alpha = 0.8f),
                         )
@@ -941,7 +945,7 @@ fun AppItem(app: AppInfo, onClick: () -> Unit) {
             ) {
                 Icon(
                         imageVector = Icons.Default.Security,
-                        contentDescription = "查看权限",
+                                                                    contentDescription = context.getString(R.string.toolbox_permissions_view),
                         tint = colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(18.dp)
                 )
@@ -952,6 +956,7 @@ fun AppItem(app: AppInfo, onClick: () -> Unit) {
 
 @Composable
 fun PermissionItem(permission: PermissionInfo, onToggle: () -> Unit, groupColor: Color) {
+    val context = LocalContext.current
     val animatedElevation by
             animateDpAsState(
                     targetValue = if (permission.granted) 2.dp else 0.dp,
@@ -1011,7 +1016,7 @@ fun PermissionItem(permission: PermissionInfo, onToggle: () -> Unit, groupColor:
                     if (permission.dangerous) {
                         Icon(
                                 imageVector = Icons.Default.Warning,
-                                contentDescription = "危险权限",
+                                                                            contentDescription = context.getString(R.string.dangerous_permission),
                                 tint =
                                         if (permission.granted) Color(0xFFFF9800)
                                         else Color(0xFFFF9800).copy(alpha = 0.6f),
@@ -1022,7 +1027,7 @@ fun PermissionItem(permission: PermissionInfo, onToggle: () -> Unit, groupColor:
                                 imageVector =
                                         if (permission.granted) Icons.Default.Check
                                         else Icons.Default.Lock,
-                                contentDescription = if (permission.granted) "已授权" else "未授权",
+                                contentDescription = if (permission.granted) context.getString(R.string.granted) else context.getString(R.string.not_granted),
                                 tint =
                                         if (permission.granted) colorScheme.primary
                                         else colorScheme.outline,
@@ -1125,7 +1130,7 @@ private suspend fun loadInstalledApps(packageManager: PackageManager): List<AppI
         }
 
 // 获取应用权限列表
-private suspend fun getAppPermissions(packageName: String): List<PermissionInfo> =
+private suspend fun getAppPermissions(packageName: String, context: Context): List<PermissionInfo> =
         withContext(Dispatchers.IO) {
             val permissions = mutableListOf<PermissionInfo>()
 
@@ -1252,81 +1257,81 @@ private suspend fun getAppPermissions(packageName: String): List<PermissionInfo>
                         )
 
                 // 权限名称友好显示
-                val permissionDisplayNames =
+                val permissionDisplayNames: Map<String, String> =
                         mapOf(
-                                "android.permission.CAMERA" to "相机",
-                                "android.permission.READ_CONTACTS" to "读取联系人",
-                                "android.permission.WRITE_CONTACTS" to "写入联系人",
-                                "android.permission.GET_ACCOUNTS" to "获取账户信息",
-                                "android.permission.ACCESS_FINE_LOCATION" to "精确位置",
-                                "android.permission.ACCESS_COARSE_LOCATION" to "允许应用获取您的大致位置",
-                                "android.permission.ACCESS_BACKGROUND_LOCATION" to "允许应用在后台获取位置",
-                                "android.permission.READ_CALL_LOG" to "读取通话记录",
-                                "android.permission.WRITE_CALL_LOG" to "允许应用写入您的通话记录",
-                                "android.permission.PROCESS_OUTGOING_CALLS" to "允许应用处理拨出电话",
-                                "android.permission.READ_PHONE_STATE" to "读取电话状态",
-                                "android.permission.READ_PHONE_NUMBERS" to "读取电话号码",
-                                "android.permission.CALL_PHONE" to "允许应用直接拨打电话而无需确认",
-                                "android.permission.ANSWER_PHONE_CALLS" to "允许应用接听来电",
-                                "android.permission.ADD_VOICEMAIL" to "允许应用添加语音信箱",
-                                "android.permission.USE_SIP" to "允许应用使用SIP服务",
-                                "android.permission.ACCEPT_HANDOVER" to "允许通话从一个应用切换到另一个",
-                                "android.permission.BODY_SENSORS" to "允许访问身体传感器数据(如心率)",
-                                "android.permission.BODY_SENSORS_BACKGROUND" to "允许在后台访问身体传感器",
-                                "android.permission.ACTIVITY_RECOGNITION" to "允许应用识别您的身体活动",
-                                "android.permission.READ_CALENDAR" to "允许应用读取您的日历事件",
-                                "android.permission.WRITE_CALENDAR" to "允许应用添加或修改日历事件",
-                                "android.permission.READ_EXTERNAL_STORAGE" to "允许应用读取您的存储",
-                                "android.permission.WRITE_EXTERNAL_STORAGE" to "允许应用写入您的存储",
-                                "android.permission.MANAGE_EXTERNAL_STORAGE" to "允许管理所有文件",
-                                "android.permission.READ_MEDIA_IMAGES" to "允许应用读取您的照片",
-                                "android.permission.READ_MEDIA_VIDEO" to "允许应用读取您的视频",
-                                "android.permission.READ_MEDIA_AUDIO" to "允许应用读取您的音频文件",
-                                "android.permission.RECORD_AUDIO" to "允许应用录制音频",
-                                "android.permission.SEND_SMS" to "允许应用发送短信",
-                                "android.permission.RECEIVE_SMS" to "允许应用接收短信",
-                                "android.permission.READ_SMS" to "允许应用读取短信",
-                                "android.permission.RECEIVE_WAP_PUSH" to "允许应用接收WAP推送消息",
-                                "android.permission.RECEIVE_MMS" to "允许应用接收彩信"
+                                "android.permission.CAMERA" to context.getString(R.string.perm_name_camera),
+                                "android.permission.READ_CONTACTS" to context.getString(R.string.perm_name_read_contacts),
+                                "android.permission.WRITE_CONTACTS" to context.getString(R.string.perm_name_write_contacts),
+                                "android.permission.GET_ACCOUNTS" to context.getString(R.string.perm_name_get_accounts),
+                                "android.permission.ACCESS_FINE_LOCATION" to context.getString(R.string.perm_name_access_fine_location),
+                                "android.permission.ACCESS_COARSE_LOCATION" to context.getString(R.string.perm_name_access_coarse_location),
+                                "android.permission.ACCESS_BACKGROUND_LOCATION" to context.getString(R.string.perm_name_access_background_location),
+                                "android.permission.READ_CALL_LOG" to context.getString(R.string.perm_name_read_call_log),
+                                "android.permission.WRITE_CALL_LOG" to context.getString(R.string.perm_name_write_call_log),
+                                "android.permission.PROCESS_OUTGOING_CALLS" to context.getString(R.string.perm_name_process_outgoing_calls),
+                                "android.permission.READ_PHONE_STATE" to context.getString(R.string.perm_name_read_phone_state),
+                                "android.permission.READ_PHONE_NUMBERS" to context.getString(R.string.perm_name_read_phone_numbers),
+                                "android.permission.CALL_PHONE" to context.getString(R.string.perm_name_call_phone),
+                                "android.permission.ANSWER_PHONE_CALLS" to context.getString(R.string.perm_name_answer_phone_calls),
+                                "android.permission.ADD_VOICEMAIL" to context.getString(R.string.perm_name_add_voicemail),
+                                "android.permission.USE_SIP" to context.getString(R.string.perm_name_use_sip),
+                                "android.permission.ACCEPT_HANDOVER" to context.getString(R.string.perm_name_accept_handover),
+                                "android.permission.BODY_SENSORS" to context.getString(R.string.perm_name_body_sensors),
+                                "android.permission.BODY_SENSORS_BACKGROUND" to context.getString(R.string.perm_name_body_sensors_background),
+                                "android.permission.ACTIVITY_RECOGNITION" to context.getString(R.string.perm_name_activity_recognition),
+                                "android.permission.READ_CALENDAR" to context.getString(R.string.perm_name_read_calendar),
+                                "android.permission.WRITE_CALENDAR" to context.getString(R.string.perm_name_write_calendar),
+                                "android.permission.READ_EXTERNAL_STORAGE" to context.getString(R.string.perm_name_read_external_storage),
+                                "android.permission.WRITE_EXTERNAL_STORAGE" to context.getString(R.string.perm_name_write_external_storage),
+                                "android.permission.MANAGE_EXTERNAL_STORAGE" to context.getString(R.string.perm_name_manage_external_storage),
+                                "android.permission.READ_MEDIA_IMAGES" to context.getString(R.string.perm_name_read_media_images),
+                                "android.permission.READ_MEDIA_VIDEO" to context.getString(R.string.perm_name_read_media_video),
+                                "android.permission.READ_MEDIA_AUDIO" to context.getString(R.string.perm_name_read_media_audio),
+                                "android.permission.RECORD_AUDIO" to context.getString(R.string.perm_name_record_audio),
+                                "android.permission.SEND_SMS" to context.getString(R.string.perm_name_send_sms),
+                                "android.permission.RECEIVE_SMS" to context.getString(R.string.perm_name_receive_sms),
+                                "android.permission.READ_SMS" to context.getString(R.string.perm_name_read_sms),
+                                "android.permission.RECEIVE_WAP_PUSH" to context.getString(R.string.perm_name_receive_wap_push),
+                                "android.permission.RECEIVE_MMS" to context.getString(R.string.perm_name_receive_mms)
                         )
 
                 // 权限描述
-                val permissionDescriptions =
+                val permissionDescriptions: Map<String, String> =
                         mapOf(
-                                "android.permission.CAMERA" to "允许应用使用相机拍摄照片和视频",
-                                "android.permission.READ_CONTACTS" to "允许应用读取您的联系人数据",
-                                "android.permission.WRITE_CONTACTS" to "允许应用修改您的联系人数据",
-                                "android.permission.GET_ACCOUNTS" to "允许访问设备上的账户列表",
-                                "android.permission.ACCESS_FINE_LOCATION" to "允许应用获取您的精确位置",
-                                "android.permission.ACCESS_COARSE_LOCATION" to "允许应用获取您的大致位置",
-                                "android.permission.ACCESS_BACKGROUND_LOCATION" to "允许应用在后台获取位置",
-                                "android.permission.READ_CALL_LOG" to "允许应用读取您的通话记录",
-                                "android.permission.WRITE_CALL_LOG" to "允许应用写入您的通话记录",
-                                "android.permission.PROCESS_OUTGOING_CALLS" to "允许应用处理拨出电话",
-                                "android.permission.READ_PHONE_STATE" to "允许访问电话状态",
-                                "android.permission.READ_PHONE_NUMBERS" to "允许读取设备电话号码",
-                                "android.permission.CALL_PHONE" to "允许应用直接拨打电话而无需确认",
-                                "android.permission.ANSWER_PHONE_CALLS" to "允许应用接听来电",
-                                "android.permission.ADD_VOICEMAIL" to "允许应用添加语音信箱",
-                                "android.permission.USE_SIP" to "允许应用使用SIP服务",
-                                "android.permission.ACCEPT_HANDOVER" to "允许通话从一个应用切换到另一个",
-                                "android.permission.BODY_SENSORS" to "允许访问身体传感器数据(如心率)",
-                                "android.permission.BODY_SENSORS_BACKGROUND" to "允许在后台访问身体传感器",
-                                "android.permission.ACTIVITY_RECOGNITION" to "允许应用识别您的身体活动",
-                                "android.permission.READ_CALENDAR" to "允许应用读取您的日历事件",
-                                "android.permission.WRITE_CALENDAR" to "允许应用添加或修改日历事件",
-                                "android.permission.READ_EXTERNAL_STORAGE" to "允许应用读取您的存储",
-                                "android.permission.WRITE_EXTERNAL_STORAGE" to "允许应用写入您的存储",
-                                "android.permission.MANAGE_EXTERNAL_STORAGE" to "允许管理所有文件",
-                                "android.permission.READ_MEDIA_IMAGES" to "允许应用读取您的照片",
-                                "android.permission.READ_MEDIA_VIDEO" to "允许应用读取您的视频",
-                                "android.permission.READ_MEDIA_AUDIO" to "允许应用读取您的音频文件",
-                                "android.permission.RECORD_AUDIO" to "允许应用录制音频",
-                                "android.permission.SEND_SMS" to "允许应用发送短信",
-                                "android.permission.RECEIVE_SMS" to "允许应用接收短信",
-                                "android.permission.READ_SMS" to "允许应用读取短信",
-                                "android.permission.RECEIVE_WAP_PUSH" to "允许应用接收WAP推送消息",
-                                "android.permission.RECEIVE_MMS" to "允许应用接收彩信"
+                                "android.permission.CAMERA" to context.getString(R.string.perm_desc_camera),
+                                "android.permission.READ_CONTACTS" to context.getString(R.string.perm_desc_read_contacts),
+                                "android.permission.WRITE_CONTACTS" to context.getString(R.string.perm_desc_write_contacts),
+                                "android.permission.GET_ACCOUNTS" to context.getString(R.string.perm_desc_get_accounts),
+                                "android.permission.ACCESS_FINE_LOCATION" to context.getString(R.string.perm_desc_access_fine_location),
+                                "android.permission.ACCESS_COARSE_LOCATION" to context.getString(R.string.perm_desc_access_coarse_location),
+                                "android.permission.ACCESS_BACKGROUND_LOCATION" to context.getString(R.string.perm_desc_access_background_location),
+                                "android.permission.READ_CALL_LOG" to context.getString(R.string.perm_desc_read_call_log),
+                                "android.permission.WRITE_CALL_LOG" to context.getString(R.string.perm_desc_write_call_log),
+                                "android.permission.PROCESS_OUTGOING_CALLS" to context.getString(R.string.perm_desc_process_outgoing_calls),
+                                "android.permission.READ_PHONE_STATE" to context.getString(R.string.perm_desc_read_phone_state),
+                                "android.permission.READ_PHONE_NUMBERS" to context.getString(R.string.perm_desc_read_phone_numbers),
+                                "android.permission.CALL_PHONE" to context.getString(R.string.perm_desc_call_phone),
+                                "android.permission.ANSWER_PHONE_CALLS" to context.getString(R.string.perm_desc_answer_phone_calls),
+                                "android.permission.ADD_VOICEMAIL" to context.getString(R.string.perm_desc_add_voicemail),
+                                "android.permission.USE_SIP" to context.getString(R.string.perm_desc_use_sip),
+                                "android.permission.ACCEPT_HANDOVER" to context.getString(R.string.perm_desc_accept_handover),
+                                "android.permission.BODY_SENSORS" to context.getString(R.string.perm_desc_body_sensors),
+                                "android.permission.BODY_SENSORS_BACKGROUND" to context.getString(R.string.perm_desc_body_sensors_background),
+                                "android.permission.ACTIVITY_RECOGNITION" to context.getString(R.string.perm_desc_activity_recognition),
+                                "android.permission.READ_CALENDAR" to context.getString(R.string.perm_desc_read_calendar),
+                                "android.permission.WRITE_CALENDAR" to context.getString(R.string.perm_desc_write_calendar),
+                                "android.permission.READ_EXTERNAL_STORAGE" to context.getString(R.string.perm_desc_read_external_storage),
+                                "android.permission.WRITE_EXTERNAL_STORAGE" to context.getString(R.string.perm_desc_write_external_storage),
+                                "android.permission.MANAGE_EXTERNAL_STORAGE" to context.getString(R.string.perm_desc_manage_external_storage),
+                                "android.permission.READ_MEDIA_IMAGES" to context.getString(R.string.perm_desc_read_media_images),
+                                "android.permission.READ_MEDIA_VIDEO" to context.getString(R.string.perm_desc_read_media_video),
+                                "android.permission.READ_MEDIA_AUDIO" to context.getString(R.string.perm_desc_read_media_audio),
+                                "android.permission.RECORD_AUDIO" to context.getString(R.string.perm_desc_record_audio),
+                                "android.permission.SEND_SMS" to context.getString(R.string.perm_desc_send_sms),
+                                "android.permission.RECEIVE_SMS" to context.getString(R.string.perm_desc_receive_sms),
+                                "android.permission.READ_SMS" to context.getString(R.string.perm_desc_read_sms),
+                                "android.permission.RECEIVE_WAP_PUSH" to context.getString(R.string.perm_desc_receive_wap_push),
+                                "android.permission.RECEIVE_MMS" to context.getString(R.string.perm_desc_receive_mms)
                         )
 
                 // 处理所有重要权限 - 首先添加在importantPermGroups中且被请求的权限
@@ -1334,7 +1339,7 @@ private suspend fun getAppPermissions(packageName: String): List<PermissionInfo>
                     if (requestedPerms.contains(permName)) {
                         val displayName =
                                 permissionDisplayNames[permName] ?: permName.substringAfterLast(".")
-                        val description = permissionDescriptions[permName] ?: "允许应用访问系统功能"
+                        val description = permissionDescriptions[permName] ?: context.getString(R.string.perm_default_desc)
                         val isGranted = grantedPerms.contains(permName)
 
                         permissions.add(
@@ -1366,7 +1371,7 @@ private suspend fun getAppPermissions(packageName: String): List<PermissionInfo>
                         permissions.add(
                                 PermissionInfo(
                                         name = displayName,
-                                        description = "允许应用访问系统功能",
+                                        description = context.getString(R.string.perm_default_desc),
                                         granted = true,
                                         dangerous = false,
                                         group = "OTHER_GRANTED",
@@ -1391,7 +1396,7 @@ private suspend fun getAppPermissions(packageName: String): List<PermissionInfo>
                         permissions.add(
                                 PermissionInfo(
                                         name = displayName,
-                                        description = "允许应用访问系统功能",
+                                        description = context.getString(R.string.perm_default_desc),
                                         granted = false,
                                         dangerous = false,
                                         group = "OTHER_DENIED",

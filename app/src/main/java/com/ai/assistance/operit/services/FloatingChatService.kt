@@ -19,6 +19,7 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.mutableStateOf
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.Lifecycle
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.ChatMessage
@@ -198,7 +199,7 @@ class FloatingChatService : Service(), FloatingWindowCallback {
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "AI助手悬浮窗"
-            val descriptionText = "显示AI助手的悬浮窗服务"
+            val descriptionText = getString(R.string.floating_service_description)
             val importance = NotificationManager.IMPORTANCE_LOW
             val channel =
                     NotificationChannel(CHANNEL_ID, name, importance).apply {

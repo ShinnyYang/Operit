@@ -314,7 +314,7 @@ private fun MessageItem(
                         context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     val clipData = ClipData.newPlainText("聊天消息", message.content)
                     clipboardManager.setPrimaryClip(clipData)
-                    Toast.makeText(context, "消息已复制到剪贴板", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.message_copied), Toast.LENGTH_SHORT).show()
                     onCopyMessage?.invoke(message)
                     showContextMenu = false
                 },
@@ -492,7 +492,7 @@ private fun SelectableCopyDialog(text: String, onDismiss: () -> Unit) {
                             context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         val clipData = ClipData.newPlainText("selected text", selectedText)
                         clipboardManager.setPrimaryClip(clipData)
-                        Toast.makeText(context, "已复制选中内容", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.selection_copied), Toast.LENGTH_SHORT).show()
                     }
                     onDismiss()
                 },

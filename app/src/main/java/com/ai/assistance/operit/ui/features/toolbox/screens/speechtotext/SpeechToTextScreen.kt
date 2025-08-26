@@ -17,10 +17,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavController
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.speech.SpeechService
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import kotlinx.coroutines.launch
@@ -74,7 +76,7 @@ fun SpeechToTextScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "需要麦克风权限",
+                text = stringResource(R.string.microphone_permission_required),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -82,7 +84,7 @@ fun SpeechToTextScreen(navController: NavController) {
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "语音识别功能需要使用麦克风来录制您的声音。请授予麦克风权限以继续使用此功能。",
+                text = stringResource(R.string.microphone_permission_description),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
@@ -102,7 +104,7 @@ fun SpeechToTextScreen(navController: NavController) {
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("请求麦克风权限")
+                Text(stringResource(R.string.request_microphone_permission))
             }
         }
         return
@@ -141,9 +143,9 @@ fun SpeechToTextScreen(navController: NavController) {
         val success = speechService.initialize()
         if (success) {
             availableLanguages = speechService.getSupportedLanguages()
+        } else {
+            error = context.getString(R.string.engine_init_failed, recognitionMode.name)
         } 
-        error = "引擎 ${recognitionMode.name} 初始化失败。"
-        
     }
     
     // 当服务实例改变时，重新开始收集结果和错误
@@ -156,7 +158,7 @@ fun SpeechToTextScreen(navController: NavController) {
         launch {
             speechService.recognitionErrorFlow.collect { recognitionError ->
                 if (recognitionError.message.isNotBlank()) {
-                    error = "识别错误: ${recognitionError.message}"
+                    error = context.getString(R.string.recognition_error, recognitionError.message)
                 }
             }
         }
@@ -172,7 +174,7 @@ fun SpeechToTextScreen(navController: NavController) {
                 val partialResults = recognitionMode == SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN
                 speechService.startRecognition(selectedLanguage, continuousMode, partialResults)
             } catch (e: Exception) {
-                error = "开始识别错误: ${e.message}"
+                error = context.getString(R.string.start_recognition_error, e.message ?: "")
             }
         }
     }
@@ -183,7 +185,7 @@ fun SpeechToTextScreen(navController: NavController) {
             try {
                 speechService.stopRecognition()
             } catch (e: Exception) {
-                error = "停止识别错误: ${e.message}"
+                error = context.getString(R.string.stop_recognition_error, e.message ?: "")
             }
         }
     }
@@ -199,7 +201,7 @@ fun SpeechToTextScreen(navController: NavController) {
     // 获取当前引擎的显示名称
     fun getEngineName(mode: SpeechServiceFactory.SpeechServiceType): String {
         return when (mode) {
-            SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> "Sherpa-ncnn (最佳)"
+            SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN -> context.getString(R.string.sherpa_ncnn_best)
         }
     }
 
@@ -212,7 +214,7 @@ fun SpeechToTextScreen(navController: NavController) {
     ) {
         // 标题
         Text(
-            text = "语音识别演示",
+            text = stringResource(R.string.speech_recognition_demo),
             style = MaterialTheme.typography.headlineMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
@@ -229,7 +231,7 @@ fun SpeechToTextScreen(navController: NavController) {
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(
-                    text = "识别结果",
+                    text = stringResource(R.string.recognition_result),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -248,7 +250,7 @@ fun SpeechToTextScreen(navController: NavController) {
                     ) {
                         if (recognizedText.isBlank()) {
                             Text(
-                                "语音识别结果将显示在这里",
+                                stringResource(R.string.speech_recognition_result_placeholder),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                             )
@@ -274,7 +276,7 @@ fun SpeechToTextScreen(navController: NavController) {
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
                 Text(
-                    text = "识别设置",
+                    text = stringResource(R.string.recognition_settings),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
@@ -288,39 +290,39 @@ fun SpeechToTextScreen(navController: NavController) {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = "识别引擎: ",
+                        text = stringResource(R.string.recognition_engine) + ": ",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-                    
-                    Spacer(modifier = Modifier.width(8.dp))
                     
                     Text(
                         text = getEngineName(recognitionMode),
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.primary
                     )
+                }
                     
-                    Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.height(8.dp))
                     
+                // 切换引擎按钮单独一行
                     Button(
                         onClick = { switchRecognitionMode() },
                         enabled = !isListening && isInitialized,
+                    modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
                         shape = RoundedCornerShape(8.dp)
                     ) {
-                        Text("切换引擎")
-                    }
+                        Text(stringResource(R.string.switch_engine))
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // 语言选择
                 Text(
-                    text = "识别语言:",
+                    text = stringResource(R.string.recognition_language) + ":",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -380,11 +382,11 @@ fun SpeechToTextScreen(navController: NavController) {
             ) {
                 Icon(
                     imageVector = Icons.Default.Mic,
-                    contentDescription = "开始录音",
+                    contentDescription = stringResource(R.string.start_recording),
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("开始识别", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.start_recognition), style = MaterialTheme.typography.titleMedium)
             }
 
             Button(
@@ -399,11 +401,11 @@ fun SpeechToTextScreen(navController: NavController) {
             ) {
                 Icon(
                     imageVector = Icons.Default.Stop,
-                    contentDescription = "停止录音",
+                    contentDescription = stringResource(R.string.stop_recording),
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("停止识别", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.stop_recognition), style = MaterialTheme.typography.titleMedium)
             }
         }
 
@@ -431,7 +433,10 @@ fun SpeechToTextScreen(navController: NavController) {
                         tint = if (isInitialized) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                     )
                     Text(
-                        text = if (isInitialized) "语音识别引擎已初始化" else "语音识别引擎未初始化",
+                        text = if (isInitialized) 
+                            stringResource(R.string.speech_engine_initialized) 
+                        else 
+                            stringResource(R.string.speech_engine_not_initialized),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -448,7 +453,10 @@ fun SpeechToTextScreen(navController: NavController) {
                         tint = if (isListening) Color(0xFF2196F3) else MaterialTheme.colorScheme.onSecondaryContainer
                     )
                     Text(
-                        text = if (isListening) "正在识别中..." else "未识别",
+                        text = if (isListening) 
+                            stringResource(R.string.recognizing) 
+                        else 
+                            stringResource(R.string.not_recognizing),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
@@ -493,7 +501,7 @@ fun SpeechToTextScreen(navController: NavController) {
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
-                    text = "使用说明",
+                    text = stringResource(R.string.usage_instructions),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -501,10 +509,7 @@ fun SpeechToTextScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "1. 选择识别引擎（Android原生/Sherpa-ncnn/Whisper离线）\n" +
-                           "2. 选择识别语言\n" +
-                           "3. 点击「开始识别」按钮开始录音\n" +
-                           "4. 点击「停止识别」按钮结束录音并获取识别结果",
+                    text = stringResource(R.string.speech_usage_steps),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -512,7 +517,7 @@ fun SpeechToTextScreen(navController: NavController) {
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "注意：使用Android原生引擎需要联网，Sherpa-ncnn引擎可离线使用但需要额外下载模型",
+                    text = stringResource(R.string.speech_engine_note),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )

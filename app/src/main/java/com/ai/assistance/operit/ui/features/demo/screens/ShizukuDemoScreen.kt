@@ -123,7 +123,7 @@ fun ShizukuDemoScreen(
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     CircularProgressIndicator()
                     Spacer(modifier = Modifier.height(16.dp))
-                    Text("正在加载应用状态...", style = MaterialTheme.typography.bodyMedium)
+                    Text(context.getString(R.string.loading_app_state), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -171,7 +171,7 @@ fun ShizukuDemoScreen(
                                     )
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "无法打开权限设置", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.cannot_open_permission_settings), Toast.LENGTH_SHORT).show()
                         }
                     }
                 },
@@ -184,7 +184,7 @@ fun ShizukuDemoScreen(
                                 )
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "无法打开悬浮窗设置", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.cannot_open_overlay_settings), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onBatteryOptimizationClick = {
@@ -195,7 +195,7 @@ fun ShizukuDemoScreen(
                                 }
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "无法打开电池优化设置", Toast.LENGTH_SHORT).show()
+                                                    Toast.makeText(context, context.getString(R.string.cannot_open_battery_settings), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onAccessibilityClick = {
@@ -203,7 +203,7 @@ fun ShizukuDemoScreen(
                         val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                         context.startActivity(intent)
                     } catch (e: Exception) {
-                        Toast.makeText(context, "无法打开无障碍服务设置", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.cannot_open_accessibility_settings), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onInstallAccessibilityProviderClick = {
@@ -212,7 +212,7 @@ fun ShizukuDemoScreen(
                             UIHierarchyManager.launchProviderInstall(context)
                         } else {
                             withContext(Dispatchers.Main) {
-                                Toast.makeText(context, "服务提供者已安装", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.accessibility_provider_installed), Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -336,7 +336,7 @@ fun ShizukuDemoScreen(
             ) {
                 Icon(
                         imageVector = Icons.Default.Build,
-                        contentDescription = "设置向导图标",
+                        contentDescription = context.getString(R.string.setup_wizard_icon_desc),
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
                 )
@@ -344,7 +344,7 @@ fun ShizukuDemoScreen(
                 Spacer(modifier = Modifier.width(6.dp))
 
                 Text(
-                        text = "设置向导",
+                        text = context.getString(R.string.setup_wizard),
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.primary
                 )
@@ -373,7 +373,7 @@ fun ShizukuDemoScreen(
                             val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
                             context.startActivity(intent)
                         } catch (e: Exception) {
-                            Toast.makeText(context, "无法打开无障碍服务设置", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, context.getString(R.string.cannot_open_accessibility_settings), Toast.LENGTH_SHORT).show()
                         }
                     },
                     updateNeeded = isAccessibilityUpdateNeeded,
@@ -407,7 +407,7 @@ fun ShizukuDemoScreen(
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl))
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                Toast.makeText(context, "无法打开Root教程链接", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.cannot_open_root_tutorial), Toast.LENGTH_SHORT).show()
                             }
                         }
                 )
@@ -536,12 +536,12 @@ fun ShizukuDemoScreen(
                                     context.startActivity(intent)
                                 } else {
                                     Log.e("ShizukuDemo", "无法找到Shizuku应用")
-                                    Toast.makeText(context, "无法找到Shizuku应用", Toast.LENGTH_SHORT)
+                                    Toast.makeText(context, context.getString(R.string.cannot_find_shizuku_app), Toast.LENGTH_SHORT)
                                             .show()
                                 }
                             } catch (e: Exception) {
                                 Log.e("ShizukuDemo", "无法启动Shizuku应用", e)
-                                Toast.makeText(context, "无法启动Shizuku应用", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.cannot_start_shizuku_app), Toast.LENGTH_SHORT).show()
                             }
                         },
                         onWatchTutorial = {
@@ -550,7 +550,7 @@ fun ShizukuDemoScreen(
                                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(videoUrl))
                                 context.startActivity(intent)
                             } catch (e: Exception) {
-                                Toast.makeText(context, "无法打开文档链接", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, context.getString(R.string.cannot_open_doc_link), Toast.LENGTH_SHORT).show()
                             }
                         },
                         onRequestPermission = {
@@ -835,14 +835,14 @@ fun ShizukuDemoScreen(
                 if (!viewModel.isTermuxConfiguring.value) {
                     viewModel.hideResultDialog()
                     // 重置输出文本，准备下一次操作
-                    viewModel.updateOutputText("欢迎使用Termux配置工具\n点击对应按钮开始配置")
+                    viewModel.updateOutputText(context.getString(R.string.welcome_termux_config))
                 }
             },
             title = uiState.resultDialogTitle.value,
             content =
                     if (viewModel.isTermuxConfiguring.value) {
                         // 当正在配置时，显示实时输出
-                        "${viewModel.outputText.value}\n\n${if (viewModel.currentTask.value.isNotEmpty()) "正在执行: ${viewModel.currentTask.value}..." else ""}"
+                        "${viewModel.outputText.value}\n\n${if (viewModel.currentTask.value.isNotEmpty()) context.getString(R.string.executing_task, viewModel.currentTask.value) else ""}"
                     } else {
                         // 当配置完成时，显示最终结果
                         viewModel.outputText.value

@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.features.toolbox.screens.terminal.model.TerminalLine
 import com.ai.assistance.operit.ui.features.toolbox.screens.terminal.model.TerminalSession
 import com.ai.assistance.operit.ui.features.toolbox.screens.terminal.utils.TerminalColors
@@ -389,7 +390,7 @@ private suspend fun handleCommand(
     when (command) {
         "exit" -> {
             // 通知用户应该按返回键返回
-            Toast.makeText(context, "请按返回键返回上一页", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.please_press_back_to_return), Toast.LENGTH_SHORT).show()
             onCommandProcessed()
         }
         else -> {

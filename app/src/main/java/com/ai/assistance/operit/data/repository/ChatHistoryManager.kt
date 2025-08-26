@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.model.ChatEntity
 import com.ai.assistance.operit.data.model.ChatHistory
@@ -487,11 +488,11 @@ class ChatHistoryManager private constructor(private val context: Context) {
 
         val newHistory =
                 ChatHistory(
-                        title = "新对话 $formattedTime",
+                        title = "${context.getString(R.string.new_conversation)} $formattedTime",
                         messages = listOf<ChatMessage>(),
                         inputTokens = 0,
                         outputTokens = 0,
-                        group = group ?: "未分组" // 默认分组
+                        group = group ?: context.getString(R.string.ungrouped) // 默认分组
                 )
 
         // 保存新聊天

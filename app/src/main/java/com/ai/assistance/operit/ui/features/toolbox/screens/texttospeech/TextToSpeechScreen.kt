@@ -193,13 +193,13 @@ fun TextToSpeechScreen(navController: NavController) {
                 }
 
                 // 操作按钮
-                Row(
+                Column(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                         Button(
                                 onClick = { speakText() },
-                                modifier = Modifier.weight(1f).height(56.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
                                 enabled = isInitialized && !isSpeaking && inputText.isNotBlank(),
                                 colors =
                                         ButtonDefaults.buttonColors(
@@ -219,7 +219,7 @@ fun TextToSpeechScreen(navController: NavController) {
 
                         Button(
                                 onClick = { stopSpeaking() },
-                                modifier = Modifier.weight(1f).height(56.dp),
+                                modifier = Modifier.fillMaxWidth().height(56.dp),
                                 enabled = isSpeaking,
                                 colors =
                                         ButtonDefaults.buttonColors(

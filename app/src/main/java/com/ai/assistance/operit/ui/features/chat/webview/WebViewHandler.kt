@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.produceState
 import androidx.core.content.FileProvider
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.features.chat.webview.LocalWebServer
 import java.io.File
 import java.io.FileOutputStream
@@ -95,7 +96,7 @@ class WebViewHandler(private val context: Context) {
 
                 // 在主线程显示通知
                 Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(context, "已下载: $cleanFileName", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, context.getString(R.string.download_success, cleanFileName), Toast.LENGTH_SHORT).show()
 
                     // 通知媒体扫描器更新文件
                     val intent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE)
@@ -108,7 +109,7 @@ class WebViewHandler(private val context: Context) {
             } catch (e: Exception) {
                 Log.e("WebViewHandler", "Blob数据下载失败", e)
                 Handler(Looper.getMainLooper()).post {
-                    Toast.makeText(context, "下载失败: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(context, context.getString(R.string.download_failed, e.localizedMessage), Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -358,7 +359,7 @@ class WebViewHandler(private val context: Context) {
                 handleRegularDownload(url, userAgent, contentDisposition, mimetype, contentLength)
             } catch (e: Exception) {
                 Log.e("WebViewHandler", "下载失败: ${e.message}", e)
-                Toast.makeText(context, "下载失败: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, context.getString(R.string.download_failed, e.message), Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -425,7 +426,7 @@ class WebViewHandler(private val context: Context) {
             val downloadId = downloadManager.enqueue(request)
 
             // 显示下载开始消息
-            Toast.makeText(context, "开始下载: $filename", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, context.getString(R.string.download_start, filename), Toast.LENGTH_SHORT).show()
 
             // 注册下载完成的广播接收器
             val onDownloadComplete =

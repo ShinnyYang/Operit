@@ -26,6 +26,16 @@
     <string name="menu">菜单</string>
     <string name="token_config">获取密钥</string>
     
+    <!-- 附件面板 -->
+    <string name="screen_content">屏幕内容</string>
+    <string name="current_notifications">当前通知</string>
+    <string name="current_location">当前位置</string>
+    
+    <!-- 权限请求 -->
+    <string name="requested_operation">请求的操作</string>
+    <string name="used_tool">使用的工具</string>
+    <string name="tool_category">工具类别</string>
+    
     <!-- 助手配置界面 -->
     <string name="assistant_config_title">助手配置</string>
     <string name="import_model">导入模型</string>
@@ -447,6 +457,14 @@
     <string name="path_copied_to_clipboard">路径已复制到剪贴板</string>
     <string name="open_file_manager">打开文件管理器</string>
     <string name="navigate_to_external_files">请导航到Android/data/com.ai.assistance.operit/files/packages目录</string>
+    <string name="package_js_only">仅支持JavaScript文件</string>
+    <string name="automation_json_only">仅支持JSON文件</string>
+    <string name="no_filename">无法获取文件名</string>
+    <string name="external_package_imported">外部包已导入</string>
+    <string name="current_tab_not_support_import">当前标签页不支持导入</string>
+    <string name="import_failed">导入失败: %1$s</string>
+    <string name="package_import_failed">包导入失败</string>
+    <string name="package_remove_failed">包移除失败</string>
     
     <!-- OperScript Execution -->
     <string name="run_script">运行脚本</string>
@@ -777,6 +795,7 @@
     <!-- 聊天历史选择器 -->
     <string name="chat_history">对话历史</string>
     <string name="new_chat">新建对话</string>
+    <string name="new_conversation">新对话</string>
     
     <!-- 聊天屏幕头部 -->
     <string name="exit_edit_mode">退出编辑模式</string>
@@ -787,6 +806,7 @@
     <string name="output_tokens">累计出: %1$s</string>
     <string name="context_window">请求: %1$s</string>
     <string name="auto_approve">自动批准:</string>
+    <string name="auto_approve_desc">将会自动把较为安全的工具直接执行而不询问。对于具体的分组批准，请前往设置-工具权限管理进行操作。</string>
     <string name="enabled">已开启</string>
     <string name="ask">询问</string>
     <string name="ai_planning_mode">AI计划模式:</string>
@@ -955,4 +975,955 @@
     <string name="theme_background_blur">背景模糊</string>
     <string name="theme_background_blur_desc">为背景图片或视频添加高斯模糊效果</string>
     <string name="theme_background_blur_radius">模糊半径</string>
+
+    <!-- Toast Messages -->
+    <string name="pip_package_install_success">PIP 包安装成功</string>
+    <string name="pip_package_install_failed">PIP 包安装失败</string>
+    <string name="please_press_back_to_return">请按返回键返回上一页</string>
+    <string name="please_input_command">请输入命令</string>
+    <string name="background_image_migrated">背景图片已迁移到内部存储</string>
+    <string name="background_image_access_failed">无法访问旧的背景图片，已关闭背景图片功能</string>
+    <string name="avatar_updated">头像已更新</string>
+    <string name="avatar_crop_failed">头像裁剪失败: %1$s</string>
+    <string name="cannot_open_file">无法打开文件: %1$s</string>
+    <string name="message_copied_to_clipboard">消息已复制到剪贴板</string>
+    <string name="selected_content_copied">已复制选中内容</string>
+    <string name="requesting_root_permission">正在请求Root权限...</string>
+    <string name="root_permission_granted">Root权限已授予</string>
+    <string name="root_permission_denied">Root权限请求被拒绝</string>
+    <string name="command_execution_success">命令执行成功</string>
+    <string name="command_execution_failed">命令执行失败</string>
+    <string name="please_start_termux_first">请先启动Termux</string>
+    <string name="all_tools_reregistered">已重新注册所有工具</string>
+    <string name="downloaded_file">已下载: %1$s</string>
+    <string name="download_failed">下载失败: %1$s</string>
+    <string name="download_started">开始下载: %1$s</string>
+    <string name="download_success">下载成功: %1$s</string>
+    <string name="download_start">开始下载: %1$s</string>
+    <string name="deploy_date">部署时间: %1$s</string>
+    <string name="termux_start_command_sent">已发送启动Termux命令</string>
+    <string name="termux_start_failed">启动Termux失败</string>
+    <string name="termux_already_running">Termux已在运行中</string>
+    <string name="termux_authorized_success">成功授权Termux</string>
+    <string name="termux_authorization_failed">授权Termux失败，请检查Termux设置</string>
+    <string name="tuna_source_setup_success">清华源设置成功</string>
+    <string name="tuna_source_setup_failed">清华源设置失败</string>
+    <string name="tuna_source_setup_error">配置清华源出错</string>
+    <string name="python_install_success">Python安装成功</string>
+    <string name="python_install_failed">Python安装失败</string>
+    <string name="python_install_error">安装Python环境出错</string>
+    <string name="uv_install_success">UV安装成功</string>
+    <string name="uv_install_failed">UV安装失败</string>
+    <string name="uv_install_error">安装UV包管理器出错</string>
+    <string name="nodejs_install_success">Node.js安装成功</string>
+    <string name="nodejs_install_failed">Node.js安装失败</string>
+    <string name="nodejs_install_error">安装Node.js环境出错</string>
+    <string name="battery_optimization_reminder">请在系统设置中允许Termux的电池优化豁免</string>
+    <string name="cannot_open_termux_battery_settings">无法打开Termux电池优化设置</string>
+    <string name="copied_to_clipboard">已复制到剪贴板</string>
+    <string name="cannot_open_permission_settings">无法打开权限设置</string>
+    <string name="cannot_open_overlay_settings">无法打开悬浮窗设置</string>
+    <string name="cannot_open_battery_settings">无法打开电池优化设置</string>
+    <string name="cannot_open_accessibility_settings">无法打开无障碍服务设置</string>
+    <string name="accessibility_provider_installed">服务提供者已安装</string>
+    <string name="cannot_open_root_tutorial">无法打开Root教程链接</string>
+    <string name="cannot_find_shizuku_app">无法找到Shizuku应用</string>
+    <string name="cannot_launch_shizuku_app">无法启动Shizuku应用</string>
+    <string name="cannot_open_docs_link">无法打开文档链接</string>
+    <string name="plugin_loading_skipped">已跳过插件加载</string>
+    <string name="press_back_again_to_exit">再按一次退出应用</string>
+    <string name="return_code_copied">返回码已复制！</string>
+    <string name="cannot_find_termux_app">无法找到Termux应用</string>
+    <string name="cannot_launch_termux_app">无法启动Termux应用</string>
+
+    <!-- UI Text -->
+    <string name="permission_request">权限请求</string>
+    <string name="ai_assistant_requests_operation">AI 助手请求执行以下操作</string>
+    <string name="permission_change_reminder">* 您可以在设置中随时更改权限</string>
+    <string name="parameter_details">参数详情</string>
+    <string name="floating_window_attachment_note">注意: 在浮动窗口中只支持特殊附件\n要添加文件或图片，请打开完整聊天界面</string>
+    <string name="ai_assistant">AI助手</string>
+    <string name="send_message">发送消息</string>
+    <string name="chat_with_pet">和宠物对话</string>
+    <string name="dragonbones_mode">龙骨模式</string>
+    <string name="loading_failed">加载失败: %1$s</string>
+    <string name="loading">正在加载...</string>
+    <string name="floating_service_description">显示AI助手的悬浮窗服务</string>
+    <string name="undo">撤销</string>
+    <string name="redo">重做</string>
+    <string name="files">文件</string>
+    <string name="export">导出</string>
+    <string name="setup_workspace">设置工作区</string>
+    <string name="workspace_description">为您的AI项目提供一个专属的文件环境</string>
+    <string name="please_select_or_create_conversation">请先选择或创建一个对话</string>
+    <string name="latest">最新</string>
+    <string name="main_highlights">✨ 主要亮点</string>
+    <string name="complete_update_content">📋 完整更新内容</string>
+    <string name="view_release">查看发布</string>
+    <string name="streaming_rendering">流式渲染 (Streaming)</string>
+    <string name="microphone_permission_description">语音识别功能需要使用麦克风来录制您的声音。请授予麦克风权限以继续使用此功能。</string>
+    <string name="speech_recognition_demo">语音识别演示</string>
+    <string name="request_microphone_permission">请求麦克风权限</string>
+    <string name="recognition_result">识别结果</string>
+    <string name="speech_recognition_result_placeholder">语音识别结果将显示在这里</string>
+    <string name="recognition_settings">识别设置</string>
+    <string name="recognition_engine">识别引擎</string>
+    <string name="sherpa_ncnn_best">Sherpa-ncnn (最佳)</string>
+    <string name="switch_engine">切换引擎</string>
+    <string name="recognition_language">识别语言</string>
+    <string name="start_recording">开始录音</string>
+    <string name="stop_recording">停止录音</string>
+    <string name="start_recognition">开始识别</string>
+    <string name="stop_recognition">停止识别</string>
+    <string name="speech_engine_initialized">语音识别引擎已初始化</string>
+    <string name="speech_engine_not_initialized">语音识别引擎未初始化</string>
+    <string name="recognizing">正在识别中...</string>
+    <string name="not_recognizing">未识别</string>
+    <string name="engine_init_failed">引擎 %s 初始化失败。</string>
+    <string name="recognition_error">识别错误: %s</string>
+    <string name="start_recognition_error">开始识别错误: %s</string>
+    <string name="stop_recognition_error">停止识别错误: %s</string>
+    <string name="speech_usage_steps">1. 选择语音引擎\n2. 点击开始录音按钮\n3. 清晰地说话\n4. 点击停止录音\n5. 等待转录结果</string>
+    <string name="speech_engine_note">注意：不同的语音引擎可能有不同的准确度和支持的语言</string>
+    <string name="usage_instructions">使用说明</string>
+    <string name="speech_recognition_instructions">1. 选择识别引擎（Android原生/Sherpa-ncnn/Whisper离线）\n2. 选择识别语言（中文/英文等）\n3. 点击开始录音按钮\n4. 说话完成后点击停止按钮\n5. 查看识别结果</string>
+    <string name="activity_monitor">Activity监听</string>
+    <string name="smart_build">智能构建</string>
+    <string name="target_app">目标: %1$s</string>
+    <string name="auto_record_page_transitions">操作目标应用时自动记录页面跳转</string>
+    <string name="generated_nodes">已生成节点: %1$d</string>
+    <string name="edges">边: %1$d</string>
+    <string name="current_activity">当前活动</string>
+    <string name="event_record">事件记录 (%1$d)</string>
+    <string name="activity_info">活动: %1$s</string>
+    <string name="operation_config">操作配置</string>
+    <string name="match_conditions_optional">匹配条件 (可选)</string>
+    <string name="match_conditions_description">如果设置, 将优先使用这些条件来识别页面</string>
+    <string name="function_details">功能详情</string>
+    <string name="function_info">功能信息</string>
+    <string name="function_operations">功能操作</string>
+    <string name="or_select_builtin_config">或选择内置配置包</string>
+    <string name="builtin_config">内置配置</string>
+    <string name="external_config">外部配置</string>
+    <string name="operation_details">操作详情</string>
+    <string name="path">路径</string>
+    <string name="from_node">从节点: %1$s</string>
+    <string name="operation_sequence">操作序列</string>
+    <string name="verification_steps_optional">验证步骤 (可选)</string>
+    <string name="selector_info">选择器: %1$s</string>
+    <string name="position_info">位置: (%1$s, %2$s)</string>
+    <string name="text_variable_info">文本变量: %1$s</string>
+    <string name="contains_sub_operations">包含 %1$d 个子操作</string>
+    <string name="operation_type">操作类型: %1$s</string>
+    <string name="tts_demo">文本转语音演示</string>
+    <string name="input_text">输入文本</string>
+    <string name="speech_settings">语音设置</string>
+    <string name="speech_rate">语速: %1$sx</string>
+    <string name="speech_pitch">音调: %1$sx</string>
+    <string name="tts_usage_note">注意：首次使用时需要在系统设置中启用无障碍服务</string>
+    <string name="ui_debug_tool">UI调试工具</string>
+    <string name="ui_debug_description">点击右下角的按钮启动悬浮窗进行UI调试</string>
+    <string name="current_interface_analysis">当前分析界面</string>
+    <string name="package_name">包名: %1$s</string>
+    <string name="page_nodes">%1$s - 页面节点</string>
+    <string name="no_page_nodes_found">没有找到页面节点</string>
+    <string name="type_info">类型: %1$s</string>
+    <string name="control_info">控件信息</string>
+    <string name="current_activity_title">当前Activity</string>
+    <string name="dimensions">尺寸: %1$d×%2$dpx</string>
+    <string name="ffmpeg_command">FFmpeg命令</string>
+    <string name="common_command_templates">常用命令模板</string>
+    <string name="ffmpeg_template_note">注意: 使用模板时，请将input.mp4和output.mp4替换为实际文件路径</string>
+    <string name="ffmpeg_help">FFmpeg帮助</string>
+    <string name="ffmpeg_description">FFmpeg是一个强大的音视频处理工具。在此界面，您可以直接执行FFmpeg命令。</string>
+    
+    <!-- FFmpeg Command Templates -->
+    <string name="ffmpeg_video_conversion_desc">将视频转换为MP4格式</string>
+    <string name="ffmpeg_video_compression">视频压缩</string>
+    <string name="ffmpeg_video_compression_desc">压缩视频文件大小</string>
+    <string name="ffmpeg_video_trim">视频裁剪</string>
+    <string name="ffmpeg_video_trim_desc">裁剪视频的特定片段</string>
+    <string name="ffmpeg_extract_audio">提取音频</string>
+    <string name="ffmpeg_extract_audio_desc">从视频中提取音频</string>
+    <string name="ffmpeg_create_gif">GIF制作</string>
+        <string name="ffmpeg_create_gif_desc">将视频转换为GIF</string>
+    <string name="ffmpeg_input_placeholder">输入FFmpeg命令，不需要包含\'ffmpeg\'前缀</string>
+    <string name="ffmpeg_common_parameters">常用参数</string>
+    <string name="ffmpeg_get_info_failed">获取信息失败</string>
+    <string name="ffmpeg_view_more_info">查看更多信息</string>
+    <string name="ffmpeg_executing_command">正在执行命令，请稍候...</string>
+    
+    <!-- Tool Tester Screen -->
+    <string name="ai_tools_availability_test">AI工具可用性测试</string>
+    <string name="ai_tools_grouped_desc">所有AI工具已按功能分组，点击格子查看详情和操作。</string>
+    <string name="test_input_field">测试输入框 (用于UI测试)</string>
+    <string name="batch_testing_in_progress">正在执行批量测试...</string>
+    <string name="start_comprehensive_test">开始全面自动化测试</string>
+    
+    <!-- Terminal Components -->
+    <string name="terminal_yes_y">是 (Y)</string>
+    <string name="terminal_no_n">否 (N)</string>
+    <string name="terminal_send_custom_input">发送自定义输入</string>
+ 
+    <!-- Status and Error Messages -->
+    <string name="check_video_size_error">检查视频大小时出错</string>
+    <string name="cannot_read_image_file">无法读取图像文件: %1$s</string>
+    <string name="cannot_decode_bitmap_from_uri">无法从URI解码Bitmap</string>
+    <string name="cannot_open_uri_input_stream">无法打开URI的输入流</string>
+    <string name="not_connected">未连接</string>
+    <string name="mobile_data">移动数据</string>
+    <string name="ethernet">以太网</string>
+    <string name="other_network">其他</string>
+    <string name="start_node_not_exist">起始节点 \"%1$s\" 不存在</string>
+    <string name="target_node_not_exist">目标节点 \"%1$s\" 不存在</string>
+    <string name="start_target_same">起始节点和目标节点相同</string>
+    <string name="path_found_with_algorithm">使用 %1$s 算法找到路径</string>
+    <string name="no_path_found">无法找到从 \"%1$s\" 到 \"%2$s\" 的路径</string>
+    <string name="state_path_cannot_be_empty">状态路径不能为空</string>
+    <string name="edge_count_mismatch">边的数量应该比状态数量少1，states=%1$d, edges=%2$d</string>
+    <string name="path_search_success">状态路径搜索成功</string>
+    <string name="start_state_is_target">起始状态即为目标状态</string>
+    <string name="path_found_with_backtrack">使用%1$s算法找到路径</string>
+    <string name="no_valid_state_path">无法找到从 \"%1$s\" 到 \"%2$s\" 的有效状态路径</string>
+    <string name="path_cannot_be_empty">路径不能为空</string>
+    <string name="node_edge_count_mismatch">边的数量应该比节点数量少1，nodes=%1$d, edges=%2$d</string>
+    <string name="path_search_success_simple">路径搜索成功</string>
+    <string name="chinese_language">中文</string>
+    <string name="tag_must_be_set">标签必须设置</string>
+    <string name="stream_must_be_set">数据流必须设置</string>
+
+    <!-- Crop Activity -->
+    <string name="crop_avatar">裁剪头像</string>
+
+    <!-- Theme Options -->
+    <string name="auto">自动</string>
+    <string name="light">浅色</string>
+    <string name="dark">深色</string>
+    <string name="chat_style">聊天风格</string>
+    <string name="command_box">命令框</string>
+    <string name="dialog_box">对话框</string>
+    <string name="display_options">显示选项</string>
+    <string name="custom_avatar">自定义头像</string>
+    <string name="circular">圆形</string>
+    <string name="square">方形</string>
+    <string name="interface_text">界面文本</string>
+
+    <!-- MCP and Plugin Related -->
+    <string name="uninstall">卸载</string>
+    <string name="install">安装</string>
+    <string name="import_from_repo">从仓库导入</string>
+    <string name="import_from_zip">从ZIP导入</string>
+    <string name="connect_remote_service">连接远程服务</string>
+    <string name="enter_repo_info">请输入仓库信息</string>
+    <string name="repo_link">仓库链接</string>
+
+    <!-- Update History -->
+    
+    <!-- Toolbox Categories -->
+    <string name="tool_category_all">全部工具</string>
+    <string name="tool_category_file_management">文件管理</string>
+    <string name="tool_category_development">开发工具</string>
+    <string name="tool_category_system">系统工具</string>
+    
+    <!-- Tool Names -->
+    <string name="tool_test_center">工具测试中心</string>
+    <string name="tool_test_center_desc">测试AI工具的可用性和功能状态</string>
+    <string name="tool_format_converter">万能格式转换</string>
+    <string name="tool_format_converter_desc">支持多种文件格式之间的转换，方便快捷</string>
+    <string name="tool_file_manager">文件管理器</string>
+    <string name="tool_file_manager_desc">浏览和管理设备文件，支持多种操作</string>
+    <string name="tool_tts">文本转语音</string>
+    <string name="tool_tts_desc">将文本转换为语音，支持调整语速和音调</string>
+    <string name="tool_speech_recognition">语音识别</string>
+    <string name="tool_speech_recognition_desc">将语音转换为文本，支持多种引擎和语言</string>
+    <string name="tool_permission_manager">应用权限管理</string>
+    <string name="tool_permission_manager_desc">管理手机各个应用的权限，保护隐私安全</string>
+    <string name="tool_user_agreement">用户协议</string>
+    <string name="tool_user_agreement_desc">查看应用的用户协议与隐私政策</string>
+    <string name="tool_terminal">命令终端</string>
+    <string name="tool_terminal_desc">功能强大的命令行终端，执行系统指令</string>
+    <string name="tool_terminal_auto_config">终端自动配置</string>
+    <string name="tool_terminal_auto_config_desc">自动安装配置Python、PIP等开发工具</string>
+    <string name="tool_ui_debugger">UI调试工具</string>
+    <string name="tool_ui_debugger_desc">调试和分析界面元素，支持元素查找和交互</string>
+    <string name="tool_ffmpeg_toolbox">FFmpeg工具箱</string>
+    <string name="tool_ffmpeg_toolbox_desc">强大的音视频处理工具，支持转换、裁剪、合并等功能</string>
+    <string name="tool_stream_markdown_demo">流式Markdown演示</string>
+    <string name="tool_stream_markdown_demo_desc">高性能流式Markdown渲染演示，支持实时字符流动效果</string>
+    <string name="tool_shell_executor">命令执行器</string>
+    <string name="tool_shell_executor_desc">执行Shell命令并查看输出结果，支持常用命令预设</string>
+    <string name="tool_log_viewer">日志查看器</string>
+    <string name="tool_log_viewer_desc">实时捕获并查看系统和应用日志，支持过滤和搜索</string>
+    <string name="toolbox_description">便捷实用的工具集合，提升您的工作效率</string>
+    
+    <!-- MCP Config Screen -->
+    <string name="import_or_connect_mcp_service">导入或连接MCP服务</string>
+    <string name="select_mcp_plugin_zip">请选择MCP插件压缩包</string>
+    <string name="plugin_zip_package">插件压缩包</string>
+    <string name="select_zip_file">选择.zip文件</string>
+    <string name="select_file">选择文件</string>
+    <string name="enter_remote_service_info">请输入远程服务地址和相关信息</string>
+    <string name="host_address">主机地址</string>
+    <string name="port">端口</string>
+    <string name="service_metadata">服务元数据</string>
+    <string name="plugin_name">插件名称</string>
+    <string name="my_mcp_plugin">我的MCP插件</string>
+    <string name="plugin_description">插件描述</string>
+    <string name="this_is_mcp_plugin">这是一个MCP插件</string>
+    <string name="plugin_already_exists">插件 \'%1$s\' 已存在，请使用其他名称。</string>
+    <string name="remote_service">远程服务</string>
+    <string name="import_plugin">导入插件</string>
+    <string name="remote_service_added">远程服务 %1$s 已添加</string>
+    <string name="enter_repo_link_and_name">请至少输入仓库链接和插件名称</string>
+    <string name="select_zip_and_enter_name">请选择压缩包并输入插件名称</string>
+    <string name="enter_complete_remote_info">请完整输入远程服务信息和名称</string>
+    <string name="connect">连接</string>
+    <string name="import_action">导入</string>
+    <string name="select_mcp_plugin_zip_title">选择MCP插件压缩包</string>
+    <string name="use_system_file_picker">请使用系统文件选择器选择一个.zip格式的MCP插件压缩包</string>
+    <string name="choose_mcp_plugin_zip">选择MCP插件压缩包</string>
+    <string name="open_file_picker">打开文件选择器</string>
+    <string name="start_plugin">启动插件</string>
+    <string name="mcp_management">MCP管理</string>
+    <string name="running">运行中</string>
+    <string name="not_running">未运行</string>
+    <string name="no_plugins">暂无插件</string>
+    <string name="use_import_function_to_add">请使用导入功能添加MCP插件</string>
+    <string name="local_installed_plugin">本地安装的插件</string>
+    <string name="installed_plugins">已安装插件</string>
+    <string name="local_installation">本地安装</string>
+    <string name="local_version">本地版本</string>
+    <string name="official">官方</string>
+    <string name="remote">远程</string>
+    <string name="deployed">已部署</string>
+    <string name="deployment_date">部署: %1$s</string>
+    <string name="redeploy">重新部署</string>
+    <string name="deploy">部署</string>
+    <string name="edit">编辑</string>
+    <string name="edit_remote_service">编辑远程服务</string>
+    <string name="edit_plugin_info">编辑插件信息</string>
+    <string name="name">名称</string>
+    <string name="description">描述</string>
+    <string name="author">作者</string>
+    
+    <!-- 缺失的字符串 -->
+    <string name="configure_speech_services">配置语音服务</string>
+    <string name="microphone_permission_required_title">需要麦克风权限</string>
+    <string name="speech_services_settings">语音服务设置</string>
+    <string name="speech_services_settings_desc">配置文本转语音和语音识别设置</string>
+    <string name="wifi">WiFi</string>
+    
+    <!-- Toast 消息 -->
+    <string name="confirmation_code_copied">返回码已复制！</string>
+    <string name="message_copied">消息已复制到剪贴板</string>
+    <string name="selection_copied">已复制选中内容</string>
+    <string name="requesting_root">正在请求Root权限...</string>
+    <string name="root_granted">Root权限已授予</string>
+    <string name="root_denied">Root权限请求被拒绝</string>
+    <string name="command_failed">命令执行失败</string>
+    <string name="start_termux_first">请先启动Termux</string>
+    <string name="termux_not_found">无法找到Termux应用</string>
+    <string name="termux_battery_optimization">请在系统设置中允许Termux的电池优化豁免</string>
+    <string name="termux_battery_settings_failed">无法打开Termux电池优化设置</string>
+    <string name="permission_settings_failed">无法打开权限设置</string>
+    <string name="overlay_settings_failed">无法打开悬浮窗设置</string>
+    <string name="battery_settings_failed">无法打开电池优化设置</string>
+    <string name="accessibility_settings_failed">无法打开无障碍服务设置</string>
+    <string name="provider_installed">服务提供者已安装</string>
+    <string name="shizuku_not_found">无法找到Shizuku应用</string>
+    <string name="shizuku_start_failed">无法启动Shizuku应用</string>
+    <string name="doc_link_failed">无法打开文档链接</string>
+    <string name="root_tutorial_failed">无法打开Root教程链接</string>
+    <string name="file_open_failed">无法打开文件: %1$s</string>
+    
+    <!-- Snackbar 消息 -->
+    <string name="automation_config_imported">自动化配置导入成功</string>
+    <string name="tab_import_not_supported">当前标签页不支持导入</string>
+    <string name="automation_config_deleted">自动化配置删除成功</string>
+    <string name="tools_loaded">已加载 %1$d 个工具</string>
+    <string name="tools_load_error">获取工具列表时出错: %1$s</string>
+    <string name="plugin_deployed_success">插件 %1$s 已成功部署</string>
+    <string name="remote_service_updated">远程服务 %1$s 已更新</string>
+    
+    <!-- UI 文本 -->
+    <string name="plugin_zip_file">插件压缩包</string>
+    <string name="mcp_plugin">MCP 插件</string>
+    
+    <!-- Toolbox Permission Manager -->
+    <string name="toolbox_permissions_search_hint">搜索应用</string>
+    <string name="toolbox_permissions_system_apps">系统应用</string>
+    <string name="toolbox_permissions_app_count">共 %d 个应用</string>
+    <string name="toolbox_permissions_loading_apps">正在加载应用列表…</string>
+    <string name="toolbox_permissions_no_match">未找到匹配的应用</string>
+    <string name="toolbox_permissions_try_other_keywords">尝试使用其他关键词搜索</string>
+    <string name="toolbox_permissions_try_system_apps">尝试勾选"系统应用"查看更多应用</string>
+    <string name="toolbox_permissions_no_apps">未找到任何应用</string>
+    <string name="toolbox_permissions_reset">重置权限</string>
+    <string name="toolbox_permissions_overview">权限概况</string>
+    <string name="toolbox_permissions_total">总权限</string>
+    <string name="toolbox_permissions_granted">已授权</string>
+    <string name="toolbox_permissions_dangerous">危险权限</string>
+    <string name="toolbox_permissions_loading_info">正在加载权限信息…</string>
+    <string name="toolbox_permissions_no_special">该应用没有请求任何特殊权限</string>
+    <string name="toolbox_permissions_no_special_desc">这意味着应用不需要访问敏感数据或功能</string>
+    <string name="toolbox_permissions_count_suffix">个权限</string>
+    <string name="toolbox_permissions_view">查看权限</string>
+    <string name="toolbox_permissions_get_error">获取权限失败: %s</string>
+    <string name="toolbox_permissions_modify_error">修改权限失败: %s</string>
+    <string name="toolbox_permissions_reset_error">重置权限失败: %s</string>
+    <string name="try_different_keywords">尝试使用其他关键词搜索</string>
+    <string name="try_show_system_apps">尝试勾选"系统应用"查看更多应用</string>
+    <string name="no_apps_found_anywhere">未找到任何应用</string>
+    
+    <!-- Permission Groups -->
+    <string name="permission_group_activity">活动识别</string>
+    <string name="permission_group_calendar">日历</string>
+    <string name="permission_group_call_log">通话记录</string>
+    <string name="permission_group_camera">相机</string>
+    <string name="permission_group_contacts">联系人</string>
+    <string name="permission_group_location">位置</string>
+    <string name="permission_group_microphone">麦克风</string>
+    <string name="permission_group_phone">电话</string>
+    <string name="permission_group_sensors">传感器</string>
+    <string name="permission_group_sms">短信</string>
+    <string name="permission_group_storage">存储</string>
+    <string name="permission_group_other_granted">其他已授权权限</string>
+    <string name="permission_group_other_denied">其他未授权权限</string>
+    <string name="permission_group_other">其他权限</string>
+    
+    <!-- Format Converter -->
+    <string name="format_converter_no_file_path">无法获取文件路径</string>
+    <string name="format_converter_select_file_error">选择文件失败: %s</string>
+    <string name="format_converter_complete_selection">请完成所有必要的选择</string>
+    <string name="format_converter_failed">转换失败，请重试</string>
+    <string name="format_converter_open_file_error">无法打开文件: %s</string>
+    <string name="format_converter_select_format">选择转换格式</string>
+    <string name="target_format">目标格式</string>
+    <string name="start_conversion">开始转换</string>
+    <string name="conversion_success">转换成功</string>
+    <string name="unknown_file">未知文件</string>
+    
+    <!-- File Types -->
+    <string name="file_type_document">文档</string>
+    <string name="file_type_image">图片</string>
+    <string name="file_type_audio">音频</string>
+    <string name="file_type_video">视频</string>
+    <string name="file_type_archive">压缩包</string>
+    
+    <!-- Stream Markdown Demo -->
+    <string name="stream_markdown_title">流式渲染 (Streaming)</string>
+    <string name="stream_markdown_demo_title">流式Markdown渲染演示</string>
+    <string name="static_rendering">静态渲染</string>
+    <string name="stream_speed_format">速度 (x%.1f)</string>
+    
+    <!-- Additional Actions -->
+    <string name="clear">清除</string>
+    <string name="back">返回</string>
+    <string name="pause">暂停</string>
+    <string name="continue_action">继续</string>
+    <string name="start">开始</string>
+    <string name="reset">重置</string>
+    <string name="open_file">打开文件</string>
+    <string name="system_app">系统应用</string>
+    <string name="dangerous_permission">危险权限</string>
+    <string name="granted">已授权</string>
+    <string name="not_granted">未授权</string>
+    
+    <!-- Toolbox Screen -->
+    <string name="toolbox_title">工具箱</string>
+    <string name="toolbox_subtitle">开发和系统管理工具集合</string>
+    <string name="toolbox_no_tools">此分类下暂无工具</string>
+    <string name="toolbox_animation_loading">正在加载工具...</string>
+    
+    <!-- File Manager -->
+    <string name="file_manager_title">文件管理器</string>
+    <string name="file_manager_dual_pane">双面板模式</string>
+    <string name="file_manager_multi_select">多选模式</string>
+    <string name="file_manager_search">搜索文件</string>
+    <string name="file_manager_search_hint">输入文件名或关键词</string>
+    <string name="file_manager_new_folder">新建文件夹</string>
+    <string name="file_manager_copy">复制</string>
+    <string name="file_manager_cut">剪切</string>
+    <string name="file_manager_paste">粘贴</string>
+    <string name="file_manager_delete">删除</string>
+    <string name="file_manager_properties">属性</string>
+    <string name="file_manager_refresh">刷新</string>
+    <string name="file_manager_sort_by">排序方式</string>
+    <string name="file_manager_sort_name">按名称</string>
+    <string name="file_manager_sort_size">按大小</string>
+    <string name="file_manager_sort_date">按日期</string>
+    <string name="file_manager_sort_type">按类型</string>
+    <string name="file_manager_loading">正在加载文件列表...</string>
+    <string name="file_manager_empty_folder">此文件夹为空</string>
+    <string name="file_manager_permission_denied">权限不足，无法访问此目录</string>
+    <string name="file_manager_operation_failed">文件操作失败</string>
+    <string name="file_manager_zoom_in">放大</string>
+    <string name="file_manager_zoom_out">缩小</string>
+    <string name="file_manager_view_grid">网格视图</string>
+    <string name="file_manager_view_list">列表视图</string>
+    <string name="file_manager_navigate_up">返回上级目录</string>
+    <string name="file_manager_show_hidden">显示隐藏文件</string>
+    <string name="file_manager_items_selected">已选择 %d 项</string>
+    <string name="file_manager_clipboard_empty">剪贴板为空</string>
+    
+    <!-- File Operations -->
+    <string name="file_op_copy_success">复制成功</string>
+    <string name="file_op_cut_success">剪切成功</string>
+    <string name="file_op_paste_success">粘贴成功</string>
+    <string name="file_op_delete_success">删除成功</string>
+    <string name="file_op_create_folder_success">文件夹创建成功</string>
+    <string name="file_op_rename_success">重命名成功</string>
+    <string name="file_op_failed">操作失败: %s</string>
+    <string name="file_op_confirm_delete">确认删除</string>
+    <string name="file_op_confirm_delete_message">确定要删除选中的文件吗？此操作无法撤销。</string>
+    <string name="file_op_confirm_overwrite">文件已存在</string>
+    <string name="file_op_confirm_overwrite_message">目标位置已存在同名文件，是否覆盖？</string>
+    
+    <!-- Terminal -->
+    <string name="terminal_title">终端模拟器</string>
+    <string name="terminal_new_session">新建会话</string>
+    <string name="terminal_close_session">关闭会话</string>
+    <string name="terminal_clear_screen">清屏</string>
+    <string name="terminal_font_size">字体大小</string>
+    <string name="terminal_zoom_in">放大字体</string>
+    <string name="terminal_zoom_out">缩小字体</string>
+    <string name="terminal_copy">复制</string>
+    <string name="terminal_paste">粘贴</string>
+    <string name="terminal_select_all">全选</string>
+    <string name="terminal_search">搜索</string>
+    <string name="terminal_settings">设置</string>
+    <string name="terminal_session">会话 %d</string>
+    <string name="terminal_working_dir">工作目录: %s</string>
+    <string name="terminal_command_history">命令历史</string>
+    <string name="terminal_no_history">暂无命令历史</string>
+    <string name="terminal_interactive_input">交互式输入</string>
+    <string name="terminal_input_prompt">请输入: %s</string>
+    <string name="terminal_input_confirm">确认</string>
+    <string name="terminal_input_cancel">取消</string>
+    <string name="terminal_execution_error">命令执行错误</string>
+    <string name="terminal_permission_required">需要权限</string>
+    <string name="terminal_root_access">需要Root权限才能执行此命令</string>
+    <string name="terminal_command_not_found">命令未找到</string>
+    <string name="terminal_process_running">进程正在运行...</string>
+    <string name="terminal_process_completed">进程已完成</string>
+    
+    <!-- Terminal Auto Config -->
+    <string name="terminal_auto_config_title">终端自动配置</string>
+    <string name="terminal_auto_config_desc">自动检测和配置终端环境</string>
+    <string name="terminal_auto_config_detect">检测环境</string>
+    <string name="terminal_auto_config_apply">应用配置</string>
+    <string name="terminal_auto_config_reset">重置配置</string>
+    <string name="terminal_auto_config_status">配置状态</string>
+    <string name="terminal_auto_config_completed">配置完成</string>
+    <string name="terminal_auto_config_failed">配置失败</string>
+    <string name="terminal_auto_config_detecting">正在检测环境...</string>
+    <string name="terminal_auto_config_applying">正在应用配置...</string>
+    
+    <!-- FFmpeg Toolbox -->
+    <string name="ffmpeg_toolbox_title">FFmpeg工具箱</string>
+    <string name="ffmpeg_input_file">输入文件</string>
+    <string name="ffmpeg_output_file">输出文件</string>
+    <string name="ffmpeg_select_input">选择输入文件</string>
+    <string name="ffmpeg_select_output">选择输出路径</string>
+    <string name="ffmpeg_conversion_type">转换类型</string>
+    <string name="ffmpeg_video_conversion">视频转换</string>
+    <string name="ffmpeg_audio_conversion">音频转换</string>
+    <string name="ffmpeg_image_conversion">图片转换</string>
+    <string name="ffmpeg_start_conversion">开始转换</string>
+    <string name="ffmpeg_conversion_progress">转换进度</string>
+    <string name="ffmpeg_conversion_completed">转换完成</string>
+    <string name="ffmpeg_conversion_failed">转换失败</string>
+    <string name="ffmpeg_quality_settings">质量设置</string>
+    <string name="ffmpeg_bitrate">比特率</string>
+    <string name="ffmpeg_resolution">分辨率</string>
+    <string name="ffmpeg_frame_rate">帧率</string>
+    <string name="ffmpeg_codec">编解码器</string>
+    <string name="ffmpeg_advanced_options">高级选项</string>
+    <string name="ffmpeg_custom_parameters">自定义参数</string>
+    <string name="ffmpeg_preview">预览</string>
+    <string name="ffmpeg_file_info">文件信息</string>
+    <string name="ffmpeg_duration">时长</string>
+    <string name="ffmpeg_file_size">文件大小</string>
+    <string name="ffmpeg_format">格式</string>
+    <string name="ffmpeg_processing">正在处理...</string>
+    <string name="ffmpeg_cancel">取消</string>
+    <string name="ffmpeg_no_file_selected">未选择文件</string>
+    <string name="ffmpeg_invalid_file">无效的文件格式</string>
+    <string name="ffmpeg_permission_error">权限错误，无法访问文件</string>
+    
+    <!-- Log Viewer (Logcat) -->
+    <string name="logcat_title">日志查看器</string>
+    <string name="logcat_start">开始日志</string>
+    <string name="logcat_stop">停止日志</string>
+    <string name="logcat_clear">清除日志</string>
+    <string name="logcat_filter">过滤</string>
+    <string name="logcat_search">搜索日志</string>
+    <string name="logcat_search_hint">输入关键词搜索</string>
+    <string name="logcat_log_level">日志级别</string>
+    <string name="logcat_verbose">详细</string>
+    <string name="logcat_debug">调试</string>
+    <string name="logcat_info">信息</string>
+    <string name="logcat_warning">警告</string>
+    <string name="logcat_error">错误</string>
+    <string name="logcat_save_logs">保存日志</string>
+    <string name="logcat_export_logs">导出日志</string>
+    <string name="logcat_auto_scroll">自动滚动</string>
+    <string name="logcat_word_wrap">自动换行</string>
+    <string name="logcat_timestamp">时间戳</string>
+    <string name="logcat_package_filter">包名过滤</string>
+    <string name="logcat_tag_filter">标签过滤</string>
+    <string name="logcat_no_logs">暂无日志数据</string>
+    <string name="logcat_permission_required">需要读取日志权限</string>
+    <string name="logcat_logs_saved">日志已保存到 %s</string>
+    <string name="logcat_save_failed">保存日志失败</string>
+    
+    <!-- Shell Executor -->
+    <string name="shell_executor_title">Shell执行器</string>
+    <string name="shell_executor_command">命令</string>
+    <string name="shell_executor_execute">执行</string>
+    <string name="shell_executor_clear">清除</string>
+    <string name="shell_executor_output">输出</string>
+    <string name="shell_executor_error">错误</string>
+    <string name="shell_executor_working_dir">工作目录</string>
+    <string name="shell_executor_change_dir">更改目录</string>
+    <string name="shell_executor_command_history">命令历史</string>
+    <string name="shell_executor_save_output">保存输出</string>
+    <string name="shell_executor_copy_output">复制输出</string>
+    <string name="shell_executor_running">正在执行...</string>
+    <string name="shell_executor_completed">执行完成</string>
+    <string name="shell_executor_failed">执行失败</string>
+    <string name="shell_executor_timeout">执行超时</string>
+    <string name="shell_executor_interrupted">执行被中断</string>
+    <string name="shell_executor_no_permission">权限不足</string>
+    <string name="shell_executor_command_empty">命令不能为空</string>
+    <string name="shell_executor_exit_code">退出代码: %d</string>
+    
+    <!-- Text-to-Speech -->
+    <string name="tts_title">文本转语音</string>
+    <string name="tts_text_input">输入文本</string>
+    <string name="tts_text_hint">请输入要转换为语音的文本</string>
+    <string name="tts_speak">播放</string>
+    <string name="tts_stop">停止</string>
+    <string name="tts_pause">暂停</string>
+    <string name="tts_resume">继续</string>
+    <string name="tts_language">语言</string>
+    <string name="tts_voice">语音</string>
+    <string name="tts_speed">语速</string>
+    <string name="tts_pitch">音调</string>
+    <string name="tts_volume">音量</string>
+    <string name="tts_save_audio">保存音频</string>
+    <string name="tts_preview">预览</string>
+    <string name="tts_settings">语音设置</string>
+    <string name="tts_engine">语音引擎</string>
+    <string name="tts_no_engine">未找到语音引擎</string>
+    <string name="tts_engine_error">语音引擎错误</string>
+    <string name="tts_initializing">正在初始化语音引擎...</string>
+    <string name="tts_speaking">正在播放...</string>
+    <string name="tts_completed">播放完成</string>
+    <string name="tts_text_empty">请输入文本</string>
+    <string name="tts_audio_saved">音频已保存到 %s</string>
+    <string name="tts_save_failed">保存音频失败</string>
+    
+    <!-- Speech-to-Text -->
+    <string name="stt_title">语音识别</string>
+    <string name="stt_start_recording">开始录音</string>
+    <string name="stt_stop_recording">停止录音</string>
+    <string name="stt_recording">正在录音...</string>
+    <string name="stt_processing">正在识别...</string>
+    <string name="stt_result">识别结果</string>
+    <string name="stt_copy_result">复制结果</string>
+    <string name="stt_clear_result">清除结果</string>
+    <string name="stt_save_result">保存结果</string>
+    <string name="stt_language">识别语言</string>
+    <string name="stt_engine">识别引擎</string>
+    <string name="stt_confidence">置信度</string>
+    <string name="stt_no_result">未识别到内容</string>
+    <string name="stt_error">识别错误</string>
+    <string name="stt_permission_required">需要麦克风权限</string>
+    <string name="stt_no_engine">未找到语音识别引擎</string>
+    <string name="stt_engine_error">语音识别引擎错误</string>
+    <string name="stt_network_error">网络错误，请检查网络连接</string>
+    <string name="stt_timeout">识别超时</string>
+    <string name="stt_result_saved">识别结果已保存</string>
+    <string name="stt_save_failed">保存结果失败</string>
+    
+    <!-- UI Debugger -->
+    <string name="ui_debugger_title">UI调试器</string>
+    <string name="ui_debugger_start">开始调试</string>
+    <string name="ui_debugger_stop">停止调试</string>
+    <string name="ui_debugger_inspect">检查元素</string>
+    <string name="ui_debugger_hierarchy">视图层次</string>
+    <string name="ui_debugger_properties">属性</string>
+    <string name="ui_debugger_layout">布局</string>
+    <string name="ui_debugger_events">事件</string>
+    <string name="ui_debugger_capture">截图</string>
+    <string name="ui_debugger_export">导出</string>
+    <string name="ui_debugger_settings">调试设置</string>
+    <string name="ui_debugger_overlay">调试覆盖层</string>
+    <string name="ui_debugger_highlight">高亮显示</string>
+    <string name="ui_debugger_bounds">边界</string>
+    <string name="ui_debugger_margins">边距</string>
+    <string name="ui_debugger_padding">内边距</string>
+    <string name="ui_debugger_no_activity">未检测到活动</string>
+    <string name="ui_debugger_permission_required">需要悬浮窗权限</string>
+    <string name="ui_debugger_accessibility_required">需要无障碍权限</string>
+    <string name="ui_debugger_capture_saved">截图已保存到 %s</string>
+    <string name="ui_debugger_export_completed">导出完成</string>
+    <string name="ui_debugger_export_failed">导出失败</string>
+    
+    <!-- Permission Names -->
+    <string name="perm_name_camera">相机</string>
+    <string name="perm_name_read_contacts">读取联系人</string>
+    <string name="perm_name_write_contacts">写入联系人</string>
+    <string name="perm_name_get_accounts">获取账户信息</string>
+    <string name="perm_name_access_fine_location">精确位置</string>
+    <string name="perm_name_access_coarse_location">大致位置</string>
+    <string name="perm_name_access_background_location">后台位置</string>
+    <string name="perm_name_read_call_log">读取通话记录</string>
+    <string name="perm_name_write_call_log">写入通话记录</string>
+    <string name="perm_name_process_outgoing_calls">处理拨出电话</string>
+    <string name="perm_name_read_phone_state">读取电话状态</string>
+    <string name="perm_name_read_phone_numbers">读取电话号码</string>
+    <string name="perm_name_call_phone">拨打电话</string>
+    <string name="perm_name_answer_phone_calls">接听来电</string>
+    <string name="perm_name_add_voicemail">添加语音信箱</string>
+    <string name="perm_name_use_sip">使用SIP服务</string>
+    <string name="perm_name_accept_handover">通话切换</string>
+    <string name="perm_name_body_sensors">身体传感器</string>
+    <string name="perm_name_body_sensors_background">后台身体传感器</string>
+    <string name="perm_name_activity_recognition">活动识别</string>
+    <string name="perm_name_read_calendar">读取日历</string>
+    <string name="perm_name_write_calendar">写入日历</string>
+    <string name="perm_name_read_external_storage">读取存储</string>
+    <string name="perm_name_write_external_storage">写入存储</string>
+    <string name="perm_name_manage_external_storage">管理所有文件</string>
+    <string name="perm_name_read_media_images">读取照片</string>
+    <string name="perm_name_read_media_video">读取视频</string>
+    <string name="perm_name_read_media_audio">读取音频文件</string>
+    <string name="perm_name_record_audio">录制音频</string>
+    <string name="perm_name_send_sms">发送短信</string>
+    <string name="perm_name_receive_sms">接收短信</string>
+    <string name="perm_name_read_sms">读取短信</string>
+    <string name="perm_name_receive_wap_push">接收WAP推送消息</string>
+    <string name="perm_name_receive_mms">接收彩信</string>
+    
+    <!-- Permission Descriptions -->
+    <string name="perm_desc_camera">允许应用使用相机拍摄照片和视频</string>
+    <string name="perm_desc_read_contacts">允许应用读取您的联系人数据</string>
+    <string name="perm_desc_write_contacts">允许应用修改您的联系人数据</string>
+    <string name="perm_desc_get_accounts">允许访问设备上的账户列表</string>
+    <string name="perm_desc_access_fine_location">允许应用获取您的精确位置</string>
+    <string name="perm_desc_access_coarse_location">允许应用获取您的大致位置</string>
+    <string name="perm_desc_access_background_location">允许应用在后台获取位置</string>
+    <string name="perm_desc_read_call_log">允许应用读取您的通话记录</string>
+    <string name="perm_desc_write_call_log">允许应用写入您的通话记录</string>
+    <string name="perm_desc_process_outgoing_calls">允许应用处理拨出电话</string>
+    <string name="perm_desc_read_phone_state">允许访问电话状态</string>
+    <string name="perm_desc_read_phone_numbers">允许读取设备电话号码</string>
+    <string name="perm_desc_call_phone">允许应用直接拨打电话而无需确认</string>
+    <string name="perm_desc_answer_phone_calls">允许应用接听来电</string>
+    <string name="perm_desc_add_voicemail">允许应用添加语音信箱</string>
+    <string name="perm_desc_use_sip">允许应用使用SIP服务</string>
+    <string name="perm_desc_accept_handover">允许通话从一个应用切换到另一个</string>
+    <string name="perm_desc_body_sensors">允许访问身体传感器数据(如心率)</string>
+    <string name="perm_desc_body_sensors_background">允许在后台访问身体传感器</string>
+    <string name="perm_desc_activity_recognition">允许应用识别您的身体活动</string>
+    <string name="perm_desc_read_calendar">允许应用读取您的日历事件</string>
+    <string name="perm_desc_write_calendar">允许应用添加或修改日历事件</string>
+    <string name="perm_desc_read_external_storage">允许应用读取您的存储</string>
+    <string name="perm_desc_write_external_storage">允许应用写入您的存储</string>
+    <string name="perm_desc_manage_external_storage">允许管理所有文件</string>
+    <string name="perm_desc_read_media_images">允许应用读取您的照片</string>
+    <string name="perm_desc_read_media_video">允许应用读取您的视频</string>
+    <string name="perm_desc_read_media_audio">允许应用读取您的音频文件</string>
+    <string name="perm_desc_record_audio">允许应用录制音频</string>
+    <string name="perm_desc_send_sms">允许应用发送短信</string>
+    <string name="perm_desc_receive_sms">允许应用接收短信</string>
+    <string name="perm_desc_read_sms">允许应用读取短信</string>
+    <string name="perm_desc_receive_wap_push">允许应用接收WAP推送消息</string>
+    <string name="perm_desc_receive_mms">允许应用接收彩信</string>
+    
+    <!-- Additional permission strings -->
+    <string name="perm_default_desc">允许应用访问系统功能</string>
+    <string name="debug_info">调试信息</string>
+    <string name="error_info">错误信息</string>
+    <string name="requested_permissions_count">请求的权限: %1$d个, 已授权: %2$d个</string>
+    <string name="requested_permissions_list">请求的权限: %s</string>
+    <string name="granted_permissions_list">已授权的权限: %s</string>
+    <string name="permission_error_desc">获取权限时出错: %s</string>
+    
+    <!-- Tool Tester Screen -->
+    <string name="parameters_label">参数:</string>
+    <string name="detailed_result">详细结果:</string>
+    <string name="retest">重新测试</string>
+    
+    <!-- Tool Test Groups -->
+    <string name="env_setup_group">环境准备 (顺序执行)</string>
+    <string name="basic_http_group">基础与HTTP (并行)</string>
+    <string name="file_readonly_group">文件只读 (并行)</string>
+    <string name="file_write_group">文件写入 (顺序)</string>
+    <string name="system_group">系统 (并行)</string>
+    <string name="ui_automation_group">UI自动化 (并行, 可能失败)</string>
+    <string name="cleanup_group">清理环境 (自动执行)</string>
+    
+    <!-- Tool Test Names -->
+    <string name="create_test_dir">创建测试目录</string>
+    <string name="download_test_image">下载测试图片</string>
+    <string name="create_text_file">创建文本文件</string>
+    <string name="delay_test">延时</string>
+    <string name="device_info_test">设备信息</string>
+    <string name="http_get_test">HTTP GET</string>
+    <string name="file_upload_test">文件上传</string>
+    <string name="manage_cookies_test">管理Cookie</string>
+    <string name="visit_web_test">访问网页</string>
+    <string name="use_package_test">使用包</string>
+    <string name="query_knowledge_test">查询问题库</string>
+    <string name="list_files_test">列出文件</string>
+    <string name="file_exists_test">文件是否存在</string>
+    <string name="ocr_read_test">OCR读取</string>
+    <string name="chunk_read_test">分块读取</string>
+    <string name="file_info_test">文件信息</string>
+    <string name="find_files_test">查找文件</string>
+    <string name="copy_file_test">复制文件</string>
+    <string name="move_file_test">移动文件</string>
+    <string name="zip_files_test">压缩文件</string>
+    <string name="unzip_files_test">解压文件</string>
+    <string name="convert_file_test">格式转换</string>
+    <string name="list_apps_test">列出应用</string>
+    <string name="get_notifications_test">获取通知</string>
+    <string name="device_location_test">设备位置</string>
+    <string name="read_system_setting_test">读系统设置</string>
+    <string name="write_system_setting_test">写系统设置</string>
+    <string name="page_info_test">页面信息</string>
+    <string name="simulate_key_test">模拟按键</string>
+    <string name="text_input_test">文本输入</string>
+    <string name="click_input_test">点击输入框(ID)</string>
+    <string name="simulate_tap_test">模拟点击</string>
+    <string name="simulate_swipe_test">模拟滑动</string>
+    <string name="cleanup_test_dir">清理测试目录</string>
+    
+    <!-- Tool Test Descriptions -->
+    <string name="create_test_dir_desc">创建所有测试文件的根目录。</string>
+    <string name="download_test_image_desc">下载一张图片用于后续测试。</string>
+    <string name="create_text_file_desc">创建一个用于测试的文本文件。</string>
+    <string name="delay_test_desc">测试工具调用延时</string>
+    <string name="device_info_test_desc">获取设备详细信息</string>
+    <string name="http_get_test_desc">测试GET请求</string>
+    <string name="file_upload_test_desc">测试上传文件到httpbin</string>
+    <string name="manage_cookies_test_desc">获取google.com的Cookie</string>
+    <string name="visit_web_test_desc">访问Baidu并提取内容</string>
+    <string name="use_package_test_desc">测试激活一个不存在的包</string>
+    <string name="query_knowledge_test_desc">测试查询问题库</string>
+    <string name="list_files_test_desc">列出测试目录的文件</string>
+    <string name="file_exists_test_desc">检查测试文件是否存在</string>
+    <string name="ocr_read_test_desc">读取测试图片内容</string>
+    <string name="chunk_read_test_desc">读取测试文件的第一部分</string>
+    <string name="file_info_test_desc">获取测试文件的信息</string>
+    <string name="find_files_test_desc">在测试目录中查找文件</string>
+    <string name="copy_file_test_desc">复制测试文件</string>
+    <string name="move_file_test_desc">移动并重命名文件</string>
+    <string name="zip_files_test_desc">压缩测试目录</string>
+    <string name="unzip_files_test_desc">解压测试文件</string>
+    <string name="convert_file_test_desc">将PNG转换为JPG</string>
+    <string name="list_apps_test_desc">获取用户安装的应用列表</string>
+    <string name="get_notifications_test_desc">获取最新的5条通知</string>
+    <string name="device_location_test_desc">获取低精度设备位置</string>
+    <string name="read_system_setting_test_desc">获取屏幕关闭超时时间</string>
+    <string name="write_system_setting_test_desc">尝试写入一个无害的设置项</string>
+    <string name="page_info_test_desc">获取当前屏幕的UI结构</string>
+    <string name="simulate_key_test_desc">模拟按下音量+</string>
+    <string name="text_input_test_desc">在上方测试框输入文本</string>
+    <string name="click_input_test_desc">通过为输入框设置的testTag作为ID进行点击，预期成功。</string>
+    <string name="simulate_tap_test_desc">在(1,1)处点击，预期失败</string>
+    <string name="simulate_swipe_test_desc">在屏幕中央短距离滑动</string>
+    <string name="cleanup_test_dir_desc">删除所有测试文件和目录。</string>
+    
+    <!-- Additional missing strings -->
+    <string name="termux_auth_failed">Termux授权失败</string>
+    <string name="tsinghua_source_error">清华源配置错误</string>
+    <string name="tsinghua_source_failed">清华源配置失败</string>
+    <string name="tsinghua_source_success">清华源配置成功</string>
+    <string name="ffmpeg_video_info">视频信息</string>
+    <string name="ffmpeg_video_info_desc">获取详细的视频文件信息</string>
+    <string name="ffmpeg_video_output_placeholder">输出文件路径(可选)</string>
+    <string name="ffmpeg_video_transcode">视频转码</string>
+    
+    <!-- ShizukuDemoScreen 字符串 -->
+    <string name="loading_app_state">正在加载应用状态...</string>
+    <string name="setup_wizard">设置向导</string>
+    <string name="setup_wizard_icon_desc">设置向导图标</string>
+    <string name="cannot_start_shizuku_app">无法启动Shizuku应用</string>
+    <string name="cannot_open_doc_link">无法打开文档链接</string>
+    <string name="welcome_termux_config">欢迎使用Termux配置工具\n点击对应按钮开始配置</string>
+    <string name="executing_task">正在执行: %1$s...</string>
+    
+    <!-- Permission Level Features -->
+    <string name="feature_overlay_window">悬浮窗</string>
+    <string name="feature_file_operations">文件操作</string>
+    <string name="feature_screen_auto_click">屏幕自动点击</string>
+    <string name="feature_system_permission_modification">系统权限修改</string>
+    <string name="feature_termux_support">Termux支持</string>
+    <string name="feature_run_js">运行JS</string>
+    <string name="feature_plugin_market_mcp">插件市场MCP</string>
+    <string name="supported">支持</string>
+    <string name="not_supported">不支持</string>
+    <string name="permission_level_set_active">已将%1$s设为当前活动权限级别</string>
+    <string name="no_description">暂无描述</string>
+    <string name="view_details">查看详情</string>
+    <string name="builtin">内置</string>
+    <string name="external">外部</string>
+    
+    <!-- Chat Components -->
+    <string name="memory_attachment_active">记忆附着已激活</string>
+    <string name="thinking_mode_active">思考模式已激活</string>
+    <string name="thinking_guidance_active">思考引导已激活</string>
+    <string name="ai_planning_active">AI计划模式已激活</string>
+    <string name="auto_approve_active">自动批准已激活</string>
+    <string name="settings_options">设置选项</string>
+    <string name="model_config">模型配置</string>
+    <string name="model_config_desc">在这里选择一个已经配置好的模型，或者点击下方的管理配置去新建或修改模型</string>
+    <string name="prompt">提示词</string>
+    <string name="prompt_desc">在这里选择一个已经配置好的提示词，或者点击下方的管理配置去新建或修改提示词</string>
+    <string name="memory">记忆</string>
+    <string name="memory_desc">记忆选择包括了用户偏好和该偏好下的记忆库。如果想要新的记忆库，可以去设置新建一个用户偏好并在这里选择</string>
+    <string name="memory_attachment">记忆附着</string>
+    <string name="memory_attachment_desc">开启后，发送消息时会自动从记忆库中检索并附加相关内容，但这可能会影响AI回答的焦点。</string>
+    <string name="ai_planning_desc">能够生成一系列计划进行执行（效果一般，不建议启用，未来将会进行替换）。</string>
+    <string name="thinking_mode">思考模式</string>
+    <string name="thinking_mode_desc">目前只支持Gemini、Qwen3和Claude，能够启用内置的思考。</string>
+    <string name="thinking_guidance">思考引导</string>
+    <string name="thinking_guidance_desc">能够让不能思考的模型强制进行思考。该选项不建议对思考模型开启。</string>
+    <string name="details">详情</string>
+    <string name="model_selection">模型选择</string>
+    <string name="prompt_selection">提示词选择</string>
+    <string name="memory_selection">记忆选择</string>
+    <string name="not_selected">未选择</string>
+    <string name="manage_config">管理配置</string>
+    <string name="collapse_verb">收起</string>
+    <string name="expand_verb">展开</string>
+    <string name="hide_history">隐藏历史</string>
+    <string name="show_history">显示历史</string>
+    <string name="open_floating_window">开启悬浮窗</string>
+    <string name="ungrouped">未分组</string>
+    <string name="manage_group">管理分组</string>
+    <string name="rename_group">重命名分组</string>
+    <string name="delete_group">删除分组</string>
+    <string name="new_group_name">新分组名称</string>
+    <string name="confirm_delete_group">确认删除分组</string>
+    <string name="delete_group_and_chats">删除分组和所有对话</string>
+    <string name="delete_operation_irreversible">此操作无法撤销</string>
+    <string name="delete_group_only">仅删除分组</string>
+    <string name="chats_move_to_ungrouped">对话将移至"未分组"</string>
+    <string name="edit_title">编辑标题</string>
+    <string name="new_title">新标题</string>
+    <string name="new_group">新建分组</string>
+    <string name="group_name">分组名称</string>
+    <string name="create_new_group">新建分组</string>
+    <string name="long_press_to_manage">长按管理</string>
+    <string name="edit_title_desc">编辑标题</string>
+    <string name="reorder">Reorder</string>
+    <string name="choose_delete_method">请选择删除方式：</string>
+    <string name="swipe_hint">左右滑动可编辑或删除(点击不再显示)</string>
+    <string name="long_press_manage">长按管理</string>
+    
 </resources>

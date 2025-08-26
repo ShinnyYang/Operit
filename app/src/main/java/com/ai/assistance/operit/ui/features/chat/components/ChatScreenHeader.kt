@@ -92,7 +92,7 @@ fun ChatScreenHeader(
             if (isGranted) {
                 actualViewModel.launchFloatingModeIn(FloatingMode.WINDOW, colorScheme, typography)
             } else {
-                actualViewModel.showToast("麦克风权限被拒绝")
+                actualViewModel.showToast(context.getString(R.string.microphone_permission_denied))
             }
         }
 
