@@ -2119,10 +2119,10 @@
     <string name="gender_optional">Gender (Optional)</string>
     <string name="occupation_optional">Occupation (Optional)</string>
     <string name="birth_date_optional">Birth Date (Optional)</string>
-    <string name="personality_optional">Personality Traits (Optional, Multiple Selection)</string>
+    <string name="personality_optional">Personality Traits (Optional)</string>
     <string name="add_custom">Add Custom</string>
-    <string name="identity_optional">Identity (Optional, Multiple Selection)</string>
-    <string name="ai_style_optional">Expected AI Style (Optional, Multiple Selection)</string>
+    <string name="identity_optional">Identity (Optional)</string>
+    <string name="ai_style_optional">Expected AI Style (Optional)</string>
     <string name="select_birth_date_title">Select your birth date</string>
     <string name="info_icon">Info</string>
     <string name="add_icon">Add</string>
