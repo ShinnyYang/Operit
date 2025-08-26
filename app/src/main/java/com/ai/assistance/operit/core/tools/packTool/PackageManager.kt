@@ -31,6 +31,7 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         private const val ASSETS_PACKAGES_DIR = "packages" // Directory in assets for packages
         private const val PACKAGE_PREFS = "com.ai.assistance.operit.core.tools.PackageManager"
         private const val IMPORTED_PACKAGES_KEY = "imported_packages"
+        private const val DISABLED_PACKAGES_KEY = "disabled_packages"
         private const val ACTIVE_PACKAGES_KEY = "active_packages"
 
         @Volatile private var INSTANCE: PackageManager? = null
@@ -72,6 +73,37 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
 
         // Load available packages info (metadata only) from assets and external storage
         loadAvailablePackages()
+        
+        // Automatically import built-in packages that are enabled by default
+        initializeDefaultPackages()
+    }
+
+    /**
+     * Automatically imports built-in packages that are marked as enabled by default.
+     * This ensures that essential or commonly used packages are available without
+     * manual user intervention. It also respects a user's choice to disable a
+     * default package.
+     */
+    private fun initializeDefaultPackages() {
+        val importedPackages = getImportedPackages().toMutableSet()
+        val disabledPackages = getDisabledPackages().toSet()
+        var packagesChanged = false
+
+        availablePackages.values.forEach { toolPackage ->
+            if (toolPackage.isBuiltIn && toolPackage.enabledByDefault && !disabledPackages.contains(toolPackage.name)) {
+                if (importedPackages.add(toolPackage.name)) {
+                    packagesChanged = true
+                    Log.d(TAG, "Auto-importing default package: ${toolPackage.name}")
+                }
+            }
+        }
+
+        if (packagesChanged) {
+            val prefs = context.getSharedPreferences(PACKAGE_PREFS, Context.MODE_PRIVATE)
+            val updatedJson = Json.encodeToString(importedPackages.toList())
+            prefs.edit().putString(IMPORTED_PACKAGES_KEY, updatedJson).apply()
+            Log.d(TAG, "Updated imported packages with default packages.")
+        }
     }
 
     /**
@@ -314,6 +346,13 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         val updatedJson = Json.encodeToString(updatedPackages)
         prefs.edit().putString(IMPORTED_PACKAGES_KEY, updatedJson).apply()
 
+        // Remove from disabled packages list if it was there
+        val disabledPackages = getDisabledPackages().toMutableList()
+        if (disabledPackages.remove(packageName)) {
+            saveDisabledPackages(disabledPackages)
+            Log.d(TAG, "Removed package from disabled list: $packageName")
+        }
+
         Log.d(TAG, "Successfully imported package: $packageName")
         return "Successfully imported package: $packageName"
     }
@@ -446,6 +485,29 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
     }
 
     /**
+     * Get a list of all disabled packages
+     * @return A list of disabled package names
+     */
+    fun getDisabledPackages(): List<String> {
+        val prefs = context.getSharedPreferences(PACKAGE_PREFS, Context.MODE_PRIVATE)
+        val packagesJson = prefs.getString(DISABLED_PACKAGES_KEY, "[]")
+        return try {
+            val jsonConfig = Json { ignoreUnknownKeys = true }
+            jsonConfig.decodeFromString<List<String>>(packagesJson ?: "[]")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error decoding disabled packages", e)
+            emptyList()
+        }
+    }
+    
+    /** Helper to save disabled packages */
+    private fun saveDisabledPackages(disabledPackages: List<String>) {
+        val prefs = context.getSharedPreferences(PACKAGE_PREFS, Context.MODE_PRIVATE)
+        val updatedJson = Json.encodeToString(disabledPackages)
+        prefs.edit().putString(DISABLED_PACKAGES_KEY, updatedJson).apply()
+    }
+
+    /**
      * Get the tools for a loaded package
      * @param packageName The name of the loaded package
      * @return The ToolPackage object or null if the package is not loaded
@@ -469,7 +531,20 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         val prefs = context.getSharedPreferences(PACKAGE_PREFS, Context.MODE_PRIVATE)
         val currentPackages = getImportedPackages().toMutableList()
 
-        if (currentPackages.remove(packageName)) {
+        val packageWasRemoved = currentPackages.remove(packageName)
+
+        // If the package is a default-enabled package, add it to the disabled list
+        val toolPackage = availablePackages[packageName]
+        if (toolPackage != null && toolPackage.isBuiltIn && toolPackage.enabledByDefault) {
+            val disabledPackages = getDisabledPackages().toMutableList()
+            if (!disabledPackages.contains(packageName)) {
+                disabledPackages.add(packageName)
+                saveDisabledPackages(disabledPackages)
+                Log.d(TAG, "Added default package to disabled list: $packageName")
+            }
+        }
+
+        if (packageWasRemoved) {
             val updatedJson = Json.encodeToString(currentPackages)
             prefs.edit().putString(IMPORTED_PACKAGES_KEY, updatedJson).apply()
             Log.d(TAG, "Removed package from imported list: $packageName")

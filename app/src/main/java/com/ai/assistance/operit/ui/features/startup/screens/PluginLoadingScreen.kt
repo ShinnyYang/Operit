@@ -64,7 +64,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlin.math.roundToInt
 
 /** 表示插件加载状态的枚举 */
@@ -484,12 +483,12 @@ class PluginLoadingState {
 
     /** 更新进度信息 */
     fun updateProgress(progress: Float) {
-        kotlinx.coroutines.runBlocking(Dispatchers.Main) { _progress.value = progress }
+        _progress.value = progress
     }
 
     /** 更新状态消息 */
     fun updateMessage(message: String) {
-        kotlinx.coroutines.runBlocking(Dispatchers.Main) { _message.value = message }
+        _message.value = message
     }
 
     /** 更新插件统计 */

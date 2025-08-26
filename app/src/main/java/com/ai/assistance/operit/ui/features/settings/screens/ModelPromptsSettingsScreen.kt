@@ -19,6 +19,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -135,7 +136,7 @@ fun ModelPromptsSettingsScreen(
         }
     }
 
-    Scaffold(
+    CustomScaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { 

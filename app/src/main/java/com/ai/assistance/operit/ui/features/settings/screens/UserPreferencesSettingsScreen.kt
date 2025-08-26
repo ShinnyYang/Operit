@@ -20,6 +20,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -176,7 +177,7 @@ fun UserPreferencesSettingsScreen(
                 .show()
     }
 
-    Scaffold(
+    CustomScaffold(
             floatingActionButton = {
                 FloatingActionButton(
                         onClick = { 

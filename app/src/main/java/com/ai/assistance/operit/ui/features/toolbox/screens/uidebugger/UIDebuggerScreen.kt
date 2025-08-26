@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -34,7 +35,7 @@ fun UIDebuggerScreen(
         viewModel.initialize(context)
     }
 
-    Scaffold(
+    CustomScaffold(
         floatingActionButton = {
             FloatingActionButton(
                 onClick = {

@@ -16,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -419,11 +420,9 @@ fun AIChatScreen(
     var webContentDir by remember { mutableStateOf<File?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
+        CustomScaffold(
                 containerColor = Color.Transparent,
                 snackbarHost = { SnackbarHost(snackbarHostState) },
-                // Add WindowInsets to modify the entire screen when keyboard appears
-                contentWindowInsets = WindowInsets.ime,
                 bottomBar = {
                     // 只在不显示配置界面时显示底部输入框
                     if (!shouldShowConfig) {

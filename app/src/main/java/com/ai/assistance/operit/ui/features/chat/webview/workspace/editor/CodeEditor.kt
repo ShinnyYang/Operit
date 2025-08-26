@@ -13,6 +13,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -69,7 +70,7 @@ fun CodeEditor(
     // 当前密度，用于dp转px
     val density = LocalDensity.current
     
-    Scaffold(modifier = modifier.fillMaxSize()) { paddingValues ->
+    CustomScaffold(modifier = modifier.fillMaxSize()) { paddingValues ->
         Column(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
             // 编辑器区域
             Box(modifier = Modifier.weight(1f).fillMaxWidth()) {

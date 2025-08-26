@@ -23,6 +23,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
@@ -439,7 +440,7 @@ fun ToolCard(tool: Tool) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FormatConverterToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         FormatConverterScreen(navController = navController)
                 }
@@ -450,7 +451,7 @@ fun FormatConverterToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FileManagerToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         FileManagerScreen(navController = navController)
                 }
@@ -461,7 +462,7 @@ fun FileManagerToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) { TerminalScreen() }
         }
 }
@@ -470,7 +471,7 @@ fun TerminalToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TerminalAutoConfigToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         TerminalAutoConfigScreen(navController = navController)
                 }
@@ -481,7 +482,7 @@ fun TerminalAutoConfigToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppPermissionsToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         AppPermissionsScreen(navController = navController)
                 }
@@ -492,7 +493,7 @@ fun AppPermissionsToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UIDebuggerToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         UIDebuggerScreen(navController = navController)
                 }
@@ -503,7 +504,7 @@ fun UIDebuggerToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FFmpegToolboxToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         FFmpegToolboxScreen(navController = navController)
                 }
@@ -514,7 +515,7 @@ fun FFmpegToolboxToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShellExecutorToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         ShellExecutorScreen(navController = navController)
                 }
@@ -525,7 +526,7 @@ fun ShellExecutorToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LogcatToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         LogcatScreen(navController = navController)
                 }
@@ -536,7 +537,7 @@ fun LogcatToolScreen(navController: NavController) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolTesterToolScreen(navController: NavController) {
-        Scaffold() { paddingValues ->
+        CustomScaffold() { paddingValues ->
                 Box(modifier = Modifier.padding(paddingValues)) {
                         com.ai.assistance.operit.ui.features.toolbox.screens.tooltester
                                 .ToolTesterScreen(navController = navController)

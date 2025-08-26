@@ -20,6 +20,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -725,53 +726,41 @@ fun MCPConfigScreen() {
         )
     }
 
-    Scaffold(
+    CustomScaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
-            topBar = {
-                TopAppBar(
-                        title = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("MCP管理")
-                                Spacer(Modifier.width(8.dp))
-                                Box(
-                                        modifier =
-                                                Modifier.size(8.dp)
-                                                        .background(
-                                                                color =
-                                                                        if (isAnyServerRunning)
-                                                                                Color.Green
-                                                                        else Color.Red,
-                                                                shape = RoundedCornerShape(4.dp)
-                                                        )
-                                )
-                            }
+            floatingActionButton = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 启动插件按钮
+                    FloatingActionButton(
+                        onClick = {
+                            pluginLoadingState.reset() // 确保每次都重置状态
+                            pluginLoadingState.show()
+                            pluginLoadingState.initializeMCPServer(context, scope)
                         },
-                        actions = {
-                            // 启动插件按钮
-                            IconButton(
-                                onClick = {
-                                    pluginLoadingState.reset() // 确保每次都重置状态
-                                    pluginLoadingState.show()
-                                    pluginLoadingState.initializeMCPServer(context, scope)
-                                }
-                            ) { 
-                                Icon(Icons.Default.PlayArrow, contentDescription = "启动插件") 
-                            }
-                            
-                            IconButton(
-                                    onClick = {
-                                        showImportDialog = true
-                                    }
-                            ) { Icon(Icons.Default.Download, contentDescription = "导入") }
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(Icons.Default.PlayArrow, contentDescription = "启动插件")
+                    }
+                    
+                    // 导入按钮
+                    FloatingActionButton(
+                        onClick = {
+                            showImportDialog = true
                         },
-                        colors =
-                                TopAppBarDefaults.topAppBarColors(
-                                        containerColor = MaterialTheme.colorScheme.surface
-                                )
-                )
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(56.dp)
+                    ) {
+                        Icon(Icons.Default.Download, contentDescription = "导入")
+                    }
+                }
             }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding())) {
+        Box(modifier = Modifier.fillMaxSize()) {
             // 插件加载屏幕覆盖层
             PluginLoadingScreenWithState(
                 loadingState = pluginLoadingState,
@@ -783,6 +772,48 @@ fun MCPConfigScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 contentPadding = PaddingValues(8.dp)
             ) {
+                // 状态指示器
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "MCP管理",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .background(
+                                            color = if (isAnyServerRunning) Color.Green else Color.Red,
+                                            shape = RoundedCornerShape(4.dp)
+                                        )
+                                )
+                                Text(
+                                    text = if (isAnyServerRunning) "运行中" else "未运行",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
 
                 
                 // 插件列表标题

@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -74,7 +75,7 @@ fun CustomHeadersSettingsScreen(onBackPressed: () -> Unit) {
         }
     }
 
-    Scaffold(
+    CustomScaffold(
         floatingActionButton = {
             Column {
                 FloatingActionButton(

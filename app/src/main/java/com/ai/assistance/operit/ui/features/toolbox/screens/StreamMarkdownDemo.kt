@@ -27,6 +27,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -131,7 +132,7 @@ fun StreamMarkdownDemoScreen(onBackClick: () -> Unit = {}) {
         }
     }
 
-    Scaffold(
+    CustomScaffold(
             topBar = {
                 // ... TopAppBar can be added here if needed
             }

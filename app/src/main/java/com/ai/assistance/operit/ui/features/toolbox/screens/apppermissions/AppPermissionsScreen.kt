@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -208,7 +209,7 @@ fun AppPermissionsScreen(navController: NavController) {
         }
     }
 
-    Scaffold(
+    CustomScaffold(
             // 移除顶部应用栏
             ) { paddingValues ->
         AnimatedContent(

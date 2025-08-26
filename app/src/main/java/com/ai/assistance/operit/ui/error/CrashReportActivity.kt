@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -60,7 +61,7 @@ fun CrashReportScreen(stackTrace: String) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
-    Scaffold(
+    CustomScaffold(
             topBar = {
                 TopAppBar(
                         title = { Text(stringResource(id = R.string.title_activity_crash_report)) },

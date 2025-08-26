@@ -39,6 +39,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -69,7 +70,7 @@ fun LanguageSettingsScreen(
         currentLanguage = LocaleUtils.getCurrentLanguage(context)
     }
 
-    Scaffold(
+    CustomScaffold(
         topBar = {
             TopAppBar(
                 title = { Text(text = stringResource(id = R.string.language_settings)) },

@@ -25,6 +25,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
@@ -207,7 +208,7 @@ fun PackageManagerScreen() {
         }
     }
 
-    Scaffold(
+    CustomScaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
                     Snackbar(

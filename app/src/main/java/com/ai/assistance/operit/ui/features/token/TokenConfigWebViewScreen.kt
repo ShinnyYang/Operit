@@ -31,6 +31,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -399,7 +400,7 @@ fun TokenConfigWebViewScreen(onNavigateBack: () -> Unit) {
     }
 
     // UI布局
-    Scaffold(
+    CustomScaffold(
             snackbarHost = { SnackbarHost(snackbarHostState) },
             bottomBar = {
                 // 超简洁导航栏
