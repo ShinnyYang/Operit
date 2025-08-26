@@ -197,7 +197,7 @@ fun HelpScreen(onBackPressed: () -> Unit = {}) {
                                         "set_input_text: 设置输入文本",
                                         "press_key: 模拟按键",
                                         "swipe: 模拟滑动手势",
-                                        "find_element: 查找UI元素"
+
                                 )
                 )
 

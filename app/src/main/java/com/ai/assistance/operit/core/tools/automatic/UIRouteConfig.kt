@@ -83,20 +83,21 @@ class UIRouteConfig {
                         name = jsonNode.name,
                         packageName = jsonConfig.packageName,
                         activityName = jsonNode.activityName,
-                        nodeType = UINodeType.valueOf(jsonNode.nodeType)
+                        nodeType = UINodeType.valueOf(jsonNode.nodeType),
+                        matchCriteria = jsonNode.matchCriteria?.mapNotNull { convertJsonSelector(it) } ?: emptyList()
                     ))
                 }
 
                 jsonConfig.edges.forEach { jsonEdge ->
                     val operations = if (jsonEdge.operations.isNotEmpty()) {
-                        jsonEdge.operations.map { convertJsonOperation(it) }
+                        jsonEdge.operations.mapNotNull { convertJsonOperation(it) }
                     } else {
                         // 兼容旧的单个operation字段
-                        jsonEdge.operation?.let { listOf(convertJsonOperation(it)) } ?: emptyList()
+                        jsonEdge.operation?.let { op -> convertJsonOperation(op)?.let { listOf(it) } } ?: emptyList()
                     }
 
                     if (operations.isEmpty()) {
-                        Log.w(TAG, "Edge from '${jsonEdge.from}' to '${jsonEdge.to}' has no operations. Skipping.")
+                        Log.w(TAG, "Edge from '${jsonEdge.from}' to '${jsonEdge.to}' has no valid operations after filtering. Skipping.")
                         return@forEach
                     }
 
@@ -131,58 +132,96 @@ class UIRouteConfig {
             }
         }
 
-        private fun convertJsonOperation(jsonOp: JsonUIOperation): UIOperation {
-            return when (jsonOp) {
-                is JsonUIOperation.Click -> UIOperation.Click(
-                    selector = convertJsonSelector(jsonOp.selector),
-                    description = jsonOp.description ?: "Click",
-                    relativeX = jsonOp.relativeX,
-                    relativeY = jsonOp.relativeY
-                )
-                is JsonUIOperation.Input -> UIOperation.Input(
-                    selector = convertJsonSelector(jsonOp.selector),
-                    textVariableKey = jsonOp.textVariableKey,
-                    description = jsonOp.description ?: "Input text"
-                )
-                is JsonUIOperation.LaunchApp -> UIOperation.LaunchApp(
-                    packageName = jsonOp.packageName,
-                    description = jsonOp.description ?: "Launch app"
-                )
-                is JsonUIOperation.PressKey -> UIOperation.PressKey(
-                    keyCode = jsonOp.keyCode,
-                    description = jsonOp.description ?: "Press key ${jsonOp.keyCode}"
-                )
-                is JsonUIOperation.Wait -> UIOperation.Wait(
-                    durationMs = jsonOp.durationMs,
-                    description = jsonOp.description ?: "Wait for ${jsonOp.durationMs}ms"
-                )
-                is JsonUIOperation.Sequential -> UIOperation.Sequential(
-                    operations = jsonOp.operations.map { convertJsonOperation(it) },
-                    description = jsonOp.description ?: "Sequential operations"
-                )
-                is JsonUIOperation.ValidateElement -> UIOperation.ValidateElement(
-                    selector = convertJsonSelector(jsonOp.selector),
-                    expectedValueKey = jsonOp.expectedValueKey,
-                    validationType = ValidationType.valueOf(jsonOp.validationType),
-                    description = jsonOp.description ?: "Validate element"
-                )
+        private fun convertJsonOperation(jsonOp: JsonUIOperation): UIOperation? {
+            return try {
+                when (jsonOp) {
+                    is JsonUIOperation.Click -> {
+                        val selector = convertJsonSelector(jsonOp.selector)
+                        selector?.let {
+                            UIOperation.Click(
+                                selector = it,
+                                description = jsonOp.description ?: "Click",
+                                relativeX = jsonOp.relativeX,
+                                relativeY = jsonOp.relativeY
+                            )
+                        }
+                    }
+                    is JsonUIOperation.Input -> {
+                        val selector = convertJsonSelector(jsonOp.selector)
+                        selector?.let {
+                            UIOperation.Input(
+                                selector = it,
+                                textVariableKey = jsonOp.textVariableKey,
+                                description = jsonOp.description ?: "Input text"
+                            )
+                        }
+                    }
+                    is JsonUIOperation.LaunchApp -> UIOperation.LaunchApp(
+                        packageName = jsonOp.packageName,
+                        description = jsonOp.description ?: "Launch app"
+                    )
+                    is JsonUIOperation.PressKey -> UIOperation.PressKey(
+                        keyCode = jsonOp.keyCode,
+                        description = jsonOp.description ?: "Press key ${jsonOp.keyCode}"
+                    )
+                    is JsonUIOperation.Wait -> UIOperation.Wait(
+                        durationMs = jsonOp.durationMs,
+                        description = jsonOp.description ?: "Wait for ${jsonOp.durationMs}ms"
+                    )
+                    is JsonUIOperation.Sequential -> UIOperation.Sequential(
+                        operations = jsonOp.operations.mapNotNull { convertJsonOperation(it) },
+                        description = jsonOp.description ?: "Sequential operations"
+                    )
+                    is JsonUIOperation.ValidateElement -> {
+                        val selector = convertJsonSelector(jsonOp.selector)
+                        selector?.let {
+                            UIOperation.ValidateElement(
+                                selector = it,
+                                expectedValueKey = jsonOp.expectedValueKey,
+                                validationType = ValidationType.valueOf(jsonOp.validationType),
+                                description = jsonOp.description ?: "Validate element"
+                            )
+                        }
+                    }
+                }
+            } catch (e: IllegalArgumentException) {
+                Log.w(TAG, "Skipping invalid operation due to error: ${e.message}")
+                null
             }
         }
 
-        private fun convertJsonSelector(jsonSelector: JsonUISelector): UISelector {
+        private fun convertJsonSelector(jsonSelector: JsonUISelector): UISelector? {
             return when (jsonSelector.type) {
-                "ByText" -> UISelector.ByText(jsonSelector.text ?: jsonSelector.value ?: throw IllegalArgumentException("ByText selector requires a 'text' or 'value' field."))
-                "ByResourceId" -> UISelector.ByResourceId(jsonSelector.id ?: jsonSelector.value ?: throw IllegalArgumentException("ByResourceId selector requires an 'id' or 'value' field."))
-                "ByClassName" -> UISelector.ByClassName(jsonSelector.name ?: jsonSelector.value ?: throw IllegalArgumentException("ByClassName selector requires a 'name' or 'value' field."))
-                "ByContentDescription" -> UISelector.ByContentDesc(jsonSelector.desc ?: jsonSelector.value ?: throw IllegalArgumentException("ByContentDescription selector requires a 'desc' or 'value' field."))
-                "ByBounds" -> UISelector.ByBounds(jsonSelector.bounds ?: jsonSelector.value ?: throw IllegalArgumentException("ByBounds selector requires a 'bounds' or 'value' field."))
-                "ByXPath" -> UISelector.ByXPath(jsonSelector.xpath ?: jsonSelector.value ?: throw IllegalArgumentException("ByXPath selector requires an 'xpath' or 'value' field."))
                 "Compound" -> {
-                    val selectors = jsonSelector.selectors?.map { convertJsonSelector(it) } ?: emptyList()
-                    val operator = jsonSelector.operator ?: "AND"
-                    UISelector.Compound(selectors, operator)
+                    val selectors = jsonSelector.selectors?.mapNotNull { convertJsonSelector(it) } ?: emptyList()
+                    if (selectors.isEmpty() && jsonSelector.selectors?.isNotEmpty() == true) {
+                        Log.w(TAG, "Compound selector for app has valid sub-selectors, but all were filtered out.")
+                        null
+                    } else {
+                        val operator = jsonSelector.operator ?: "AND"
+                        UISelector.Compound(selectors, operator)
+                    }
                 }
-                else -> throw IllegalArgumentException("Unknown selector type: ${jsonSelector.type}")
+                else -> {
+                    val value = jsonSelector.value
+                    if (value == null) {
+                        Log.w(TAG, "Selector of type ${jsonSelector.type} is missing a 'value' field. Skipping.")
+                        null
+                    } else {
+                        when (jsonSelector.type) {
+                            "ByText" -> UISelector.ByText(value)
+                            "ByResourceId" -> UISelector.ByResourceId(value)
+                            "ByClassName" -> UISelector.ByClassName(value)
+                            "ByContentDesc" -> UISelector.ByContentDesc(value)
+                            "ByBounds" -> UISelector.ByBounds(value)
+                            "ByXPath" -> UISelector.ByXPath(value)
+                            else -> {
+                                Log.w(TAG, "Unknown selector type: ${jsonSelector.type}. Skipping.")
+                                null
+                            }
+                        }
+                    }
+                }
             }
         }
         
@@ -201,7 +240,8 @@ data class UINode(
     val name: String,
     val packageName: String,
     val activityName: String? = null,
-    val nodeType: UINodeType
+    val nodeType: UINodeType,
+    val matchCriteria: List<UISelector> = emptyList()
 )
 
 enum class UINodeType {

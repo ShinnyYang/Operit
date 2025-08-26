@@ -8,8 +8,8 @@
   <a href="https://github.com/AAswordman/Operit/releases/latest"><img src="https://img.shields.io/github/v/release/AAswordman/Operit" alt="Latest Release"></a>
   <br>
   <a href="https://github.com/AAswordman/Operit/stargazers"><img src="https://img.shields.io/github/stars/AAswordman/Operit" alt="GitHub Stars"></a>
-  <a href="docx/USER_GUIDE(E).md"><img src="https://img.shields.io/badge/📖-User_Guide-blue.svg" alt="User Guide"></a>
-  <a href="docx/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+  <a href="docs/USER_GUIDE(E).md"><img src="https://img.shields.io/badge/📖-User_Guide-blue.svg" alt="User Guide"></a>
+  <a href="docs/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
 </div>
 
 <div align="center">
@@ -118,7 +118,7 @@ Operit AI offers a rich plugin ecosystem. Combined with built-in tools, it can h
 
 ## 🚀 Quick Start
 
-> **For a detailed installation guide and rich usage examples, please check out our 👉 [User Guide](docx/USER_GUIDE(E).md)**
+> **For a detailed installation guide and rich usage examples, please check out our 👉 [User Guide](docs/USER_GUIDE(E).md)**
 
 - **System Requirements**: Android 8.0+ (API 26+), 4GB+ RAM recommended, 200MB+ storage space.
 - **Installation Steps**:
@@ -132,7 +132,7 @@ Join the Operit open-source ecosystem! We welcome all types of contributors, whe
 
 For this repository, you must download some dependency libraries from `https://drive.google.com/drive/folders/1g-Q_i7cf6Ua4KX9ZM6V282EEZvTVVfF7?usp=sharing` and place them in folders with .keep files
 
-**Check out our [Contribution Guide](docx/CONTRIBUTING.md)** to learn how to get involved.
+**Check out our [Contribution Guide](docs/CONTRIBUTING.md) and [Script Development Guide (Chinese)](docs/SCRIPT_DEV_GUIDE.md) to learn how to get involved.**
 
 ## 📝 Feedback (Issues)
 

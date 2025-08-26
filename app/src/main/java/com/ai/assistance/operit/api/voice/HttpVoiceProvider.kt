@@ -40,7 +40,7 @@ class HttpVoiceProvider(
     private val context: Context
 ) : VoiceService {
 
-    private var httpConfig: SpeechServicesPreferences.TtsHttpConfig = SpeechServicesPreferences.BAIDU_TTS_PRESET
+    private var httpConfig: SpeechServicesPreferences.TtsHttpConfig = SpeechServicesPreferences.DEFAULT_HTTP_TTS_PRESET
 
     companion object {
         private const val TAG = "HttpVoiceProvider"

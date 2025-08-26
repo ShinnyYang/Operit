@@ -113,15 +113,7 @@ open class StandardUITools(protected val context: Context) {
         )
     }
 
-    /** Finds UI elements matching specific criteria without clicking them */
-    open suspend fun findElement(tool: AITool): ToolResult {
-            return ToolResult(
-                    toolName = tool.name,
-                    success = false,
-                    result = StringResultData(""),
-                error = OPERATION_NOT_SUPPORTED
-        )
-    }
+
 
 
 

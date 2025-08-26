@@ -1,0 +1,204 @@
+{
+    "appName": "哔哩哔哩",
+    "packageName": "tv.danmaku.bili",
+    "description": "",
+    "nodes": [
+        {
+            "name": "视频主页",
+            "description": "进去的第一个页面",
+            "activityName": "tv.danmaku.bili.MainActivityV2",
+            "nodeType": "LIST_PAGE"
+        },
+        {
+            "name": "搜索界面",
+            "description": "主页点进去的搜索界面",
+            "nodeType": "LIST_PAGE",
+            "matchCriteria": [
+                {
+                    "type": "ByText",
+                    "value": "搜索历史"
+                },
+                {
+                    "type": "ByText",
+                    "value": "bilibili热搜"
+                },
+                {
+                    "type": "ByText",
+                    "value": "搜索"
+                }
+            ]
+        },
+        {
+            "name": "搜索列表",
+            "description": "确认搜索后的界面",
+            "nodeType": "LIST_PAGE",
+            "matchCriteria": [
+                {
+                    "type": "ByText",
+                    "value": "搜索"
+                },
+                {
+                    "type": "ByText",
+                    "value": "综合"
+                }
+            ]
+        },
+        {
+            "name": "InnerAppContainerActivity",
+            "description": "InnerAppContainerActivity",
+            "activityName": "com.bilibili.lib.fasthybrid.container.InnerAppContainerActivity",
+            "nodeType": "LIST_PAGE"
+        },
+        {
+            "name": "UnitedBizDetailsActivity",
+            "description": "UnitedBizDetailsActivity",
+            "activityName": "com.bilibili.ship.theseus.detail.UnitedBizDetailsActivity",
+            "nodeType": "LIST_PAGE"
+        },
+        {
+            "name": "AuthorSpaceActivity",
+            "description": "AuthorSpaceActivity",
+            "activityName": "com.bilibili.app.authorspace.ui.AuthorSpaceActivity",
+            "nodeType": "LIST_PAGE"
+        },
+        {
+            "name": "BiliMainSearchActivity",
+            "description": "BiliMainSearchActivity",
+            "activityName": "com.bilibili.search2.main.BiliMainSearchActivity",
+            "nodeType": "LIST_PAGE"
+        }
+    ],
+    "edges": [
+        {
+            "from": "视频主页",
+            "to": "搜索界面",
+            "operations": [
+                {
+                    "type": "Click",
+                    "selector": {
+                        "type": "ByResourceId",
+                        "value": "search_text"
+                    },
+                    "description": "点击搜索框"
+                }
+            ]
+        },
+        {
+            "from": "搜索界面",
+            "to": "搜索列表",
+            "operations": [
+                {
+                    "type": "Input",
+                    "selector": {
+                        "type": "ByResourceId",
+                        "value": "search_plate"
+                    },
+                    "description": "输入文本"
+                },
+                {
+                    "type": "Click",
+                    "selector": {
+                        "type": "ByResourceId",
+                        "value": "action_search"
+                    },
+                    "description": "点击搜索"
+                }
+            ]
+        },
+        {
+            "from": "MainActivityV2",
+            "to": "UnitedBizDetailsActivity",
+            "operations": [
+                {
+                    "type": "Click",
+                    "selector": {
+                        "type": "ByText",
+                        "value": "10.6万 758 13:07 盘点30款 全球最畅销手游【用户数量最多】 杨先森Leon"
+                    },
+                    "description": "点击 '10.6万 758 13:07 盘点30款 全球最畅销手游【用户数量最多】 杨先森Leon'"
+                }
+            ]
+        },
+        {
+            "from": "StoryVideoActivity",
+            "to": "MainActivityV2",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        },
+        {
+            "from": "InnerAppContainerActivity",
+            "to": "MainActivityV2",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        },
+        {
+            "from": "UnitedBizDetailsActivity",
+            "to": "AuthorSpaceActivity",
+            "operations": [
+                {
+                    "type": "Click",
+                    "selector": {
+                        "type": "ByText",
+                        "value": "未知元素"
+                    },
+                    "description": "点击页面元素"
+                }
+            ]
+        },
+        {
+            "from": "UnitedBizDetailsActivity",
+            "to": "MainActivityV2",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        },
+        {
+            "from": "UnitedBizDetailsActivity",
+            "to": "BiliMainSearchActivity",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        },
+        {
+            "from": "AuthorSpaceActivity",
+            "to": "UnitedBizDetailsActivity",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        },
+        {
+            "from": "BiliMainSearchActivity",
+            "to": "MainActivityV2",
+            "operations": [
+                {
+                    "type": "Wait",
+                    "durationMs": 1000,
+                    "description": "等待页面切换"
+                }
+            ]
+        }
+    ],
+    "functions": []
+}

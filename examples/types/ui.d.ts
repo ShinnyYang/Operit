@@ -87,17 +87,7 @@ export namespace UI {
      */
     function clickElement(type: "resourceId" | "className", value: string, index: number): Promise<UIActionResultData>;
 
-    /**
-     * Find UI elements matching specific criteria without clicking them
-     * @param params - Search parameters (resourceId, className, text, etc.)
-     */
-    function findElement(params: {
-        resourceId?: string,
-        className?: string,
-        text?: string,
-        partialMatch?: boolean,
-        limit?: number
-    }): Promise<UIPageResultData>;
+
 
     /**
      * Set text in input field
@@ -132,9 +122,9 @@ export class UINode {
     /**
      * Create a new UINode instance
      * @param node - The SimplifiedUINode object to wrap
-     * @param parent - The parent UINode (null for root)
+     * @param parent - The parent UINode (undefined for root)
      */
-    constructor(node: SimplifiedUINode, parent?: UINode | null);
+    constructor(node: SimplifiedUINode, parent?: UINode | undefined);
 
     // Core Properties
 
@@ -174,9 +164,9 @@ export class UINode {
     readonly rawNode: SimplifiedUINode;
 
     /**
-     * The parent node of this element, or null if it's the root
+     * The parent node of this element, or undefined if it's the root
      */
-    readonly parent: UINode | null;
+    readonly parent: UINode | undefined;
 
     /**
      * The path from root to this node as a string
@@ -303,7 +293,7 @@ export class UINode {
      * Find closest ancestor that matches the criteria
      * @param criteria - Search criteria or predicate function
      */
-    closest(criteria: object | ((node: UINode) => boolean)): UINode | null;
+    closest(criteria: object | ((node: UINode) => boolean)): UINode | undefined;
 
     // Actions
 

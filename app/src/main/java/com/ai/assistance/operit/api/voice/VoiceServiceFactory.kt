@@ -13,6 +13,8 @@ object VoiceServiceFactory {
         SIMPLE_TTS,
         /** 基于HTTP请求的TTS实现 */
         HTTP_TTS,
+        /** 硅基流动TTS服务 */
+        SILICONFLOW_TTS,
     }
 
     /**
@@ -35,6 +37,12 @@ object VoiceServiceFactory {
                     val httpConfig = prefs.ttsHttpConfigFlow.first()
                     HttpVoiceProvider(context).apply {
                         setConfiguration(httpConfig)
+                    }
+                }
+                VoiceServiceType.SILICONFLOW_TTS -> {
+                    val httpConfig = prefs.ttsHttpConfigFlow.first()
+                    SiliconFlowVoiceProvider(context).apply {
+                        setApiKey(httpConfig.apiKey)
                     }
                 }
             }

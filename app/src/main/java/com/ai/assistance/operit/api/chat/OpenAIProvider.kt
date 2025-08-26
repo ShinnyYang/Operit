@@ -252,7 +252,7 @@ open class OpenAIProvider(
     // 创建请求
     private fun createRequest(requestBody: RequestBody): Request {
         val builder = Request.Builder()
-                .url(apiEndpoint)
+                .url(EndpointCompleter.completeEndpoint(apiEndpoint))
                 .addHeader("Authorization", "Bearer $apiKey")
                 .addHeader("Content-Type", "application/json")
 

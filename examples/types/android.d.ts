@@ -189,22 +189,22 @@ export class Intent {
      * Create a new Intent
      * @param {string} action - Optional action to set
      */
-    constructor(action?: string | IntentAction | null);
+    constructor(action?: string | IntentAction | undefined);
 
     /**
      * The action for this intent
      */
-    action: string | null;
+    action: string | undefined;
 
     /**
      * The package name for this intent
      */
-    packageName: string | null;
+    packageName: string | undefined;
 
     /**
      * The component for this intent
      */
-    component: string | null;
+    component: string | undefined;
 
     /**
      * The extras for this intent
@@ -229,12 +229,12 @@ export class Intent {
     /**
      * The data URI for this intent
      */
-    uri: string | null;
+    uri: string | undefined;
 
     /**
      * The MIME type for this intent
      */
-    type: string | null;
+    type: string | undefined;
 
     /**
      * Set the component for this intent
@@ -371,10 +371,10 @@ export class PackageManager extends AdbExecutor {
      */
     getInfo(packageName: string): Promise<{
         packageName: string;
-        versionCode: number | null;
-        versionName: string | null;
-        firstInstallTime: string | null;
-        lastUpdateTime: string | null;
+        versionCode: number | undefined;
+        versionName: string | undefined;
+        firstInstallTime: string | undefined;
+        lastUpdateTime: string | undefined;
         permissions: string[];
         activities: string[];
         services: string[];
@@ -432,7 +432,7 @@ export class ContentProvider extends AdbExecutor {
      * @param {string} sortOrder - ORDER BY clause
      * @returns {Promise<Array<Object>>} - Query results
      */
-    query(projection?: string[] | null, selection?: string | null, selectionArgs?: string[] | null, sortOrder?: string | null): Promise<Record<string, string>[]>;
+    query(projection?: string[] | undefined, selection?: string | undefined, selectionArgs?: string[] | undefined, sortOrder?: string | undefined): Promise<Record<string, string>[]>;
 
     /**
      * Insert data into this content provider
@@ -448,7 +448,7 @@ export class ContentProvider extends AdbExecutor {
      * @param {Array<string>} selectionArgs - WHERE clause arguments
      * @returns {Promise<string>} - Command output
      */
-    update(values: Record<string, string>, selection?: string | null, selectionArgs?: string[] | null): Promise<string>;
+    update(values: Record<string, string>, selection?: string | undefined, selectionArgs?: string[] | undefined): Promise<string>;
 
     /**
      * Delete data from this content provider
@@ -456,7 +456,7 @@ export class ContentProvider extends AdbExecutor {
      * @param {Array<string>} selectionArgs - WHERE clause arguments
      * @returns {Promise<string>} - Command output
      */
-    delete(selection?: string | null, selectionArgs?: string[] | null): Promise<string>;
+    delete(selection?: string | undefined, selectionArgs?: string[] | undefined): Promise<string>;
 }
 
 /**
@@ -518,10 +518,10 @@ export class SystemManager extends AdbExecutor {
      * @returns {Promise<Object>} - Screen properties
      */
     getScreenInfo(): Promise<{
-        width: number | null;
-        height: number | null;
-        density: number | null;
-        densityDpi: number | null;
+        width: number | undefined;
+        height: number | undefined;
+        density: number | undefined;
+        densityDpi: number | undefined;
     }>;
 }
 
@@ -554,7 +554,7 @@ export class DeviceController extends AdbExecutor {
      * @param {string} size - Size in WIDTHxHEIGHT format
      * @returns {Promise<string>} - Command output
      */
-    recordScreen(outputPath: string, timeLimit?: number, bitRate?: number, size?: string | null): Promise<string>;
+    recordScreen(outputPath: string, timeLimit?: number, bitRate?: number, size?: string | undefined): Promise<string>;
 
     /**
      * Set screen brightness
@@ -606,10 +606,10 @@ export class DeviceController extends AdbExecutor {
 
     /**
      * Reboot the device
-     * @param {string} mode - Reboot mode (null, recovery, bootloader)
+     * @param {string} mode - Reboot mode (undefined, recovery, bootloader)
      * @returns {Promise<string>} - Command output
      */
-    reboot(mode?: string | null): Promise<string>;
+    reboot(mode?: string | undefined): Promise<string>;
 }
 
 /**
@@ -641,7 +641,7 @@ export class Android {
      * @param {string} action - Optional action to set
      * @returns {Intent} - New Intent object
      */
-    createIntent(action?: string | null): Intent;
+    createIntent(action?: string | undefined): Intent;
 
     /**
      * Create a new ContentProvider

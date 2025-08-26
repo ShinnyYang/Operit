@@ -323,6 +323,40 @@ object UIHierarchyManager {
     }
 
     /**
+     * 注册一个回调来接收无障碍事件。
+     */
+    suspend fun registerAccessibilityEventListener(context: Context, listener: com.ai.assistance.operit.provider.IAccessibilityEventCallback): Boolean {
+        if (!ensureBound(context)) {
+            Log.w(TAG, "绑定失败，无法注册监听器")
+            return false
+        }
+        return try {
+            accessibilityProvider?.registerAccessibilityEventListener(listener)
+            true
+        } catch (e: RemoteException) {
+            Log.e(TAG, "注册无障碍事件监听器失败", e)
+            false
+        }
+    }
+
+    /**
+     * 注销之前注册的无障碍事件回调。
+     */
+    suspend fun unregisterAccessibilityEventListener(context: Context, listener: com.ai.assistance.operit.provider.IAccessibilityEventCallback): Boolean {
+        if (!ensureBound(context)) {
+            Log.w(TAG, "绑定失败，无法注销监听器")
+            return false
+        }
+        return try {
+            accessibilityProvider?.unregisterAccessibilityEventListener(listener)
+            true
+        } catch (e: RemoteException) {
+            Log.e(TAG, "注销无障碍事件监听器失败", e)
+            false
+        }
+    }
+
+    /**
      * 请求远程服务执行滑动。
      */
     suspend fun performSwipe(context: Context, startX: Int, startY: Int, endX: Int, endY: Int, duration: Long): Boolean {

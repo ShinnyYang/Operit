@@ -47,9 +47,9 @@ class SpeechServicesPreferences(private val context: Context) {
         val DEFAULT_TTS_SERVICE_TYPE = VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS
         val DEFAULT_STT_SERVICE_TYPE = SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN
 
-        // Baidu TTS Preset - Now uses a URL template
-        val BAIDU_TTS_PRESET = TtsHttpConfig(
-            urlTemplate = "https://fanyi.baidu.com/gettts?lan=zh&text={text}&spd={rate}&pit={pitch}",
+        // HTTP TTS的默认预设
+        val DEFAULT_HTTP_TTS_PRESET = TtsHttpConfig(
+            urlTemplate = "",
             apiKey = "",
             headers = emptyMap(),
             httpMethod = "GET",
@@ -71,10 +71,10 @@ class SpeechServicesPreferences(private val context: Context) {
             try {
                 Json.decodeFromString<TtsHttpConfig>(json)
             } catch (e: Exception) {
-                BAIDU_TTS_PRESET // Fallback to preset on parsing error
+                DEFAULT_HTTP_TTS_PRESET // Fallback to default preset on parsing error
             }
         } else {
-            BAIDU_TTS_PRESET
+            DEFAULT_HTTP_TTS_PRESET
         }
     }
 
@@ -100,6 +100,9 @@ class SpeechServicesPreferences(private val context: Context) {
                 }
                 VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS -> {
                     // 系统 TTS 不需要额外配置
+                }
+                VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS -> {
+                    httpConfig?.let { prefs[TTS_HTTP_CONFIG] = Json.encodeToString(it) }
                 }
             }
         }

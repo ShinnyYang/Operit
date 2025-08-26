@@ -21,6 +21,8 @@
 
 可以参考 `examples` 目录下的 `tester` 示例了解如何开发脚本。我们计划将脚本开发框架单独拉出一个仓库，专门用于快速开始脚本开发。
 
+**更详细的从零开始的脚本开发教程，请参考我们的 [脚本开发指南 (SCRIPT_DEV_GUIDE.md)](./SCRIPT_DEV_GUIDE.md)。**
+
 ## MCP 插件开发者
 
 Operit AI 现已支持 MCP (Model Context Protocol) 插件系统，你可以开发自己的 MCP 插件：

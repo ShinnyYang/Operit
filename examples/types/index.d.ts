@@ -8,18 +8,31 @@
 // Import types that will be used in global declarations
 import { ToolReturnType, NativeInterface as CoreNativeInterface } from './core';
 import {
-    _CalculationResultData, _SleepResultData, _SystemSettingData, _SystemSettingResult,
-    _AppOperationData, _AppListData, _DeviceInfoResultData, _UIPageResultData,
-    _UIActionResultData, _SimplifiedUINode, _FileOperationData, _DirectoryListingData,
-    _FileContentData, _FileExistsData, _FindFilesResultData, _FileInfoData,
-    _HttpResponseData, _VisitWebResultData, _CombinedOperationResultData,
-    _FilePartContentData, _FileApplyResultData
+    CalculationResultData as _CalculationResultData,
+    SleepResultData as _SleepResultData,
+    SystemSettingData as _SystemSettingData,
+    SystemSettingResult as _SystemSettingResult,
+    AppOperationData as _AppOperationData,
+    AppListData as _AppListData,
+    DeviceInfoResultData as _DeviceInfoResultData,
+    UIPageResultData as _UIPageResultData,
+    UIActionResultData as _UIActionResultData,
+    SimplifiedUINode as _SimplifiedUINode,
+    FileOperationData as _FileOperationData,
+    DirectoryListingData as _DirectoryListingData,
+    FileContentData as _FileContentData,
+    FileExistsData as _FileExistsData,
+    FindFilesResultData as _FindFilesResultData,
+    FileInfoData as _FileInfoData,
+    HttpResponseData as _HttpResponseData,
+    VisitWebResultData as _VisitWebResultData,
+    CombinedOperationResultData as _CombinedOperationResultData,
+    FilePartContentData as _FilePartContentData,
+    FileApplyResultData as _FileApplyResultData
 } from './results';
 import { Intent as AndroidIntent, IntentFlag as AndroidIntentFlag, IntentAction as AndroidIntentAction, IntentCategory as AndroidIntentCategory } from './android';
 import { UINode as UINodeClass, UI as UINamespace } from './ui';
 import { Android as AndroidClass } from './android';
-import { CryptoJS } from './cryptojs';
-import { Jimp } from './jimp';
 
 // Export core interfaces and functions
 export * from './core';
@@ -72,11 +85,6 @@ declare global {
     type UINode = UINodeClass;
     type Android = AndroidClass;
 
-    // Make OkHttp globally available
-    const OkHttp: {
-        newClient(): OkHttpClient;
-        newBuilder(): OkHttpClientBuilder;
-    };
 
     // Make result types available globally
     type CalculationResultData = _CalculationResultData;

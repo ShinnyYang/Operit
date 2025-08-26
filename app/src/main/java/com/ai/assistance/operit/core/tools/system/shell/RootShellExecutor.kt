@@ -4,11 +4,20 @@ import android.content.Context
 import android.util.Log
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
 import com.topjohnwu.superuser.Shell
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.BufferedReader
-import java.io.InputStreamReader
 import java.io.IOException
+import java.io.InputStream
+import java.io.InputStreamReader
+import kotlinx.coroutines.Dispatchers as CoroutineDispatchers
 
 /** 基于Root权限的Shell命令执行器 实现ROOT权限级别的命令执行 */
 class RootShellExecutor(private val context: Context) : ShellExecutor {
@@ -277,4 +286,124 @@ class RootShellExecutor(private val context: Context) : ShellExecutor {
                     )
                 }
             }
+
+    override suspend fun startProcess(command: String): ShellProcess {
+        if (!hasPermission().granted) {
+            throw SecurityException("Root permission not granted.")
+        }
+        
+        return if (useExecMode) {
+            ExecRootShellProcess(command)
+        } else {
+            LibSuShellProcess(command)
+        }
+    }
+}
+
+/**
+ * 使用 libsu 实现的 ShellProcess。
+ */
+private class LibSuShellProcess(command: String) : ShellProcess {
+    private val shell: Shell = Shell.getShell()
+    // Execute the job asynchronously - enqueue() returns a Future in v6.0.0
+    private val future: java.util.concurrent.Future<Shell.Result> = shell.newJob().add(command).enqueue()
+
+    override val stdout: Flow<String> = callbackFlow {
+        try {
+            // Get the result from the future
+            val result = future.get()
+            result.out.forEach { line ->
+                trySend(line)
+            }
+        } catch (e: Exception) {
+            // Handle any execution errors
+        }
+        close()
+        awaitClose { }
+    }
+        .flowOn(Dispatchers.IO)
+
+    override val stderr: Flow<String> = callbackFlow {
+        try {
+            // Get the result from the future
+            val result = future.get()
+            result.err.forEach { line ->
+                trySend(line)
+            }
+        } catch (e: Exception) {
+            // Handle any execution errors
+        }
+        close()
+        awaitClose { }
+    }
+        .flowOn(Dispatchers.IO)
+
+    override val isAlive: Boolean
+        get() = !future.isDone
+
+    override fun destroy() {
+        // Cancel the future if it's still running
+        future.cancel(true)
+    }
+
+    override suspend fun waitFor(): Int = withContext(Dispatchers.IO) {
+        try {
+            val result = future.get()
+            result.code
+        } catch (e: Exception) {
+            -1
+        }
+    }
+}
+
+/**
+ * 使用传统 `Runtime.exec("su")` 实现的 ShellProcess。
+ */
+private class ExecRootShellProcess(command: String) : ShellProcess {
+    private val process: Process = Runtime.getRuntime().exec("su")
+
+    init {
+        process.outputStream.bufferedWriter().use {
+            it.write(command)
+            it.newLine()
+            it.flush()
+            it.write("exit")
+            it.newLine()
+            it.flush()
+        }
+    }
+
+    override val stdout: Flow<String> = flowFromStream(process.inputStream)
+    override val stderr: Flow<String> = flowFromStream(process.errorStream)
+
+    override val isAlive: Boolean
+        get() = process.isAlive
+
+    override fun destroy() {
+        process.destroy()
+    }
+
+    override suspend fun waitFor(): Int = withContext(CoroutineDispatchers.IO) {
+        process.waitFor()
+    }
+}
+
+
+private fun flowFromStream(inputStream: InputStream): Flow<String> = callbackFlow {
+    val job = CoroutineScope(CoroutineDispatchers.IO).launch {
+        try {
+            BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                reader.lineSequence().forEach { line ->
+                    if (isActive) {
+                        trySend(line)
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            Log.w("ShellProcess", "Stream reading failed", e)
+        } finally {
+            close()
+        }
+    }
+    awaitClose { job.cancel() }
 }

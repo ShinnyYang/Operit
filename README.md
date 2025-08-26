@@ -8,8 +8,8 @@
   <a href="https://github.com/AAswordman/Operit/releases/latest"><img src="https://img.shields.io/github/v/release/AAswordman/Operit" alt="Latest Release"></a>
   <br>
   <a href="https://github.com/AAswordman/Operit/stargazers"><img src="https://img.shields.io/github/stars/AAswordman/Operit" alt="GitHub Stars"></a>
-  <a href="docx/USER_GUIDE.md"><img src="https://img.shields.io/badge/📖-用户指南-blue.svg" alt="User Guide"></a>
-  <a href="docx/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
+  <a href="docs/USER_GUIDE.md"><img src="https://img.shields.io/badge/📖-用户指南-blue.svg" alt="User Guide"></a>
+  <a href="docs/CONTRIBUTING.md"><img src="https://img.shields.io/badge/contributions-welcome-brightgreen.svg" alt="Contributions Welcome"></a>
 </div>
 
 <div align="center">
@@ -100,7 +100,7 @@ Operit AI 提供丰富的插件生态，配合内置工具可实现从日常生�
 
 ## 🚀 快速开始
 
-> **详细的安装指南和丰富的使用示例，请查阅我们的 👉 [用户指南](docx/USER_GUIDE.md)**
+> **详细的安装指南和丰富的使用示例，请查阅我们的 👉 [用户指南](docs/USER_GUIDE.md)**
 
 - **系统要求**: Android 8.0+ (API 26+)，建议4GB以上内存，存储空间200MB+
 - **安装步骤**: 
@@ -115,7 +115,7 @@ Operit AI 提供丰富的插件生态，配合内置工具可实现从日常生�
 对于本仓库，你必须从`https://drive.google.com/drive/folders/1g-Q_i7cf6Ua4KX9ZM6V282EEZvTVVfF7?usp=sharing`下载一些依赖库，并放入有.keep的文件夹
 
 
-**查看我们的 [开源共创指南](docx/CONTRIBUTING.md)** 了解如何参与项目开发。
+**查看我们的 [开源共创指南](docs/CONTRIBUTING.md) 和 [脚本开发指南](docs/SCRIPT_DEV_GUIDE.md) 了解如何参与项目开发。**
 
 ## 💖 贡献者
 

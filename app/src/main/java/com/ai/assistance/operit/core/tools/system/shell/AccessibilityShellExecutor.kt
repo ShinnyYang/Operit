@@ -8,6 +8,10 @@ import android.util.Log
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * 基于无障碍服务的Shell命令执行器 实现ACCESSIBILITY权限级别的命令执行
@@ -73,6 +77,10 @@ class AccessibilityShellExecutor(private val context: Context) : ShellExecutor {
         }
     }
 
+    override suspend fun startProcess(command: String): ShellProcess {
+        return AccessibilityShellProcess(command, this)
+    }
+
     /** 检查无障碍服务是否已启用 */
     private fun isAccessibilityServiceEnabled(): Boolean {
         val serviceString = context.packageName + "/.accessibility.YourAccessibilityService"
@@ -113,5 +121,45 @@ class AccessibilityShellExecutor(private val context: Context) : ShellExecutor {
                 //     // 执行点击
                 //     return@withContext ShellExecutor.CommandResult(true, "Tap executed", "", 0)
                 // }
+            }
+}
+
+/**
+ * 无障碍服务的 ShellProcess 实现
+ */
+private class AccessibilityShellProcess(
+    private val command: String, 
+    private val executor: AccessibilityShellExecutor
+) : ShellProcess {
+    private var completed = false
+    private var exitCode = -1
+    
+    override val stdout: Flow<String> = callbackFlow {
+        // 无障碍服务不能执行真正的shell命令，返回错误信息
+        trySend("Accessibility service cannot execute shell commands directly")
+        completed = true
+        close()
+        awaitClose { }
+    }
+
+    override val stderr: Flow<String> = callbackFlow {
+        trySend("Command: $command")
+        trySend("Accessibility service requires UI automation conversion")
+        close()
+        awaitClose { }
+    }
+
+    override val isAlive: Boolean
+        get() = !completed
+
+    override fun destroy() {
+        completed = true
+    }
+
+    override suspend fun waitFor(): Int = withContext(Dispatchers.IO) {
+        while (!completed) {
+            kotlinx.coroutines.delay(10)
+        }
+        exitCode
             }
 }

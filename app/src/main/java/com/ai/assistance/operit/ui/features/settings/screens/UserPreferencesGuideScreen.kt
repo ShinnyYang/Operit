@@ -294,12 +294,20 @@ fun UserPreferencesGuideScreen(
 
             // 如果需要更新默认值，保存到配置
             if (needsUpdate) {
-                val targetId = if (profileId.isNotEmpty()) profileId else profile.id
-                preferencesManager.updateProfileCategory(
-                        profileId = targetId,
-                        aiStyle = selectedAiStyleTags.joinToString(", "),
-                        personality = selectedPersonality.joinToString(", ")
-                )
+                if (profileId.isNotEmpty()) {
+                    // 更新指定的配置文件
+                    preferencesManager.updateProfileCategory(
+                            profileId = profileId,
+                            aiStyle = selectedAiStyleTags.joinToString(", "),
+                            personality = selectedPersonality.joinToString(", ")
+                    )
+                } else {
+                    // 更新当前活动的配置文件
+                    preferencesManager.updateProfileCategory(
+                            aiStyle = selectedAiStyleTags.joinToString(", "),
+                            personality = selectedPersonality.joinToString(", ")
+                    )
+                }
             }
         } catch (e: Exception) {
             // 如果获取配置失败，创建默认配置
@@ -312,11 +320,21 @@ fun UserPreferencesGuideScreen(
                 selectedPersonality = setOf("理性", "耐心")
 
                 // 保存默认值到配置
-                preferencesManager.updateProfileCategory(
-                        profileId = defaultProfileId,
-                        aiStyle = selectedAiStyleTags.joinToString(", "),
-                        personality = selectedPersonality.joinToString(", ")
-                )
+                if (profileId.isNotEmpty()) {
+                    // 如果有指定的profileId，更新指定配置
+                    preferencesManager.updateProfileCategory(
+                            profileId = profileId,
+                            aiStyle = selectedAiStyleTags.joinToString(", "),
+                            personality = selectedPersonality.joinToString(", ")
+                    )
+                } else {
+                    // 否则更新默认配置
+                    preferencesManager.updateProfileCategory(
+                            profileId = defaultProfileId,
+                            aiStyle = selectedAiStyleTags.joinToString(", "),
+                            personality = selectedPersonality.joinToString(", ")
+                    )
+                }
             } catch (ex: Exception) {
                 // 如果还是失败，至少确保UI有默认值显示
                 selectedAiStyleTags = setOf("专业严谨", "简洁直接")
@@ -424,12 +442,24 @@ fun UserPreferencesGuideScreen(
                                 .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                    text =
-                            if (profileName.isNotEmpty()) "配置「$profileName」"
-                            else stringResource(id = R.string.preferences_guide_title),
-                    style = MaterialTheme.typography.titleMedium
-            )
+            Column {
+                Text(
+                        text =
+                                if (profileName.isNotEmpty()) "配置「$profileName」"
+                                else stringResource(id = R.string.preferences_guide_title),
+                        style = MaterialTheme.typography.titleMedium
+                )
+                
+                // 显示当前编辑的配置ID（调试用）
+                if (profileId.isNotEmpty()) {
+                    Text(
+                            text = "正在编辑配置ID: $profileId",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 4.dp)
+                    )
+                }
+            }
 
             // 添加说明卡片，提示所有选项都是可选的
             Surface(

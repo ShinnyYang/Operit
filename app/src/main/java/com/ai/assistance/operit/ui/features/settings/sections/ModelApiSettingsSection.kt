@@ -24,6 +24,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.ai.assistance.operit.api.chat.EndpointCompleter
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.ModelListFetcher
 import com.ai.assistance.operit.data.model.ApiProviderType
@@ -166,28 +167,46 @@ fun ModelApiSettingsSection(
                     singleLine = true
             )
 
-            // API密钥输入
-            OutlinedTextField(
-                    value = if (isUsingDefaultApiKey) "" else apiKeyInput,
-                    onValueChange = {
-                        apiKeyInput = it
-
-                        // 当API密钥改变时检查是否需要限制模型
-                        if (it == ApiPreferences.DEFAULT_API_KEY) {
-                            modelNameInput = ApiPreferences.DEFAULT_MODEL_NAME
-                            showModelRestrictionInfo = true
-                        } else {
-                            showModelRestrictionInfo = false
-                        }
-                    },
-                    label = { Text("API密钥") },
-                    placeholder = { Text(if (isUsingDefaultApiKey) "使用默认Key, 可直接输入" else "输入API密钥") },
-                    visualTransformation =
-                            if (isUsingDefaultApiKey) VisualTransformation.None
-                            else PasswordVisualTransformation(),
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    singleLine = true
+            // 显示自动补全后的URL
+            val completedEndpoint = EndpointCompleter.completeEndpoint(apiEndpointInput)
+            if (completedEndpoint != apiEndpointInput) {
+                Text(
+                    text = "实际请求地址: $completedEndpoint",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp, bottom = 4.dp)
+                )
+            }
+            Text(
+                text = "提示: 如果您输入的是基础URL，系统将自动补全路径。如需禁用，请在URL末尾添加#号。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp),
+                lineHeight = 16.sp
             )
+ 
+             // API密钥输入
+             OutlinedTextField(
+                     value = if (isUsingDefaultApiKey) "" else apiKeyInput,
+                     onValueChange = {
+                         apiKeyInput = it
+
+                         // 当API密钥改变时检查是否需要限制模型
+                         if (it == ApiPreferences.DEFAULT_API_KEY) {
+                             modelNameInput = ApiPreferences.DEFAULT_MODEL_NAME
+                             showModelRestrictionInfo = true
+                         } else {
+                             showModelRestrictionInfo = false
+                         }
+                     },
+                     label = { Text("API密钥") },
+                     placeholder = { Text(if (isUsingDefaultApiKey) "使用默认Key, 可直接输入" else "输入API密钥") },
+                     visualTransformation =
+                             if (isUsingDefaultApiKey) VisualTransformation.None
+                             else PasswordVisualTransformation(),
+                     modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                     singleLine = true
+             )
 
             // 模型名称输入和模型列表按钮
             Row(

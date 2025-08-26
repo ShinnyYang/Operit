@@ -198,8 +198,8 @@ const baiduMap = (function () {
      * @returns 只包含前N层的新对象
      */
     function extractTopLevels(obj: any, maxDepth: number = 3): any {
-        // 基本类型或null直接返回类型说明
-        if (obj === null) return "null";
+        // 基本类型或undefined直接返回类型说明
+        if (obj === undefined) return "undefined";
         if (typeof obj !== 'object') return `${typeof obj}:${String(obj).substring(0, 10)}${String(obj).length > 10 ? '...' : ''}`;
 
         // 达到最大深度，返回提示信息
@@ -257,7 +257,7 @@ const baiduMap = (function () {
                 const jsonResponse = await response.json();
                 // 提取前三层键结构
                 const keyStructure = extractTopLevels(jsonResponse, 3);
-                logger(LOG_LEVELS.INFO, `API响应(仅前三层键结构):`, JSON.stringify(keyStructure, null, 2));
+                logger(LOG_LEVELS.INFO, `API响应(仅前三层键结构):`, JSON.stringify(keyStructure, undefined, 2));
                 return jsonResponse;
             } catch (e) {
                 logger(LOG_LEVELS.ERROR, `解析JSON失败:`, e);
@@ -734,14 +734,14 @@ const baiduMap = (function () {
      * 获取用户当前位置
      * 使用系统提供的位置API获取当前位置坐标
      */
-    async function getCurrentLocation(): Promise<{ lng: number, lat: number } | null> {
+    async function getCurrentLocation(): Promise<{ lng: number, lat: number } | undefined> {
         try {
             logger(LOG_LEVELS.INFO, "正在获取用户当前位置...");
             const locationResult = await Tools.System.getLocation();
 
             if (!locationResult) {
                 logger(LOG_LEVELS.ERROR, "获取位置失败:", "未知错误");
-                return null;
+                return undefined;
             }
 
             // 获取成功，返回经纬度
@@ -751,7 +751,7 @@ const baiduMap = (function () {
             };
         } catch (error) {
             logger(LOG_LEVELS.ERROR, "获取位置出错:", error.message);
-            return null;
+            return undefined;
         }
     }
 

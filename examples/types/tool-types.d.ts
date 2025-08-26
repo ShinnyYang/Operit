@@ -44,7 +44,7 @@ export type SystemToolName = 'sleep' | 'get_system_setting' | 'modify_system_set
  * UI tool names
  */
 export type UiToolName = 'get_page_info' | 'click_element' | 'tap' | 'set_input_text' | 'press_key' |
-    'swipe' | 'combined_operation' | 'find_element';
+    'swipe' | 'combined_operation';
 
 /**
  * Calculator tool names
@@ -132,7 +132,6 @@ export interface ToolResultMap {
     'press_key': UIActionResultData;
     'swipe': UIActionResultData;
     'combined_operation': CombinedOperationResultData;
-    'find_element': UIPageResultData;
 
     // Calculator operations
     'calculate': CalculationResultData;

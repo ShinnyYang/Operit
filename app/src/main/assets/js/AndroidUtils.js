@@ -108,16 +108,16 @@ class Intent {
      * Create a new Intent
      * @param {string} action - Optional action to set
      */
-    constructor(action = null) {
+    constructor(action = undefined) {
         this.action = action;
-        this.packageName = null;
-        this.component = null;
+        this.packageName = undefined;
+        this.component = undefined;
         this.extras = {};
         this.flags = [];
         this.categories = [];
         this.executor = new AdbExecutor();
-        this.uri = null;
-        this.type = null;
+        this.uri = undefined;
+        this.type = undefined;
     }
 
     /**
@@ -263,7 +263,7 @@ class Intent {
         }
 
         // Prepare component format
-        let componentName = null;
+        let componentName = undefined;
         if (this.component) {
             componentName = this.component.includes('/') ?
                 this.component :
@@ -271,7 +271,7 @@ class Intent {
         }
 
         // Prepare flags
-        let flags = null;
+        let flags = undefined;
         if (this.flags.length > 0) {
             flags = JSON.stringify(this.flags);
         }
@@ -296,7 +296,7 @@ class Intent {
             package: this.packageName,
             component: componentName,
             flags: flags,
-            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : null,
+            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : undefined,
             type: 'activity' // Explicitly specify that this is an activity intent
         });
 
@@ -326,7 +326,7 @@ class Intent {
         }
 
         // Prepare component format
-        let componentName = null;
+        let componentName = undefined;
         if (this.component) {
             componentName = this.component.includes('/') ?
                 this.component :
@@ -339,8 +339,8 @@ class Intent {
             uri: this.uri,
             package: this.packageName,
             component: componentName,
-            flags: null, // No special flags needed for broadcast
-            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : null,
+            flags: undefined, // No special flags needed for broadcast
+            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : undefined,
             type: 'broadcast' // Explicitly specify that this is a broadcast intent
         });
     }
@@ -378,8 +378,8 @@ class Intent {
             uri: this.uri,
             package: this.packageName,
             component: componentName,
-            flags: null, // No special flags needed for service
-            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : null,
+            flags: undefined, // No special flags needed for service
+            extras: Object.keys(combinedExtras).length > 0 ? combinedExtras : undefined,
             type: 'service' // Explicitly specify that this is a service intent
         });
     }
@@ -429,10 +429,10 @@ class PackageManager extends AdbExecutor {
         // Parse the output to extract useful information
         const result = {
             packageName: packageName,
-            versionCode: null,
-            versionName: null,
-            firstInstallTime: null,
-            lastUpdateTime: null,
+            versionCode: undefined,
+            versionName: undefined,
+            firstInstallTime: undefined,
+            lastUpdateTime: undefined,
             permissions: [],
             activities: [],
             services: []
@@ -605,7 +605,7 @@ class ContentProvider extends AdbExecutor {
      * @param {string} sortOrder - ORDER BY clause
      * @returns {Promise<Array<Object>>} - Query results
      */
-    async query(projection = null, selection = null, selectionArgs = null, sortOrder = null) {
+    async query(projection = undefined, selection = undefined, selectionArgs = undefined, sortOrder = undefined) {
         if (!this.uri) {
             throw new Error("URI not set. Call setUri() first.");
         }
@@ -684,7 +684,7 @@ class ContentProvider extends AdbExecutor {
      * @param {Array<string>} selectionArgs - WHERE clause arguments
      * @returns {Promise<string>} - Command output
      */
-    async update(values, selection = null, selectionArgs = null) {
+    async update(values, selection = undefined, selectionArgs = undefined) {
         if (!this.uri) {
             throw new Error("URI not set. Call setUri() first.");
         }
@@ -715,7 +715,7 @@ class ContentProvider extends AdbExecutor {
      * @param {Array<string>} selectionArgs - WHERE clause arguments
      * @returns {Promise<string>} - Command output
      */
-    async delete(selection = null, selectionArgs = null) {
+    async delete(selection = undefined, selectionArgs = undefined) {
         if (!this.uri) {
             throw new Error("URI not set. Call setUri() first.");
         }
@@ -779,7 +779,7 @@ class SystemManager extends AdbExecutor {
         const propRegex = /\[([^\]]+)\]:\s*\[([^\]]*)\]/g;
         let match;
 
-        while ((match = propRegex.exec(output)) !== null) {
+        while ((match = propRegex.exec(output)) !== undefined) {
             properties[match[1]] = match[2];
         }
 
@@ -854,10 +854,10 @@ class SystemManager extends AdbExecutor {
         const output = await this.executeShell('wm size; wm density');
 
         const info = {
-            width: null,
-            height: null,
-            density: null,
-            densityDpi: null
+            width: undefined,
+            height: undefined,
+            density: undefined,
+            densityDpi: undefined
         };
 
         // Parse physical size
@@ -907,7 +907,7 @@ class DeviceController extends AdbExecutor {
      * @param {string} size - Size in WIDTHxHEIGHT format
      * @returns {Promise<string>} - Command output
      */
-    async recordScreen(outputPath, timeLimit = 180, bitRate = 4, size = null) {
+    async recordScreen(outputPath, timeLimit = 180, bitRate = 4, size = undefined) {
         // Build command
         let command = `screenrecord --time-limit ${Math.min(timeLimit, 180)} --bit-rate ${bitRate}000000`;
 
@@ -1009,10 +1009,10 @@ class DeviceController extends AdbExecutor {
 
     /**
      * Reboot the device
-     * @param {string} mode - Reboot mode (null, recovery, bootloader)
+     * @param {string} mode - Reboot mode (undefined, recovery, bootloader)
      * @returns {Promise<string>} - Command output
      */
-    async reboot(mode = null) {
+    async reboot(mode = undefined) {
         let command = 'reboot';
         if (mode) {
             command += ` ${mode}`;
@@ -1039,7 +1039,7 @@ class Android {
      * @param {string} action - Optional action to set
      * @returns {Intent} - New Intent object
      */
-    createIntent(action = null) {
+    createIntent(action = undefined) {
         return new Intent(action);
     }
 

@@ -137,7 +137,7 @@ object ModelListFetcher {
             while (retryCount <= maxRetries) {
                 try {
                     // 根据提供商类型获取模型列表URL
-                    val modelsUrl = getModelsListUrl(apiEndpoint, apiProviderType)
+                    val modelsUrl = getModelsListUrl(EndpointCompleter.completeEndpoint(apiEndpoint), apiProviderType)
                     Log.d(TAG, "准备发送请求到: $modelsUrl, 尝试次数: ${retryCount + 1}/${maxRetries + 1}")
 
                     val requestBuilder =

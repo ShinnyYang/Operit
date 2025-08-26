@@ -42,7 +42,7 @@ const Jimp = (function () {
         async release() {
             if (this.id) {
                 await _nativeImage('release', [this.id]);
-                this.id = null;
+                this.id = undefined;
             }
         }
     }

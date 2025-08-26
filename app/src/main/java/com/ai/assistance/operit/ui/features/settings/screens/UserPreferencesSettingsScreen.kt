@@ -86,6 +86,9 @@ fun UserPreferencesSettingsScreen(
     var newProfileName by remember { mutableStateOf("") }
     // 新增：删除确认弹窗状态
     var showDeleteProfileDialog by remember { mutableStateOf(false) }
+    // 新增：重命名弹窗状态
+    var showRenameProfileDialog by remember { mutableStateOf(false) }
+    var editingProfileName by remember { mutableStateOf("") }
 
     // 选中的配置文件
     var selectedProfileId by remember { mutableStateOf(activeProfileId) }
@@ -351,6 +354,26 @@ fun UserPreferencesSettingsScreen(
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("设为活跃", fontSize = 14.sp)
+                                }
+                            }
+
+                            // 重命名按钮 - 只有非默认配置才显示
+                            if (selectedProfileId != "default") {
+                                TextButton(
+                                        onClick = {
+                                            editingProfileName = selectedProfileName
+                                            showRenameProfileDialog = true
+                                        },
+                                        contentPadding = PaddingValues(horizontal = 12.dp),
+                                        modifier = Modifier.height(36.dp)
+                                ) {
+                                    Icon(
+                                            Icons.Default.Edit,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("重命名", fontSize = 14.sp)
                                 }
                             }
 
@@ -784,6 +807,87 @@ fun UserPreferencesSettingsScreen(
                         ) { Text("取消", fontSize = 13.sp) }
                     },
                     shape = RoundedCornerShape(12.dp)
+            )
+        }
+        // 新增：重命名配置文件弹窗
+        if (showRenameProfileDialog) {
+            AlertDialog(
+                onDismissRequest = {
+                    showRenameProfileDialog = false
+                    editingProfileName = ""
+                },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(end = 8.dp).size(24.dp)
+                        )
+                        Text(
+                            "重命名配置",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                },
+                text = {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            "请输入新的配置名称",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = editingProfileName,
+                            onValueChange = { editingProfileName = it },
+                            label = { Text("配置名称", fontSize = 12.sp) },
+                            placeholder = { Text("例如: 工作、学习、娱乐...", fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant
+                                ),
+                            singleLine = true,
+                            textStyle = LocalTextStyle.current.copy(fontSize = 14.sp)
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (editingProfileName.isNotBlank()) {
+                                scope.launch {
+                                    selectedProfile?.let { profile ->
+                                        val updatedProfile = profile.copy(name = editingProfileName)
+                                        preferencesManager.updateProfile(updatedProfile)
+                                        profileNameMap[selectedProfileId] = editingProfileName
+                                    }
+                                    showRenameProfileDialog = false
+                                    editingProfileName = ""
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        enabled = editingProfileName.isNotBlank()
+                    ) { 
+                        Text("确认重命名", fontSize = 13.sp) 
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showRenameProfileDialog = false
+                            editingProfileName = ""
+                        }
+                    ) { 
+                        Text("取消", fontSize = 13.sp) 
+                    }
+                },
+                shape = RoundedCornerShape(12.dp)
             )
         }
         // 新增：删除配置文件确认弹窗

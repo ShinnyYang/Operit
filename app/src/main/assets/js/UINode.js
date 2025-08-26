@@ -43,9 +43,9 @@ class UINode {
     /**
      * Create a new UINode instance
      * @param {Object} node - The SimplifiedUINode object to wrap
-     * @param {UINode|null} parent - The parent UINode (null for root)
+     * @param {UINode|undefined} parent - The parent UINode (undefined for root)
      */
-    constructor(node, parent = null) {
+    constructor(node, parent = undefined) {
         this._node = node || {};
         this._children = undefined;
         this._parent = parent;
@@ -58,7 +58,7 @@ class UINode {
      * @return {string|undefined} Class name or undefined if not available
      */
     get className() {
-        return this._node.className || undefined;
+        return this._node.className !== undefined ? this._node.className : undefined;
     }
 
     /**
@@ -66,7 +66,7 @@ class UINode {
      * @return {string|undefined} Text content or undefined if not available
      */
     get text() {
-        return this._node.text || undefined;
+        return this._node.text !== undefined ? this._node.text : undefined;
     }
 
     /**
@@ -74,7 +74,7 @@ class UINode {
      * @return {string|undefined} Content description or undefined if not available
      */
     get contentDesc() {
-        return this._node.contentDesc || undefined;
+        return this._node.contentDesc !== undefined ? this._node.contentDesc : undefined;
     }
 
     /**
@@ -82,7 +82,7 @@ class UINode {
      * @return {string|undefined} Resource ID or undefined if not available
      */
     get resourceId() {
-        return this._node.resourceId || undefined;
+        return this._node.resourceId !== undefined ? this._node.resourceId : undefined;
     }
 
     /**
@@ -90,7 +90,7 @@ class UINode {
      * @return {string|undefined} Bounds in format "[x1,y1][x2,y2]" or undefined if not available
      */
     get bounds() {
-        return this._node.bounds || undefined;
+        return this._node.bounds !== undefined ? this._node.bounds : undefined;
     }
 
     /**
@@ -111,7 +111,7 @@ class UINode {
 
     /**
      * Get the parent node
-     * @return {UINode|null} Parent node or null if this is the root
+     * @return {UINode|undefined} Parent node or undefined if this is the root
      */
     get parent() {
         return this._parent;
@@ -380,8 +380,14 @@ class UINode {
     _findByPredicate(predicate, deep) {
         // Check direct children
         for (const child of this.children) {
-            if (predicate(child)) {
-                return child;
+            try {
+                if (predicate(child)) {
+                    return child;
+                }
+            } catch (error) {
+                // Skip this child if predicate throws an error
+                console.warn("Predicate error for child node:", error.message);
+                continue;
             }
 
             // Recursively check descendants if enabled
@@ -406,8 +412,14 @@ class UINode {
         // Helper function for recursive search
         const collect = (node, deep) => {
             for (const child of node.children) {
-                if (predicate(child)) {
-                    results.push(child);
+                try {
+                    if (predicate(child)) {
+                        results.push(child);
+                    }
+                } catch (error) {
+                    // Skip this child if predicate throws an error
+                    console.warn("Predicate error for child node:", error.message);
+                    continue;
                 }
 
                 if (deep) {
@@ -429,48 +441,54 @@ class UINode {
         const { exact = true, caseSensitive = true, ...actualCriteria } = criteria;
 
         return (node) => {
-            // Check each specified criterion
-            for (const [key, value] of Object.entries(actualCriteria)) {
-                // Special handling for clickable property
-                if (key === 'clickable') {
-                    if (node.isClickable !== value) {
+            try {
+                // Check each specified criterion
+                for (const [key, value] of Object.entries(actualCriteria)) {
+                    // Special handling for clickable property
+                    if (key === 'clickable') {
+                        if (node.isClickable !== value) {
+                            return false;
+                        }
+                        continue;
+                    }
+
+                    // Handle text properties (text, resourceId, className, contentDesc)
+                    const nodeValue = node[key];
+
+                    // If the node doesn't have the property, it's not a match
+                    if (nodeValue === undefined || nodeValue === null) {
                         return false;
                     }
-                    continue;
-                }
 
-                // Handle text properties (text, resourceId, className, contentDesc)
-                const nodeValue = node[key];
-
-                // If the node doesn't have the property, it's not a match
-                if (nodeValue === undefined || nodeValue === undefined) {
-                    return false;
-                }
-
-                // For text properties, compare based on exact and case sensitivity options
-                if (typeof nodeValue === 'string' && typeof value === 'string') {
-                    if (exact) {
-                        // Exact matching
-                        if (caseSensitive) {
-                            if (nodeValue !== value) return false;
+                    // For text properties, compare based on exact and case sensitivity options
+                    if (typeof nodeValue === 'string' && typeof value === 'string') {
+                        if (exact) {
+                            // Exact matching
+                            if (caseSensitive) {
+                                if (nodeValue !== value) return false;
+                            } else {
+                                if (nodeValue.toLowerCase() !== value.toLowerCase()) return false;
+                            }
                         } else {
-                            if (nodeValue.toLowerCase() !== value.toLowerCase()) return false;
+                            // Substring matching
+                            if (caseSensitive) {
+                                if (!nodeValue.includes(value)) return false;
+                            } else {
+                                if (!nodeValue.toLowerCase().includes(value.toLowerCase())) return false;
+                            }
                         }
                     } else {
-                        // Substring matching
-                        if (caseSensitive) {
-                            if (!nodeValue.includes(value)) return false;
-                        } else {
-                            if (!nodeValue.toLowerCase().includes(value.toLowerCase())) return false;
-                        }
+                        // For non-string properties, use strict equality
+                        if (nodeValue !== value) return false;
                     }
-                } else {
-                    // For non-string properties, use strict equality
-                    if (nodeValue !== value) return false;
                 }
-            }
 
-            return true;
+                return true;
+            } catch (error) {
+                // If any error occurs during property access or comparison, treat as non-match
+                console.warn("Error in predicate evaluation:", error.message);
+                return false;
+            }
         };
     }
 
@@ -505,7 +523,9 @@ class UINode {
      * @return {UINode|undefined} Matching node or undefined if not found
      */
     findById(id, options = {}) {
-        return this.find({ resourceId: id, ...options });
+        // Default to non-exact matching for resource IDs to support partial ID matching
+        const searchOptions = { exact: false, ...options };
+        return this.find({ resourceId: id, ...searchOptions });
     }
 
     /**
@@ -515,7 +535,9 @@ class UINode {
      * @return {UINode[]} Array of matching nodes
      */
     findAllById(id, options = {}) {
-        return this.findAll({ resourceId: id, ...options });
+        // Default to non-exact matching for resource IDs to support partial ID matching
+        const searchOptions = { exact: false, ...options };
+        return this.findAll({ resourceId: id, ...searchOptions });
     }
 
     /**
@@ -569,7 +591,7 @@ class UINode {
     /**
      * Find closest ancestor that matches the criteria
      * @param {Object|Function} criteria - Search criteria or predicate function
-     * @return {UINode|null} The matching ancestor or null if none found
+     * @return {UINode|undefined} The matching ancestor or undefined if none found
      */
     closest(criteria) {
         let currentNode = this.parent;
@@ -587,7 +609,7 @@ class UINode {
             currentNode = currentNode.parent;
         }
 
-        return null;
+        return undefined;
     }
 
     // ===== Actions =====

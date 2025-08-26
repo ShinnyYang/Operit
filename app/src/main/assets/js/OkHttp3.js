@@ -168,7 +168,7 @@ class RequestBuilder {
             url: '',
             method: 'GET',
             headers: {},
-            body: null,
+            body: undefined,
             bodyType: 'text',
             formParams: {},
             multipartParams: []

@@ -16,6 +16,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import moe.shizuku.server.IShizukuService
 import rikka.shizuku.Shizuku
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.launch
+import java.io.InputStream
+import java.io.IOException
+import kotlinx.coroutines.isActive
 
 /** 基于Shizuku的Shell命令执行器 实现DEBUGGER权限级别的命令执行 */
 class DebuggerShellExecutor(private val context: Context) : ShellExecutor {
@@ -543,4 +551,87 @@ class DebuggerShellExecutor(private val context: Context) : ShellExecutor {
 
         return result.toTypedArray()
     }
+
+    override suspend fun startProcess(command: String): ShellProcess {
+        if (!hasPermission().granted) {
+            throw SecurityException("Shizuku permission not granted.")
+        }
+        val service = getShizukuService() ?: throw IOException("Shizuku service not available")
+        return ShizukuShellProcess(service, command)
+    }
+}
+
+/**
+ * 使用 Shizuku 实现的 ShellProcess。
+ */
+private class ShizukuShellProcess(
+    private val service: IShizukuService,
+    private val command: String
+) : ShellProcess {
+    private val process: Any
+    private val processClass: Class<*>
+
+    init {
+        val shellArgs = arrayOf("sh", "-c", command)
+        process = service.newProcess(shellArgs, null, null)
+            ?: throw IOException("Failed to create Shizuku process")
+        processClass = process.javaClass
+    }
+
+    private val inputStream: ParcelFileDescriptor by lazy {
+        processClass.getMethod("getInputStream").invoke(process) as ParcelFileDescriptor
+    }
+
+    private val errorStream: ParcelFileDescriptor by lazy {
+        processClass.getMethod("getErrorStream").invoke(process) as ParcelFileDescriptor
+    }
+
+    override val stdout: Flow<String> by lazy {
+        flowFromStream(FileInputStream(inputStream.fileDescriptor))
+    }
+
+    override val stderr: Flow<String> by lazy {
+        flowFromStream(FileInputStream(errorStream.fileDescriptor))
+    }
+
+    override val isAlive: Boolean
+        get() = try {
+            processClass.getMethod("exitValue").invoke(process)
+            false
+        } catch (e: Exception) {
+            // IllegalThreadStateException means it's still running
+            true
+        }
+
+    override fun destroy() {
+        try {
+            processClass.getMethod("destroy").invoke(process)
+        } finally {
+            inputStream.close()
+            errorStream.close()
+        }
+    }
+
+    override suspend fun waitFor(): Int = withContext(Dispatchers.IO) {
+        processClass.getMethod("waitFor").invoke(process) as Int
+    }
+}
+
+private fun flowFromStream(inputStream: InputStream): Flow<String> = callbackFlow {
+    val job = CoroutineScope(Dispatchers.IO).launch {
+        try {
+            BufferedReader(InputStreamReader(inputStream)).use { reader ->
+                reader.lineSequence().forEach { line ->
+                    if (isActive) {
+                        trySend(line)
+                    }
+                }
+            }
+        } catch (e: IOException) {
+            // This is expected when the process is destroyed
+        } finally {
+            close()
+        }
+    }
+    awaitClose { job.cancel() }
 }

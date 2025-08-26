@@ -63,9 +63,8 @@ class UIDebuggerService : Service(), ViewModelStoreOwner {
         lifecycleOwner = ServiceLifecycleOwner()
         lifecycleOwner.handleLifecycleEvent(androidx.lifecycle.Lifecycle.Event.ON_CREATE)
         
-        // Initialize ViewModel
-        val factory = ViewModelProvider.NewInstanceFactory()
-        viewModel = ViewModelProvider(this, factory).get(UIDebuggerViewModel::class.java)
+        // Initialize ViewModel - use singleton instance to share state with main app
+        viewModel = UIDebuggerViewModel.getInstance()
 
         windowManager = UIDebuggerWindowManager(this, this, lifecycleOwner)
         createNotificationChannel()

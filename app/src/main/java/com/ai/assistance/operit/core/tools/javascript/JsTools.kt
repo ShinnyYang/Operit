@@ -171,21 +171,7 @@ fun getJsToolsDefinition(): String {
                     // 默认情况
                     return toolCall("click_element", { resourceId: param1 });
                 },
-                // 查找UI元素方法，更详细的参数支持
-                findElement: function(options) {
-                    // 支持单一参数对象和多参数形式
-                    if (typeof options === "object") {
-                        return toolCall("find_element", options);
-                    }
-                    
-                    // 处理多参数形式
-                    const params = {};
-                    if (arguments.length >= 1) params.resourceId = arguments[0];
-                    if (arguments.length >= 2) params.className = arguments[1];
-                    if (arguments.length >= 3) params.text = arguments[2];
-                    if (arguments.length >= 4) params.index = arguments[3];
-                    return toolCall("find_element", params);
-                },
+
                 setText: (text, resourceId) => {
                     const params = { text };
                     if (resourceId) params.resourceId = resourceId;

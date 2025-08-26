@@ -2,12 +2,22 @@ package com.ai.assistance.operit.core.tools.automatic.config
 
 import android.content.Context
 import android.util.Log
+import com.ai.assistance.operit.core.tools.automatic.JsonUIEdge
+import com.ai.assistance.operit.core.tools.automatic.JsonUIFunction
+import com.ai.assistance.operit.core.tools.automatic.JsonUINode
+import com.ai.assistance.operit.core.tools.automatic.JsonUIOperation
 import com.ai.assistance.operit.core.tools.automatic.UIRouteConfig
 import com.ai.assistance.operit.core.tools.automatic.JsonUIRouteConfig
+import com.ai.assistance.operit.core.tools.automatic.JsonUISelector
+import com.ai.assistance.operit.core.tools.automatic.UIOperation
+import com.ai.assistance.operit.core.tools.automatic.UISelector
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.encodeToString
 import java.io.File
 import java.io.IOException
+import java.io.FileOutputStream
+import android.net.Uri
 
 /**
  * Manages UI automation configuration packages.
@@ -187,30 +197,84 @@ class AutomationPackageManager private constructor(private val context: Context)
      * @param filePath The absolute path to the .json configuration file.
      * @return A string message indicating success or failure.
      */
-    fun importPackage(filePath: String): String {
-        val sourceFile = File(filePath)
-        if (!sourceFile.exists() || !sourceFile.canRead()) {
-            return "Error: Cannot access source file at $filePath"
-        }
-        if (!sourceFile.name.endsWith(".json")) {
-            return "Error: Only .json files are supported for import."
-        }
-
+    fun importPackage(uriString: String): String {
         try {
-            val destFile = File(externalConfigsDir, sourceFile.name)
-            if (destFile.exists()) {
-                Log.w(TAG, "Overwriting existing package: ${sourceFile.name}")
+            val uri = Uri.parse(uriString)
+            // 从URI获取文件名
+            val cursor = context.contentResolver.query(uri, null, null, null, null)
+            val fileName = cursor?.use {
+                if (it.moveToFirst()) {
+                    val displayNameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (displayNameIndex != -1) it.getString(displayNameIndex) else "imported_config.json"
+                } else {
+                    "imported_config.json"
+                }
+            } ?: "imported_config.json"
+
+            if (!fileName.endsWith(".json")) {
+                return "Error: Only .json files are supported for import."
             }
-            
-            sourceFile.copyTo(destFile, overwrite = true)
-            Log.d(TAG, "Successfully copied package to: ${destFile.absolutePath}")
-            
+
+            val destFile = File(externalConfigsDir, fileName)
+            if (destFile.exists()) {
+                Log.w(TAG, "Overwriting existing package: $fileName")
+            }
+
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                FileOutputStream(destFile).use { outputStream ->
+                    inputStream.copyTo(outputStream)
+                }
+            } ?: throw IOException("Failed to open input stream for URI: $uriString")
+
+            Log.d(TAG, "Successfully imported package to: ${destFile.absolutePath}")
+
             // Reload packages to include the new one.
             loadAllPackages()
-            return "Successfully imported package: ${sourceFile.name}"
+            return "Successfully imported package: $fileName"
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to import package from: $filePath", e)
+            Log.e(TAG, "Failed to import package from: $uriString", e)
             return "Error: Failed to import package. ${e.message}"
+        }
+    }
+
+    /**
+     * Exports a package to the specified output path.
+     *
+     * @param packageInfo The package to export.
+     * @param uriString The URI string representing the destination file.
+     * @return A string message indicating success or failure.
+     */
+    fun exportPackage(packageInfo: AutomationPackageInfo, uriString: String): String {
+        try {
+            val jsonString = if (packageInfo.isBuiltIn) {
+                val filePath = "$CONFIG_DIR_NAME/${packageInfo.fileName}"
+                context.assets.open(filePath).bufferedReader().use { it.readText() }
+            } else {
+                val configFile = File(externalConfigsDir, packageInfo.fileName)
+                if (!configFile.exists()) {
+                    // 如果外部文件不存在，尝试从内存中的config生成
+                    val config = getConfigByAppPackageName(packageInfo.packageName)
+                    if (config != null) {
+                        val jsonConfig = convertToJsonConfig(config, packageInfo)
+                        json.encodeToString(jsonConfig)
+                    } else {
+                        throw IOException("Cannot find config file for external package: ${packageInfo.fileName}")
+                    }
+                } else {
+                    configFile.readText()
+                }
+            }
+
+            val uri = Uri.parse(uriString)
+            context.contentResolver.openOutputStream(uri)?.use { outputStream ->
+                outputStream.write(jsonString.toByteArray())
+            } ?: throw IOException("Failed to open output stream for URI: $uriString")
+
+            Log.d(TAG, "Successfully exported package to: $uriString")
+            return "Successfully exported package to: $uriString"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to export package: ${packageInfo.name}", e)
+            return "Error: Failed to export package. ${e.message}"
         }
     }
 
@@ -244,6 +308,167 @@ class AutomationPackageManager private constructor(private val context: Context)
         } catch (e: SecurityException) {
             Log.e(TAG, "Security error while deleting package: $packageName", e)
             false
+        }
+    }
+
+    /**
+     * 保存UIRouteConfig到文件
+     * @param config 要保存的UIRouteConfig
+     * @param packageInfo 包信息
+     * @return 保存结果消息
+     */
+    fun saveConfig(config: UIRouteConfig, packageInfo: AutomationPackageInfo): String {
+        try {
+            // 转换UIRouteConfig为JsonUIRouteConfig
+            val jsonConfig = convertToJsonConfig(config, packageInfo)
+            val jsonString = json.encodeToString(jsonConfig)
+            
+            val file = File(externalConfigsDir, packageInfo.fileName)
+            file.writeText(jsonString)
+            
+            // 重新加载所有包以更新缓存
+            loadAllPackages()
+            
+            Log.d(TAG, "Successfully saved config for: ${packageInfo.name}")
+            return "配置保存成功"
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save config for: ${packageInfo.name}", e)
+            return "保存失败: ${e.message}"
+        }
+    }
+
+    /**
+     * 创建新的配置包
+     * @param appName 应用名称
+     * @param packageName 包名
+     * @param description 描述
+     * @return 新创建的配置包信息
+     */
+    fun createNewPackage(appName: String, packageName: String, description: String): AutomationPackageInfo {
+        val fileName = "${appName.replace(" ", "_")}_${System.currentTimeMillis()}.json"
+        val packageInfo = AutomationPackageInfo(
+            name = appName,
+            packageName = packageName,
+            description = description,
+            isBuiltIn = false,
+            fileName = fileName
+        )
+        
+        // 创建空的配置
+        val emptyConfig = UIRouteConfig()
+        saveConfig(emptyConfig, packageInfo)
+        
+        return packageInfo
+    }
+
+    /**
+     * 将UIRouteConfig转换为JsonUIRouteConfig
+     */
+    private fun convertToJsonConfig(config: UIRouteConfig, packageInfo: AutomationPackageInfo): JsonUIRouteConfig {
+        val jsonNodes = config.nodeDefinitions.values.map { node ->
+            JsonUINode(
+                name = node.name,
+                description = node.name, // 可以后续改进添加专门的description字段
+                activityName = node.activityName,
+                nodeType = node.nodeType.name,
+                matchCriteria = node.matchCriteria.map { convertToJsonSelector(it) }
+            )
+        }
+        
+        val jsonEdges = mutableListOf<JsonUIEdge>()
+        config.edgeDefinitions.forEach { (from, edges) ->
+            edges.forEach { edge ->
+                jsonEdges.add(
+                    JsonUIEdge(
+                    from = from,
+                    to = edge.toNodeName,
+                    operations = edge.operations.map { convertToJsonOperation(it) },
+                    validation = edge.validation?.let { convertToJsonOperation(it) },
+                    conditions = edge.conditions,
+                    weight = edge.weight
+                )
+                )
+            }
+        }
+        
+        val jsonFunctions = config.functionDefinitions.values.map { function ->
+            JsonUIFunction(
+                name = function.name,
+                description = function.description,
+                targetNodeName = function.targetNodeName,
+                operation = convertToJsonOperation(function.operation)
+            )
+        }
+        
+        return JsonUIRouteConfig(
+            appName = packageInfo.name,
+            packageName = packageInfo.packageName,
+            description = packageInfo.description,
+            nodes = jsonNodes,
+            edges = jsonEdges,
+            functions = jsonFunctions
+        )
+    }
+
+    /**
+     * 将UIOperation转换为JsonUIOperation
+     */
+    private fun convertToJsonOperation(operation: UIOperation): JsonUIOperation {
+        return when (operation) {
+            is UIOperation.Click -> JsonUIOperation.Click(
+                selector = convertToJsonSelector(operation.selector),
+                description = operation.description,
+                relativeX = operation.relativeX,
+                relativeY = operation.relativeY
+            )
+            is UIOperation.Input -> JsonUIOperation.Input(
+                selector = convertToJsonSelector(operation.selector),
+                textVariableKey = operation.textVariableKey,
+                description = operation.description
+            )
+            is UIOperation.LaunchApp -> JsonUIOperation.LaunchApp(
+                packageName = operation.packageName,
+                description = operation.description
+            )
+            is UIOperation.PressKey -> JsonUIOperation.PressKey(
+                keyCode = operation.keyCode,
+                description = operation.description
+            )
+            is UIOperation.Wait -> JsonUIOperation.Wait(
+                durationMs = operation.durationMs,
+                description = operation.description
+            )
+            is UIOperation.Sequential -> JsonUIOperation.Sequential(
+                operations = operation.operations.map { convertToJsonOperation(it) },
+                description = operation.description
+            )
+            is UIOperation.ValidateElement -> JsonUIOperation.ValidateElement(
+                selector = convertToJsonSelector(operation.selector),
+                expectedValueKey = operation.expectedValueKey,
+                validationType = operation.validationType.name,
+                description = operation.description
+            )
+            // 其他操作类型可以根据需要添加
+            else -> JsonUIOperation.Wait(durationMs = 0, description = operation.description)
+        }
+    }
+
+    /**
+     * 将UISelector转换为JsonUISelector
+     */
+    private fun convertToJsonSelector(selector: UISelector): JsonUISelector {
+        return when (selector) {
+            is UISelector.ByResourceId -> JsonUISelector(type = "ByResourceId", value = selector.id)
+            is UISelector.ByText -> JsonUISelector(type = "ByText", value = selector.text)
+            is UISelector.ByContentDesc -> JsonUISelector(type = "ByContentDesc", value = selector.desc)
+            is UISelector.ByClassName -> JsonUISelector(type = "ByClassName", value = selector.name)
+            is UISelector.ByBounds -> JsonUISelector(type = "ByBounds", value = selector.bounds)
+            is UISelector.ByXPath -> JsonUISelector(type = "ByXPath", value = selector.xpath)
+            is UISelector.Compound -> JsonUISelector(
+                type = "Compound",
+                selectors = selector.selectors.map { convertToJsonSelector(it) },
+                operator = selector.operator
+            )
         }
     }
 }

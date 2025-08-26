@@ -387,8 +387,8 @@ sealed class Screen(
         ) {
             UserPreferencesSettingsScreen(
                     onNavigateBack = onGoBack,
-                    onNavigateToGuide = { profileId, category ->
-                        navigateTo(UserPreferencesGuide(profileId, category))
+                    onNavigateToGuide = { profileName, profileId ->
+                        navigateTo(UserPreferencesGuide(profileName, profileId))
                     }
             )
         }

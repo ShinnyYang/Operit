@@ -111,7 +111,7 @@ const duckduckgo = (function () {
         const results = [];
         const resultRegex = /<h2 class="result__title">[\s\S]*?<a.*?href="([^"]+)".*?>([\s\S]+?)<\/a>[\s\S]*?<\/h2>[\s\S]*?<a class="result__snippet".*?>([\s\S]+?)<\/a>/g;
         let match;
-        while ((match = resultRegex.exec(html)) !== null) {
+        while ((match = resultRegex.exec(html)) !== undefined) {
             if (results.length >= max_results) {
                 break;
             }

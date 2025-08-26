@@ -118,14 +118,7 @@ object SystemPromptConfig {
       - set_input_text: Set text in an input field. Parameters: text (text to input)
       - press_key: Simulate a key press. Parameters: key_code (key code, e.g., "KEYCODE_BACK", "KEYCODE_HOME", etc.)
       - swipe: Simulate a swipe gesture. Parameters: start_x (start X coordinate), start_y (start Y coordinate), end_x (end X coordinate), end_y (end Y coordinate), duration (duration in milliseconds, default 300)
-      - find_element: Find UI elements matching specific criteria without clicking them. Parameters: resourceId (element resource ID, optional), className (element class name, optional), text (element text content, optional), partialMatch (whether to enable partial matching, default false), limit (maximum number of elements to return, default 10)
-      
-      Advanced UI Automation Tools:
-      These tools can execute a series of tasks in a chain, making them superior to standard UI automation tools.
-      - search_automation_config: Search for available automation configurations for specific applications. Parameters: package_name (optional, package name to search), app_name (optional, application name to search), at least one parameter must be provided
-      - get_available_functions: Get list of available automation functions for a specific application. Parameters: package_name (optional, package name to get functions for)
-      - get_plan_parameters: Get required parameters for executing a specific automation function. Parameters: function_name (name of the automation function), package_name (optional, package name)
-      - execute_plan: Execute an automation plan with provided parameters. Parameters: parameters (JSON string containing execution parameters)
+
       
       AI Computer Tools:
       - computer_get_tabs: Gets all open computer tabs.
@@ -153,7 +146,7 @@ object SystemPromptConfig {
       UI AUTOMATION ADVICE:
       - Element targeting options:
         • Lists: use index parameter (e.g., "resourceId item 2")
-        • Precise: use bounds "[left,top][right,bottom]" or find_element first
+        • Precise: use bounds "[left,top][right,bottom]"
         • Fallback: use "tap x y" for coordinate-based clicks
   """.trimIndent()
 
@@ -313,14 +306,7 @@ object SystemPromptConfig {
         - set_input_text: 在输入字段中设置文本。参数：text（要输入的文本）
         - press_key: 模拟按键。参数：key_code（键码，例如"KEYCODE_BACK"、"KEYCODE_HOME"等）
         - swipe: 模拟滑动手势。参数：start_x（起始X坐标），start_y（起始Y坐标），end_x（结束X坐标），end_y（结束Y坐标），duration（持续时间，毫秒，默认300）
-        - find_element: 查找符合特定条件的UI元素而不点击它们。参数：resourceId（元素资源ID，可选），className（元素类名，可选），text（元素文本内容，可选），partialMatch（是否启用部分匹配，默认false），limit（返回的最大元素数量，默认10）
 
-        高级UI自动化工具：
-        这些工具能够直接一连串地执行任务，优于普通UI自动化工具。
-        - search_automation_config: 搜索指定应用程序的可用自动化配置。参数：package_name（可选，要搜索的包名），app_name（可选，要搜索的应用名称），至少必须提供一个参数
-        - get_available_functions: 获取指定应用程序的可用自动化功能列表。参数：package_name（可选，要获取功能的包名）
-        - get_plan_parameters: 获取执行特定自动化功能所需的参数。参数：function_name（自动化功能名称），package_name（可选，包名）
-        - execute_plan: 使用提供的参数执行自动化计划。参数：parameters（包含执行参数的JSON字符串）
         
         AI电脑工具:
         - computer_get_tabs: 获取所有打开的电脑标签页。
@@ -348,7 +334,7 @@ object SystemPromptConfig {
         UI自动化建议：
         - 元素定位选项：
           • 列表：使用index参数（例如，"resourceId item 2"）
-          • 精确：使用bounds "[left,top][right,bottom]"或先使用find_element
+          • 精确：使用bounds "[left,top][right,bottom]"
           • 备用：使用"tap x y"进行基于坐标的点击
     """.trimIndent()
 

@@ -741,10 +741,6 @@ class JsEngine(private val context: Context) {
                 // 从模块环境中获取结果
                 const module = moduleResult.module;
                 const moduleResultExports = moduleResult.exports;
-
-                console.log("moduleResultExports: " + Object.entries(moduleResultExports)
-                .map(([key, value]) => key+": "+value+"("+typeof value+")")
-                .join("\n") + "\n");
                 
                 // 确保指定的函数存在 - 先查找exports，再查找module.exports，最后查找全局
                 let functionResult = null;
@@ -1148,7 +1144,7 @@ class JsEngine(private val context: Context) {
                     val resultString = result.result.toString()
                     Log.d(
                             TAG,
-                            "[Sync] Tool execution succeeded: ${resultString.take(10000)}${if (resultString.length > 10000) "..." else ""}"
+                            "[Sync] Tool execution succeeded: ${resultString.take(1000)}${if (resultString.length > 1000) "..." else ""}"
                     )
                 } else {
                     Log.e(TAG, "[Sync] Tool execution failed: ${result.error}")
@@ -1272,7 +1268,7 @@ class JsEngine(private val context: Context) {
                                     val resultString = result.result.toString()
                                     Log.d(
                                             TAG,
-                                            "[Async] Tool execution succeeded: ${resultString.take(1000)}${if (resultString.length > 1000) "..." else ""}"
+                                            "[Async] Tool execution succeeded: ${resultString.take(80000)}${if (resultString.length > 80000) "..." else ""}"
                                     )
                                     // 发送成功结果回调
                                     val resultJson =

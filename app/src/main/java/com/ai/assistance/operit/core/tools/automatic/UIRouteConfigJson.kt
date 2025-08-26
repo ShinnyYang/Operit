@@ -23,7 +23,8 @@ data class JsonUINode(
     val name: String,
     val description: String,
     val activityName: String? = null,
-    val nodeType: String // e.g., "APP_HOME", "LIST_PAGE"
+    val nodeType: String, // e.g., "APP_HOME", "LIST_PAGE"
+    val matchCriteria: List<JsonUISelector>? = null
 )
 
 @Serializable
@@ -49,12 +50,6 @@ data class JsonUIFunction(
 data class JsonUISelector(
     val type: String, // "ByText", "ByResourceId", "ByClassName", "ByContentDescription", "ByBounds"
     val value: String? = null,
-    val id: String? = null,
-    val text: String? = null,
-    val desc: String? = null,
-    val name: String? = null,
-    val bounds: String? = null,
-    val xpath: String? = null,
     val partialMatch: Boolean = false,
     val index: Int? = null, // 当多个元素匹配时，指定索引
     val selectors: List<JsonUISelector>? = null, // 复合选择器

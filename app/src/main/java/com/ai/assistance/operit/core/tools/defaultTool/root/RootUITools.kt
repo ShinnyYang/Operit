@@ -420,13 +420,6 @@ open class RootUITools(context: Context) : AdminUITools(context) {
         // 使用父类的实现
         return super.getPageInfo(tool)
     }
-
-    /** 使用标准方式查找UI元素 */
-    override suspend fun findElement(tool: AITool): ToolResult {
-        // 使用父类的实现
-        return super.findElement(tool)
-    }
-
     /** 查找适合触摸事件的输入设备 这是一个root权限专有操作，因为需要访问/dev/input下的设备 */
     private suspend fun findTouchDevice(): String? {
         if (touchDevicePath != null) return touchDevicePath

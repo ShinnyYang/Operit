@@ -303,12 +303,12 @@ class UIRouter(
             try {
                 Log.d(TAG, "正在获取当前页面信息 (尝试 ${retryCount + 1}/$MAX_PAGE_INFO_RETRY)")
                 
-                // 调用get_page_info工具
+                // 调用get_page_info工具, 请求详细信息
                 val pageInfoTool = AITool(
                     name = "get_page_info",
                     parameters = listOf(
                         ToolParameter("format", "json"),
-                        ToolParameter("detail", "summary")
+                        ToolParameter("detail", "detail") // 请求详细信息
                     )
                 )
                 
@@ -345,14 +345,12 @@ class UIRouter(
         try {
             when (pageInfoResult) {
                 is UIPageResultData -> {
-                    // 如果是结构化的UIPageResultData
                     val packageName = pageInfoResult.packageName
                     val activityName = pageInfoResult.activityName
                     
                     Log.d(TAG, "解析页面信息: packageName=$packageName, activityName=$activityName")
                     
-                    // 根据包名和Activity名查找对应的节点ID
-                    val nodeId = findNodeIdForState(packageName, activityName) ?: "unknown_page"
+                    val nodeId = findNodeIdForState(packageName, activityName, pageInfoResult) ?: "unknown_page"
                     
                     return UIState(
                         nodeId = nodeId,
@@ -362,14 +360,18 @@ class UIRouter(
                     )
                 }
                 is String -> {
-                    // 如果是JSON字符串，尝试解析
+                    // JSON字符串的解析逻辑可能需要调整以支持完整的UIPageResultData结构
+                    // 为了简化, 我们假设这里也能得到一个可以解析为UIPageResultData的结构
+                    // 在实际应用中, 可能需要更复杂的JSON解析
                     val jsonObject = JSONObject(pageInfoResult)
                     val packageName = jsonObject.optString("packageName", "unknown")
                     val activityName = jsonObject.optString("activityName", "unknown")
                     
                     Log.d(TAG, "从JSON解析页面信息: packageName=$packageName, activityName=$activityName")
                     
-                    val nodeId = findNodeIdForState(packageName, activityName) ?: "unknown_page"
+                    // 注意: 从纯JSON字符串可能无法重建完整的uiElements树, 除非JSON结构与UIPageResultData完全一致
+                    // 这里的特征匹配可能会受限
+                    val nodeId = findNodeIdForState(packageName, activityName, null) ?: "unknown_page"
                     
                     return UIState(
                         nodeId = nodeId,
@@ -390,24 +392,51 @@ class UIRouter(
 
     /**
      * 根据包名和Activity名查找对应的节点ID。
+     * 新逻辑: 优先使用matchCriteria进行特征匹配, 然后回退到activityName匹配。
      */
-    private fun findNodeIdForState(packageName: String, activityName: String?): String? {
+    private fun findNodeIdForState(
+        packageName: String,
+        activityName: String?,
+        uiElements: UIPageResultData?
+    ): String? {
         val config = routeConfig ?: return null
         
-        // 精确匹配：包名和Activity名都匹配
-        var matchedNode = config.nodeDefinitions.values.find { node ->
-            node.packageName == packageName && 
-            (node.activityName == null || node.activityName == activityName)
-        }
-        
-        // 如果精确匹配失败，尝试只匹配包名
-        if (matchedNode == null) {
-            matchedNode = config.nodeDefinitions.values.find { node ->
-                node.packageName == packageName
+        // 1. 优先使用特征匹配
+        if (uiElements != null) {
+            val matchedNode = config.nodeDefinitions.values.find { node ->
+                node.packageName == packageName &&
+                node.matchCriteria.isNotEmpty() &&
+                node.matchCriteria.all { selector ->
+                    // 检查页面上是否存在所有必需的元素
+                    UIElementFinder.findElement(uiElements.uiElements, selector) != null
+                }
+            }
+            if (matchedNode != null) {
+                Log.d(TAG, "通过特征匹配找到节点: ${matchedNode.name}")
+                return matchedNode.name
             }
         }
+
+        // 2. 如果特征匹配失败, 回退到Activity名匹配
+        // 精确匹配：包名和Activity名都匹配
+        var matchedNode = config.nodeDefinitions.values.find { node ->
+            node.packageName == packageName &&
+            (node.activityName != null && node.activityName == activityName)
+        }
         
-        Log.d(TAG, "为状态 $packageName/$activityName 找到节点: ${matchedNode?.name}")
+        // 如果精确匹配失败，尝试只匹配包名且activityName为空的节点 (通常是App Home)
+        if (matchedNode == null) {
+            matchedNode = config.nodeDefinitions.values.find { node ->
+                node.packageName == packageName && node.activityName == null
+            }
+        }
+
+        if (matchedNode != null) {
+            Log.d(TAG, "通过Activity/Package名匹配找到节点: ${matchedNode.name}")
+        } else {
+            Log.w(TAG, "无法为状态 $packageName/$activityName 找到匹配的节点")
+        }
+        
         return matchedNode?.name
     }
 

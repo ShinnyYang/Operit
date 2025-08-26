@@ -30,13 +30,13 @@ interface HttpRequest {
     bodyType?: 'text' | 'json' | 'form' | 'multipart';
     formParams?: Record<string, string>;
     multipartParams?: Array<{ name: string; value: string; contentType?: string }>;
-    execute(): Promise<Response>;
+    execute(): Promise<OkHttpResponse>;
 }
 
 /**
  * HTTP response representation
  */
-interface Response {
+interface OkHttpResponse {
     /**
      * The raw response data
      */
@@ -145,27 +145,27 @@ declare class OkHttpClient {
     /**
      * Execute an HTTP request
      */
-    execute(request: HttpRequest): Promise<Response>;
+    execute(request: HttpRequest): Promise<OkHttpResponse>;
 
     /**
      * Shorthand method for GET requests
      */
-    get(url: string, headers?: Record<string, string>): Promise<Response>;
+    get(url: string, headers?: Record<string, string>): Promise<OkHttpResponse>;
 
     /**
      * Shorthand method for POST requests
      */
-    post(url: string, body: any, headers?: Record<string, string>): Promise<Response>;
+    post(url: string, body: any, headers?: Record<string, string>): Promise<OkHttpResponse>;
 
     /**
      * Shorthand method for PUT requests
      */
-    put(url: string, body: any, headers?: Record<string, string>): Promise<Response>;
+    put(url: string, body: any, headers?: Record<string, string>): Promise<OkHttpResponse>;
 
     /**
      * Shorthand method for DELETE requests
      */
-    delete(url: string, headers?: Record<string, string>): Promise<Response>;
+    delete(url: string, headers?: Record<string, string>): Promise<OkHttpResponse>;
 
     /**
      * Create a new client builder

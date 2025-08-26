@@ -195,7 +195,7 @@ interface Price {
     seat_type_code: string;
     num: string;
     price: number;
-    discount: number | null;
+    discount: number | undefined;
 }
 
 type RouteStationData = {
@@ -331,15 +331,15 @@ const ticket12306 = (function () {
     const WEB_URL = 'https://www.12306.cn/index/';
     const LCQUERY_INIT_URL = 'https://kyfw.12306.cn/otn/lcQuery/init';
 
-    let LCQUERY_PATH: string | null = null;
+    let LCQUERY_PATH: string | undefined = undefined;
     const MISSING_STATIONS: StationData[] = [
         { station_id: '@cdd', station_name: '成  都东', station_code: 'WEI', station_pinyin: 'chengdudong', station_short: 'cdd', station_index: '', code: '1707', city: '成都', r1: '', r2: '' },
     ];
 
-    let STATIONS: Record<string, StationData> | null = null;
-    let CITY_STATIONS: Record<string, { station_code: string; station_name: string }[]> | null = null;
-    let CITY_CODES: Record<string, { station_code: string; station_name: string }> | null = null;
-    let NAME_STATIONS: Record<string, { station_code: string; station_name: string }> | null = null;
+    let STATIONS: Record<string, StationData> | undefined = undefined;
+    let CITY_STATIONS: Record<string, { station_code: string; station_name: string }[]> | undefined = undefined;
+    let CITY_CODES: Record<string, { station_code: string; station_name: string }> | undefined = undefined;
+    let NAME_STATIONS: Record<string, { station_code: string; station_name: string }> | undefined = undefined;
 
     const SEAT_SHORT_TYPES = { swz: '商务座', tz: '特等座', zy: '一等座', ze: '二等座', gr: '高软卧', srrb: '动卧', rw: '软卧', yw: '硬卧', rz: '软座', yz: '硬座', wz: '无座', qt: '其他', gg: '', yb: '' };
     const SEAT_TYPES = {
@@ -348,7 +348,7 @@ const ticket12306 = (function () {
     const DW_FLAGS = ['智能动车组', '复兴号', '静音车厢', '温馨动卧', '动感号', '支持选铺', '老年优惠'];
 
     const client = OkHttp.newClient();
-    let initPromise: Promise<void> | null = null;
+    let initPromise: Promise<void> | undefined = undefined;
 
     // #region 辅助函数
     function formatDate(date: Date): string {
@@ -397,7 +397,7 @@ const ticket12306 = (function () {
         return Object.entries(cookies).map(([key, value]) => `${key}=${value}`).join('; ');
     }
 
-    async function getCookie(): Promise<Record<string, string> | null> {
+    async function getCookie(): Promise<Record<string, string> | undefined> {
         const url = `${API_BASE}/otn/leftTicket/init`;
         try {
             const response = await client.newRequest().url(url).build().execute();
@@ -413,11 +413,11 @@ const ticket12306 = (function () {
             return {};
         } catch (error) {
             console.error('Error getting 12306 cookie:', error);
-            return null;
+            return undefined;
         }
     }
 
-    async function make12306Request<T>(url: string, params: Record<string, string> = {}, headers: Record<string, string> = {}): Promise<T | null> {
+    async function make12306Request<T>(url: string, params: Record<string, string> = {}, headers: Record<string, string> = {}): Promise<T | undefined> {
         const queryString = Object.entries(params).map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`).join('&');
         const fullUrl = queryString ? `${url}?${queryString}` : url;
         try {
@@ -434,11 +434,11 @@ const ticket12306 = (function () {
             return JSON.parse(response.content);
         } catch (error) {
             console.error(`Error making 12306 request to ${fullUrl}:`, error);
-            return null;
+            return undefined;
         }
     }
 
-    async function make12306RequestHtml(url: string): Promise<string | null> {
+    async function make12306RequestHtml(url: string): Promise<string | undefined> {
         try {
             const request = client.newRequest().url(url).method('GET');
             const response = await request.build().execute();
@@ -448,7 +448,7 @@ const ticket12306 = (function () {
             return response.content;
         } catch (error) {
             console.error(`Error fetching HTML from ${url}:`, error);
-            return null;
+            return undefined;
         }
     }
 
@@ -487,7 +487,7 @@ const ticket12306 = (function () {
             }
             const seat_type = SEAT_TYPES[seat_type_code as keyof typeof SEAT_TYPES];
             const price = parseInt(price_str.slice(1, 6), 10) / 10;
-            const discount = seat_type_code in discounts ? discounts[seat_type_code] : null;
+            const discount = seat_type_code in discounts ? discounts[seat_type_code] : undefined;
             prices.push({
                 seat_name: seat_type.name,
                 short: seat_type.short,
@@ -722,9 +722,9 @@ const ticket12306 = (function () {
 
     async function getLCQueryPath(): Promise<string> {
         const html = await make12306RequestHtml(LCQUERY_INIT_URL);
-        if (html == null) throw new Error('Error: get 12306 web page for LCQuery path failed.');
+        if (html == undefined) throw new Error('Error: get 12306 web page for LCQuery path failed.');
         const match = html.match(/var lc_search_url = '(.+?)'/);
-        if (match == null) throw new Error('Error: get LCQuery path failed.');
+        if (match == undefined) throw new Error('Error: get LCQuery path failed.');
         return match[1];
     }
 
@@ -758,7 +758,7 @@ const ticket12306 = (function () {
                     NAME_STATIONS[station.station_name] = { station_code: station.station_code, station_name: station.station_name };
                 }
             } catch (e) {
-                initPromise = null; // Reset promise on failure to allow retry
+                initPromise = undefined; // Reset promise on failure to allow retry
                 throw e;
             }
         })();
@@ -918,28 +918,28 @@ const ticket12306 = (function () {
 
             console.log("\n[1/8] 测试 get_current_date...");
             const dateResult = await get_current_date({});
-            console.log("测试结果:", JSON.stringify(dateResult, null, 2));
+            console.log("测试结果:", JSON.stringify(dateResult, undefined, 2));
             const testDate = dateResult as string;
 
             console.log("\n[2/8] 测试 get_stations_code_in_city (北京)...");
             const cityStations = await get_stations_code_in_city({ city: '北京' });
-            console.log("测试结果:", JSON.stringify(cityStations, null, 2));
+            console.log("测试结果:", JSON.stringify(cityStations, undefined, 2));
 
             console.log("\n[3/8] 测试 get_station_code_of_citys (北京|上海)...");
             const cityCodesResult = await get_station_code_of_citys({ citys: '北京|上海' });
-            console.log("测试结果:", JSON.stringify(cityCodesResult, null, 2));
+            console.log("测试结果:", JSON.stringify(cityCodesResult, undefined, 2));
             const beijingCode = (cityCodesResult as any)['北京'].station_code;
             const shanghaiCode = (cityCodesResult as any)['上海'].station_code;
 
             console.log("\n[4/8] 测试 get_station_code_by_names (北京南|上海虹桥)...");
             const stationCodesResult = await get_station_code_by_names({ station_names: '北京南|上海虹桥' });
-            console.log("测试结果:", JSON.stringify(stationCodesResult, null, 2));
+            console.log("测试结果:", JSON.stringify(stationCodesResult, undefined, 2));
             const beijingnanCode = (stationCodesResult as any)['北京南'].station_code;
             const shanghaihongqiaoCode = (stationCodesResult as any)['上海虹桥'].station_code;
 
             console.log("\n[5/8] 测试 get_station_by_telecode (VNP)...");
             const stationInfo = await get_station_by_telecode({ station_telecode: 'VNP' }); // VNP is 北京
-            console.log("测试结果:", JSON.stringify(stationInfo, null, 2));
+            console.log("测试结果:", JSON.stringify(stationInfo, undefined, 2));
 
             console.log(`\n[6/8] 测试 get_tickets (${testDate}, from: 北京南, to: 上海虹桥)...`);
             const tickets = await get_tickets({
@@ -971,7 +971,7 @@ const ticket12306 = (function () {
                     to_station_telecode: shanghaihongqiaoCode,
                     depart_date: testDate
                 });
-                console.log("测试结果:", JSON.stringify(routeStations, null, 2));
+                console.log("测试结果:", JSON.stringify(routeStations, undefined, 2));
             } else {
                 console.log("未从 get_tickets 结果中找到可用车次来测试 get_train_route_stations。");
             }

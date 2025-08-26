@@ -44,17 +44,21 @@ class UIState(
     }
 
     /**
-     * 在当前页面的UI元素中查找指定的元素
+     * Finds a UI element by its text content.
      */
     fun findElementByText(text: String): SimplifiedUINode? {
-        return uiElements?.findElementByText(text)
+        return uiElements?.let {
+            UIElementFinder.findElement(it, UISelector.ByText(text))
+        }
     }
 
     /**
-     * 在当前页面的UI元素中查找指定资源ID的元素
+     * Finds a UI element by its resource ID.
      */
     fun findElementByResourceId(resourceId: String): SimplifiedUINode? {
-        return uiElements?.findElementByResourceId(resourceId)
+        return uiElements?.let {
+            UIElementFinder.findElement(it, UISelector.ByResourceId(resourceId))
+        }
     }
 
     /**

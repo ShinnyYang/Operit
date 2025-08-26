@@ -38,6 +38,16 @@ interface ShellExecutor {
     /** 初始化执行器 */
     fun initialize()
 
+    /**
+     * 执行一个长期运行的命令，并提供一个交互式进程对象。
+     * 主要用于需要持续读取输出流的命令，例如 'logcat' 或 'getevent'。
+     *
+     * @param command 要执行的命令。
+     * @return 一个 ShellProcess 对象，允许管理进程并读取其输出流。
+     * @throws UnsupportedOperationException 如果执行器不支持启动持久进程。
+     */
+    suspend fun startProcess(command: String): ShellProcess
+
     /** 命令执行结果数据类 */
     data class CommandResult(
             val success: Boolean,
@@ -56,4 +66,31 @@ interface ShellExecutor {
             fun denied(reason: String) = PermissionStatus(false, reason)
         }
     }
+}
+
+/**
+ * 代表一个正在运行的、可交互的Shell进程。
+ */
+interface ShellProcess {
+    /** 从标准输出流读取的文本行 Flow。 */
+    val stdout: kotlinx.coroutines.flow.Flow<String>
+
+    /** 从标准错误流读取的文本行 Flow。 */
+    val stderr: kotlinx.coroutines.flow.Flow<String>
+
+    /**
+     * 强行终止进程。
+     */
+    fun destroy()
+
+    /**
+     * 挂起直到进程执行完毕，并返回其退出码。
+     */
+    suspend fun waitFor(): Int
+
+    /**
+     * 检查进程是否仍在运行。
+     * @return 如果进程是活跃的，则返回true。
+     */
+    val isAlive: Boolean
 }

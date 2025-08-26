@@ -1560,70 +1560,47 @@ async function testClickElement(results: TestResults): Promise<void> {
         findClickableElement(pageInfo.uiElements);
 
         if (!clickableFound) {
-            console.log("No clickable elements with resource ID found, using text based searching");
+            console.log("No clickable elements with resource ID found, trying generic approaches");
 
-            // Attempt to find buttons or other potential clickable elements
-            const potentialElements = await toolCall("find_element", {
+            // Try to click a generic button by class name
+            const result = await toolCall("click_element", {
                 className: "android.widget.Button",
-                partialMatch: true,
-                limit: 5
-            }) as UIPageResultData;
+                index: 0
+            }) as UIActionResultData;
 
-            if (potentialElements && potentialElements.uiElements && potentialElements.uiElements.children && potentialElements.uiElements.children.length > 0) {
-                const button = potentialElements.uiElements.children[0];
-                console.log("Found a potential button to click:", button);
+            if (result) {
+                console.log("Successfully clicked button by class name");
+                results["click_element"] = {
+                    success: true,
+                    data: result
+                };
+            } else {
+                console.log("Failed to click button by class name, trying by text");
 
-                const result = await toolCall("click_element", {
-                    className: "android.widget.Button",
-                    index: 0
+                const textResult = await toolCall("click_element", {
+                    text: "OK",
+                    partialMatch: true
                 }) as UIActionResultData;
 
-                if (result) {
-                    console.log("Successfully clicked button by class name");
+                if (textResult) {
+                    console.log("Successfully clicked element with text containing 'OK'");
                     results["click_element"] = {
                         success: true,
-                        data: result
+                        data: textResult
                     };
                 } else {
-                    console.log("Failed to click button by class name, trying by text");
-
-                    const textResult = await toolCall("click_element", {
-                        text: "OK",
-                        partialMatch: true
+                    // As a last resort, try a generic clickable
+                    const clickableResult = await toolCall("click_element", {
+                        className: "android.view.View",
+                        isClickable: true,
+                        index: 0
                     }) as UIActionResultData;
 
-                    if (textResult) {
-                        console.log("Successfully clicked element with text containing 'OK'");
-                        results["click_element"] = {
-                            success: true,
-                            data: textResult
-                        };
-                    } else {
-                        // As a last resort, try a generic clickable
-                        const clickableResult = await toolCall("click_element", {
-                            className: "android.view.View",
-                            isClickable: true,
-                            index: 0
-                        }) as UIActionResultData;
-
-                        results["click_element"] = {
-                            success: clickableResult ? true : false,
-                            data: clickableResult || { actionType: "click", actionDescription: "All click attempts failed" }
-                        };
-                    }
+                    results["click_element"] = {
+                        success: clickableResult ? true : false,
+                        data: clickableResult || { actionType: "click", actionDescription: "All click attempts failed" }
+                    };
                 }
-            } else {
-                console.log("No buttons found, trying most basic clickable");
-
-                const clickableResult = await toolCall("click_element", {
-                    isClickable: true,
-                    index: 0
-                }) as UIActionResultData;
-
-                results["click_element"] = {
-                    success: clickableResult ? true : false,
-                    data: clickableResult || { actionType: "click", actionDescription: "All click attempts failed" }
-                };
             }
         } else {
             console.log(`Testing click_element with resourceId: ${resourceId}`);
@@ -1917,135 +1894,7 @@ async function testSwipe(results: TestResults): Promise<void> {
     }
 }
 
-/**
- * Tests the find_element tool
- */
-async function testFindElement(results: TestResults): Promise<void> {
-    console.log("\n--- Testing find_element ---");
-    try {
-        // First get page info to have a reference point
-        const pageInfo = await toolCall("get_page_info");
 
-        if (!pageInfo || !pageInfo.uiElements) {
-            results["find_element"] = {
-                success: false,
-                error: "Failed to get initial UI hierarchy for reference"
-            };
-            return;
-        }
-
-        console.log("Current UI available for searching");
-
-        // Find clickable elements
-        let clickableFound = false;
-        let resourceId = "";
-        let className = "";
-        let bounds = "";
-
-        function findClickableElement(node: SimplifiedUINode): void {
-            if (node.isClickable && node.resourceId) {
-                clickableFound = true;
-                resourceId = node.resourceId;
-                className = node.className || "";
-                bounds = node.bounds || "";
-                return;
-            }
-
-            for (const child of node.children) {
-                if (clickableFound) return;
-                findClickableElement(child);
-            }
-        }
-
-        // Find a clickable element in the current UI
-        findClickableElement(pageInfo.uiElements);
-
-        if (!clickableFound) {
-            console.log("No clickable elements with resource ID found, using generic search");
-            // If we can't find a specific element, perform a generic search
-            const result = await toolCall("find_element", {
-                className: "android.widget.Button",
-                partialMatch: true,
-                limit: 5
-            });
-
-            if (result && result.uiElements && result.uiElements.children && result.uiElements.children.length > 0) {
-                console.log(`Found ${result.uiElements.children.length} elements with partial class matching android.widget.Button`);
-                prettyPrint("Find Element Results", result);
-                results["find_element"] = {
-                    success: true,
-                    data: result
-                };
-            } else {
-                // Try another generic search
-                const textResult = await toolCall("find_element", {
-                    text: "button",
-                    partialMatch: true,
-                    limit: 5
-                });
-
-                if (textResult && textResult.uiElements && textResult.uiElements.children && textResult.uiElements.children.length > 0) {
-                    console.log(`Found ${textResult.uiElements.children.length} elements with text containing 'button'`);
-                    prettyPrint("Find Element Text Results", textResult);
-                    results["find_element"] = {
-                        success: true,
-                        data: textResult
-                    };
-                } else {
-                    results["find_element"] = {
-                        success: false,
-                        error: "No elements found with search criteria"
-                    };
-                }
-            }
-        } else {
-            // Test finding by resourceId
-            console.log(`Testing find_element with resourceId: ${resourceId}`);
-            const resultById = await toolCall("find_element", {
-                resourceId: resourceId
-            });
-
-            if (resultById && resultById.uiElements && resultById.uiElements.children && resultById.uiElements.children.length > 0) {
-                console.log(`Found ${resultById.uiElements.children.length} elements with resourceId: ${resourceId}`);
-                prettyPrint("Find Element By ID Results", resultById);
-
-                // Also test with className if available
-                if (className) {
-                    console.log(`Testing find_element with className: ${className}`);
-                    const resultByClass = await toolCall("find_element", {
-                        className: className
-                    });
-
-                    if (resultByClass && resultByClass.uiElements && resultByClass.uiElements.children && resultByClass.uiElements.children.length > 0) {
-                        console.log(`Found ${resultByClass.uiElements.children.length} elements with className: ${className}`);
-                    }
-                }
-
-                // If bounds is available, save it for click_element test with bounds
-                if (bounds) {
-                    console.log(`Found bounds for click testing: ${bounds}`);
-                    // We'll use this in testClickElement
-                }
-
-                results["find_element"] = {
-                    success: true,
-                    data: resultById
-                };
-            } else {
-                results["find_element"] = {
-                    success: false,
-                    error: `No elements found with resourceId: ${resourceId}`
-                };
-            }
-        }
-    } catch (error) {
-        console.error("Error in testFindElement:", error);
-        results["find_element"] = {
-            success: false,
-            error: error.toString()
-        };
-    }
-}
 
 // Export main function and category-specific test runners
 exports.main = runTests;
@@ -2088,5 +1937,4 @@ exports.testClickElement = testClickElement;
 exports.testTap = testTap;
 exports.testSetInputText = testSetInputText;
 exports.testPressKey = testPressKey;
-exports.testSwipe = testSwipe;
-exports.testFindElement = testFindElement; 
+exports.testSwipe = testSwipe; 

@@ -6,7 +6,17 @@
         {
             "name": "下载器主页",
             "description": "应用主界面",
-            "nodeType": "APP_HOME"
+            "nodeType": "APP_HOME",
+            "matchCriteria": [
+                {
+                    "type": "ByContentDesc",
+                    "value": "设置"
+                },
+                {
+                    "type": "ByText",
+                    "value": "ADM"
+                }
+            ]
         },
         {
             "name": "侧边菜单",

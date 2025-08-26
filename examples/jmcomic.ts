@@ -142,7 +142,7 @@ interface DownloadResult {
     albumId: string;
     title?: string;
     downloadedFiles?: {
-        directory: string | null;
+        directory: string | undefined;
         fileCount: number;
         files: string[];
     };
@@ -347,8 +347,8 @@ const jmcomic = (function () {
                 return;
             }
 
-            let srcImage: Jimp.JimpWrapper | null = null;
-            let resultImage: Jimp.JimpWrapper | null = null;
+            let srcImage: Jimp.JimpWrapper | undefined = undefined;
+            let resultImage: Jimp.JimpWrapper | undefined = undefined;
             const stripsToRelease: Jimp.JimpWrapper[] = [];
 
             try {
@@ -434,7 +434,7 @@ const jmcomic = (function () {
     }
 
     class JmApiResp {
-        constructor(private resp: Response, private ts: number) { }
+        constructor(private resp: OkHttpResponse, private ts: number) { }
 
         get isSuccess(): boolean {
             return this.resp.isSuccessful();
@@ -796,7 +796,7 @@ const jmcomic = (function () {
                     files: files.slice(0, 10)
                 };
             }
-            return { directory: null, fileCount: 0, files: [] };
+            return { directory: undefined, fileCount: 0, files: [] };
         }
     }
     //endregion

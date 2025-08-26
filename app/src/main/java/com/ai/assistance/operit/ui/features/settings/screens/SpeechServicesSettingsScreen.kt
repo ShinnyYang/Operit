@@ -57,6 +57,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import androidx.compose.foundation.layout.Arrangement
 import com.ai.assistance.operit.api.voice.VoiceServiceFactory.VoiceServiceType
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.IconButton
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -69,7 +71,7 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
 
     // --- State for TTS Settings ---
     val ttsServiceType by prefs.ttsServiceTypeFlow.collectAsState(initial = VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS)
-    val httpConfig by prefs.ttsHttpConfigFlow.collectAsState(initial = SpeechServicesPreferences.BAIDU_TTS_PRESET)
+    val httpConfig by prefs.ttsHttpConfigFlow.collectAsState(initial = SpeechServicesPreferences.DEFAULT_HTTP_TTS_PRESET)
 
     var ttsServiceTypeInput by remember(ttsServiceType) { mutableStateOf(ttsServiceType) }
     var ttsUrlTemplateInput by remember(httpConfig) { mutableStateOf(httpConfig.urlTemplate) }
@@ -79,6 +81,7 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
     var ttsRequestBodyInput by remember(httpConfig) { mutableStateOf(httpConfig.requestBody) }
     var ttsContentTypeInput by remember(httpConfig) { mutableStateOf(httpConfig.contentType) }
     var ttsJsonError by remember { mutableStateOf<String?>(null) }
+    var httpMethodDropdownExpanded by remember { mutableStateOf(false) }
 
     // --- State for STT Settings ---
     val sttServiceType by prefs.sttServiceTypeFlow.collectAsState(initial = SpeechServiceFactory.SpeechServiceType.SHERPA_NCNN)
@@ -94,6 +97,9 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
                 } else {
                     basicValid
                 }
+            }
+            VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS -> {
+                ttsApiKeyInput.isNotBlank()
             }
             VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS -> true
         }
@@ -113,17 +119,30 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
         scope.launch {
             when (ttsServiceTypeInput) {
                 VoiceServiceFactory.VoiceServiceType.HTTP_TTS -> {
-            prefs.saveTtsSettings(
-                serviceType = ttsServiceTypeInput,
-                httpConfig = SpeechServicesPreferences.TtsHttpConfig(
-                    urlTemplate = ttsUrlTemplateInput,
-                    apiKey = ttsApiKeyInput,
+                    prefs.saveTtsSettings(
+                        serviceType = ttsServiceTypeInput,
+                        httpConfig = SpeechServicesPreferences.TtsHttpConfig(
+                            urlTemplate = ttsUrlTemplateInput,
+                            apiKey = ttsApiKeyInput,
                             headers = headersMap,
                             httpMethod = ttsHttpMethodInput,
                             requestBody = ttsRequestBodyInput,
                             contentType = ttsContentTypeInput
-                )
-            )
+                        )
+                    )
+                }
+                VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS -> {
+                    prefs.saveTtsSettings(
+                        serviceType = ttsServiceTypeInput,
+                        httpConfig = SpeechServicesPreferences.TtsHttpConfig(
+                            urlTemplate = "",
+                            apiKey = ttsApiKeyInput,
+                            headers = emptyMap(),
+                            httpMethod = "",
+                            requestBody = "",
+                            contentType = ""
+                        )
+                    )
                 }
                 VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS -> {
                     prefs.saveTtsSettings(serviceType = ttsServiceTypeInput)
@@ -209,6 +228,7 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
                                 value = when(ttsServiceTypeInput) {
                                     VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS -> "系统 TTS (简单)"
                                     VoiceServiceFactory.VoiceServiceType.HTTP_TTS -> "HTTP API (远程)"
+                                    VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS -> "硅基流动 TTS"
                                 },
                                 onValueChange = {},
                                 readOnly = true,
@@ -229,6 +249,7 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
                                                 text = when(type) {
                                                     VoiceServiceFactory.VoiceServiceType.SIMPLE_TTS -> "系统 TTS (简单)"
                                                     VoiceServiceFactory.VoiceServiceType.HTTP_TTS -> "HTTP API (远程)"
+                                                    VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS -> "硅基流动 TTS"
                                                 },
                                                 fontWeight = if (ttsServiceTypeInput == type) FontWeight.Medium else FontWeight.Normal
                                             ) 
@@ -244,49 +265,36 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
 
                         AnimatedVisibility(visible = ttsServiceTypeInput == VoiceServiceFactory.VoiceServiceType.HTTP_TTS) {
                             Column(modifier = Modifier.padding(top = 16.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "HTTP API 配置",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    OutlinedButton(onClick = { 
-                                        val preset = SpeechServicesPreferences.BAIDU_TTS_PRESET
-                                        ttsUrlTemplateInput = preset.urlTemplate
-                                        ttsApiKeyInput = preset.apiKey
-                                        ttsHeadersInput = Json.encodeToString(preset.headers)
-                                    }) {
-                                        Text("加载百度翻译预设")
-                                    }
-                                }
-                                
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    text = "HTTP TTS 配置",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
 
                                 OutlinedTextField(
                                     value = ttsUrlTemplateInput,
                                     onValueChange = { ttsUrlTemplateInput = it },
                                     label = { Text("URL 模板") },
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    placeholder = { Text("https://example.com/tts?text={text}") },
-                                    supportingText = {
-                                        Text("使用 {text}, {rate}, {pitch}, {voice} 作为占位符。")
-                                    },
-                                    minLines = 2
+                                    placeholder = { Text("例如: https://api.example.com/tts?text={text}") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
                                 )
-                                
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
                                 OutlinedTextField(
                                     value = ttsApiKeyInput,
                                     onValueChange = { ttsApiKeyInput = it },
-                                    label = { Text("API 密钥 (可选)") },
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    placeholder = { Text("将作为 Authorization: Bearer <key> 发送") },
+                                    label = { Text("API 密钥") },
+                                    placeholder = { Text("可选，某些服务需要") },
+                                    modifier = Modifier.fillMaxWidth(),
                                     singleLine = true
                                 )
-                                
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
                                 OutlinedTextField(
                                     value = ttsHeadersInput,
                                     onValueChange = { 
@@ -302,69 +310,96 @@ fun SpeechServicesSettingsScreen(onBackPressed: () -> Unit) {
                                             }
                                         }
                                     },
-                                    label = { Text("自定义请求头 (JSON)") },
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    isError = ttsJsonError != null,
-                                    supportingText = {
-                                        if (ttsJsonError != null) {
-                                            Text(ttsJsonError!!, color = MaterialTheme.colorScheme.error)
-                                        } else {
-                                            Text("用于添加额外的 HTTP 请求头。")
-                                        }
-                                    },
-                                    minLines = 2
+                                    label = { Text("HTTP 头部 (JSON)") },
+                                    placeholder = { Text("{\"Content-Type\": \"application/json\"}") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    minLines = 2,
+                                    isError = ttsJsonError != null
                                 )
-                                
-                                // HTTP方法选择
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
+
+                                if (ttsJsonError != null) {
                                     Text(
-                                        text = "HTTP 方法:",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(end = 16.dp)
+                                        text = ttsJsonError!!,
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(top = 4.dp)
                                     )
-                                    Row {
-                                        FilterChip(
-                                            onClick = { ttsHttpMethodInput = "GET" },
-                                            label = { Text("GET") },
-                                            selected = ttsHttpMethodInput == "GET",
-                                            modifier = Modifier.padding(end = 8.dp)
-                                        )
-                                        FilterChip(
-                                            onClick = { ttsHttpMethodInput = "POST" },
-                                            label = { Text("POST") },
-                                            selected = ttsHttpMethodInput == "POST"
-                                        )
-                                    }
                                 }
-                                
-                                // POST请求的额外配置
-                                AnimatedVisibility(visible = ttsHttpMethodInput == "POST") {
-                                    Column {
-                                        OutlinedTextField(
-                                            value = ttsContentTypeInput,
-                                            onValueChange = { ttsContentTypeInput = it },
-                                            label = { Text("Content-Type") },
-                                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                            placeholder = { Text("application/json") },
-                                            singleLine = true
-                                        )
-                                        
-                                        OutlinedTextField(
-                                            value = ttsRequestBodyInput,
-                                            onValueChange = { ttsRequestBodyInput = it },
-                                            label = { Text("请求体模板") },
-                                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                            placeholder = { Text("{\"text\": \"{text}\", \"voice\": \"{voice}\"}") },
-                                            supportingText = {
-                                                Text("使用 {text}, {rate}, {pitch}, {voice} 作为占位符。")
-                                            },
-                                            minLines = 3
-                                        )
-                                    }
+
+                                                                 Spacer(modifier = Modifier.height(8.dp))
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = ttsHttpMethodInput,
+                                        onValueChange = { },
+                                        label = { Text("HTTP 方法") },
+                                        readOnly = true,
+                                        modifier = Modifier.weight(1f),
+                                        trailingIcon = {
+                                            DropdownMenu(
+                                                expanded = httpMethodDropdownExpanded,
+                                                onDismissRequest = { httpMethodDropdownExpanded = false }
+                                            ) {
+                                                listOf("GET", "POST").forEach { method ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(method) },
+                                                        onClick = {
+                                                            ttsHttpMethodInput = method
+                                                            httpMethodDropdownExpanded = false
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                            IconButton(onClick = { httpMethodDropdownExpanded = true }) {
+                                                Icon(Icons.Default.ArrowDropDown, "选择HTTP方法")
+                                            }
+                                        }
+                                    )
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    OutlinedTextField(
+                                        value = ttsContentTypeInput,
+                                        onValueChange = { ttsContentTypeInput = it },
+                                        label = { Text("Content-Type") },
+                                        placeholder = { Text("application/json") },
+                                        modifier = Modifier.weight(1f),
+                                        singleLine = true
+                                    )
                                 }
+
+                                if (ttsHttpMethodInput == "POST") {
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    OutlinedTextField(
+                                        value = ttsRequestBodyInput,
+                                        onValueChange = { ttsRequestBodyInput = it },
+                                        label = { Text("请求体模板") },
+                                        placeholder = { Text("{\"text\": \"{text}\"}") },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        minLines = 3
+                                    )
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(visible = ttsServiceTypeInput == VoiceServiceFactory.VoiceServiceType.SILICONFLOW_TTS) {
+                            Column(modifier = Modifier.padding(top = 16.dp)) {
+                                Text(
+                                    text = "硅基流动 TTS 配置",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedTextField(
+                                    value = ttsApiKeyInput,
+                                    onValueChange = { ttsApiKeyInput = it },
+                                    label = { Text("API 密钥") },
+                                    placeholder = { Text("请输入您的硅基流动API密钥") },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
                             }
                         }
                     }

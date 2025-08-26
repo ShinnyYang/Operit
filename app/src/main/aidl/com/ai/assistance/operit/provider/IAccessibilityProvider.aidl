@@ -60,4 +60,16 @@
      * @return 当前Activity的类名，如果无法获取则返回null。
      */
     String getCurrentActivityName();
+
+    /**
+     * 注册一个回调来接收无障碍事件。
+     * @param callback 要注册的回调监听器。
+     */
+    void registerAccessibilityEventListener(com.ai.assistance.operit.provider.IAccessibilityEventCallback callback);
+
+    /**
+     * 注销之前注册的无障碍事件回调。
+     * @param callback 要注销的回调监听器。
+     */
+    void unregisterAccessibilityEventListener(com.ai.assistance.operit.provider.IAccessibilityEventCallback callback);
     }

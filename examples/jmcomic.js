@@ -262,8 +262,8 @@ const jmcomic = (function () {
                 await Tools.Files.writeBinary(decodedSavePath, imageBase64);
                 return;
             }
-            let srcImage = null;
-            let resultImage = null;
+            let srcImage = undefined;
+            let resultImage = undefined;
             const stripsToRelease = [];
             try {
                 srcImage = await Jimp.read(imageBase64);
@@ -659,7 +659,7 @@ const jmcomic = (function () {
                     files: files.slice(0, 10)
                 };
             }
-            return { directory: null, fileCount: 0, files: [] };
+            return { directory: undefined, fileCount: 0, files: [] };
         }
     }
     //endregion

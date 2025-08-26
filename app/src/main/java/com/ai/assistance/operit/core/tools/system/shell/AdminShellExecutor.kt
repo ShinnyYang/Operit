@@ -8,6 +8,11 @@ import android.util.Log
 import com.ai.assistance.operit.core.tools.system.AndroidPermissionLevel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /** 基于设备管理员的Shell命令执行器 实现ADMIN权限级别的命令执行 */
 class AdminShellExecutor(private val context: Context) : ShellExecutor {
@@ -138,5 +143,70 @@ class AdminShellExecutor(private val context: Context) : ShellExecutor {
                             -1
                     )
                 }
+            }
+
+    override suspend fun startProcess(command: String): ShellProcess {
+        return AdminShellProcess(command, this)
+    }
+}
+
+/**
+ * 设备管理员的 ShellProcess 实现
+ */
+private class AdminShellProcess(
+    private val command: String,
+    private val executor: AdminShellExecutor
+) : ShellProcess {
+    private var completed = false
+    private var exitCode = -1
+    private var result: ShellExecutor.CommandResult? = null
+    
+    init {
+        // 异步执行命令
+        CoroutineScope(Dispatchers.IO).launch {
+            result = executor.executeCommand(command)
+            exitCode = result?.exitCode ?: -1
+            completed = true
+        }
+    }
+    
+    override val stdout: Flow<String> = callbackFlow {
+        while (!completed) {
+            kotlinx.coroutines.delay(10)
+        }
+        result?.stdout?.let { output ->
+            if (output.isNotEmpty()) {
+                trySend(output)
+            }
+        }
+        close()
+        awaitClose { }
+    }
+
+    override val stderr: Flow<String> = callbackFlow {
+        while (!completed) {
+            kotlinx.coroutines.delay(10)
+        }
+        result?.stderr?.let { error ->
+            if (error.isNotEmpty()) {
+                trySend(error)
+            }
+        }
+        close()
+        awaitClose { }
+    }
+
+    override val isAlive: Boolean
+        get() = !completed
+
+    override fun destroy() {
+        completed = true
+    }
+
+    override suspend fun waitFor(): Int = withContext(Dispatchers.IO) {
+        while (!completed) {
+            kotlinx.coroutines.delay(10)
+        }
+        exitCode
             }
 }

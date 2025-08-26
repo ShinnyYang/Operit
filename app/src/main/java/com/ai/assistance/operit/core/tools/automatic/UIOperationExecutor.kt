@@ -197,33 +197,44 @@ class UIOperationExecutor(
         Log.d(TAG, "Executing operation: ${operation::class.java.simpleName} with description: '${operation.description}'")
         return when (operation) {
             is UIOperation.Click -> {
-                // 如果提供了相对坐标，则使用find+tap的组合来实现精确点击
+                // 如果提供了相对坐标，则使用get_page_info+tap的组合来实现精确点击
                 if (operation.relativeX != null && operation.relativeY != null) {
-                    // 1. 查找元素以获取其边界
-                    val findParams = createSelectorParams(operation.selector, state) // 不传递clickOperation以避免添加相对坐标参数
-                    val findTool = AITool("find_element", findParams)
-                    Log.d(TAG, "Executing 'find_element' to get bounds for relative click. Params: $findParams")
-                    val findResult = toolHandler.executeTool(findTool)
+                    // 1. 获取页面信息以查找元素边界
+                    val pageInfoTool = AITool("get_page_info", listOf(
+                        ToolParameter("format", "json"),
+                        ToolParameter("detail", "full")
+                    ))
+                    Log.d(TAG, "Executing 'get_page_info' to get bounds for relative click.")
+                    val pageInfoResult = toolHandler.executeTool(pageInfoTool)
 
-                    if (!findResult.success || findResult.result == null) {
-                        Log.w(TAG, "Relative click failed: could not find element. ${findResult.error}")
+                    if (!pageInfoResult.success || pageInfoResult.result == null) {
+                        Log.w(TAG, "Relative click failed: could not get page info. ${pageInfoResult.error}")
                         return false
                     }
 
-                    // 2. 从结果中解析边界
-                    val resultString = (findResult.result as? StringResultData)?.value ?: ""
+                    // 2. 从页面信息中查找匹配的元素
+                    val resultString = (pageInfoResult.result as? StringResultData)?.value ?: ""
                     if (resultString.isEmpty()) {
-                        Log.w(TAG, "Relative click failed: find_element returned an empty result.")
+                        Log.w(TAG, "Relative click failed: get_page_info returned an empty result.")
                         return false
                     }
 
                     try {
                         val jsonResult = JSONObject(resultString)
-                        val elementJson = jsonResult.optJSONObject("element")
-                        val boundsString = elementJson?.optString("bounds")
+                        val rootNode = jsonResult.optJSONObject("rootNode")
+                        
+                        // 查找匹配的元素
+                        val selector = operation.selector
+                        val matchingElement = findElementInNode(rootNode, selector)
+                        
+                        if (matchingElement == null) {
+                            Log.w(TAG, "Relative click failed: element not found in page info.")
+                            return false
+                        }
 
+                        val boundsString = matchingElement.optString("bounds")
                         if (boundsString.isNullOrEmpty()) {
-                            Log.w(TAG, "Relative click failed: 'bounds' not found for element in find_element result.")
+                            Log.w(TAG, "Relative click failed: 'bounds' not found for element.")
                             return false
                         }
 
@@ -366,7 +377,7 @@ class UIOperationExecutor(
                     return false
                 }
                 
-                val element = findElementInPage(pageInfo, operation.selector)
+                val element = UIElementFinder.findElement(pageInfo.uiElements, operation.selector)
                 if (element == null) {
                     Log.w(TAG, "Validation failed: Element not found with selector: '${operation.selector}'")
                     return false
@@ -430,27 +441,6 @@ class UIOperationExecutor(
         } else {
             null
         }
-    }
-
-    private fun findElementInPage(pageInfo: UIPageResultData, selector: UISelector): SimplifiedUINode? {
-        fun findRecursive(node: SimplifiedUINode): SimplifiedUINode? {
-            val matches = when (selector) {
-                is UISelector.ByText -> node.text?.contains(selector.text, ignoreCase = true) == true
-                is UISelector.ByResourceId -> node.resourceId == selector.id
-                is UISelector.ByContentDesc -> node.contentDesc?.contains(selector.desc, ignoreCase = true) == true
-                is UISelector.ByClassName -> node.className == selector.name
-                else -> false
-            }
-            if (matches) return node
-
-            for (child in node.children) {
-                val found = findRecursive(child)
-                if (found != null) return found
-            }
-
-            return null
-        }
-        return findRecursive(pageInfo.uiElements)
     }
 
     private fun findValidationInOriginalConfig(edge: StatefulEdge): UIOperation.ValidateElement? {
@@ -566,4 +556,66 @@ class UIOperationExecutor(
         
         return params
     }
-} 
+
+    /**
+     * 在 JSON 节点中递归搜索匹配选择器的元素
+     */
+    private fun findElementInNode(node: JSONObject?, selector: UISelector): JSONObject? {
+        if (node == null) return null
+
+        // 检查当前节点是否匹配
+        if (matchesSelector(node, selector)) {
+            return node
+        }
+
+        // 递归搜索子节点
+        val children = node.optJSONArray("children")
+        if (children != null) {
+            for (i in 0 until children.length()) {
+                val child = children.optJSONObject(i)
+                val result = findElementInNode(child, selector)
+                if (result != null) {
+                    return result
+                }
+            }
+        }
+
+        return null
+    }
+
+    /**
+     * 检查节点是否匹配选择器
+     */
+    private fun matchesSelector(node: JSONObject, selector: UISelector): Boolean {
+        return when (selector) {
+            is UISelector.ByResourceId -> {
+                val resourceId = node.optString("resourceId", "")
+                resourceId.contains(selector.id)
+            }
+            is UISelector.ByClassName -> {
+                val className = node.optString("className", "")
+                className.contains(selector.name)
+            }
+            is UISelector.ByText -> {
+                val text = node.optString("text", "")
+                text.contains(selector.text)
+            }
+            is UISelector.ByContentDesc -> {
+                val contentDesc = node.optString("contentDesc", "")
+                contentDesc.contains(selector.desc)
+            }
+            is UISelector.ByBounds -> {
+                val bounds = node.optString("bounds", "")
+                bounds.contains(selector.bounds)
+            }
+            is UISelector.ByXPath -> {
+                // XPath 匹配比较复杂，暂时返回false
+                false
+            }
+            is UISelector.Compound -> {
+                // 对于组合选择器，暂时返回false，因为这里的逻辑会比较复杂
+                false
+            }
+        }
+    }
+}

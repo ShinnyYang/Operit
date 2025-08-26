@@ -139,6 +139,7 @@ fun PackageManagerScreen() {
                             // Clean up the temporary file
                             tempFile.delete()
                                 }
+                                /*
                                 PackageTab.AUTOMATION_CONFIGS -> {
                                     if (!fileName!!.endsWith(".json")) {
                                         snackbarHostState.showSnackbar(message = "自动化配置只支持.json文件")
@@ -167,6 +168,7 @@ fun PackageManagerScreen() {
                                     // Clean up the temporary file
                                     tempFile.delete()
                                 }
+                                */
                                 else -> {
                                     snackbarHostState.showSnackbar("当前标签页不支持导入")
                                 }
@@ -211,7 +213,7 @@ fun PackageManagerScreen() {
                 }
             },
             floatingActionButton = {
-                if (selectedTab == PackageTab.PACKAGES || selectedTab == PackageTab.AUTOMATION_CONFIGS) {
+                if (selectedTab == PackageTab.PACKAGES) { // || selectedTab == PackageTab.AUTOMATION_CONFIGS) {
                     FloatingActionButton(
                             onClick = { packageFilePicker.launch("*/*") },
                             containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -226,7 +228,7 @@ fun PackageManagerScreen() {
                             imageVector = Icons.Rounded.Add, 
                             contentDescription = when (selectedTab) {
                                 PackageTab.PACKAGES -> "导入外部包"
-                                PackageTab.AUTOMATION_CONFIGS -> "导入自动化配置"
+                                // PackageTab.AUTOMATION_CONFIGS -> "导入自动化配置"
                                 else -> "导入"
                             }
                         ) 
@@ -294,7 +296,8 @@ fun PackageManagerScreen() {
                     }
                 }
 
-                // 自动化配置标签
+                // 自动化配置标签 - 临时隐藏
+                /*
                 Tab(
                     selected = selectedTab == PackageTab.AUTOMATION_CONFIGS,
                     onClick = { selectedTab = PackageTab.AUTOMATION_CONFIGS },
@@ -325,6 +328,7 @@ fun PackageManagerScreen() {
                 )
                     }
                 }
+                */
 
                 // MCP标签
                 Tab(
@@ -428,6 +432,7 @@ fun PackageManagerScreen() {
                             }
                         }
                     }
+                    /*
                     PackageTab.AUTOMATION_CONFIGS -> {
                         if (automationConfigs.value.isEmpty()) {
                             EmptyState(message = "没有可用的自动化配置")
@@ -441,6 +446,7 @@ fun PackageManagerScreen() {
                             )
                         }
                     }
+                    */
                     PackageTab.MCP -> {
                         // MCP界面，包含二级标签页
                         Column {

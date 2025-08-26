@@ -748,27 +748,7 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             executor = { tool -> kotlinx.coroutines.runBlocking { uiTools.swipe(tool) } }
     )
 
-    // 查找UI元素
-    handler.registerTool(
-            name = "find_element",
-            category = ToolCategory.UI_AUTOMATION,
-            descriptionGenerator = { tool ->
-                val resourceId = tool.parameters.find { it.name == "resourceId" }?.value
-                val className = tool.parameters.find { it.name == "className" }?.value
-                val text = tool.parameters.find { it.name == "text" }?.value
 
-                val criteria =
-                        listOfNotNull(
-                                        resourceId?.let { "ID: $it" },
-                                        className?.let { "类: $it" },
-                                        text?.let { "文本: $it" }
-                                )
-                                .joinToString(", ")
-
-                "查找UI元素: $criteria"
-            },
-            executor = { tool -> kotlinx.coroutines.runBlocking { uiTools.findElement(tool) } }
-    )
 
     // FFmpeg工具 - 执行通用FFmpeg命令
     handler.registerTool(

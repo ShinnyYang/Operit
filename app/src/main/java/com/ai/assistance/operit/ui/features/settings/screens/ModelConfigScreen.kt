@@ -28,8 +28,10 @@ import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
 import com.ai.assistance.operit.ui.features.settings.sections.ModelApiSettingsSection
 import com.ai.assistance.operit.ui.features.settings.sections.ModelParametersSection
+import com.ai.assistance.operit.ui.features.settings.screens.OneClickConfigWebViewScreen
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import com.ai.assistance.operit.data.model.ApiProviderType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,6 +56,7 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
     var isDropdownExpanded by remember { mutableStateOf(false) }
     var newConfigName by remember { mutableStateOf("") }
     var confirmMessage by remember { mutableStateOf("") }
+    var showOneClickConfig by remember { mutableStateOf(false) }
 
     // 连接测试状态
     var isTestingConnection by remember { mutableStateOf(false) }
@@ -146,6 +149,29 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                             )
                             Spacer(modifier = Modifier.width(2.dp))
                             Text("新建", fontSize = 12.sp, style = MaterialTheme.typography.labelSmall)
+                        }
+                        
+                        Spacer(modifier = Modifier.width(8.dp))
+                        
+                        // 一键配置按钮
+                        OutlinedButton(
+                                onClick = { showOneClickConfig = true },
+                                shape = RoundedCornerShape(16.dp),
+                                border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.primary),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.height(28.dp),
+                                colors =
+                                        ButtonDefaults.outlinedButtonColors(
+                                                contentColor = MaterialTheme.colorScheme.primary
+                                        )
+                        ) {
+                            Icon(
+                                    Icons.Default.FlashOn,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(2.dp))
+                            Text("一键配置", fontSize = 12.sp, style = MaterialTheme.typography.labelSmall)
                         }
                     }
 
@@ -517,6 +543,50 @@ fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
                         ) { Text("取消", fontSize = 13.sp) }
                     },
                     shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        // 一键配置WebView界面
+        if (showOneClickConfig) {
+            OneClickConfigWebViewScreen(
+                onBackPressed = { showOneClickConfig = false },
+                onConfigCreated = { apiKey ->
+                    scope.launch {
+                        // 创建新配置
+                        val configName = "Cielo AI"
+                        val configId = configManager.createConfig(configName)
+                        
+                        // 获取新创建的配置
+                        val newConfig = configManager.getModelConfigFlow(configId).first()
+                        
+                        // 更新配置信息
+                        val updatedConfig = newConfig.copy(
+                            apiKey = apiKey,
+                            apiEndpoint = "https://api.cccielo.cn/v1/chat/completions",
+                            modelName = "deepseek/deepseek-chat-v3-0324:free",
+                            apiProviderType = ApiProviderType.OTHER
+                        )
+                        
+                        // 保存更新后的配置
+                        configManager.saveModelConfig(updatedConfig)
+                        
+                        // 切换到新配置
+                        selectedConfigId = configId
+                        showOneClickConfig = false
+                        showNotification("一键配置成功！")
+                        
+                        // 检查默认配置的API Key是否为空或为DEFAULT_API_KEY，如果是则更新为123456
+                        val defaultConfig = configManager.getModelConfigFlow("default").first()
+                        if (defaultConfig.apiKey.isBlank() || 
+                            defaultConfig.apiKey == ApiPreferences.DEFAULT_API_KEY ||
+                            defaultConfig.apiKey == ApiPreferences.DEFAULT_API_KEY_OLD) {
+                            
+                            val updatedDefaultConfig = defaultConfig.copy(apiKey = "123456")
+                            configManager.saveModelConfig(updatedDefaultConfig)
+                            showNotification("一键配置成功！默认配置已标记为已使用自己的API")
+                        }
+                    }
+                }
             )
         }
     }
