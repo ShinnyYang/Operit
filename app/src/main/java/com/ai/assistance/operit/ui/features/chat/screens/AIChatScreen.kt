@@ -518,76 +518,89 @@ fun AIChatScreen(
             } else {
                 // The main content area is now a Box to allow overlaying.
                 // It respects the padding from the Scaffold's bottomBar.
-                Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-                    // ChatScreenContent now fills this Box, and has the overlay on top of it.
-                    ChatScreenContent(
-                            paddingValues =
-                                    PaddingValues(), // Padding is already handled by the parent Box
-                            actualViewModel = actualViewModel,
-                            showChatHistorySelector = showChatHistorySelector,
-                            chatHistory = chatHistory,
-                            planItems = planItems,
-                            enableAiPlanning = enableAiPlanning,
-                            isLoading = isLoading,
-                            userMessageColor = userMessageColor,
-                            aiMessageColor = aiMessageColor,
-                            userTextColor = userTextColor,
-                            aiTextColor = aiTextColor,
-                            systemMessageColor = systemMessageColor,
-                            systemTextColor = systemTextColor,
-                            thinkingBackgroundColor = thinkingBackgroundColor,
-                            thinkingTextColor = thinkingTextColor,
-                            hasBackgroundImage = hasBackgroundImage,
-                            editingMessageIndex = editingMessageIndex,
-                            editingMessageContent = editingMessageContent,
-                            chatScreenGestureConsumed = chatScreenGestureConsumed,
-                            onChatScreenGestureConsumed = onChatScreenGestureConsumedChange,
-                            currentDrag = currentDrag,
-                            onCurrentDragChange = onCurrentDragChange,
-                            verticalDrag = verticalDrag,
-                            onVerticalDragChange = onVerticalDragChange,
-                            dragThreshold = dragThreshold,
-                            scrollState = scrollState,
-                            showScrollButton = showScrollButton,
-                            onShowScrollButtonChange = onShowScrollButtonChange,
-                            autoScrollToBottom = autoScrollToBottom,
-                            onAutoScrollToBottomChange = onAutoScrollToBottomChange,
-                            coroutineScope = coroutineScope,
-                            chatHistories = chatHistories,
-                            currentChatId = currentChatId ?: "",
-                            chatHeaderTransparent = chatHeaderTransparent,
-                            chatHeaderHistoryIconColor = chatHeaderHistoryIconColor,
-                            chatHeaderPipIconColor = chatHeaderPipIconColor,
-                            chatHeaderOverlayMode = chatHeaderOverlayMode,
-                            chatStyle = chatStyle // Pass chat style
-                    )
+                Column(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+                    Box(modifier = Modifier.weight(1f)) {
+                        // ChatScreenContent now fills this Box, and has the overlay on top of
+                        // it.
+                        ChatScreenContent(
+                                // modifier = Modifier.weight(1f), // This is no longer needed here
+                                paddingValues =
+                                        PaddingValues(), // Padding is already handled by the parent Box
+                                actualViewModel = actualViewModel,
+                                showChatHistorySelector = showChatHistorySelector,
+                                chatHistory = chatHistory,
+                                planItems = planItems,
+                                enableAiPlanning = enableAiPlanning,
+                                isLoading = isLoading,
+                                userMessageColor = userMessageColor,
+                                aiMessageColor = aiMessageColor,
+                                userTextColor = userTextColor,
+                                aiTextColor = aiTextColor,
+                                systemMessageColor = systemMessageColor,
+                                systemTextColor = systemTextColor,
+                                thinkingBackgroundColor = thinkingBackgroundColor,
+                                thinkingTextColor = thinkingTextColor,
+                                hasBackgroundImage = hasBackgroundImage,
+                                editingMessageIndex = editingMessageIndex,
+                                editingMessageContent = editingMessageContent,
+                                chatScreenGestureConsumed = chatScreenGestureConsumed,
+                                onChatScreenGestureConsumed = onChatScreenGestureConsumedChange,
+                                currentDrag = currentDrag,
+                                onCurrentDragChange = onCurrentDragChange,
+                                verticalDrag = verticalDrag,
+                                onVerticalDragChange = onVerticalDragChange,
+                                dragThreshold = dragThreshold,
+                                scrollState = scrollState,
+                                showScrollButton = showScrollButton,
+                                onShowScrollButtonChange = onShowScrollButtonChange,
+                                autoScrollToBottom = autoScrollToBottom,
+                                onAutoScrollToBottomChange = onAutoScrollToBottomChange,
+                                coroutineScope = coroutineScope,
+                                chatHistories = chatHistories,
+                                currentChatId = currentChatId ?: "",
+                                chatHeaderTransparent = chatHeaderTransparent,
+                                chatHeaderHistoryIconColor = chatHeaderHistoryIconColor,
+                                chatHeaderPipIconColor = chatHeaderPipIconColor,
+                                chatHeaderOverlayMode = chatHeaderOverlayMode,
+                                chatStyle = chatStyle // Pass chat style
+                        )
 
-                    // The settings bar is aligned to the bottom-end of the parent Box,
-                    // effectively overlaying the chat content just above the input section.
-                    ChatSettingsBar(
-                            modifier = Modifier.align(Alignment.BottomEnd),
-                            enableAiPlanning = enableAiPlanning,
-                            onToggleAiPlanning = { actualViewModel.toggleAiPlanning() },
-                            permissionLevel =
-                                    actualViewModel.masterPermissionLevel.collectAsState().value,
-                            onTogglePermission = { actualViewModel.toggleMasterPermission() },
-                            enableThinkingMode = enableThinkingMode,
-                            onToggleThinkingMode = { actualViewModel.toggleThinkingMode() },
-                            enableThinkingGuidance = enableThinkingGuidance,
-                            onToggleThinkingGuidance = { actualViewModel.toggleThinkingGuidance() },
-                            maxWindowSizeInK =
-                                    actualViewModel.maxWindowSizeInK.collectAsState().value,
-                            onContextLengthChange = { actualViewModel.updateContextLength(it) },
-                            enableMemoryAttachment = enableMemoryAttachment,
-                            onToggleMemoryAttachment = { actualViewModel.toggleMemoryAttachment() },
-                            summaryTokenThreshold = summaryTokenThreshold,
-                            onSummaryTokenThresholdChange = {
-                                actualViewModel.updateSummaryTokenThreshold(it)
-                            },
-                            onNavigateToUserPreferences = onNavigateToUserPreferences,
-                            onNavigateToModelConfig = onNavigateToModelConfig,
-                            onNavigateToModelPrompts = onNavigateToModelPrompts
-                    )
+                        // The settings bar is aligned to the bottom-end of the parent Box,
+                        // effectively overlaying the chat content just above the input
+                        // section.
+                        ChatSettingsBar(
+                                modifier = Modifier.align(Alignment.BottomEnd),
+                                enableAiPlanning = enableAiPlanning,
+                                onToggleAiPlanning = { actualViewModel.toggleAiPlanning() },
+                                permissionLevel =
+                                        actualViewModel.masterPermissionLevel
+                                                .collectAsState()
+                                                .value,
+                                onTogglePermission = { actualViewModel.toggleMasterPermission() },
+                                enableThinkingMode = enableThinkingMode,
+                                onToggleThinkingMode = { actualViewModel.toggleThinkingMode() },
+                                enableThinkingGuidance = enableThinkingGuidance,
+                                onToggleThinkingGuidance = {
+                                    actualViewModel.toggleThinkingGuidance()
+                                },
+                                maxWindowSizeInK =
+                                        actualViewModel.maxWindowSizeInK.collectAsState().value,
+                                onContextLengthChange = {
+                                    actualViewModel.updateContextLength(it)
+                                },
+                                enableMemoryAttachment = enableMemoryAttachment,
+                                onToggleMemoryAttachment = {
+                                    actualViewModel.toggleMemoryAttachment()
+                                },
+                                summaryTokenThreshold = summaryTokenThreshold,
+                                onSummaryTokenThresholdChange = {
+                                    actualViewModel.updateSummaryTokenThreshold(it)
+                                },
+                                onNavigateToUserPreferences = onNavigateToUserPreferences,
+                                onNavigateToModelConfig = onNavigateToModelConfig,
+                                onNavigateToModelPrompts = onNavigateToModelPrompts
+                        )
+                    }
                 }
             }
         }

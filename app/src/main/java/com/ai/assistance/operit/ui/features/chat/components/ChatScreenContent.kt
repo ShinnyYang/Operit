@@ -59,6 +59,7 @@ import com.ai.assistance.operit.ui.features.chat.components.MessageEditor
 
 @Composable
 fun ChatScreenContent(
+        modifier: Modifier = Modifier,
         paddingValues: PaddingValues,
         actualViewModel: ChatViewModel,
         showChatHistorySelector: Boolean,
@@ -128,7 +129,7 @@ fun ChatScreenContent(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+    Box(modifier = modifier.fillMaxSize().padding(paddingValues)) {
         if (chatHeaderOverlayMode && chatHeaderTransparent) {
             // 覆盖模式：Header浮动在ChatArea之上
             Box(modifier = Modifier.fillMaxSize()) {
@@ -222,6 +223,38 @@ fun ChatScreenContent(
                     showChatHistorySelector = showChatHistorySelector
             )
         }
+
+        // 滚动到底部按钮
+        AnimatedVisibility(
+            visible = showScrollButton,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
+            IconButton(
+                onClick = {
+                    coroutineScope.launch {
+                        scrollState.animateScrollTo(scrollState.maxValue)
+                    }
+                    onAutoScrollToBottomChange(true) // 重新启用自动滚动
+                    onShowScrollButtonChange(false) // 点击后隐藏按钮
+                },
+                modifier = Modifier
+                    .background(
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.75f),
+                        shape = RoundedCornerShape(50)
+                    )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Scroll to bottom",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
 
         // 导出平台选择对话框
         if (showExportPlatformDialog) {

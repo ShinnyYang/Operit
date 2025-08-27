@@ -118,7 +118,6 @@ fun ChatArea(
         Column(
             modifier =
             Modifier
-                .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .verticalScroll(scrollState) // 使用从外部传入的scrollState
