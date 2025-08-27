@@ -39,7 +39,7 @@ import kotlinx.coroutines.launch
 fun ModelConfigScreen(onBackPressed: () -> Unit = {}) {
     val context = LocalContext.current
     val configManager = remember { ModelConfigManager(context) }
-    val apiPreferences = remember { ApiPreferences(context) }
+            val apiPreferences = remember { ApiPreferences.getInstance(context) }
     val scope = rememberCoroutineScope()
 
     // 配置状态

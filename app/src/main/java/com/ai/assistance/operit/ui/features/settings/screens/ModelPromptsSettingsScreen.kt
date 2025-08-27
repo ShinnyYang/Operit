@@ -43,7 +43,7 @@ fun ModelPromptsSettingsScreen(
         onNavigateToMarket: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val apiPreferences = remember { ApiPreferences(context) }
+            val apiPreferences = remember { ApiPreferences.getInstance(context) }
     val promptPreferencesManager = remember { PromptPreferencesManager(context) }
     val scope = rememberCoroutineScope()
     var showSaveSuccessMessage by remember { mutableStateOf(false) }

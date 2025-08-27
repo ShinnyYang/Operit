@@ -371,7 +371,7 @@ fun FunctionConfigCard(
                                                     modelConfigManager.getModelConfigFlow(configId).first()
                                             
                                             // 异步获取自定义请求头
-                                            val apiPreferences = ApiPreferences(context)
+                                            val apiPreferences = ApiPreferences.getInstance(context)
                                             val customHeadersJson = apiPreferences.getCustomHeaders()
 
                                             val service =

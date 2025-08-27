@@ -57,7 +57,7 @@ fun SettingsScreen(
         navigateToCustomHeadersSettings: () -> Unit
 ) {
         val context = LocalContext.current
-        val apiPreferences = remember { ApiPreferences(context) }
+        val apiPreferences = remember { ApiPreferences.getInstance(context) }
         val userPreferences = remember { UserPreferencesManager(context) }
         val scope = rememberCoroutineScope()
 

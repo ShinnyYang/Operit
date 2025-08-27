@@ -1,5 +1,7 @@
 package com.ai.assistance.operit.data.model
 
+import kotlinx.serialization.Serializable
+
 /** 模型参数类，支持泛型以表示不同类型的参数 */
 data class ModelParameter<T>(
         val id: String, // 参数唯一ID
@@ -33,6 +35,7 @@ enum class ParameterCategory {
 }
 
 /** 自定义参数数据，用于JSON序列化 */
+@Serializable
 data class CustomParameterData(
         val id: String,
         val name: String,

@@ -55,7 +55,7 @@ private val headerPresets = listOf(
 @Composable
 fun CustomHeadersSettingsScreen(onBackPressed: () -> Unit) {
     val context = LocalContext.current
-    val apiPreferences = remember { ApiPreferences(context) }
+            val apiPreferences = remember { ApiPreferences.getInstance(context) }
     val scope = rememberCoroutineScope()
 
     var headers by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }

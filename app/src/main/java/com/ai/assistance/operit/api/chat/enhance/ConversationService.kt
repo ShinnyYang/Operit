@@ -45,7 +45,7 @@ class ConversationService(private val context: Context) {
         private const val TAG = "ConversationService"
     }
 
-    private val apiPreferences = ApiPreferences(context)
+    private val apiPreferences = ApiPreferences.getInstance(context)
     private val functionalPromptManager = FunctionalPromptManager(context)
     private val conversationMutex = Mutex()
 
@@ -91,7 +91,7 @@ class ConversationService(private val context: Context) {
             val finalMessages = listOf(Pair("system", systemPrompt)) + messages
 
             // Get all model parameters from preferences (with enabled state)
-            val modelParameters = runBlocking { apiPreferences.getAllModelParameters() }
+            val modelParameters = multiServiceManager.getModelParametersForFunction(FunctionType.SUMMARY)
 
             // 获取SUMMARY功能类型的AIService实例
             val summaryService = multiServiceManager.getServiceForFunction(FunctionType.SUMMARY)
@@ -520,7 +520,8 @@ $normalizedAiGeneratedCode
 ```
 Now, generate ONLY the patch in the custom format based on all the rules.
 """.trimIndent()
-            val modelParameters = runBlocking { apiPreferences.getAllModelParameters() }
+            val modelParameters =
+                    multiServiceManager.getModelParametersForFunction(FunctionType.FILE_BINDING)
             val fileBindingService =
                     multiServiceManager.getServiceForFunction(FunctionType.FILE_BINDING)
 
@@ -589,7 +590,8 @@ $normalizedAiGeneratedCode
 Now, generate ONLY the complete and final merged file content.
 """.trimIndent()
 
-            val modelParameters = runBlocking { apiPreferences.getAllModelParameters() }
+            val modelParameters =
+                    multiServiceManager.getModelParametersForFunction(FunctionType.FILE_BINDING)
             val fileBindingService =
                     multiServiceManager.getServiceForFunction(FunctionType.FILE_BINDING)
 

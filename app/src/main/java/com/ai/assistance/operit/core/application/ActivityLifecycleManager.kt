@@ -32,7 +32,7 @@ object ActivityLifecycleManager : Application.ActivityLifecycleCallbacks {
      */
     fun initialize(application: Application) {
         application.registerActivityLifecycleCallbacks(this)
-        apiPreferences = ApiPreferences(application.applicationContext)
+                    apiPreferences = ApiPreferences.getInstance(application.applicationContext)
     }
 
     /**

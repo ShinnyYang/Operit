@@ -47,7 +47,7 @@ object ProblemLibrary {
         synchronized(ProblemLibrary::class.java) {
             if (isInitialized) return
             Log.d(TAG, "正在初始化 ProblemLibrary")
-            apiPreferences = ApiPreferences(context.applicationContext)
+            apiPreferences = ApiPreferences.getInstance(context.applicationContext)
             isInitialized = true
             Log.d(TAG, "ProblemLibrary 初始化完成")
         }

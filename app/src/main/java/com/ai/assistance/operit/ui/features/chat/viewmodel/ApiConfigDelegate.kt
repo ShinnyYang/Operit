@@ -27,7 +27,7 @@ class ApiConfigDelegate(
     }
 
     // Preferences
-    private val apiPreferences = ApiPreferences(context)
+    private val apiPreferences = ApiPreferences.getInstance(context)
     private val modelConfigManager = ModelConfigManager(context)
 
     // State flows

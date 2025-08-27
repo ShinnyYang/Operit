@@ -236,7 +236,7 @@ class EnhancedAIService private constructor(private val context: Context) {
     private val isConversationActive = AtomicBoolean(false)
 
     // Api Preferences for settings
-    private val apiPreferences = ApiPreferences(context)
+    private val apiPreferences = ApiPreferences.getInstance(context)
 
 
     // Coroutine management
@@ -467,7 +467,7 @@ class EnhancedAIService private constructor(private val context: Context) {
                     }
 
                     // Get all model parameters from preferences (with enabled state)
-                    val modelParameters = runBlocking { apiPreferences.getAllModelParameters() }
+                    val modelParameters = multiServiceManager.getModelParametersForFunction(functionType)
 
                     // 获取对应功能类型的AIService实例
                     val serviceForFunction = getAIServiceForFunction(functionType)
@@ -1113,7 +1113,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         delay(300)
 
         // Get all model parameters from preferences (with enabled state)
-        val modelParameters = runBlocking { apiPreferences.getAllModelParameters() }
+        val modelParameters = multiServiceManager.getModelParametersForFunction(functionType)
 
         // 获取对应功能类型的AIService实例
         val serviceForFunction = getAIServiceForFunction(functionType)

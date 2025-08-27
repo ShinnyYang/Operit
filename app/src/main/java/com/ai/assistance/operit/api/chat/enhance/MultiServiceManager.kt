@@ -95,7 +95,7 @@ class MultiServiceManager(private val context: Context) {
     /** 根据配置创建AIService实例 */
     private suspend fun createServiceFromConfig(config: ModelConfigData): AIService {
         // 从ApiPreferences中异步获取自定义请求头
-        val apiPreferences = ApiPreferences(context)
+        val apiPreferences = ApiPreferences.getInstance(context)
         val customHeadersJson = apiPreferences.getCustomHeaders()
 
         return AIServiceFactory.createService(
@@ -105,5 +105,17 @@ class MultiServiceManager(private val context: Context) {
                 modelName = config.modelName,
                 customHeadersJson = customHeadersJson
         )
+    }
+
+    /**
+     * 获取指定功能类型的模型参数列表
+     * @param functionType 功能类型
+     * @return 模型参数列表
+     */
+    suspend fun getModelParametersForFunction(
+            functionType: FunctionType
+    ): List<com.ai.assistance.operit.data.model.ModelParameter<*>> {
+        val configId = functionalConfigManager.getConfigIdForFunction(functionType)
+        return modelConfigManager.getModelParametersForConfig(configId)
     }
 }

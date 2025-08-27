@@ -10,7 +10,6 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
@@ -26,15 +25,20 @@ import kotlinx.serialization.json.Json
 private val Context.apiDataStore: DataStore<Preferences> by
         preferencesDataStore(name = "api_settings")
 
-class ApiPreferences(private val context: Context) {
+class ApiPreferences private constructor(private val context: Context) {
 
     // Define our preferences keys
     companion object {
-        val API_KEY = stringPreferencesKey("api_key")
-        val API_ENDPOINT = stringPreferencesKey("api_endpoint")
-        val MODEL_NAME = stringPreferencesKey("model_name")
-        val API_PROVIDER_TYPE = stringPreferencesKey("api_provider_type")
+        @Volatile
+        private var INSTANCE: ApiPreferences? = null
 
+        fun getInstance(context: Context): ApiPreferences {
+            return INSTANCE ?: synchronized(this) {
+                val instance = ApiPreferences(context.applicationContext)
+                INSTANCE = instance
+                instance
+            }
+        }
         // 动态生成FunctionType的Token键
         fun getTokenInputKey(functionType: FunctionType) =
                 intPreferencesKey("token_input_${functionType.name}")
@@ -66,47 +70,6 @@ class ApiPreferences(private val context: Context) {
         // Custom System Prompt Template (Advanced Configuration)
         val CUSTOM_SYSTEM_PROMPT_TEMPLATE = stringPreferencesKey("custom_system_prompt_template")
 
-        // DeepSeek Model Parameters - Keys for values
-        val MAX_TOKENS = intPreferencesKey("max_tokens")
-        val TEMPERATURE = floatPreferencesKey("temperature")
-        val TOP_P = floatPreferencesKey("top_p")
-        val TOP_K = intPreferencesKey("top_k")
-        val PRESENCE_PENALTY = floatPreferencesKey("presence_penalty")
-        val FREQUENCY_PENALTY = floatPreferencesKey("frequency_penalty")
-        val REPETITION_PENALTY = floatPreferencesKey("repetition_penalty")
-
-        // New: Keys for parameter enabled state
-        val MAX_TOKENS_ENABLED = booleanPreferencesKey("max_tokens_enabled")
-        val TEMPERATURE_ENABLED = booleanPreferencesKey("temperature_enabled")
-        val TOP_P_ENABLED = booleanPreferencesKey("top_p_enabled")
-        val TOP_K_ENABLED = booleanPreferencesKey("top_k_enabled")
-        val PRESENCE_PENALTY_ENABLED = booleanPreferencesKey("presence_penalty_enabled")
-        val FREQUENCY_PENALTY_ENABLED = booleanPreferencesKey("frequency_penalty_enabled")
-        val REPETITION_PENALTY_ENABLED = booleanPreferencesKey("repetition_penalty_enabled")
-
-        // Default values
-        const val DEFAULT_API_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
-        const val DEFAULT_MODEL_NAME = "deepseek-chat"
-
-        // Obfuscated API Keys
-        private const val ENCODED_API_KEY_OLD = "c2stZTU2NTM5MGMxNjRjNGNmYTg4MjA2MjRlZjQ3ZDY4YmY="
-        private const val ENCODED_API_KEY = "c2stNmI4NTYyMjUzNmFjNDhjMDgwYzUwNDhhYjVmNWQxYmQ="
-
-        private fun decodeApiKey(encodedKey: String): String {
-            return try {
-                android.util.Base64.decode(encodedKey, android.util.Base64.NO_WRAP)
-                        .toString(Charsets.UTF_8)
-            } catch (e: Exception) {
-                Log.e("ApiPreferences", "Failed to decode API key", e)
-                ""
-            }
-        }
-
-        val DEFAULT_API_KEY_OLD: String by lazy { decodeApiKey(ENCODED_API_KEY_OLD) }
-        val DEFAULT_API_KEY: String by lazy { decodeApiKey(ENCODED_API_KEY) }
-
-        const val DEFAULT_API_PROVIDER_TYPE = "DEEPSEEK"
-
         const val DEFAULT_SHOW_FPS_COUNTER = false
         const val DEFAULT_ENABLE_AI_PLANNING = false
         const val DEFAULT_KEEP_SCREEN_ON = true
@@ -131,18 +94,6 @@ class ApiPreferences(private val context: Context) {
         // Default system prompt template (empty means use built-in template)
         const val DEFAULT_SYSTEM_PROMPT_TEMPLATE = ""
 
-        // Default values for DeepSeek model parameters
-        const val DEFAULT_MAX_TOKENS = 4096
-        const val DEFAULT_TEMPERATURE = 1.0f
-        const val DEFAULT_TOP_P = 1.0f
-        const val DEFAULT_TOP_K = 0
-        const val DEFAULT_PRESENCE_PENALTY = 0.0f
-        const val DEFAULT_FREQUENCY_PENALTY = 0.0f
-        const val DEFAULT_REPETITION_PENALTY = 1.0f
-
-        // Default enabled state for parameters (all disabled by default)
-        const val DEFAULT_PARAM_ENABLED = false
-
         // 自定义参数存储键
         val CUSTOM_PARAMETERS = stringPreferencesKey("custom_parameters")
 
@@ -152,114 +103,23 @@ class ApiPreferences(private val context: Context) {
         // 默认空的自定义参数列表
         const val DEFAULT_CUSTOM_PARAMETERS = "[]"
         const val DEFAULT_CUSTOM_HEADERS = "{}"
+
+        // API 配置默认值
+        const val DEFAULT_API_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
+        const val DEFAULT_MODEL_NAME = "deepseek-chat"
+        private const val ENCODED_API_KEY = "c2stNmI4NTYyMjUzNmFjNDhjMDgwYzUwNDhhYjVmNWQxYmQ="
+        val DEFAULT_API_KEY: String by lazy { decodeApiKey(ENCODED_API_KEY) }
+
+        private fun decodeApiKey(encodedKey: String): String {
+            return try {
+                android.util.Base64.decode(encodedKey, android.util.Base64.NO_WRAP)
+                    .toString(Charsets.UTF_8)
+            } catch (e: Exception) {
+                android.util.Log.e("ApiPreferences", "Failed to decode API key", e)
+                ""
+            }
+        }
     }
-
-    // Get API Key as Flow
-    val apiKeyFlow: Flow<String> =
-            context.apiDataStore.data.map { preferences ->
-                val savedApiKey = preferences[API_KEY] ?: DEFAULT_API_KEY
-
-                // 如果是旧API KEY，返回新的API KEY
-                if (savedApiKey == DEFAULT_API_KEY_OLD) {
-                    DEFAULT_API_KEY
-                } else {
-                    savedApiKey
-                }
-            }
-
-    // Get API Endpoint as Flow
-    val apiEndpointFlow: Flow<String> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[API_ENDPOINT] ?: DEFAULT_API_ENDPOINT
-            }
-
-    // Get Model Name as Flow
-    val modelNameFlow: Flow<String> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[MODEL_NAME] ?: DEFAULT_MODEL_NAME
-            }
-
-    // Get API Provider Type as Flow
-    val apiProviderTypeFlow: Flow<ApiProviderType> =
-            context.apiDataStore.data.map { preferences ->
-                try {
-                    ApiProviderType.valueOf(
-                            preferences[API_PROVIDER_TYPE] ?: DEFAULT_API_PROVIDER_TYPE
-                    )
-                } catch (e: Exception) {
-                    ApiProviderType.DEEPSEEK
-                }
-            }
-
-    // DeepSeek Model Parameter Flows - Values
-    val maxTokensFlow: Flow<Int> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[MAX_TOKENS] ?: DEFAULT_MAX_TOKENS
-            }
-
-    val temperatureFlow: Flow<Float> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[TEMPERATURE] ?: DEFAULT_TEMPERATURE
-            }
-
-    val topPFlow: Flow<Float> =
-            context.apiDataStore.data.map { preferences -> preferences[TOP_P] ?: DEFAULT_TOP_P }
-
-    val topKFlow: Flow<Int> =
-            context.apiDataStore.data.map { preferences -> preferences[TOP_K] ?: DEFAULT_TOP_K }
-
-    val presencePenaltyFlow: Flow<Float> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[PRESENCE_PENALTY] ?: DEFAULT_PRESENCE_PENALTY
-            }
-
-    val frequencyPenaltyFlow: Flow<Float> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[FREQUENCY_PENALTY] ?: DEFAULT_FREQUENCY_PENALTY
-            }
-
-    val repetitionPenaltyFlow: Flow<Float> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[REPETITION_PENALTY] ?: DEFAULT_REPETITION_PENALTY
-            }
-
-    // DeepSeek Model Parameter Flows - Enabled state
-    val maxTokensEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[MAX_TOKENS_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val temperatureEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[TEMPERATURE_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val topPEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[TOP_P_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val topKEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[TOP_K_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val presencePenaltyEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[PRESENCE_PENALTY_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val frequencyPenaltyEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[FREQUENCY_PENALTY_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-    val repetitionPenaltyEnabledFlow: Flow<Boolean> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[REPETITION_PENALTY_ENABLED] ?: DEFAULT_PARAM_ENABLED
-            }
-
-
 
     // 获取指定功能类型的token计数
     fun getTokensForFunctionFlow(functionType: FunctionType): Flow<Pair<Int, Int>> {
@@ -341,80 +201,6 @@ class ApiPreferences(private val context: Context) {
             preferences[CUSTOM_HEADERS] ?: DEFAULT_CUSTOM_HEADERS
         }
 
-    // Save API Key
-    suspend fun saveApiKey(apiKey: String) {
-        context.apiDataStore.edit { preferences -> preferences[API_KEY] = apiKey }
-    }
-
-    // Save API Endpoint
-    suspend fun saveApiEndpoint(endpoint: String) {
-        context.apiDataStore.edit { preferences -> preferences[API_ENDPOINT] = endpoint }
-    }
-
-    // Save Model Name
-    suspend fun saveModelName(modelName: String) {
-        context.apiDataStore.edit { preferences -> preferences[MODEL_NAME] = modelName }
-    }
-
-    // Save API Provider Type
-    suspend fun saveApiProviderType(apiProviderType: ApiProviderType) {
-        context.apiDataStore.edit { preferences ->
-            preferences[API_PROVIDER_TYPE] = apiProviderType.name
-        }
-    }
-
-    // Save DeepSeek Model Parameters - Value and enabled state
-    suspend fun saveMaxTokens(maxTokens: Int, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[MAX_TOKENS] = maxTokens
-            preferences[MAX_TOKENS_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun saveTemperature(temperature: Float, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[TEMPERATURE] = temperature
-            preferences[TEMPERATURE_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun saveTopP(topP: Float, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[TOP_P] = topP
-            preferences[TOP_P_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun saveTopK(topK: Int, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[TOP_K] = topK
-            preferences[TOP_K_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun savePresencePenalty(presencePenalty: Float, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[PRESENCE_PENALTY] = presencePenalty
-            preferences[PRESENCE_PENALTY_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun saveFrequencyPenalty(frequencyPenalty: Float, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[FREQUENCY_PENALTY] = frequencyPenalty
-            preferences[FREQUENCY_PENALTY_ENABLED] = isEnabled
-        }
-    }
-
-    suspend fun saveRepetitionPenalty(repetitionPenalty: Float, isEnabled: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[REPETITION_PENALTY] = repetitionPenalty
-            preferences[REPETITION_PENALTY_ENABLED] = isEnabled
-        }
-    }
-
-
-
     // Save FPS Counter Display setting
     suspend fun saveShowFpsCounter(showFpsCounter: Boolean) {
         context.apiDataStore.edit { preferences -> preferences[SHOW_FPS_COUNTER] = showFpsCounter }
@@ -463,30 +249,6 @@ class ApiPreferences(private val context: Context) {
         }
     }
 
-    // Save all settings at once
-    suspend fun saveApiSettings(apiKey: String, endpoint: String, modelName: String) {
-        context.apiDataStore.edit { preferences ->
-            preferences[API_KEY] = apiKey
-            preferences[API_ENDPOINT] = endpoint
-            preferences[MODEL_NAME] = modelName
-        }
-    }
-
-    // 添加包含ApiProviderType参数的新saveApiSettings方法
-    suspend fun saveApiSettings(
-            apiKey: String,
-            endpoint: String,
-            modelName: String,
-            apiProviderType: ApiProviderType
-    ) {
-        context.apiDataStore.edit { preferences ->
-            preferences[API_KEY] = apiKey
-            preferences[API_ENDPOINT] = endpoint
-            preferences[MODEL_NAME] = modelName
-            preferences[API_PROVIDER_TYPE] = apiProviderType.name
-        }
-    }
-
     // 保存显示和行为设置的方法，不会影响模型参数
     suspend fun saveDisplaySettings(
             showFpsCounter: Boolean,
@@ -496,218 +258,6 @@ class ApiPreferences(private val context: Context) {
             preferences[SHOW_FPS_COUNTER] = showFpsCounter
             preferences[KEEP_SCREEN_ON] = keepScreenOn
         }
-    }
-
-    // Get all model parameters as a list
-    suspend fun getAllModelParameters(): List<ModelParameter<*>> {
-        val preferences = context.apiDataStore.data.first()
-        val parameters = mutableListOf<ModelParameter<*>>()
-
-        // 添加标准参数
-        // Max Tokens
-        parameters.add(
-                ModelParameter(
-                        id = "max_tokens",
-                        name = "最大生成Token数",
-                        apiName = "max_tokens",
-                        description = "控制AI每次最多生成的Token数量",
-                        defaultValue = DEFAULT_MAX_TOKENS,
-                        currentValue = preferences[MAX_TOKENS] ?: DEFAULT_MAX_TOKENS,
-                        isEnabled = preferences[MAX_TOKENS_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.INT,
-                        minValue = 1,
-                        maxValue = 16000,
-                        category = ParameterCategory.GENERATION
-                )
-        )
-
-        // Temperature
-        parameters.add(
-                ModelParameter(
-                        id = "temperature",
-                        name = "温度",
-                        apiName = "temperature",
-                        description = "控制输出的随机性。较低的值更确定性，较高的值更随机",
-                        defaultValue = DEFAULT_TEMPERATURE,
-                        currentValue = preferences[TEMPERATURE] ?: DEFAULT_TEMPERATURE,
-                        isEnabled = preferences[TEMPERATURE_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
-
-        // Top P
-        parameters.add(
-                ModelParameter(
-                        id = "top_p",
-                        name = "Top-P 采样",
-                        apiName = "top_p",
-                        description = "作为温度的替代方案，模型仅考虑概率最高的Top-P比例的token",
-                        defaultValue = DEFAULT_TOP_P,
-                        currentValue = preferences[TOP_P] ?: DEFAULT_TOP_P,
-                        isEnabled = preferences[TOP_P_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 1.0f,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
-
-        // Top K
-        parameters.add(
-                ModelParameter(
-                        id = "top_k",
-                        name = "Top-K 采样",
-                        apiName = "top_k",
-                        description = "模型仅考虑概率最高的K个token。0表示禁用",
-                        defaultValue = DEFAULT_TOP_K,
-                        currentValue = preferences[TOP_K] ?: DEFAULT_TOP_K,
-                        isEnabled = preferences[TOP_K_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.INT,
-                        minValue = 0,
-                        maxValue = 100,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
-
-        // Presence Penalty
-        parameters.add(
-                ModelParameter(
-                        id = "presence_penalty",
-                        name = "存在惩罚",
-                        apiName = "presence_penalty",
-                        description = "增强模型谈论新主题的倾向。值越高，惩罚越大",
-                        defaultValue = DEFAULT_PRESENCE_PENALTY,
-                        currentValue = preferences[PRESENCE_PENALTY] ?: DEFAULT_PRESENCE_PENALTY,
-                        isEnabled = preferences[PRESENCE_PENALTY_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = -2.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
-
-        // Frequency Penalty
-        parameters.add(
-                ModelParameter(
-                        id = "frequency_penalty",
-                        name = "频率惩罚",
-                        apiName = "frequency_penalty",
-                        description = "减少模型重复同一词语的可能性。值越高，惩罚越大",
-                        defaultValue = DEFAULT_FREQUENCY_PENALTY,
-                        currentValue = preferences[FREQUENCY_PENALTY] ?: DEFAULT_FREQUENCY_PENALTY,
-                        isEnabled = preferences[FREQUENCY_PENALTY_ENABLED] ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = -2.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
-
-        // Repetition Penalty
-        parameters.add(
-                ModelParameter(
-                        id = "repetition_penalty",
-                        name = "重复惩罚",
-                        apiName = "repetition_penalty",
-                        description = "进一步减少重复。1.0表示不惩罚，大于1.0会降低重复可能性",
-                        defaultValue = DEFAULT_REPETITION_PENALTY,
-                        currentValue = preferences[REPETITION_PENALTY]
-                                        ?: DEFAULT_REPETITION_PENALTY,
-                        isEnabled = preferences[REPETITION_PENALTY_ENABLED]
-                                        ?: DEFAULT_PARAM_ENABLED,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
-
-        // 加载自定义参数
-        val customParamsJson = preferences[CUSTOM_PARAMETERS] ?: DEFAULT_CUSTOM_PARAMETERS
-        if (customParamsJson != DEFAULT_CUSTOM_PARAMETERS) {
-            try {
-                val customParamsList =
-                        Json.decodeFromString<List<CustomParameterData>>(customParamsJson)
-                for (customParam in customParamsList) {
-                    val param =
-                            when (ParameterValueType.valueOf(customParam.valueType)) {
-                                ParameterValueType.INT -> {
-                                    ModelParameter(
-                                            id = customParam.id,
-                                            name = customParam.name,
-                                            apiName = customParam.apiName,
-                                            description = customParam.description,
-                                            defaultValue = customParam.defaultValue.toInt(),
-                                            currentValue = customParam.currentValue.toInt(),
-                                            isEnabled = customParam.isEnabled,
-                                            valueType = ParameterValueType.INT,
-                                            minValue = customParam.minValue?.toInt(),
-                                            maxValue = customParam.maxValue?.toInt(),
-                                            category =
-                                                    ParameterCategory.valueOf(customParam.category),
-                                            isCustom = true
-                                    )
-                                }
-                                ParameterValueType.FLOAT -> {
-                                    ModelParameter(
-                                            id = customParam.id,
-                                            name = customParam.name,
-                                            apiName = customParam.apiName,
-                                            description = customParam.description,
-                                            defaultValue = customParam.defaultValue.toFloat(),
-                                            currentValue = customParam.currentValue.toFloat(),
-                                            isEnabled = customParam.isEnabled,
-                                            valueType = ParameterValueType.FLOAT,
-                                            minValue = customParam.minValue?.toFloat(),
-                                            maxValue = customParam.maxValue?.toFloat(),
-                                            category =
-                                                    ParameterCategory.valueOf(customParam.category),
-                                            isCustom = true
-                                    )
-                                }
-                                ParameterValueType.STRING -> {
-                                    ModelParameter(
-                                            id = customParam.id,
-                                            name = customParam.name,
-                                            apiName = customParam.apiName,
-                                            description = customParam.description,
-                                            defaultValue = customParam.defaultValue,
-                                            currentValue = customParam.currentValue,
-                                            isEnabled = customParam.isEnabled,
-                                            valueType = ParameterValueType.STRING,
-                                            category =
-                                                    ParameterCategory.valueOf(customParam.category),
-                                            isCustom = true
-                                    )
-                                }
-                                ParameterValueType.BOOLEAN -> {
-                                    ModelParameter(
-                                            id = customParam.id,
-                                            name = customParam.name,
-                                            apiName = customParam.apiName,
-                                            description = customParam.description,
-                                            defaultValue = customParam.defaultValue.toBoolean(),
-                                            currentValue = customParam.currentValue.toBoolean(),
-                                            isEnabled = customParam.isEnabled,
-                                            valueType = ParameterValueType.BOOLEAN,
-                                            category =
-                                                    ParameterCategory.valueOf(customParam.category),
-                                            isCustom = true
-                                    )
-                                }
-                            }
-                    parameters.add(param)
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                // 如果解析失败，忽略自定义参数
-            }
-        }
-
-        return parameters
     }
 
     // 保存自定义请求头
@@ -785,30 +335,4 @@ class ApiPreferences(private val context: Context) {
             }
         }
     }
-
-    // 添加确保初始化API提供商类型的方法
-    suspend fun ensureApiProviderTypeInitialized() {
-        // 检查API提供商类型是否已设置，如果没有则设置默认值
-        val preferences = context.apiDataStore.data.first()
-        if (preferences[API_PROVIDER_TYPE] == null) {
-            Log.d("ApiPreferences", "初始化默认API提供商类型: $DEFAULT_API_PROVIDER_TYPE")
-            saveApiProviderType(ApiProviderType.DEEPSEEK)
-        }
-    }
 }
-
-/** 用于序列化存储自定义参数的数据类 */
-@Serializable
-data class CustomParameterData(
-        val id: String,
-        val name: String,
-        val apiName: String,
-        val description: String,
-        val defaultValue: String,
-        val currentValue: String,
-        val isEnabled: Boolean = false,
-        val valueType: String,
-        val minValue: String? = null,
-        val maxValue: String? = null,
-        val category: String
-)

@@ -2256,4 +2256,41 @@
     <string name="parameter_value">参数值</string>
     <string name="parameter_range_format">范围: %s - %s</string>
     
+    <!-- 自定义参数对话框 -->
+    <string name="custom_parameter_added">自定义参数已新增</string>
+    <string name="parameter_name">参数名称</string>
+    <string name="parameter_name_placeholder">例如: 我的参数</string>
+    <string name="api_name">API名称</string>
+    <string name="parameter_default_value">默认值</string>
+    <string name="parameter_default_value_placeholder">输入默认值</string>
+    <string name="parameter_enable_by_default">默认启用</string>
+    <string name="parameter_name_required">参数名称不能为空</string>
+    <string name="api_name_required">API名称不能为空</string>
+    
+    <!-- 模型參數設置新增字符串 -->
+    <string name="model_parameters_title">模型参数设置</string>
+    <string name="repetition_parameters">重复控制参数</string>
+    <string name="api_name_label">API名称: %1$s</string>
+    <string name="must_be_boolean">必须为\'true\'或\'false\'</string>
+    
+    <string name="add_custom_parameter_failed">添加自定义参数失败: %s</string>
+    <string name="add_custom_parameter">添加自定义参数</string>
+    <string name="custom_parameters_section">自定义参数</string>
+    <string name="edit_custom_parameter">编辑自定义参数</string>
+    <string name="custom_parameter_updated">自定义参数已更新</string>
+    <string name="parameter_api_name">API 名称</string>
+    <string name="parameter_description">参数描述</string>
+    <string name="parameter_min_value">最小值</string>
+    <string name="parameter_max_value">最大值</string>
+    <string name="parameter_category">参数类别</string>
+    <string name="api_name_placeholder">留空则同参数名称</string>
+    <string name="value_type_int">整数</string>
+    <string name="value_type_float">小数</string>
+    <string name="value_type_string">文本</string>
+    <string name="value_type_boolean">布尔值</string>
+    <string name="other_parameters">其他参数</string>
+    <string name="parameter_type">参数类型</string>
+
+    <string name="settings_title">设置</string>
+    <string name="api_settings_title">API 设置</string>
 </resources>

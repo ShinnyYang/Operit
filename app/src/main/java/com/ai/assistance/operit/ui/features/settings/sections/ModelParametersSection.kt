@@ -3,7 +3,9 @@ package com.ai.assistance.operit.ui.features.settings.sections
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -20,9 +22,13 @@ import com.ai.assistance.operit.data.model.ModelConfigData
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
+import com.ai.assistance.operit.data.model.StandardModelParameters
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
+import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -33,6 +39,7 @@ fun ModelParametersSection(
         showNotification: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    var showAddParameterDialog by remember { mutableStateOf(false) }
 
     // 参数状态
     var parameters by remember { mutableStateOf<List<ModelParameter<*>>>(emptyList()) }
@@ -62,129 +69,160 @@ fun ModelParametersSection(
     val valueText = stringResource(R.string.value)
     val rangeFormatText = stringResource(R.string.range_format)
 
+    // 自定义参数相关字符串资源
+    val customParameterAddedText = stringResource(R.string.custom_parameter_added)
+    val addCustomParameterFailedText = stringResource(R.string.add_custom_parameter_failed)
+    val addCustomParameterText = stringResource(R.string.add_custom_parameter)
+    val customParametersSectionText = stringResource(R.string.custom_parameters_section)
+    val customParameterUpdatedText = stringResource(R.string.custom_parameter_updated)
+
     // 初始化参数
-    LaunchedEffect(config.id) {
-        // 构建参数列表
-        val paramList = mutableListOf<ModelParameter<*>>()
+    LaunchedEffect(config) {
+        val context = configManager.appContext
+        val packageName = context.packageName
 
-        // 添加MaxTokens参数
-        paramList.add(
+        val standardParams =
+            StandardModelParameters.DEFINITIONS.map { definition ->
+                val nameResId =
+                    context.resources.getIdentifier(
+                        "${definition.id}_name",
+                        "string",
+                        packageName
+                    )
+                val descResId =
+                    context.resources.getIdentifier(
+                        "${definition.id}_description",
+                        "string",
+                        packageName
+                    )
+
+                val name = if (nameResId != 0) context.getString(nameResId) else definition.name
+                val description =
+                    if (descResId != 0) context.getString(descResId) else definition.description
+
+                val (currentValue, isEnabled) =
+                    when (definition.id) {
+                        "max_tokens" -> config.maxTokens to config.maxTokensEnabled
+                        "temperature" -> config.temperature to config.temperatureEnabled
+                        "top_p" -> config.topP to config.topPEnabled
+                        "top_k" -> config.topK to config.topKEnabled
+                        "presence_penalty" -> config.presencePenalty to config.presencePenaltyEnabled
+                        "frequency_penalty" ->
+                            config.frequencyPenalty to config.frequencyPenaltyEnabled
+                        "repetition_penalty" ->
+                            config.repetitionPenalty to config.repetitionPenaltyEnabled
+                        else -> definition.defaultValue to false
+                    }
+
+                @Suppress("UNCHECKED_CAST")
                 ModelParameter(
-                        id = "max_tokens",
-                        name = maxTokensName,
-                        apiName = "max_tokens",
-                        description = maxTokensDescription,
-                        defaultValue = ApiPreferences.DEFAULT_MAX_TOKENS,
-                        currentValue = config.maxTokens,
-                        isEnabled = config.maxTokensEnabled,
+                    id = definition.id,
+                    name = name,
+                    apiName = definition.apiName,
+                    description = description,
+                    defaultValue = definition.defaultValue as Any,
+                    currentValue = currentValue as Any,
+                    isEnabled = isEnabled,
+                    valueType = definition.valueType,
+                    minValue = definition.minValue as Any?,
+                    maxValue = definition.maxValue as Any?,
+                    category = definition.category
+                ) as ModelParameter<*>
+            }
+
+        val paramList = standardParams.toMutableList()
+
+        // 添加自定义参数
+        if (config.hasCustomParameters &&
+            config.customParameters.isNotBlank() &&
+            config.customParameters != "[]"
+        ) {
+            try {
+                val json = Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                }
+                val customParamsList =
+                    json.decodeFromString<List<com.ai.assistance.operit.data.model.CustomParameterData>>(
+                        config.customParameters
+                    )
+                for (customParam in customParamsList) {
+                    val param =
+                        when (ParameterValueType.valueOf(customParam.valueType)) {
+                            ParameterValueType.INT -> {
+                ModelParameter(
+                                    id = customParam.id,
+                                    name = customParam.name,
+                                    apiName = customParam.apiName,
+                                    description = customParam.description,
+                                    defaultValue = customParam.defaultValue.toInt(),
+                                    currentValue = customParam.currentValue.toInt(),
+                                    isEnabled = customParam.isEnabled,
                         valueType = ParameterValueType.INT,
-                        minValue = 1,
-                        maxValue = 16000,
-                        category = ParameterCategory.GENERATION
-                )
-        )
+                                    minValue = customParam.minValue?.toInt(),
+                                    maxValue = customParam.maxValue?.toInt(),
+                                    category =
+                                    ParameterCategory.valueOf(customParam.category),
+                                    isCustom = true
+                                )
+                            }
 
-        // 添加Temperature参数
-        paramList.add(
+                            ParameterValueType.FLOAT -> {
                 ModelParameter(
-                        id = "temperature",
-                        name = temperatureName,
-                        apiName = "temperature",
-                        description = temperatureDescription,
-                        defaultValue = ApiPreferences.DEFAULT_TEMPERATURE,
-                        currentValue = config.temperature,
-                        isEnabled = config.temperatureEnabled,
+                                    id = customParam.id,
+                                    name = customParam.name,
+                                    apiName = customParam.apiName,
+                                    description = customParam.description,
+                                    defaultValue = customParam.defaultValue.toFloat(),
+                                    currentValue = customParam.currentValue.toFloat(),
+                                    isEnabled = customParam.isEnabled,
                         valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
+                                    minValue = customParam.minValue?.toFloat(),
+                                    maxValue = customParam.maxValue?.toFloat(),
+                                    category =
+                                    ParameterCategory.valueOf(customParam.category),
+                                    isCustom = true
+                                )
+                            }
 
-        // 添加TopP参数
-        paramList.add(
+                            ParameterValueType.STRING -> {
                 ModelParameter(
-                        id = "top_p",
-                        name = topPName,
-                        apiName = "top_p",
-                        description = topPDescription,
-                        defaultValue = ApiPreferences.DEFAULT_TOP_P,
-                        currentValue = config.topP,
-                        isEnabled = config.topPEnabled,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 1.0f,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
+                                    id = customParam.id,
+                                    name = customParam.name,
+                                    apiName = customParam.apiName,
+                                    description = customParam.description,
+                                    defaultValue = customParam.defaultValue,
+                                    currentValue = customParam.currentValue,
+                                    isEnabled = customParam.isEnabled,
+                                    valueType = ParameterValueType.STRING,
+                                    category =
+                                    ParameterCategory.valueOf(customParam.category),
+                                    isCustom = true
+                                )
+                            }
 
-        // 添加TopK参数
-        paramList.add(
+                            ParameterValueType.BOOLEAN -> {
                 ModelParameter(
-                        id = "top_k",
-                        name = topKName,
-                        apiName = "top_k",
-                        description = topKDescription,
-                        defaultValue = ApiPreferences.DEFAULT_TOP_K,
-                        currentValue = config.topK,
-                        isEnabled = config.topKEnabled,
-                        valueType = ParameterValueType.INT,
-                        minValue = 0,
-                        maxValue = 100,
-                        category = ParameterCategory.CREATIVITY
-                )
-        )
-
-        // 添加PresencePenalty参数
-        paramList.add(
-                ModelParameter(
-                        id = "presence_penalty",
-                        name = presencePenaltyName,
-                        apiName = "presence_penalty",
-                        description = presencePenaltyDescription,
-                        defaultValue = ApiPreferences.DEFAULT_PRESENCE_PENALTY,
-                        currentValue = config.presencePenalty,
-                        isEnabled = config.presencePenaltyEnabled,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = -2.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
-
-        // 添加FrequencyPenalty参数
-        paramList.add(
-                ModelParameter(
-                        id = "frequency_penalty",
-                        name = frequencyPenaltyName,
-                        apiName = "frequency_penalty",
-                        description = frequencyPenaltyDescription,
-                        defaultValue = ApiPreferences.DEFAULT_FREQUENCY_PENALTY,
-                        currentValue = config.frequencyPenalty,
-                        isEnabled = config.frequencyPenaltyEnabled,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = -2.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
-
-        // 添加RepetitionPenalty参数
-        paramList.add(
-                ModelParameter(
-                        id = "repetition_penalty",
-                        name = repetitionPenaltyName,
-                        apiName = "repetition_penalty",
-                        description = repetitionPenaltyDescription,
-                        defaultValue = ApiPreferences.DEFAULT_REPETITION_PENALTY,
-                        currentValue = config.repetitionPenalty,
-                        isEnabled = config.repetitionPenaltyEnabled,
-                        valueType = ParameterValueType.FLOAT,
-                        minValue = 0.0f,
-                        maxValue = 2.0f,
-                        category = ParameterCategory.REPETITION
-                )
-        )
+                                    id = customParam.id,
+                                    name = customParam.name,
+                                    apiName = customParam.apiName,
+                                    description = customParam.description,
+                                    defaultValue = customParam.defaultValue.toBoolean(),
+                                    currentValue = customParam.currentValue.toBoolean(),
+                                    isEnabled = customParam.isEnabled,
+                                    valueType = ParameterValueType.BOOLEAN,
+                                    category =
+                                    ParameterCategory.valueOf(customParam.category),
+                                    isCustom = true
+                                )
+                            }
+                        }
+                    paramList.add(param)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         // 更新参数列表
         parameters = paramList
@@ -200,14 +238,17 @@ fun ModelParametersSection(
                                 val intParam = p as ModelParameter<Int>
                                 intParam.copy(currentValue = newValue as Int)
                             }
+
                             ParameterValueType.FLOAT -> {
                                 val floatParam = p as ModelParameter<Float>
                                 floatParam.copy(currentValue = newValue as Float)
                             }
+
                             ParameterValueType.STRING -> {
                                 val stringParam = p as ModelParameter<String>
                                 stringParam.copy(currentValue = newValue as String)
                             }
+
                             ParameterValueType.BOOLEAN -> {
                                 val boolParam = p as ModelParameter<Boolean>
                                 boolParam.copy(currentValue = newValue as Boolean)
@@ -218,6 +259,7 @@ fun ModelParametersSection(
                     }
                 }
         parameters = newParameters
+        scope.launch { configManager.updateParameters(config.id, newParameters) }
     }
 
     // 切换参数启用状态
@@ -230,14 +272,17 @@ fun ModelParametersSection(
                                 val intParam = p as ModelParameter<Int>
                                 intParam.copy(isEnabled = isEnabled)
                             }
+
                             ParameterValueType.FLOAT -> {
                                 val floatParam = p as ModelParameter<Float>
                                 floatParam.copy(isEnabled = isEnabled)
                             }
+
                             ParameterValueType.STRING -> {
                                 val stringParam = p as ModelParameter<String>
                                 stringParam.copy(isEnabled = isEnabled)
                             }
+
                             ParameterValueType.BOOLEAN -> {
                                 val boolParam = p as ModelParameter<Boolean>
                                 boolParam.copy(isEnabled = isEnabled)
@@ -248,219 +293,7 @@ fun ModelParametersSection(
                     }
                 }
         parameters = newParameters
-    }
-
-    // 更新标准参数的辅助函数 - 作为ModelParametersSection的成员方法
-    suspend fun updateStandardParameters(
-            configId: String,
-            parameters: List<ModelParameter<*>>,
-            apiKey: String,
-            apiEndpoint: String,
-            modelName: String
-    ) {
-        // 处理标准参数
-        var maxTokens = 4096
-        var maxTokensEnabled = false
-        var temperature = 1.0f
-        var temperatureEnabled = false
-        var topP = 1.0f
-        var topPEnabled = false
-        var topK = 0
-        var topKEnabled = false
-        var presencePenalty = 0.0f
-        var presencePenaltyEnabled = false
-        var frequencyPenalty = 0.0f
-        var frequencyPenaltyEnabled = false
-        var repetitionPenalty = 1.0f
-        var repetitionPenaltyEnabled = false
-
-        // 从参数列表中提取标准参数
-        parameters.forEach { param ->
-            when (param.id) {
-                "max_tokens" -> {
-                    maxTokens = (param.currentValue as Int)
-                    maxTokensEnabled = param.isEnabled
-                }
-                "temperature" -> {
-                    temperature = (param.currentValue as Float)
-                    temperatureEnabled = param.isEnabled
-                }
-                "top_p" -> {
-                    topP = (param.currentValue as Float)
-                    topPEnabled = param.isEnabled
-                }
-                "top_k" -> {
-                    topK = (param.currentValue as Int)
-                    topKEnabled = param.isEnabled
-                }
-                "presence_penalty" -> {
-                    presencePenalty = (param.currentValue as Float)
-                    presencePenaltyEnabled = param.isEnabled
-                }
-                "frequency_penalty" -> {
-                    frequencyPenalty = (param.currentValue as Float)
-                    frequencyPenaltyEnabled = param.isEnabled
-                }
-                "repetition_penalty" -> {
-                    repetitionPenalty = (param.currentValue as Float)
-                    repetitionPenaltyEnabled = param.isEnabled
-                }
-            }
-        }
-
-        // 获取当前配置
-        val config =
-                configManager.getModelConfigFlow(configId).collect { collectedConfig ->
-                    // 更新配置
-                    val updatedConfig =
-                            collectedConfig.copy(
-                                    apiKey = apiKey,
-                                    apiEndpoint = apiEndpoint,
-                                    modelName = modelName,
-                                    maxTokens = maxTokens,
-                                    maxTokensEnabled = maxTokensEnabled,
-                                    temperature = temperature,
-                                    temperatureEnabled = temperatureEnabled,
-                                    topP = topP,
-                                    topPEnabled = topPEnabled,
-                                    topK = topK,
-                                    topKEnabled = topKEnabled,
-                                    presencePenalty = presencePenalty,
-                                    presencePenaltyEnabled = presencePenaltyEnabled,
-                                    frequencyPenalty = frequencyPenalty,
-                                    frequencyPenaltyEnabled = frequencyPenaltyEnabled,
-                                    repetitionPenalty = repetitionPenalty,
-                                    repetitionPenaltyEnabled = repetitionPenaltyEnabled
-                            )
-
-                    // 保存更新后的配置
-                    configManager.saveModelConfig(updatedConfig)
-
-                    // 刷新所有AI服务实例，确保使用最新配置
-                    EnhancedAIService.refreshAllServices(
-                            configManager.appContext
-                    )
-
-                    // 处理自定义参数 (如果有需要)
-                    val customParams = parameters.filter { it.isCustom }
-                    if (customParams.isNotEmpty()) {
-                        val customParamsList =
-                                customParams.map { param ->
-                                    when (param.valueType) {
-                                        ParameterValueType.INT -> {
-                                            com.ai.assistance.operit.data.model.CustomParameterData(
-                                                    id = param.id,
-                                                    name = param.name,
-                                                    apiName = param.apiName,
-                                                    description = param.description,
-                                                    defaultValue =
-                                                            (param.defaultValue as Int).toString(),
-                                                    currentValue =
-                                                            (param.currentValue as Int).toString(),
-                                                    isEnabled = param.isEnabled,
-                                                    valueType = param.valueType.name,
-                                                    minValue = (param.minValue as? Int)?.toString(),
-                                                    maxValue = (param.maxValue as? Int)?.toString(),
-                                                    category = param.category.name
-                                            )
-                                        }
-                                        ParameterValueType.FLOAT -> {
-                                            com.ai.assistance.operit.data.model.CustomParameterData(
-                                                    id = param.id,
-                                                    name = param.name,
-                                                    apiName = param.apiName,
-                                                    description = param.description,
-                                                    defaultValue =
-                                                            (param.defaultValue as Float)
-                                                                    .toString(),
-                                                    currentValue =
-                                                            (param.currentValue as Float)
-                                                                    .toString(),
-                                                    isEnabled = param.isEnabled,
-                                                    valueType = param.valueType.name,
-                                                    minValue =
-                                                            (param.minValue as? Float)?.toString(),
-                                                    maxValue =
-                                                            (param.maxValue as? Float)?.toString(),
-                                                    category = param.category.name
-                                            )
-                                        }
-                                        ParameterValueType.STRING -> {
-                                            com.ai.assistance.operit.data.model.CustomParameterData(
-                                                    id = param.id,
-                                                    name = param.name,
-                                                    apiName = param.apiName,
-                                                    description = param.description,
-                                                    defaultValue = param.defaultValue as String,
-                                                    currentValue = param.currentValue as String,
-                                                    isEnabled = param.isEnabled,
-                                                    valueType = param.valueType.name,
-                                                    category = param.category.name
-                                            )
-                                        }
-                                        ParameterValueType.BOOLEAN -> {
-                                            com.ai.assistance.operit.data.model.CustomParameterData(
-                                                    id = param.id,
-                                                    name = param.name,
-                                                    apiName = param.apiName,
-                                                    description = param.description,
-                                                    defaultValue =
-                                                            (param.defaultValue as Boolean)
-                                                                    .toString(),
-                                                    currentValue =
-                                                            (param.currentValue as Boolean)
-                                                                    .toString(),
-                                                    isEnabled = param.isEnabled,
-                                                    valueType = param.valueType.name,
-                                                    category = param.category.name
-                                            )
-                                        }
-                                    }
-                                }
-
-                        // 使用新方法更新自定义参数
-                        configManager.updateCustomParameters(
-                                configId = configId,
-                                parametersJson = Json.encodeToString(customParamsList)
-                        )
-                    } else {
-                        // 如果没有自定义参数，清空自定义参数列表
-                        configManager.updateCustomParameters(
-                                configId = configId,
-                                parametersJson = "[]"
-                        )
-                    }
-                }
-    }
-
-    // 保存参数设置
-    val saveParameters = {
-        scope.launch {
-            try {
-                // 使用新的方法来更新参数
-                // 首先获取当前配置的API设置
-                val currentConfig =
-                        configManager.getModelConfigFlow(config.id).collect {
-                            val apiKey = it.apiKey
-                            val apiEndpoint = it.apiEndpoint
-                            val modelName = it.modelName
-
-                            // 为每个参数类型创建单独更新方法
-                            updateStandardParameters(
-                                    configId = config.id,
-                                    parameters = parameters,
-                                    apiKey = apiKey,
-                                    apiEndpoint = apiEndpoint,
-                                    modelName = modelName
-                            )
-                        }
-
-                showNotification(parametersSavedText)
-            } catch (e: Exception) {
-                // 处理异常
-                e.printStackTrace()
-            }
-        }
+        scope.launch { configManager.updateParameters(config.id, newParameters) }
     }
 
     // 重置所有参数
@@ -478,6 +311,7 @@ fun ModelParametersSection(
                                             isEnabled = false
                                     )
                                 }
+
                                 ParameterValueType.FLOAT -> {
                                     val floatParam = param as ModelParameter<Float>
                                     floatParam.copy(
@@ -485,6 +319,7 @@ fun ModelParametersSection(
                                             isEnabled = false
                                     )
                                 }
+
                                 ParameterValueType.STRING -> {
                                     val stringParam = param as ModelParameter<String>
                                     stringParam.copy(
@@ -492,6 +327,7 @@ fun ModelParametersSection(
                                             isEnabled = false
                                     )
                                 }
+
                                 ParameterValueType.BOOLEAN -> {
                                     val boolParam = param as ModelParameter<Boolean>
                                     boolParam.copy(
@@ -503,23 +339,8 @@ fun ModelParametersSection(
                         }
                 parameters = resetParams
 
-                // 获取当前配置的API设置
-                val currentConfig =
-                        configManager.getModelConfigFlow(config.id).collect {
-                            val apiKey = it.apiKey
-                            val apiEndpoint = it.apiEndpoint
-                            val modelName = it.modelName
-
-                            // 使用新的方法保存重置后的参数
-                            updateStandardParameters(
-                                    configId = config.id,
-                                    parameters = resetParams,
-                                    apiKey = apiKey,
-                                    apiEndpoint = apiEndpoint,
-                                    modelName = modelName
-                            )
-                        }
-
+                // 保存重置后的参数
+                configManager.updateParameters(config.id, resetParams)
                 showNotification(parametersResetText)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -528,13 +349,65 @@ fun ModelParametersSection(
     }
 
     // 分类参数
-    val generationParams = parameters.filter { it.category == ParameterCategory.GENERATION }
-    val creativityParams = parameters.filter { it.category == ParameterCategory.CREATIVITY }
-    val repetitionParams = parameters.filter { it.category == ParameterCategory.REPETITION }
+    val generationParams = parameters.filter { it.category == ParameterCategory.GENERATION && !it.isCustom }
+    val creativityParams = parameters.filter { it.category == ParameterCategory.CREATIVITY && !it.isCustom }
+    val repetitionParams = parameters.filter { it.category == ParameterCategory.REPETITION && !it.isCustom }
+    val customParams = parameters.filter { it.isCustom }
+
+    // 状态
+    var parameterToEdit by remember { mutableStateOf<com.ai.assistance.operit.data.model.CustomParameterData?>(null) }
+
+    if (showAddParameterDialog || parameterToEdit != null) {
+        AddCustomParameterDialog(
+            existingParam = parameterToEdit,
+            onDismiss = {
+                showAddParameterDialog = false
+                parameterToEdit = null
+            },
+            onSave = { newParamData ->
+                scope.launch {
+                    try {
+                        val updatedParameters = if (parameterToEdit != null) {
+                            // 更新现有参数
+                            parameters.map {
+                                if (it.id == newParamData.id) {
+                                    convertCustomParameterDataToModelParameter(newParamData)
+                                } else {
+                                    it
+                                }
+                            }
+                        } else {
+                            // 添加新参数
+                            val newModelParam = convertCustomParameterDataToModelParameter(newParamData)
+                            parameters + newModelParam
+                        }
+                        parameters = updatedParameters
+
+                        // 保存到存储
+                        configManager.updateParameters(config.id, updatedParameters)
+
+                        showNotification(if (parameterToEdit != null) customParameterUpdatedText else customParameterAddedText)
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        showNotification(
+                            addCustomParameterFailedText.format(
+                                e.message ?: "Unknown error"
+                            )
+                        )
+                    } finally {
+                        showAddParameterDialog = false
+                        parameterToEdit = null
+                    }
+                }
+            }
+        )
+    }
 
     // UI部分
     Card(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
@@ -552,7 +425,7 @@ fun ModelParametersSection(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                        text = "模型参数设置",
+                    text = stringResource(R.string.model_parameters_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                 )
@@ -560,7 +433,7 @@ fun ModelParametersSection(
 
             // 参数描述
             Text(
-                    text = "启用参数时，该参数将被包含在API请求中。默认情况下，所有参数均处于关闭状态，使用模型的默认值。",
+                text = stringResource(R.string.parameters_description),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -568,7 +441,10 @@ fun ModelParametersSection(
 
             // 生成参数部分
             if (generationParams.isNotEmpty()) {
-                SectionTitle(title = "生成参数", icon = Icons.Default.AutoFixHigh)
+                SectionTitle(
+                    title = stringResource(R.string.generation_parameters),
+                    icon = Icons.Default.AutoFixHigh
+                )
                 generationParams.forEach { parameter ->
                     ParameterItem(
                             parameter = parameter,
@@ -576,6 +452,7 @@ fun ModelParametersSection(
                                 updateParameterValue(parameter, newValue)
                             },
                             onToggle = { isEnabled -> toggleParameter(parameter, isEnabled) },
+                            onEditClick = { /* Not needed for standard parameters */ },
                             error = parameterErrors[parameter.id],
                             onErrorChange = { error ->
                                 if (error != null) {
@@ -595,7 +472,10 @@ fun ModelParametersSection(
 
             // 创造性参数部分
             if (creativityParams.isNotEmpty()) {
-                SectionTitle(title = "创造性参数", icon = Icons.Default.Lightbulb)
+                SectionTitle(
+                    title = stringResource(R.string.creativity_parameters),
+                    icon = Icons.Default.Lightbulb
+                )
                 creativityParams.forEach { parameter ->
                     ParameterItem(
                             parameter = parameter,
@@ -603,6 +483,7 @@ fun ModelParametersSection(
                                 updateParameterValue(parameter, newValue)
                             },
                             onToggle = { isEnabled -> toggleParameter(parameter, isEnabled) },
+                            onEditClick = { /* Not needed for standard parameters */ },
                             error = parameterErrors[parameter.id],
                             onErrorChange = { error ->
                                 if (error != null) {
@@ -617,7 +498,10 @@ fun ModelParametersSection(
 
             // 重复控制参数部分
             if (repetitionParams.isNotEmpty()) {
-                SectionTitle(title = "重复控制参数", icon = Icons.Default.Repeat)
+                SectionTitle(
+                    title = stringResource(R.string.repetition_parameters),
+                    icon = Icons.Default.Repeat
+                )
                 repetitionParams.forEach { parameter ->
                     ParameterItem(
                             parameter = parameter,
@@ -625,6 +509,32 @@ fun ModelParametersSection(
                                 updateParameterValue(parameter, newValue)
                             },
                             onToggle = { isEnabled -> toggleParameter(parameter, isEnabled) },
+                            onEditClick = { /* Not needed for standard parameters */ },
+                            error = parameterErrors[parameter.id],
+                            onErrorChange = { error ->
+                                if (error != null) {
+                                    parameterErrors[parameter.id] = error
+                                } else {
+                                    parameterErrors.remove(parameter.id)
+                                }
+                            }
+                    )
+                }
+            }
+
+            // 自定义参数部分
+            if (customParams.isNotEmpty()) {
+                SectionTitle(title = customParametersSectionText, icon = Icons.Default.Settings)
+                customParams.forEach { parameter ->
+                    ParameterItem(
+                        parameter = parameter,
+                        onValueChange = { newValue ->
+                            updateParameterValue(parameter, newValue)
+                        },
+                        onToggle = { isEnabled -> toggleParameter(parameter, isEnabled) },
+                        onEditClick = {
+                            parameterToEdit = modelParameterToCustomParameterData(parameter)
+                        },
                             error = parameterErrors[parameter.id],
                             onErrorChange = { error ->
                                 if (error != null) {
@@ -639,41 +549,466 @@ fun ModelParametersSection(
 
             // 操作按钮
             Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 24.dp),
+                horizontalArrangement = Arrangement.Center
             ) {
                 OutlinedButton(
                         onClick = { resetParameters() },
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                        modifier = Modifier.weight(1f).padding(end = 8.dp)
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
                 ) {
                     Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "重置",
+                        contentDescription = stringResource(R.string.reset),
                             modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                                             Text(resetParametersText)
                 }
+            }
 
-                Button(
-                        onClick = { saveParameters() },
-                        colors =
-                                ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                ),
-                        modifier = Modifier.weight(1f).padding(start = 8.dp)
-                ) {
-                    Icon(
-                            imageVector = Icons.Default.Save,
-                            contentDescription = "保存",
-                            modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                                            Text(saveParametersText)
-                }
+            // 新增自定义参数按钮
+            OutlinedButton(
+                onClick = { showAddParameterDialog = true },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(addCustomParameterText)
             }
         }
+    }
+}
+
+// Helper function to convert CustomParameterData to ModelParameter<*>
+private fun convertCustomParameterDataToModelParameter(
+    customParam: com.ai.assistance.operit.data.model.CustomParameterData
+): ModelParameter<*> {
+    return when (ParameterValueType.valueOf(customParam.valueType)) {
+        ParameterValueType.INT -> {
+            ModelParameter(
+                id = customParam.id,
+                name = customParam.name,
+                apiName = customParam.apiName,
+                description = customParam.description,
+                defaultValue = customParam.defaultValue.toInt(),
+                currentValue = customParam.currentValue.toInt(),
+                isEnabled = customParam.isEnabled,
+                valueType = ParameterValueType.INT,
+                minValue = customParam.minValue?.toInt(),
+                maxValue = customParam.maxValue?.toInt(),
+                category = ParameterCategory.valueOf(customParam.category),
+                isCustom = true
+            )
+        }
+
+        ParameterValueType.FLOAT -> {
+            ModelParameter(
+                id = customParam.id,
+                name = customParam.name,
+                apiName = customParam.apiName,
+                description = customParam.description,
+                defaultValue = customParam.defaultValue.toFloat(),
+                currentValue = customParam.currentValue.toFloat(),
+                isEnabled = customParam.isEnabled,
+                valueType = ParameterValueType.FLOAT,
+                minValue = customParam.minValue?.toFloat(),
+                maxValue = customParam.maxValue?.toFloat(),
+                category = ParameterCategory.valueOf(customParam.category),
+                isCustom = true
+            )
+        }
+
+        ParameterValueType.STRING -> {
+            ModelParameter(
+                id = customParam.id,
+                name = customParam.name,
+                apiName = customParam.apiName,
+                description = customParam.description,
+                defaultValue = customParam.defaultValue,
+                currentValue = customParam.currentValue,
+                isEnabled = customParam.isEnabled,
+                valueType = ParameterValueType.STRING,
+                category = ParameterCategory.valueOf(customParam.category),
+                isCustom = true
+            )
+        }
+
+        ParameterValueType.BOOLEAN -> {
+            ModelParameter(
+                id = customParam.id,
+                name = customParam.name,
+                apiName = customParam.apiName,
+                description = customParam.description,
+                defaultValue = customParam.defaultValue.toBoolean(),
+                currentValue = customParam.currentValue.toBoolean(),
+                isEnabled = customParam.isEnabled,
+                valueType = ParameterValueType.BOOLEAN,
+                category = ParameterCategory.valueOf(customParam.category),
+                isCustom = true
+            )
+        }
+    }
+}
+
+// Helper function to convert ModelParameter<*> to CustomParameterData
+private fun modelParameterToCustomParameterData(
+    param: ModelParameter<*>
+): com.ai.assistance.operit.data.model.CustomParameterData {
+    return com.ai.assistance.operit.data.model.CustomParameterData(
+        id = param.id,
+        name = param.name,
+        apiName = param.apiName,
+        description = param.description,
+        defaultValue = param.defaultValue.toString(),
+        currentValue = param.currentValue.toString(),
+        isEnabled = param.isEnabled,
+        valueType = param.valueType.name,
+        minValue = param.minValue?.toString(),
+        maxValue = param.maxValue?.toString(),
+        category = param.category.name
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AddCustomParameterDialog(
+    onDismiss: () -> Unit,
+    onSave: (com.ai.assistance.operit.data.model.CustomParameterData) -> Unit,
+    existingParam: com.ai.assistance.operit.data.model.CustomParameterData? = null
+) {
+    val isEditing = existingParam != null
+
+    var name by remember { mutableStateOf(existingParam?.name ?: "") }
+    var apiName by remember { mutableStateOf(existingParam?.apiName ?: "") }
+    var description by remember { mutableStateOf(existingParam?.description ?: "") }
+    var valueType by remember {
+        mutableStateOf(
+            existingParam?.valueType?.let { ParameterValueType.valueOf(it) }
+                ?: ParameterValueType.STRING
+        )
+    }
+    var defaultValue by remember { mutableStateOf(existingParam?.defaultValue ?: "") }
+    var minValue by remember { mutableStateOf(existingParam?.minValue ?: "") }
+    var maxValue by remember { mutableStateOf(existingParam?.maxValue ?: "") }
+    var category by remember {
+        mutableStateOf(
+            existingParam?.category?.let { ParameterCategory.valueOf(it) }
+                ?: ParameterCategory.GENERATION
+        )
+    }
+
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var defaultValueError by remember { mutableStateOf<String?>(null) }
+    var minValueError by remember { mutableStateOf<String?>(null) }
+    var maxValueError by remember { mutableStateOf<String?>(null) }
+
+    // Dropdown states
+    var valueTypeExpanded by remember { mutableStateOf(false) }
+    var categoryExpanded by remember { mutableStateOf(false) }
+
+    // String resources
+    val dialogTitle = if (isEditing) {
+        stringResource(R.string.edit_custom_parameter)
+    } else {
+        stringResource(R.string.add_custom_parameter)
+    }
+    val parameterNameText = stringResource(R.string.parameter_name)
+    val parameterApiNameText = stringResource(R.string.parameter_api_name)
+    val parameterDescriptionText = stringResource(R.string.parameter_description)
+    val parameterTypeText = stringResource(R.string.parameter_type)
+    val parameterDefaultValueText = stringResource(R.string.parameter_default_value)
+    val parameterMinValueText = stringResource(R.string.parameter_min_value)
+    val parameterMaxValueText = stringResource(R.string.parameter_max_value)
+    val parameterCategoryText = stringResource(R.string.parameter_category)
+
+    val parameterNameRequiredText = stringResource(R.string.parameter_name_required)
+    val saveText = stringResource(R.string.save)
+    val cancelText = stringResource(R.string.cancel)
+    val mustBeIntegerText = stringResource(R.string.must_be_integer)
+    val mustBeFloatText = stringResource(R.string.must_be_float)
+    val mustBeBooleanText = stringResource(R.string.must_be_boolean)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(dialogTitle) },
+        text = {
+            Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // 参数名称 - 总是显示
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { 
+                        name = it
+                        // 如果是创建模式，自动设置 apiName
+                        if (!isEditing) {
+                            apiName = it.replace(" ", "_").lowercase()
+                        }
+                    },
+                    label = { Text(parameterNameText) },
+                    isError = nameError != null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                nameError?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Value Type Dropdown - 总是显示
+                ExposedDropdownMenuBox(
+                    expanded = valueTypeExpanded,
+                    onExpandedChange = { valueTypeExpanded = !valueTypeExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = valueType.toDisplayString(),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text(parameterTypeText) },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = valueTypeExpanded) },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = valueTypeExpanded,
+                        onDismissRequest = { valueTypeExpanded = false }
+                    ) {
+                        ParameterValueType.values().forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.toDisplayString()) },
+                                onClick = {
+                                    valueType = type
+                                    valueTypeExpanded = false
+                                    // Reset default value
+                                    defaultValue = when (type) {
+                                        ParameterValueType.INT -> "0"
+                                        ParameterValueType.FLOAT -> "0.0"
+                                        ParameterValueType.STRING -> ""
+                                        ParameterValueType.BOOLEAN -> "true"
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Default Value - 总是显示
+                OutlinedTextField(
+                    value = defaultValue,
+                    onValueChange = { defaultValue = it },
+                    label = { Text(parameterDefaultValueText) },
+                    isError = defaultValueError != null,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                defaultValueError?.let {
+                    Text(
+                        it,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // 以下字段只在编辑模式下显示
+                if (isEditing) {
+                    OutlinedTextField(
+                        value = apiName,
+                        onValueChange = { apiName = it },
+                        label = { Text(parameterApiNameText) },
+                        placeholder = { Text(stringResource(R.string.api_name_placeholder)) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text(parameterDescriptionText) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Min/Max Value
+                    Row(Modifier.fillMaxWidth()) {
+                        OutlinedTextField(
+                            value = minValue,
+                            onValueChange = { minValue = it },
+                            label = { Text(parameterMinValueText) },
+                            isError = minValueError != null,
+                            modifier = Modifier.weight(1f),
+                            enabled = valueType == ParameterValueType.INT || valueType == ParameterValueType.FLOAT
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                        OutlinedTextField(
+                            value = maxValue,
+                            onValueChange = { maxValue = it },
+                            label = { Text(parameterMaxValueText) },
+                            isError = maxValueError != null,
+                            modifier = Modifier.weight(1f),
+                            enabled = valueType == ParameterValueType.INT || valueType == ParameterValueType.FLOAT
+                        )
+                    }
+                    if (minValueError != null || maxValueError != null) {
+                        Row(Modifier.fillMaxWidth()) {
+                           Text(
+                               text = minValueError ?: "",
+                               color = MaterialTheme.colorScheme.error,
+                               style = MaterialTheme.typography.bodySmall,
+                               modifier = Modifier.weight(1f)
+                           )
+                           Spacer(modifier = Modifier.width(8.dp))
+                           Text(
+                               text = maxValueError ?: "",
+                               color = MaterialTheme.colorScheme.error,
+                               style = MaterialTheme.typography.bodySmall,
+                               modifier = Modifier.weight(1f)
+                           )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Category Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = categoryExpanded,
+                        onExpandedChange = { categoryExpanded = !categoryExpanded }
+                    ) {
+                        OutlinedTextField(
+                            value = category.toDisplayString(),
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(parameterCategoryText) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                            modifier = Modifier
+                                .menuAnchor()
+                                .fillMaxWidth()
+                        )
+                        ExposedDropdownMenu(
+                            expanded = categoryExpanded,
+                            onDismissRequest = { categoryExpanded = false }
+                        ) {
+                            ParameterCategory.values().forEach { cat ->
+                                DropdownMenuItem(
+                                    text = { Text(cat.toDisplayString()) },
+                                    onClick = {
+                                        category = cat
+                                        categoryExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    var hasError = false
+                    // Reset errors
+                    nameError = null
+                    defaultValueError = null
+                    minValueError = null
+                    maxValueError = null
+
+                    if (name.isBlank()) {
+                        nameError = parameterNameRequiredText
+                        hasError = true
+                    }
+
+                    // Value validation
+                    when (valueType) {
+                        ParameterValueType.INT -> {
+                            if (defaultValue.toIntOrNull() == null) {
+                                defaultValueError = mustBeIntegerText
+                                hasError = true
+                            }
+                            if (minValue.isNotBlank() && minValue.toIntOrNull() == null) {
+                                minValueError = mustBeIntegerText
+                                hasError = true
+                            }
+                            if (maxValue.isNotBlank() && maxValue.toIntOrNull() == null) {
+                                maxValueError = mustBeIntegerText
+                                hasError = true
+                            }
+                        }
+                        ParameterValueType.FLOAT -> {
+                            if (defaultValue.toFloatOrNull() == null) {
+                                defaultValueError = mustBeFloatText
+                                hasError = true
+                            }
+                             if (minValue.isNotBlank() && minValue.toFloatOrNull() == null) {
+                                minValueError = mustBeFloatText
+                                hasError = true
+                            }
+                            if (maxValue.isNotBlank() && maxValue.toFloatOrNull() == null) {
+                                maxValueError = mustBeFloatText
+                                hasError = true
+                            }
+                        }
+                        ParameterValueType.BOOLEAN -> {
+                            if (
+                                defaultValue.lowercase() != "true" &&
+                                defaultValue.lowercase() != "false"
+                            ) {
+                                defaultValueError = mustBeBooleanText
+                                hasError = true
+                            }
+                        }
+                        ParameterValueType.STRING -> {
+                            // No validation needed for string
+                        }
+                    }
+
+                    if (hasError) return@Button
+
+                    val newParam =
+                        com.ai.assistance.operit.data.model.CustomParameterData(
+                            id = existingParam?.id ?: UUID.randomUUID().toString(),
+                            name = name,
+                            apiName = if (apiName.isBlank()) name.replace(" ", "_").lowercase() else apiName,
+                            description = description,
+                            defaultValue = defaultValue,
+                            currentValue = existingParam?.currentValue ?: defaultValue,
+                            isEnabled = existingParam?.isEnabled ?: true,
+                            valueType = valueType.name,
+                            minValue = minValue.ifBlank { null },
+                            maxValue = maxValue.ifBlank { null },
+                            category = category.name
+                        )
+                    onSave(newParam)
+                }
+            ) {
+                Text(saveText)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(cancelText) } }
+    )
+}
+
+@Composable
+private fun ParameterValueType.toDisplayString(): String {
+    return when (this) {
+        ParameterValueType.INT -> stringResource(R.string.value_type_int)
+        ParameterValueType.FLOAT -> stringResource(R.string.value_type_float)
+        ParameterValueType.STRING -> stringResource(R.string.value_type_string)
+        ParameterValueType.BOOLEAN -> stringResource(R.string.value_type_boolean)
+    }
+}
+
+@Composable
+private fun ParameterCategory.toDisplayString(): String {
+    return when (this) {
+        ParameterCategory.GENERATION -> stringResource(R.string.generation_parameters)
+        ParameterCategory.CREATIVITY -> stringResource(R.string.creativity_parameters)
+        ParameterCategory.REPETITION -> stringResource(R.string.repetition_parameters)
+        ParameterCategory.OTHER -> stringResource(R.string.other_parameters)
     }
 }
 
@@ -704,6 +1039,7 @@ private fun ParameterItem(
         parameter: ModelParameter<*>,
         onValueChange: (Any) -> Unit,
         onToggle: (Boolean) -> Unit,
+        onEditClick: () -> Unit,
         error: String? = null,
         onErrorChange: (String?) -> Unit
 ) {
@@ -712,8 +1048,12 @@ private fun ParameterItem(
     
     val valueText = stringResource(R.string.parameter_value)
     val rangeFormatText = stringResource(R.string.parameter_range_format)
+    val mustBeIntegerText = stringResource(R.string.must_be_integer)
+    val mustBeFloatText = stringResource(R.string.must_be_float)
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(vertical = 4.dp)) {
         Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -734,11 +1074,19 @@ private fun ParameterItem(
                     )
                 }
 
+                if (parameter.isCustom) {
                 Text(
-                        text = "API名称: ${parameter.apiName}",
+                        text = "自定义参数",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                } else {
+                    Text(
+                        text = stringResource(R.string.api_name_label, parameter.apiName),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                 )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -754,13 +1102,26 @@ private fun ParameterItem(
                                 )
                 )
 
+                if (parameter.isCustom) {
+                    IconButton(onClick = onEditClick, modifier = Modifier.size(32.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = stringResource(R.string.edit_custom_parameter),
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
                 // 展开/收起按钮
                 IconButton(onClick = { expanded = !expanded }, modifier = Modifier.size(32.dp)) {
                     Icon(
                             imageVector =
                                     if (expanded) Icons.Default.ExpandLess
                                     else Icons.Default.ExpandMore,
-                            contentDescription = if (expanded) "收起" else "展开",
+                        contentDescription = if (expanded) stringResource(R.string.collapse) else stringResource(
+                            R.string.expand
+                        ),
                             modifier = Modifier.size(20.dp)
                     )
                 }
@@ -786,7 +1147,7 @@ private fun ParameterItem(
                                         onErrorChange(null)
                                         onValueChange(intValue)
                                     } catch (e: NumberFormatException) {
-                                        onErrorChange(context.getString(R.string.must_be_integer))
+                                    onErrorChange(mustBeIntegerText)
                                     }
                                 },
                                 label = { Text(valueText) },
@@ -797,12 +1158,18 @@ private fun ParameterItem(
                                     } else if (intParam.minValue != null &&
                                                     intParam.maxValue != null
                                     ) {
-                                        Text(rangeFormatText.format(intParam.minValue, intParam.maxValue))
+                                    Text(
+                                        rangeFormatText.format(
+                                            intParam.minValue,
+                                            intParam.maxValue
+                                        )
+                                    )
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                         )
                     }
+
                     ParameterValueType.FLOAT -> {
                         val floatParam = parameter as ModelParameter<Float>
                         var textValue by remember {
@@ -818,7 +1185,7 @@ private fun ParameterItem(
                                         onErrorChange(null)
                                         onValueChange(floatValue)
                                     } catch (e: NumberFormatException) {
-                                        onErrorChange(context.getString(R.string.must_be_float))
+                                    onErrorChange(mustBeFloatText)
                                     }
                                 },
                                 label = { Text(valueText) },
@@ -829,12 +1196,18 @@ private fun ParameterItem(
                                     } else if (floatParam.minValue != null &&
                                                     floatParam.maxValue != null
                                     ) {
-                                        Text(rangeFormatText.format(floatParam.minValue, floatParam.maxValue))
+                                    Text(
+                                        rangeFormatText.format(
+                                            floatParam.minValue,
+                                            floatParam.maxValue
+                                        )
+                                    )
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                         )
                     }
+
                     ParameterValueType.STRING -> {
                         val stringParam = parameter as ModelParameter<String>
 
@@ -845,6 +1218,7 @@ private fun ParameterItem(
                                 modifier = Modifier.fillMaxWidth()
                         )
                     }
+
                     ParameterValueType.BOOLEAN -> {
                         val boolParam = parameter as ModelParameter<Boolean>
 
@@ -867,7 +1241,10 @@ private fun ParameterItem(
 
                 // 显示默认值
                 Text(
-                        text = stringResource(R.string.default_value_format, parameter.defaultValue.toString()),
+                    text = stringResource(
+                        R.string.default_value_format,
+                        parameter.defaultValue.toString()
+                    ),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline,
                         modifier = Modifier.padding(top = 8.dp)
@@ -882,12 +1259,14 @@ private fun ParameterItem(
 @Composable
 private fun TemperatureRecommendationRow() {
     Row(
-            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp, horizontal = 8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp, horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-                text = "温度推荐设置",
+            text = stringResource(R.string.temperature_recommendation),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
         )

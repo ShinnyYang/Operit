@@ -89,7 +89,7 @@ class FunctionalPromptManager(private val context: Context) {
 
     // 获取自定义系统提示模板（通过 ApiPreferences）
     suspend fun getCustomSystemPromptTemplate(): String {
-        val apiPreferences = com.ai.assistance.operit.data.preferences.ApiPreferences(context)
+        val apiPreferences = com.ai.assistance.operit.data.preferences.ApiPreferences.getInstance(context)
         return apiPreferences.customSystemPromptTemplateFlow.first()
     }
 

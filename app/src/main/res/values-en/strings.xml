@@ -2254,4 +2254,42 @@
     <string name="parameter_value">Parameter Value</string>
     <string name="parameter_range_format">Range: %s - %s</string>
   
+    <!-- Custom Parameters Dialog -->
+    <string name="add_custom_parameter">Add Custom Parameter</string>
+    <string name="custom_parameter_added">Custom parameter added</string>
+    <string name="add_custom_parameter_failed">Failed to add custom parameter: %s</string>
+    <string name="parameter_name">Parameter Name</string>
+    <string name="parameter_name_placeholder">e.g., My Parameter</string>
+    <string name="api_name">API Name</string>
+    <string name="api_name_placeholder">e.g., my_parameter</string>
+    <string name="parameter_description">Description</string>
+    <string name="parameter_description_placeholder">Enter parameter description</string>
+    <string name="parameter_type">Parameter Type</string>
+    <string name="parameter_category">Category</string>
+    <string name="parameter_default_value">Default Value</string>
+    <string name="parameter_default_value_placeholder">Enter default value</string>
+    <string name="parameter_enable_by_default">Enable by Default</string>
+    <string name="custom_parameters_section">Custom Parameters</string>
+    <string name="parameter_name_required">Parameter name cannot be empty</string>
+    <string name="api_name_required">API name cannot be empty</string>
+    
+    <!-- Model Parameters Section new strings -->
+    <string name="model_parameters_title">Model Parameters Settings</string>
+    <string name="repetition_parameters">Repetition Control Parameters</string>
+    <string name="api_name_label">API Name: %1$s</string>
+    <string name="must_be_boolean">Must be \'true\' or \'false\'</string>
+
+    <string name="edit_custom_parameter">Edit Custom Parameter</string>
+    <string name="custom_parameter_updated">Custom parameter updated</string>
+    <string name="parameter_api_name">API Name</string>
+    <string name="parameter_min_value">Min Value</string>
+    <string name="parameter_max_value">Max Value</string>
+    <string name="value_type_int">Integer</string>
+    <string name="value_type_float">Float</string>
+    <string name="value_type_string">String</string>
+    <string name="value_type_boolean">Boolean</string>
+    <string name="other_parameters">Other Parameters</string>
+
+    <string name="settings_title">Settings</string>
+    <string name="api_settings_title">API Settings</string>
 </resources> 

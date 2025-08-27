@@ -177,7 +177,7 @@ fun OperitApp(initialNavItem: NavItem = NavItem.AiChat, toolHandler: AIToolHandl
     }
 
     // Get FPS counter display setting
-    val apiPreferences = remember { ApiPreferences(context) }
+            val apiPreferences = remember { ApiPreferences.getInstance(context) }
     val showFpsCounter = apiPreferences.showFpsCounterFlow.collectAsState(initial = false).value
 
     // Create an instance of MCPRepository
