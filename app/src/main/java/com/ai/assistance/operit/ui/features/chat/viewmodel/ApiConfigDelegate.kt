@@ -62,19 +62,25 @@ class ApiConfigDelegate(
     private val _apiKey = MutableStateFlow("")
     val apiKey: StateFlow<String> = _apiKey.asStateFlow()
 
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
     init {
-        // 初始化ModelConfigManager
+        // 异步初始化ModelConfigManager和加载配置
         viewModelScope.launch {
-            modelConfigManager.initializeIfNeeded()
-
-            // 加载默认配置中的API密钥
             try {
-                val defaultConfig = modelConfigManager.getModelConfigFlow(DEFAULT_CONFIG_ID).first()
+                modelConfigManager.initializeIfNeeded()
+                
+                // 获取默认配置并设置到当前状态
+                val defaultConfig = modelConfigManager.getModelConfigFlow(ModelConfigManager.DEFAULT_CONFIG_ID).first()
                 _apiKey.value = defaultConfig.apiKey
-
-                Log.d(TAG, "已从ModelConfigManager加载默认API密钥")
+                
+                // 标记初始化完成
+                _isInitialized.value = true
             } catch (e: Exception) {
-                Log.e(TAG, "加载默认API密钥失败: ${e.message}", e)
+                Log.e(TAG, "初始化ApiConfigDelegate时出错", e)
+                // 即使出错也标记为已初始化，避免无限等待
+                _isInitialized.value = true
             }
         }
 

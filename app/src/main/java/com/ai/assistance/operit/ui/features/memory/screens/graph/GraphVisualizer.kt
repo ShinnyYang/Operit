@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -48,6 +49,7 @@ fun GraphVisualizer(
 ) {
     Log.d("GraphVisualizer", "Recomposing. isBoxSelectionMode: $isBoxSelectionMode")
     val textMeasurer = rememberTextMeasurer()
+    val colorScheme = MaterialTheme.colorScheme
     var nodePositions by remember { mutableStateOf(mapOf<String, Offset>()) }
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
@@ -276,12 +278,12 @@ fun GraphVisualizer(
             // 绘制选框
             selectionRect?.let { rect ->
                 drawRect(
-                    color = Color.Blue.copy(alpha = 0.3f),
+                    color = colorScheme.primary.copy(alpha = 0.3f),
                     topLeft = rect.topLeft,
                     size = rect.size
                 )
                 drawRect(
-                    color = Color.Blue,
+                    color = colorScheme.primary,
                     topLeft = rect.topLeft,
                     size = rect.size,
                     style = Stroke(width = 6f)
@@ -297,7 +299,7 @@ fun GraphVisualizer(
                     val end = targetPos * scale + offset
                     
                     drawLine(
-                        color = if (edge.id == selectedEdgeId) Color.Red else Color.Gray,
+                        color = if (edge.id == selectedEdgeId) colorScheme.error else colorScheme.outline,
                         start = start,
                         end = end,
                         strokeWidth = (edge.weight * 3f).coerceIn(1f, 12f)
@@ -309,7 +311,7 @@ fun GraphVisualizer(
                         
                         val textLayoutResult = textMeasurer.measure(
                             text = AnnotatedString(label),
-                            style = TextStyle(fontSize = 10.sp, color = Color.DarkGray)
+                            style = TextStyle(fontSize = 10.sp, color = colorScheme.onSurfaceVariant)
                         )
                         
                         // Simple collision avoidance for label, could be improved
@@ -338,6 +340,7 @@ fun GraphVisualizer(
                         position = position * scale + offset,
                         radius = 60f * scale,
                         textMeasurer = textMeasurer,
+                        colorScheme = colorScheme,
                         isSelected = isSelected,
                         isLinkingCandidate = isLinkingCandidate,
                         isBoxSelected = isBoxSelected // 新增：传递框选状态
@@ -375,11 +378,12 @@ private fun DrawScope.drawNode(
     position: Offset,
     radius: Float,
     textMeasurer: TextMeasurer,
+    colorScheme: androidx.compose.material3.ColorScheme,
     isSelected: Boolean,
     isLinkingCandidate: Boolean,
     isBoxSelected: Boolean // 新增：接收框选状态
 ) {
-    val color = if (isSelected) Color.Yellow else node.color
+    val color = if (isSelected) colorScheme.secondary else node.color
     drawCircle(
         color = color,
         radius = radius,
@@ -389,7 +393,7 @@ private fun DrawScope.drawNode(
     // 框选高亮
     if (isBoxSelected) {
         drawCircle(
-            color = Color(0xFF4FC3F7), // 亮蓝色高亮
+            color = colorScheme.tertiary, // 使用主题的第三色作为高亮
             radius = radius + 10f, // 比节点稍大
             center = position,
             style = Stroke(width = 8f)
@@ -398,7 +402,7 @@ private fun DrawScope.drawNode(
 
     if (isLinkingCandidate) {
         drawCircle(
-            color = Color.Red,
+            color = colorScheme.error,
             radius = radius,
             center = position,
             style = Stroke(width = 8f, cap = StrokeCap.Round)
@@ -407,7 +411,7 @@ private fun DrawScope.drawNode(
     
     val textLayoutResult = textMeasurer.measure(
         text = AnnotatedString(node.label),
-        style = TextStyle(fontSize = 12.sp, color = Color.Black)
+        style = TextStyle(fontSize = 12.sp, color = colorScheme.onSurface)
     )
     
     val textPosition = Offset(

@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 class ChatViewModel(private val context: Context) : ViewModel() {
 
@@ -158,6 +159,15 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     // API配置相关
     val apiKey: StateFlow<String> by lazy { apiConfigDelegate.apiKey }
     val isConfigured: StateFlow<Boolean> by lazy { apiConfigDelegate.isConfigured }
+    val isApiConfigInitialized: StateFlow<Boolean> by lazy { apiConfigDelegate.isInitialized }
+
+    private val _shouldShowConfigDialog = MutableStateFlow(false)
+    val shouldShowConfigDialog: StateFlow<Boolean> = _shouldShowConfigDialog.asStateFlow()
+
+    fun onConfigDialogConfirmed() {
+        _shouldShowConfigDialog.value = false
+    }
+
     val enableAiPlanning: StateFlow<Boolean> by lazy { apiConfigDelegate.enableAiPlanning }
     val keepScreenOn: StateFlow<Boolean> by lazy { apiConfigDelegate.keepScreenOn }
 
@@ -239,6 +249,15 @@ class ChatViewModel(private val context: Context) : ViewModel() {
         // Setup additional components
         setupPermissionSystemCollection()
         setupAttachmentManagerToastCollection()
+
+        // 观察ApiConfigDelegate的初始化状态
+        viewModelScope.launch {
+            isApiConfigInitialized.collect { initialized ->
+                if (initialized) {
+                    checkConfigAndShowDialog()
+                }
+            }
+        }
     }
 
     private fun initializeDelegates() {
@@ -1159,13 +1178,13 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     }
 
     // 判断是否正在使用默认API配置
-    fun isUsingDefaultConfig(): Boolean {
+    private suspend fun checkConfigAndShowDialog() {
         // 初始化ModelConfigManager以检查所有配置
         val modelConfigManager = ModelConfigManager(context)
         var hasDefaultKey = false
 
-        // 使用runBlocking因为我们需要从flow中收集数据
-        runBlocking {
+        // 异步检查所有配置
+        withContext(Dispatchers.IO) {
             // 获取所有配置ID
             val configIds = modelConfigManager.configListFlow.first()
 
@@ -1179,7 +1198,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
             }
         }
 
-        return hasDefaultKey
+        _shouldShowConfigDialog.value = hasDefaultKey
     }
 
     // 用于启动文件选择器并处理结果

@@ -150,6 +150,9 @@ fun AIChatScreen(
     val attachmentPanelState by actualViewModel.attachmentPanelState.collectAsState()
     // 收集滚动事件
     val scrollToBottomEvent = actualViewModel.scrollToBottomEvent
+    // 从ViewModel收集新的状态
+    val shouldShowConfigDialog by actualViewModel.shouldShowConfigDialog.collectAsState()
+
 
     // 添加WebView刷新相关状态
     val webViewNeedsRefresh by actualViewModel.webViewNeedsRefresh.collectAsState()
@@ -290,12 +293,8 @@ fun AIChatScreen(
     // 判断是否有默认配置可用
     val hasDefaultConfig = apiKey.isNotBlank()
 
-    // 判断是否正在使用默认配置
-    val isUsingDefaultConfig = actualViewModel.isUsingDefaultConfig()
-
-    // 只有在使用默认配置且用户尚未在当前会话中确认使用默认配置时才显示配置界面
-    val shouldShowConfig =
-            isUsingDefaultConfig && !ConfigurationStateHolder.hasConfirmedDefaultInSession
+    // 确定是否显示配置界面的最终逻辑
+    val showConfig = shouldShowConfigDialog && !ConfigurationStateHolder.hasConfirmedDefaultInSession
 
     // 添加手势状态
     var chatScreenGestureConsumed by remember { mutableStateOf(false) }
@@ -425,7 +424,7 @@ fun AIChatScreen(
                 snackbarHost = { SnackbarHost(snackbarHostState) },
                 bottomBar = {
                     // 只在不显示配置界面时显示底部输入框
-                    if (!shouldShowConfig) {
+                    if (!showConfig) {
                         // ChatInputSection is back in the bottomBar to reserve space
                         ChatInputSection(
                                 actualViewModel = actualViewModel,
@@ -478,7 +477,7 @@ fun AIChatScreen(
                 }
         ) { paddingValues ->
             // 根据前面的逻辑条件决定是否显示配置界面
-            if (shouldShowConfig) {
+            if (showConfig) {
                 ConfigurationScreen(
                         apiEndpoint = "",
                         apiKey = apiKey,
@@ -490,6 +489,7 @@ fun AIChatScreen(
                             actualViewModel.saveApiSettings()
                             // 保存配置后导航到聊天界面
                             ConfigurationStateHolder.hasConfirmedDefaultInSession = true
+                            actualViewModel.onConfigDialogConfirmed()
                         },
                         onError = { error -> actualViewModel.showErrorMessage(error) },
                         coroutineScope = coroutineScope,
@@ -498,15 +498,17 @@ fun AIChatScreen(
                             actualViewModel.useDefaultConfig()
                             // 确认使用默认配置后导航到聊天界面
                             ConfigurationStateHolder.hasConfirmedDefaultInSession = true
+                            actualViewModel.onConfigDialogConfirmed()
                         },
                         // 标识是否在使用默认配置
-                        isUsingDefault = isUsingDefaultConfig,
+                        isUsingDefault = true, // 当显示此屏幕时，总是因为使用了默认值
                         // 添加导航到聊天界面的回调
                         onNavigateToChat = {
                             // 当用户设置了自己的配置后保存
                             actualViewModel.saveApiSettings()
                             // 确认后导航到聊天界面
                             ConfigurationStateHolder.hasConfirmedDefaultInSession = true
+                            actualViewModel.onConfigDialogConfirmed()
                         },
                         // 添加导航到Token配置页面的回调
                         onNavigateToTokenConfig = onNavigateToTokenConfig,
