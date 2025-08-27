@@ -87,7 +87,8 @@ class MCPBridge private constructor(private val context: Context) {
                             "description": "将STDIO型MCP服务器桥接到TCP端口",
                             "main": "index.js",
                             "dependencies": {
-                                "uuid": "^9.0.0"
+                                "uuid": "^9.0.0",
+                                "mcp-client": "^1.13.1"
                             }
                         }
                     """.trimIndent()
@@ -107,7 +108,7 @@ class MCPBridge private constructor(private val context: Context) {
                         cp -f ${outputFile.absolutePath} $TERMUX_BRIDGE_PATH/ && 
                         cp -f ${packageJson.absolutePath} $TERMUX_BRIDGE_PATH/ && 
                         cd $TERMUX_BRIDGE_PATH && 
-                        ([ -d node_modules/uuid ] || npm install)
+                        ([ -d node_modules/uuid ] && [ -d node_modules/mcp-client ]) || npm install
                     """.trimIndent()
 
                     // 执行命令
@@ -437,16 +438,18 @@ class MCPBridge private constructor(private val context: Context) {
     suspend fun registerMcpService(
         name: String,
         type: String,
-        host: String,
-        port: Int,
+        endpoint: String,
+        connectionType: String?,
         description: String? = null
     ): JSONObject? {
         val params =
             JSONObject().apply {
                 put("type", type)
                 put("name", name)
-                put("host", host)
-                put("port", port)
+                put("endpoint", endpoint)
+                if (connectionType != null) {
+                    put("connectionType", connectionType)
+                }
                 if (description != null) {
                     put("description", description)
                 }

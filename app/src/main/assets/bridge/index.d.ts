@@ -18,7 +18,7 @@ declare class McpBridge {
     private config;
     private server;
     private mcpProcesses;
-    private remoteServiceConnections;
+    private remoteServiceClients;
     private mcpToolsMap;
     private serviceReadyMap;
     private serviceRegistry;
@@ -49,7 +49,7 @@ declare class McpBridge {
      */
     private isServiceActive;
     /**
-     * 连接到远程MCP服务 (HTTP+SSE)
+     * 连接到远程MCP服务
      */
     private connectToRemoteService;
     /**

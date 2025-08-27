@@ -141,7 +141,7 @@ fun ChatArea(
             // "加载更多"文本 - 改为灰色文本而非按钮
             if (hasMoreMessages) {
                 Text(
-                    text = "加载更多历史消息...",
+                    text = stringResource(id = R.string.load_more_history),
                     modifier =
                     Modifier
                         .fillMaxWidth()
@@ -333,7 +333,7 @@ private fun MessageItem(
             DropdownMenuItem(
                 text = {
                     Text(
-                        "框选复制",
+                        stringResource(id = R.string.select_copy),
                         style = MaterialTheme.typography.bodyMedium,
                         fontSize = 13.sp
                     )
@@ -345,7 +345,7 @@ private fun MessageItem(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.ContentCut,
-                        contentDescription = "框选复制",
+                        contentDescription = stringResource(id = R.string.select_copy),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
@@ -383,7 +383,7 @@ private fun MessageItem(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            "修改记忆",
+                            stringResource(id = R.string.modify_memory),
                             style = MaterialTheme.typography.bodyMedium,
                             fontSize = 13.sp
                         )
@@ -395,7 +395,7 @@ private fun MessageItem(
                     leadingIcon = {
                         Icon(
                             imageVector = Icons.Default.AutoFixHigh,
-                            contentDescription = "修改记忆",
+                            contentDescription = stringResource(id = R.string.modify_memory),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(16.dp)
                         )
@@ -408,7 +408,7 @@ private fun MessageItem(
             DropdownMenuItem(
                 text = {
                     Text(
-                        "删除",
+                        stringResource(id = R.string.delete),
                         style = MaterialTheme.typography.bodyMedium,
                         fontSize = 13.sp
                     )
@@ -420,7 +420,7 @@ private fun MessageItem(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
+                        contentDescription = stringResource(id = R.string.delete),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
@@ -432,7 +432,7 @@ private fun MessageItem(
             DropdownMenuItem(
                 text = {
                     Text(
-                        "删除到此",
+                        stringResource(id = R.string.delete_from_here),
                         style = MaterialTheme.typography.bodyMedium,
                         fontSize = 13.sp
                     )
@@ -444,7 +444,7 @@ private fun MessageItem(
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.DeleteSweep,
-                        contentDescription = "删除到此",
+                        contentDescription = stringResource(id = R.string.delete_from_here),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
@@ -469,7 +469,7 @@ private fun SelectableCopyDialog(text: String, onDismiss: () -> Unit) {
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("框选复制") },
+        title = { Text(stringResource(id = R.string.select_copy)) },
         text = {
             OutlinedTextField(
                 value = textFieldValue,
@@ -498,12 +498,12 @@ private fun SelectableCopyDialog(text: String, onDismiss: () -> Unit) {
                 },
                 enabled = !textFieldValue.selection.collapsed
             ) {
-                Text("复制")
+                Text(stringResource(id = R.string.copy))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(id = R.string.cancel))
             }
         }
     )

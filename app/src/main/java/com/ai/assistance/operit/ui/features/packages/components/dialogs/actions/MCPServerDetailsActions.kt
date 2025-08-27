@@ -90,7 +90,8 @@ fun MCPServerDetailsActions(
                 Spacer(modifier = Modifier.weight(1f))  // Push buttons to opposite sides
 
                 // 只有已安装的插件才显示卸载按钮
-                if (isInstalled) {
+                    val isRemote = server.type == "remote"
+                if (isInstalled || isRemote) {
                     Button(
                         onClick = { onUninstall(server) },
                         colors = ButtonDefaults.buttonColors(
@@ -106,7 +107,7 @@ fun MCPServerDetailsActions(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "卸载插件",
+                            text = if (isRemote) "删除服务" else "卸载插件",
                             style = MaterialTheme.typography.labelMedium
                         )
                     }
@@ -127,7 +128,7 @@ fun MCPServerDetailsActions(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "安装插件",
+                            text = if (server.type == "remote") "添加服务" else "安装插件",
                             style = MaterialTheme.typography.labelMedium
                         )
                     }

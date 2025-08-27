@@ -926,6 +926,10 @@
     <!-- Context Menu -->
     <string name="copy_message">复制消息</string>
     <string name="edit_and_resend">编辑并重发</string>
+    <string name="select_copy">框选复制</string>
+    <string name="modify_memory">修改记忆</string>
+    <string name="delete_from_here">删除到此</string>
+    <string name="load_more_history">加载更多历史消息...</string>
 
     <!-- Permission Guide Screen -->
     <string name="permission_guide_intro_1_title">语音驱动的UI自动化</string>
@@ -1200,9 +1204,9 @@
     <!-- MCP and Plugin Related -->
     <string name="uninstall">卸载</string>
     <string name="install">安装</string>
-    <string name="import_from_repo">从仓库导入</string>
-    <string name="import_from_zip">从ZIP导入</string>
-    <string name="connect_remote_service">连接远程服务</string>
+    <string name="import_from_repo">仓库</string>
+    <string name="import_from_zip">ZIP</string>
+    <string name="connect_remote_service">远程</string>
     <string name="enter_repo_info">请输入仓库信息</string>
     <string name="repo_link">仓库链接</string>
 
@@ -1254,6 +1258,7 @@
     <string name="enter_remote_service_info">请输入远程服务地址和相关信息</string>
     <string name="host_address">主机地址</string>
     <string name="port">端口</string>
+    <string name="connection_type">连接类型</string>
     <string name="service_metadata">服务元数据</string>
     <string name="plugin_name">插件名称</string>
     <string name="my_mcp_plugin">我的MCP插件</string>
@@ -2249,12 +2254,12 @@
     <string name="expand">展开</string>
     <string name="must_be_integer">必须是整数</string>
     <string name="value">值</string>
-    <string name="range_format">范围: %s - %s</string>
+    <string name="range_format">范围: %1$s - %2$s</string>
     <string name="must_be_float">必须是浮点数</string>
     <string name="default_value_format">默认值: %s</string>
     <string name="temperature_recommendation">温度推荐设置</string>
     <string name="parameter_value">参数值</string>
-    <string name="parameter_range_format">范围: %s - %s</string>
+    <string name="parameter_range_format">范围: %1$s - %2$s</string>
     
     <!-- 自定义参数对话框 -->
     <string name="custom_parameter_added">自定义参数已新增</string>
@@ -2280,6 +2285,7 @@
     <string name="custom_parameter_updated">自定义参数已更新</string>
     <string name="parameter_api_name">API 名称</string>
     <string name="parameter_description">参数描述</string>
+    <string name="parameter_description_placeholder">输入参数描述</string>
     <string name="parameter_min_value">最小值</string>
     <string name="parameter_max_value">最大值</string>
     <string name="parameter_category">参数类别</string>

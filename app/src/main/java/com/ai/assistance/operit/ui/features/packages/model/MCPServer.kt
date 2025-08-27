@@ -19,8 +19,8 @@ data class MCPServer(
 
         // 新增字段以支持远程服务
         val type: String = "local", // "local" or "remote"
-        val host: String? = null,
-        val port: Int? = null,
+        val endpoint: String? = null,
+        val connectionType: String? = null,
 
         // 新增字段，支持标准格式
         val isTested: Boolean = false, // 是否通过测试

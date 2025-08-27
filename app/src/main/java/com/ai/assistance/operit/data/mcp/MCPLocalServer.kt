@@ -166,10 +166,10 @@ class MCPLocalServer private constructor(private val context: Context) {
         val longDescription: String = "",
         @SerializedName("type")
         val type: String = "local", // local, remote
-        @SerializedName("host")
-        val host: String? = null,
-        @SerializedName("port")
-        val port: Int? = null,
+        @SerializedName("endpoint")
+        val endpoint: String? = null,
+        @SerializedName("connectionType")
+        val connectionType: String? = "httpStream",
         @SerializedName("installedPath")
         val installedPath: String? = null,
         @SerializedName("installedTime")

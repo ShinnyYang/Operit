@@ -182,11 +182,11 @@ class MCPStarter(private val context: Context) {
 
             // Handle remote services differently
             if (serviceType == "remote") {
-                val host = pluginInfo.host
-                val port = pluginInfo.port
+                val endpoint = pluginInfo.endpoint
+                val connectionType = pluginInfo.connectionType
 
-                if (host == null || port == null) {
-                    statusCallback(StartStatus.Error("Remote service is missing host or port: $pluginId"))
+                if (endpoint == null) {
+                    statusCallback(StartStatus.Error("Remote service is missing endpoint: $pluginId"))
                     return false
                 }
                 
@@ -201,8 +201,8 @@ class MCPStarter(private val context: Context) {
                 val registerResult = bridge.registerMcpService(
                     name = serverName,
                     type = "remote",
-                    host = host,
-                    port = port,
+                    endpoint = endpoint,
+                    connectionType = connectionType,
                     description = "Remote MCP Server: $pluginId"
                 )
 

@@ -12,6 +12,7 @@ import com.ai.assistance.operit.data.model.ChatEntity
 import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ChatMessage
 import com.ai.assistance.operit.data.model.MessageEntity
+import com.ai.assistance.operit.util.LocaleUtils
 import java.io.IOException
 import java.time.Instant
 import java.time.LocalDateTime
@@ -486,13 +487,14 @@ class ChatHistoryManager private constructor(private val context: Context) {
         val formattedTime =
                 "${dateTime.hour}:${dateTime.minute.toString().padStart(2, '0')}:${dateTime.second.toString().padStart(2, '0')}"
 
+        val localizedContext = LocaleUtils.getLocalizedContext(context)
         val newHistory =
                 ChatHistory(
-                        title = "${context.getString(R.string.new_conversation)} $formattedTime",
+                        title = "${localizedContext.getString(R.string.new_conversation)} $formattedTime",
                         messages = listOf<ChatMessage>(),
                         inputTokens = 0,
                         outputTokens = 0,
-                        group = group ?: context.getString(R.string.ungrouped) // 默认分组
+                        group = group ?: localizedContext.getString(R.string.ungrouped) // 默认分组
                 )
 
         // 保存新聊天

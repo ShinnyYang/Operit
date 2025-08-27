@@ -175,8 +175,9 @@ fun MCPConfigScreen() {
     var showFilePickerDialog by remember { mutableStateOf(false) }
 
     // 新增：远程服务相关状态
-    var remoteHostInput by remember { mutableStateOf("") }
-    var remotePortInput by remember { mutableStateOf("") }
+    var remoteEndpointInput by remember { mutableStateOf("") }
+    var remoteConnectionType by remember { mutableStateOf("httpStream") }
+    var remoteConnectionTypeExpanded by remember { mutableStateOf(false) }
 
     // 新增：远程服务编辑对话框状态
     var showRemoteEditDialog by remember { mutableStateOf(false) }
@@ -439,21 +440,43 @@ fun MCPConfigScreen() {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     // 添加顶部导入方式选择
-                    TabRow(selectedTabIndex = importTabIndex) {
+                    ScrollableTabRow(
+                        selectedTabIndex = importTabIndex,
+                        edgePadding = 0.dp,
+                        divider = {}
+                    ) {
                         Tab(
                             selected = importTabIndex == 0,
                             onClick = { importTabIndex = 0 },
-                            text = { Text(stringResource(R.string.import_from_repo)) }
+                            text = { 
+                                Text(
+                                    stringResource(R.string.import_from_repo),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1
+                                ) 
+                            }
                         )
                         Tab(
                             selected = importTabIndex == 1,
                             onClick = { importTabIndex = 1 },
-                            text = { Text(stringResource(R.string.import_from_zip)) }
+                            text = { 
+                                Text(
+                                    stringResource(R.string.import_from_zip),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1
+                                ) 
+                            }
                         )
                         Tab(
                             selected = importTabIndex == 2,
                             onClick = { importTabIndex = 2 },
-                            text = { Text(stringResource(R.string.connect_remote_service)) }
+                            text = { 
+                                Text(
+                                    stringResource(R.string.connect_remote_service),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    maxLines = 1
+                                ) 
+                            }
                         )
                     }
                     
@@ -502,24 +525,48 @@ fun MCPConfigScreen() {
                             Text(stringResource(R.string.enter_remote_service_info), style = MaterialTheme.typography.bodyMedium)
 
                             OutlinedTextField(
-                                value = remoteHostInput,
-                                onValueChange = { remoteHostInput = it },
+                                value = remoteEndpointInput,
+                                onValueChange = { remoteEndpointInput = it },
                                 label = { Text(stringResource(R.string.host_address)) },
-                                placeholder = { Text("127.0.0.1") },
+                                placeholder = { Text("http://127.0.0.1:8752") },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
                             )
-
-                            OutlinedTextField(
-                                value = remotePortInput,
-                                onValueChange = { remotePortInput = it.filter { char -> char.isDigit() } },
-                                label = { Text(stringResource(R.string.port)) },
-                                placeholder = { Text("8752") },
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            val connectionTypes = listOf("httpStream", "sse")
+                            ExposedDropdownMenuBox(
+                                expanded = remoteConnectionTypeExpanded,
+                                onExpandedChange = { remoteConnectionTypeExpanded = !remoteConnectionTypeExpanded },
+                            ) {
+                                OutlinedTextField(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .menuAnchor(),
+                                    value = remoteConnectionType,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(stringResource(R.string.connection_type)) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = remoteConnectionTypeExpanded) },
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = remoteConnectionTypeExpanded,
+                                    onDismissRequest = { remoteConnectionTypeExpanded = false },
+                                ) {
+                                    connectionTypes.forEach { selectionOption ->
+                                        DropdownMenuItem(
+                                            text = { Text(selectionOption) },
+                                            onClick = {
+                                                remoteConnectionType = selectionOption
+                                                remoteConnectionTypeExpanded = false
+                                            },
+                                            contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                     
@@ -551,12 +598,11 @@ fun MCPConfigScreen() {
                         val isRemote = importTabIndex == 2
                         val isRepoImport = importTabIndex == 0 && repoUrlInput.isNotBlank() && pluginNameInput.isNotBlank()
                         val isZipImport = importTabIndex == 1 && zipFilePath.isNotBlank() && pluginNameInput.isNotBlank()
-                        val isRemoteConnect = isRemote && remoteHostInput.isNotBlank() && remotePortInput.isNotBlank() && pluginNameInput.isNotBlank()
+                        val isRemoteConnect = isRemote && remoteEndpointInput.isNotBlank() && pluginNameInput.isNotBlank()
 
                         if (isRepoImport || isZipImport || isRemoteConnect) {
                             // 检查插件ID是否冲突
-                            val proposedId = if (isRemote) "remote_${pluginNameInput.replace(" ", "_").lowercase()}" 
-                                             else pluginNameInput.replace(" ", "_").lowercase()
+                            val proposedId = pluginNameInput.replace(" ", "_").lowercase()
                             if (mcpRepository.isPluginInstalled(proposedId)) {
                                 scope.launch {
                                     snackbarHostState.showSnackbar(context.getString(R.string.plugin_already_exists, pluginNameInput))
@@ -585,8 +631,8 @@ fun MCPConfigScreen() {
                                 longDescription = pluginDescriptionInput,
                                 repoUrl = if (importTabIndex == 0) repoUrlInput else "",
                                 type = if(isRemote) "remote" else "local",
-                                host = if(isRemote) remoteHostInput else null,
-                                port = if(isRemote) remotePortInput.toIntOrNull() else null
+                                endpoint = if(isRemote) remoteEndpointInput else null,
+                                connectionType = if(isRemote) remoteConnectionType else "httpStream"
                             )
                             
                             if(isRemote){
@@ -613,8 +659,8 @@ fun MCPConfigScreen() {
                                 longDescription = server.longDescription,
                                     repoUrl = server.repoUrl,
                                     type = server.type,
-                                    host = server.host,
-                                    port = server.port
+                                    endpoint = server.endpoint,
+                                    connectionType = server.connectionType
                             )
                             
                             if (importTabIndex == 0) {
@@ -629,8 +675,9 @@ fun MCPConfigScreen() {
                             pluginNameInput = ""
                             pluginDescriptionInput = ""
                             zipFilePath = ""
-                            remoteHostInput = ""
-                            remotePortInput = ""
+                            remoteEndpointInput = ""
+                            remoteConnectionType = "httpStream"
+                            remoteConnectionTypeExpanded = false
                             showImportDialog = false
                             isImporting = false
                         } else {
@@ -647,7 +694,7 @@ fun MCPConfigScreen() {
                     enabled = !isImporting && 
                              ((importTabIndex == 0 && repoUrlInput.isNotBlank() && pluginNameInput.isNotBlank()) ||
                               (importTabIndex == 1 && zipFilePath.isNotBlank() && pluginNameInput.isNotBlank()) ||
-                              (importTabIndex == 2 && remoteHostInput.isNotBlank() && remotePortInput.isNotBlank() && pluginNameInput.isNotBlank()))
+                              (importTabIndex == 2 && remoteEndpointInput.isNotBlank() && pluginNameInput.isNotBlank()))
                 ) {
                     if (isImporting) {
                         CircularProgressIndicator(
@@ -660,7 +707,16 @@ fun MCPConfigScreen() {
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showImportDialog = false }) {
+                TextButton(onClick = { 
+                    repoUrlInput = ""
+                    pluginNameInput = ""
+                    pluginDescriptionInput = ""
+                    zipFilePath = ""
+                    remoteEndpointInput = ""
+                    remoteConnectionType = "httpStream"
+                    remoteConnectionTypeExpanded = false
+                    showImportDialog = false 
+                }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -898,8 +954,8 @@ fun MCPConfigScreen() {
                                             longDescription = serverToEdit.longDescription,
                                             repoUrl = serverToEdit.repoUrl,
                                             type = serverToEdit.type,
-                                            host = serverToEdit.host,
-                                            port = serverToEdit.port
+                                            endpoint = serverToEdit.endpoint,
+                                            connectionType = serverToEdit.connectionType
                                         )
                                         showRemoteEditDialog = true
                                     }
@@ -1007,8 +1063,8 @@ private fun getPluginAsServer(
             longDescription = existingServer.longDescription,
             repoUrl = existingServer.repoUrl,
             type = existingServer.type,
-            host = existingServer.host,
-            port = existingServer.port
+            endpoint = existingServer.endpoint,
+            connectionType = existingServer.connectionType
         )
     }
 
@@ -1031,8 +1087,8 @@ private fun getPluginAsServer(
             ?: (pluginInfo?.description ?: context.getString(R.string.local_installed_plugin)),
         repoUrl = pluginInfo?.repoUrl ?: "",
         type = pluginInfo?.type ?: "local",
-        host = pluginInfo?.host,
-        port = pluginInfo?.port
+        endpoint = pluginInfo?.endpoint,
+        connectionType = pluginInfo?.connectionType
     )
 }
 
@@ -1294,8 +1350,10 @@ fun RemoteServerEditDialog(
     var name by remember { mutableStateOf(server.name) }
     var description by remember { mutableStateOf(server.description) }
     var author by remember { mutableStateOf(server.author) }
-    var host by remember { mutableStateOf(server.host ?: "") }
-    var port by remember { mutableStateOf(server.port?.toString() ?: "") }
+    var endpoint by remember { mutableStateOf(server.endpoint ?: "") }
+    var connectionType by remember { mutableStateOf(server.connectionType ?: "httpStream") }
+    val connectionTypes = listOf("httpStream", "sse")
+    var expanded by remember { mutableStateOf(false) }
     val isRemote = server.type == "remote"
 
     AlertDialog(
@@ -1326,19 +1384,43 @@ fun RemoteServerEditDialog(
                 )
                 if(isRemote) {
                     OutlinedTextField(
-                        value = host,
-                        onValueChange = { host = it },
+                        value = endpoint,
+                        onValueChange = { endpoint = it },
                         label = { Text(stringResource(R.string.host_address)) },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri)
                     )
-                    OutlinedTextField(
-                        value = port,
-                        onValueChange = { port = it.filter { char -> char.isDigit() } },
-                        label = { Text(stringResource(R.string.port)) },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded },
+                    ) {
+                        OutlinedTextField(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            value = connectionType,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.connection_type)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        )
+                        ExposedDropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                        ) {
+                            connectionTypes.forEach { selectionOption ->
+                                DropdownMenuItem(
+                                    text = { Text(selectionOption) },
+                                    onClick = {
+                                        connectionType = selectionOption
+                                        expanded = false
+                                    },
+                                    contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         },
@@ -1349,12 +1431,12 @@ fun RemoteServerEditDialog(
                         name = name,
                         description = description,
                         author = author,
-                        host = if(isRemote) host else server.host,
-                        port = if(isRemote) port.toIntOrNull() else server.port
+                        endpoint = if(isRemote) endpoint else server.endpoint,
+                        connectionType = if(isRemote) connectionType else server.connectionType
                     )
                     onSave(updatedServer)
                 },
-                enabled = name.isNotBlank() && if(isRemote) host.isNotBlank() && port.isNotBlank() else true
+                enabled = name.isNotBlank() && if(isRemote) endpoint.isNotBlank() else true
             ) {
                 Text(stringResource(R.string.save))
             }

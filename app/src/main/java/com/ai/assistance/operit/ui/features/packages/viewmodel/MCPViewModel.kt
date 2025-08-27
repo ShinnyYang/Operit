@@ -122,7 +122,11 @@ class MCPViewModel(private val repository: MCPRepository) : ViewModel() {
             _installProgress.value = InstallProgress.Preparing
             _installResult.value = null
 
-            val success = repository.uninstallMCPServer(server.id)
+            val success = if (server.type == "remote") {
+                repository.removeRemoteServer(server.id)
+            } else {
+                repository.uninstallMCPServer(server.id)
+            }
 
             _installResult.value =
                     if (success) {

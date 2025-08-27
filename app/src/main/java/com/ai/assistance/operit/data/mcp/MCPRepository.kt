@@ -142,8 +142,8 @@ class MCPRepository(private val context: Context) {
                     longDescription = metadata.longDescription,
                     repoUrl = metadata.repoUrl,
                     type = metadata.type,
-                    host = metadata.host,
-                    port = metadata.port
+                    endpoint = metadata.endpoint,
+                    connectionType = metadata.connectionType
                 ))
             }
             
@@ -746,22 +746,13 @@ class MCPRepository(private val context: Context) {
      */
     suspend fun addRemoteServer(server: MCPServer) {
         withContext(Dispatchers.IO) {
-            if (server.type != "remote") {
-                Log.e(TAG, "addRemoteServer调用了非远程服务器: ${server.id}")
+            if (server.type != "remote" || server.endpoint == null) {
+                Log.e(TAG, "addRemoteServer调用了无效的远程服务器: ${server.id}")
                 return@withContext
             }
 
-            val command = "mcp-connect"
-            val args = listOf("--host", server.host ?: "localhost", "--port", (server.port ?: 8752).toString())
-            
-            mcpLocalServer.addOrUpdateMCPServer(
-                serverId = server.id,
-                command = command,
-                args = args,
-                env = emptyMap(),
-                disabled = false,
-                autoApprove = emptyList()
-            )
+            // For remote servers, we no longer create a local process.
+            // We just store the metadata. The bridge will handle the connection.
 
             // 保存远程服务器元数据
             val metadata = MCPLocalServer.PluginMetadata(
@@ -777,8 +768,8 @@ class MCPRepository(private val context: Context) {
                 repoUrl = server.repoUrl,
                 longDescription = server.longDescription,
                 type = "remote",
-                host = server.host,
-                port = server.port,
+                endpoint = server.endpoint,
+                connectionType = server.connectionType,
                 installedTime = System.currentTimeMillis()
             )
             
@@ -787,7 +778,7 @@ class MCPRepository(private val context: Context) {
             mcpLocalServer.updateServerStatus(
                 serverId = server.id,
                 isEnabled = true,
-                active = false,
+                active = false, // The bridge will report the active status
                 deploySuccess = true
             )
 
@@ -813,30 +804,14 @@ class MCPRepository(private val context: Context) {
                 description = server.description,
                 longDescription = server.longDescription,
                 author = server.author,
-                host = if (server.type == "remote") server.host else metadata.host,
-                port = if (server.type == "remote") server.port else metadata.port
+                endpoint = if (server.type == "remote") server.endpoint else metadata.endpoint,
+                connectionType = if (server.type == "remote") server.connectionType else metadata.connectionType
             )
             mcpLocalServer.addOrUpdatePluginMetadata(updatedMetadata)
 
-            // 如果是远程服务器，同时更新其连接配置
-            if (server.type == "remote") {
-                 if (server.type != "remote") {
-                Log.e(TAG, "updateRemoteServer调用了非远程服务器: ${server.id}")
-                return@withContext
-            }
-
-            val command = "mcp-connect"
-            val args = listOf("--host", server.host ?: "localhost", "--port", (server.port ?: 8752).toString())
-            
-            mcpLocalServer.addOrUpdateMCPServer(
-                serverId = server.id,
-                command = command,
-                args = args,
-                env = emptyMap(),
-                disabled = false,
-                autoApprove = emptyList()
-            )
-            }
+            // For remote servers, we don't need to update MCPServer config in the same way,
+            // as the bridge handles connection details directly from metadata.
+            // If any specific server config were needed, it would be updated here.
 
             // 重新加载插件状态以更新UI
             loadPluginsFromMCPLocalServer()
