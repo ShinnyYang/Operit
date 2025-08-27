@@ -55,7 +55,8 @@ fun SettingsScreen(
         navigateToLanguageSettings: () -> Unit,
         navigateToSpeechServicesSettings: () -> Unit,
         navigateToCustomHeadersSettings: () -> Unit,
-        navigateToPersonaCardGeneration: () -> Unit
+        navigateToPersonaCardGeneration: () -> Unit,
+        navigateToWaifuModeSettings: () -> Unit
 ) {
         val context = LocalContext.current
         val apiPreferences = remember { ApiPreferences(context) }
@@ -201,6 +202,14 @@ fun SettingsScreen(
                                 subtitle = "进入与AI对话生成个性人设卡",
                                 icon = Icons.Default.Face,
                                 onClick = navigateToPersonaCardGeneration
+                        )
+                        
+                        // 新增：Waifu模式设置
+                        CompactSettingsItem(
+                                title = "Waifu模式设置",
+                                subtitle = "配置AI回复分句发送模式",
+                                icon = Icons.Default.EmojiEmotions,
+                                onClick = navigateToWaifuModeSettings
                         )
                 }
 

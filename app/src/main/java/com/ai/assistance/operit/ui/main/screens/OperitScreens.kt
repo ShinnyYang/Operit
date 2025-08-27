@@ -216,7 +216,8 @@ sealed class Screen(
                     navigateToLanguageSettings = { navigateTo(LanguageSettings) },
                     navigateToSpeechServicesSettings = { navigateTo(SpeechServicesSettings) },
                     navigateToCustomHeadersSettings = { navigateTo(CustomHeadersSettings) },
-                    navigateToPersonaCardGeneration = { navigateTo(PersonaCardGeneration) }
+                    navigateToPersonaCardGeneration = { navigateTo(PersonaCardGeneration) },
+                    navigateToWaifuModeSettings = { navigateTo(WaifuModeSettings) }
             )
         }
     }
@@ -465,6 +466,26 @@ sealed class Screen(
                 onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
                 onNavigateToModelConfig = { navigateTo(ModelConfig) },
                 onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) }
+            )
+        }
+    }
+
+    // 新增：Waifu模式设置页面
+    data object WaifuModeSettings :
+        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "Waifu模式设置") {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            com.ai.assistance.operit.ui.features.settings.screens.WaifuModeSettingsScreen(
+                onNavigateBack = onGoBack
             )
         }
     }
