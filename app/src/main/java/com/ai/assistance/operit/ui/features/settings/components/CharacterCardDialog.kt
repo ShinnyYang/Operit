@@ -1,0 +1,547 @@
+package com.ai.assistance.operit.ui.features.settings.components
+
+import android.net.Uri
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import coil.compose.rememberAsyncImagePainter
+import com.ai.assistance.operit.R
+import com.ai.assistance.operit.data.model.CharacterCard
+import com.ai.assistance.operit.data.model.PromptTag
+import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+
+// 角色卡名片对话框
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CharacterCardDialog(
+    characterCard: CharacterCard,
+    allTags: List<PromptTag>,
+    userPreferencesManager: UserPreferencesManager,
+    onDismiss: () -> Unit,
+    onSave: (CharacterCard) -> Unit,
+    onAvatarChange: () -> Unit,
+    onAvatarReset: () -> Unit
+) {
+    var name by remember(characterCard.id) { mutableStateOf(characterCard.name) }
+    var description by remember(characterCard.id) { mutableStateOf(characterCard.description) }
+    var characterSetting by remember(characterCard.id) { mutableStateOf(characterCard.characterSetting) }
+    var otherContent by remember(characterCard.id) { mutableStateOf(characterCard.otherContent) }
+    var attachedTagIds by remember(characterCard.id) { mutableStateOf(characterCard.attachedTagIds) }
+    var advancedCustomPrompt by remember(characterCard.id) { mutableStateOf(characterCard.advancedCustomPrompt) }
+    var marks by remember(characterCard.id) { mutableStateOf(characterCard.marks) }
+    var showAdvanced by remember { mutableStateOf(false) }
+    
+    // 大屏编辑状态
+    var showFullScreenEdit by remember { mutableStateOf(false) }
+    var fullScreenEditTitle by remember { mutableStateOf("") }
+    var fullScreenEditValue by remember { mutableStateOf("") }
+    var fullScreenEditField by remember { mutableStateOf("") }
+
+    val avatarUri by userPreferencesManager.getAiAvatarForCharacterCardFlow(characterCard.id)
+        .collectAsState(initial = null)
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            ),
+            border = BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                // 名片头部区域 - 头像 + 基本信息
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 紧凑型头像
+                    CompactAvatarPicker(
+                        avatarUri = avatarUri,
+                        onAvatarChange = onAvatarChange,
+                        onAvatarReset = onAvatarReset
+                    )
+                    
+                    Spacer(modifier = Modifier.width(12.dp))
+                    
+                    // 基本信息
+                    Column(
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        CompactTextFieldWithExpand(
+                            value = name,
+                            onValueChange = { name = it },
+                            label = "名称",
+                            singleLine = true,
+                            onExpandClick = {
+                                fullScreenEditTitle = "编辑名称"
+                                fullScreenEditValue = name
+                                fullScreenEditField = "name"
+                                showFullScreenEdit = true
+                            }
+                        )
+                        
+                        Spacer(modifier = Modifier.height(6.dp))
+                        
+                        CompactTextFieldWithExpand(
+                            value = description,
+                            onValueChange = { description = it },
+                            label = "描述",
+                            maxLines = 2,
+                            onExpandClick = {
+                                fullScreenEditTitle = "编辑描述"
+                                fullScreenEditValue = description
+                                fullScreenEditField = "description"
+                                showFullScreenEdit = true
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 可滚动内容区域
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 320.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 角色设定
+                    Text(
+                        text = "角色设定",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    CompactTextFieldWithExpand(
+                        value = characterSetting,
+                        onValueChange = { characterSetting = it },
+                        placeholder = "描述角色的性格特点...",
+                        minLines = 2,
+                        maxLines = 4,
+                        onExpandClick = {
+                            fullScreenEditTitle = "编辑角色设定"
+                            fullScreenEditValue = characterSetting
+                            fullScreenEditField = "characterSetting"
+                            showFullScreenEdit = true
+                        }
+                    )
+
+                    // 其他内容
+                    Text(
+                        text = "其他内容",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    CompactTextFieldWithExpand(
+                        value = otherContent,
+                        onValueChange = { otherContent = it },
+                        placeholder = "角色背景、经历等...",
+                        minLines = 2,
+                        maxLines = 4,
+                        onExpandClick = {
+                            fullScreenEditTitle = "编辑其他内容"
+                            fullScreenEditValue = otherContent
+                            fullScreenEditField = "otherContent"
+                            showFullScreenEdit = true
+                        }
+                    )
+
+                    // 标签选择
+                    val customTags = allTags.filter { !it.isSystemTag }
+                    if (customTags.isNotEmpty()) {
+                        Text(
+                            text = "标签",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            customTags.forEach { tag ->
+                                val isSelected = attachedTagIds.contains(tag.id)
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = {
+                                        attachedTagIds = if (isSelected) {
+                                            attachedTagIds.filter { it != tag.id }
+                                        } else {
+                                            attachedTagIds + tag.id
+                                        }
+                                    },
+                                    label = { Text(tag.name, fontSize = 10.sp) },
+                                    modifier = Modifier.height(28.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 高级选项折叠区域
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showAdvanced = !showAdvanced }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (showAdvanced) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "高级选项",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    if (showAdvanced) {
+                        // 高级自定义提示词
+                        CompactTextFieldWithExpand(
+                            value = advancedCustomPrompt,
+                            onValueChange = { advancedCustomPrompt = it },
+                            label = "自定义提示词",
+                            placeholder = "高级自定义提示词...",
+                            minLines = 2,
+                            maxLines = 3,
+                            onExpandClick = {
+                                fullScreenEditTitle = "编辑自定义提示词"
+                                fullScreenEditValue = advancedCustomPrompt
+                                fullScreenEditField = "advancedCustomPrompt"
+                                showFullScreenEdit = true
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // 备注
+                        CompactTextFieldWithExpand(
+                            value = marks,
+                            onValueChange = { marks = it },
+                            label = "备注",
+                            placeholder = "私人备注，不会影响AI...",
+                            minLines = 1,
+                            maxLines = 2,
+                            onExpandClick = {
+                                fullScreenEditTitle = "编辑备注"
+                                fullScreenEditValue = marks
+                                fullScreenEditField = "marks"
+                                showFullScreenEdit = true
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // 操作按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text("取消", fontSize = 13.sp)
+                    }
+                    
+                    Button(
+                        onClick = {
+                            onSave(
+                                characterCard.copy(
+                                    name = name,
+                                    description = description,
+                                    characterSetting = characterSetting,
+                                    otherContent = otherContent,
+                                    attachedTagIds = attachedTagIds,
+                                    advancedCustomPrompt = advancedCustomPrompt,
+                                    marks = marks
+                                )
+                            )
+                        },
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(6.dp)
+                    ) {
+                        Text("保存", fontSize = 13.sp)
+                    }
+                }
+            }
+        }
+    }
+    
+    // 全屏编辑对话框
+    if (showFullScreenEdit) {
+        FullScreenEditDialog(
+            title = fullScreenEditTitle,
+            value = fullScreenEditValue,
+            onDismiss = { showFullScreenEdit = false },
+            onSave = { newValue ->
+                when (fullScreenEditField) {
+                    "name" -> name = newValue
+                    "description" -> description = newValue
+                    "characterSetting" -> characterSetting = newValue
+                    "otherContent" -> otherContent = newValue
+                    "advancedCustomPrompt" -> advancedCustomPrompt = newValue
+                    "marks" -> marks = newValue
+                }
+                showFullScreenEdit = false
+            }
+        )
+    }
+}
+
+// 带展开按钮的紧凑输入框
+@Composable
+fun CompactTextFieldWithExpand(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String? = null,
+    placeholder: String? = null,
+    singleLine: Boolean = false,
+    minLines: Int = 1,
+    maxLines: Int = Int.MAX_VALUE,
+    onExpandClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            label = label?.let { { Text(it, fontSize = 11.sp) } },
+            placeholder = placeholder?.let { { Text(it, fontSize = 11.sp) } },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 32.dp), // 为右上角按钮留空间
+            textStyle = LocalTextStyle.current.copy(fontSize = 12.sp),
+            singleLine = singleLine,
+            minLines = minLines,
+            maxLines = maxLines,
+            shape = RoundedCornerShape(6.dp)
+        )
+        
+        // 右上角展开按钮
+        IconButton(
+            onClick = onExpandClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(28.dp)
+                .offset(x = (-2).dp, y = 2.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.OpenInFull,
+                contentDescription = "大屏编辑",
+                modifier = Modifier.size(14.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+// 全屏编辑对话框
+@Composable
+fun FullScreenEditDialog(
+    title: String,
+    value: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var editValue by remember { mutableStateOf(value) }
+    
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false
+        )
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp)
+            ) {
+                // 标题栏
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "关闭"
+                        )
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 编辑区域
+                OutlinedTextField(
+                    value = editValue,
+                    onValueChange = { editValue = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    shape = RoundedCornerShape(8.dp),
+                    placeholder = { Text("在此输入内容...") }
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // 底部按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("取消")
+                    }
+                    
+                    Button(
+                        onClick = { onSave(editValue) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("保存")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 紧凑型头像选择器
+@Composable
+fun CompactAvatarPicker(
+    avatarUri: String?,
+    onAvatarChange: () -> Unit,
+    onAvatarReset: () -> Unit
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        // 头像
+        Box(
+            modifier = Modifier
+                .size(60.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .clickable(onClick = onAvatarChange)
+                .border(1.5.dp, MaterialTheme.colorScheme.primary, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            if (avatarUri != null) {
+                Image(
+                    painter = rememberAsyncImagePainter(model = Uri.parse(avatarUri)),
+                    contentDescription = "头像",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = "默认头像",
+                    modifier = Modifier.size(30.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        // 重置按钮
+        if (avatarUri != null) {
+            TextButton(
+                onClick = onAvatarReset,
+                modifier = Modifier.height(24.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text("重置", fontSize = 10.sp)
+            }
+        } else {
+            TextButton(
+                onClick = onAvatarChange,
+                modifier = Modifier.height(24.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 0.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp)
+                )
+                Spacer(modifier = Modifier.width(2.dp))
+                Text("添加", fontSize = 10.sp)
+            }
+        }
+    }
+}

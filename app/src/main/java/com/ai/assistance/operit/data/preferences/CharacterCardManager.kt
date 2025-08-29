@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.first
 import java.util.UUID
+import android.util.Log
 
 private val Context.characterCardDataStore by preferencesDataStore(
     name = "character_cards"
@@ -26,6 +27,8 @@ class CharacterCardManager private constructor(private val context: Context) {
     
     private val dataStore = context.characterCardDataStore
     private val tagManager = PromptTagManager.getInstance(context)
+    // 添加UserPreferencesManager引用用于主题管理
+    private val userPreferencesManager = UserPreferencesManager(context)
     
     companion object {
         private val CHARACTER_CARD_LIST = stringSetPreferencesKey("character_card_list")
@@ -106,6 +109,16 @@ class CharacterCardManager private constructor(private val context: Context) {
         val preferences = dataStore.data.first()
         return getCharacterCardFromPreferences(preferences, id)
     }
+
+    /**
+     * 为角色卡创建默认主题配置
+     */
+    private suspend fun createDefaultThemeForCharacterCard(characterCardId: String) {
+        // 获取当前默认主题配置作为新角色卡的主题基础
+        userPreferencesManager.copyCurrentThemeToCharacterCard(characterCardId)
+    }
+
+
     
     // 创建角色卡
     suspend fun createCharacterCard(card: CharacterCard): String {
@@ -136,6 +149,11 @@ class CharacterCardManager private constructor(private val context: Context) {
             if (newCard.isDefault || preferences[ACTIVE_CHARACTER_CARD_ID] == null) {
                 preferences[ACTIVE_CHARACTER_CARD_ID] = id
             }
+        }
+
+        // 为新角色卡创建默认主题配置
+        if (!newCard.isDefault) {
+            createDefaultThemeForCharacterCard(id)
         }
         
         return id
@@ -194,6 +212,9 @@ class CharacterCardManager private constructor(private val context: Context) {
                 preferences[ACTIVE_CHARACTER_CARD_ID] = DEFAULT_CHARACTER_CARD_ID
             }
         }
+
+        // 删除角色卡对应的主题配置
+        userPreferencesManager.deleteCharacterCardTheme(id)
     }
     
     // 设置活跃角色卡
@@ -201,6 +222,9 @@ class CharacterCardManager private constructor(private val context: Context) {
         dataStore.edit { preferences ->
             preferences[ACTIVE_CHARACTER_CARD_ID] = id
         }
+        
+        // 切换到对应角色卡的主题
+        switchToCharacterCardTheme(id)
     }
     
     // 组合提示词（角色设定 + 其他内容 + 标签 + 高级自定义）
@@ -248,11 +272,13 @@ class CharacterCardManager private constructor(private val context: Context) {
     
     // 初始化默认角色卡和系统标签
     suspend fun initializeIfNeeded() {
+        var isInitialized = false
         dataStore.edit { preferences ->
             val cardListKey = CHARACTER_CARD_LIST
             val currentList = preferences[cardListKey]?.toMutableSet()
             
             if (currentList == null) {
+                isInitialized = true
                 // 首次安装，创建默认角色卡
                 val defaultCardId = DEFAULT_CHARACTER_CARD_ID
                 preferences[cardListKey] = setOf(defaultCardId)
@@ -261,6 +287,10 @@ class CharacterCardManager private constructor(private val context: Context) {
                 // 设置默认角色卡数据
                 setupDefaultCharacterCard(preferences, defaultCardId)
             }
+        }
+
+        if (isInitialized) {
+            userPreferencesManager.saveAiAvatarForCharacterCard(DEFAULT_CHARACTER_CARD_ID, "file:///android_asset/operit.png")
         }
         
         // 确保系统标签存在
@@ -279,7 +309,7 @@ class CharacterCardManager private constructor(private val context: Context) {
         val createdAtKey = longPreferencesKey("character_card_${id}_created_at")
         val updatedAtKey = longPreferencesKey("character_card_${id}_updated_at")
         
-        preferences[nameKey] = "默认角色卡"
+        preferences[nameKey] = "Operit"
         preferences[descriptionKey] = "系统默认的角色卡配置"
         preferences[characterSettingKey] = "你是Operit，一个全能AI助手，旨在解决用户提出的任何任务。"
         preferences[otherContentKey] = "保持有帮助的语气，并清楚地传达限制。"
@@ -385,9 +415,7 @@ class CharacterCardManager private constructor(private val context: Context) {
         
         // 组合高级自定义提示词
         val advancedCustomPrompt = buildString {
-            if (data.creator_notes.isNotBlank()) {
-                append("作者备注：\n${data.creator_notes}\n\n")
-            }
+            
             
             data.extensions?.depth_prompt?.let { depthPrompt ->
                 if (depthPrompt.prompt.isNotBlank()) {
@@ -407,6 +435,9 @@ class CharacterCardManager private constructor(private val context: Context) {
             append("来源：酒馆角色卡\n")
             if (data.creator.isNotBlank()) {
                 append("作者：${data.creator}\n")
+            }
+            if (data.creator_notes.isNotBlank()) {
+                append("作者备注：\n${data.creator_notes}\n\n")
             }
             if (data.character_version.isNotBlank()) {
                 append("版本：${data.character_version}\n")
@@ -436,5 +467,61 @@ class CharacterCardManager private constructor(private val context: Context) {
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
+    }
+
+    // ========== 角色卡主题相关方法 ==========
+
+    /**
+     * 切换到指定角色卡的主题配置
+     */
+    private suspend fun switchToCharacterCardTheme(characterCardId: String) {
+        try {
+            // 检查角色卡是否有专属主题配置
+            if (userPreferencesManager.hasCharacterCardTheme(characterCardId)) {
+                userPreferencesManager.switchToCharacterCardTheme(characterCardId)
+                Log.d("CharacterCardManager", "已切换到角色卡 $characterCardId 的专属主题")
+            } else {
+                Log.d("CharacterCardManager", "角色卡 $characterCardId 没有专属主题配置，保持当前主题")
+            }
+        } catch (e: Exception) {
+            Log.e("CharacterCardManager", "切换角色卡主题失败", e)
+        }
+    }
+
+    /**
+     * 为当前活跃角色卡保存主题配置
+     */
+    suspend fun saveThemeForActiveCharacterCard() {
+        try {
+            val activeCardId = activeCharacterCardFlow.first().id
+            userPreferencesManager.saveCurrentThemeToCharacterCard(activeCardId)
+            Log.d("CharacterCardManager", "已为角色卡 $activeCardId 保存主题配置")
+        } catch (e: Exception) {
+            Log.e("CharacterCardManager", "为活跃角色卡保存主题失败", e)
+        }
+    }
+
+    /**
+     * 删除指定角色卡的主题配置
+     */
+    suspend fun deleteThemeForCharacterCard(characterCardId: String) {
+        try {
+            userPreferencesManager.deleteCharacterCardTheme(characterCardId)
+            Log.d("CharacterCardManager", "已删除角色卡 $characterCardId 的主题配置")
+        } catch (e: Exception) {
+            Log.e("CharacterCardManager", "删除角色卡主题配置失败", e)
+        }
+    }
+
+    /**
+     * 检查指定角色卡是否有专属主题配置
+     */
+    suspend fun hasThemeForCharacterCard(characterCardId: String): Boolean {
+        return try {
+            userPreferencesManager.hasCharacterCardTheme(characterCardId)
+        } catch (e: Exception) {
+            Log.e("CharacterCardManager", "检查角色卡主题配置失败", e)
+            false
+        }
     }
 } 

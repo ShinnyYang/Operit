@@ -47,16 +47,20 @@ fun BubbleUserMessageComposable(
 ) {
     val context = LocalContext.current
     val preferencesManager = remember { UserPreferencesManager(context) }
-    val avatarUri by preferencesManager.customUserAvatarUri.collectAsState(initial = null)
+    val customUserAvatarUri by preferencesManager.customUserAvatarUri.collectAsState(initial = null)
+    val globalUserAvatarUri by preferencesManager.globalUserAvatarUri.collectAsState(initial = null)
     val avatarShapePref by preferencesManager.avatarShape.collectAsState(initial = UserPreferencesManager.AVATAR_SHAPE_CIRCLE)
     val avatarCornerRadius by preferencesManager.avatarCornerRadius.collectAsState(initial = 8f)
     val clipboardManager = LocalClipboardManager.current
 
-    // Add logging
-    LaunchedEffect(avatarUri) {
-        Log.d("UserAvatar", "Loading user avatar from: $avatarUri")
+    // 头像回退逻辑：优先使用角色卡专属头像，为空时使用全局头像
+    val avatarUri = remember(customUserAvatarUri, globalUserAvatarUri) {
+        when {
+            !customUserAvatarUri.isNullOrEmpty() -> customUserAvatarUri
+            !globalUserAvatarUri.isNullOrEmpty() -> globalUserAvatarUri
+            else -> null
+        }
     }
-
     val avatarShape = remember(avatarShapePref, avatarCornerRadius) {
         if (avatarShapePref == UserPreferencesManager.AVATAR_SHAPE_SQUARE) {
             RoundedCornerShape(avatarCornerRadius.dp)

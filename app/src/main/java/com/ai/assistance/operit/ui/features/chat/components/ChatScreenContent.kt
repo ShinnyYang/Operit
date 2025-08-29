@@ -97,10 +97,12 @@ fun ChatScreenContent(
         chatHeaderHistoryIconColor: Int?,
         chatHeaderPipIconColor: Int?,
         chatHeaderOverlayMode: Boolean,
-        chatStyle: ChatStyle // Add chatStyle parameter
+        chatStyle: ChatStyle, // Add chatStyle parameter
+        onSwitchCharacter: (String) -> Unit
 ) {
     val density = LocalDensity.current
     var headerHeight by remember { mutableStateOf(0.dp) }
+    var showCharacterSelector by remember { mutableStateOf(false) }
 
     // 获取WebView状态
     val showWebView = actualViewModel.showWebView.collectAsState().value
@@ -166,7 +168,8 @@ fun ChatScreenContent(
                         currentChatId = currentChatId,
                         chatHeaderTransparent = chatHeaderTransparent,
                         chatHeaderHistoryIconColor = chatHeaderHistoryIconColor,
-                        chatHeaderPipIconColor = chatHeaderPipIconColor
+                        chatHeaderPipIconColor = chatHeaderPipIconColor,
+                        onCharacterSwitcherClick = { showCharacterSelector = true }
                 )
             }
         } else {
@@ -179,7 +182,8 @@ fun ChatScreenContent(
                         currentChatId = currentChatId,
                         chatHeaderTransparent = chatHeaderTransparent,
                         chatHeaderHistoryIconColor = chatHeaderHistoryIconColor,
-                        chatHeaderPipIconColor = chatHeaderPipIconColor
+                        chatHeaderPipIconColor = chatHeaderPipIconColor,
+                        onCharacterSwitcherClick = { showCharacterSelector = true }
                 )
                 ChatArea(
                         chatHistory = chatHistory,
@@ -204,6 +208,13 @@ fun ChatScreenContent(
                 )
             }
         }
+
+        // 角色选择器
+        CharacterSelectorPanel(
+            isVisible = showCharacterSelector,
+            onDismiss = { showCharacterSelector = false },
+            onSelectCharacter = onSwitchCharacter
+        )
 
         // 历史选择器作为浮动层，使用AnimatedVisibility保持动画效果
         AnimatedVisibility(

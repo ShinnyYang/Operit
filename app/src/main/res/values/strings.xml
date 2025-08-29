@@ -4,7 +4,6 @@
     
     <!-- 模型选择器相关 -->
     <string name="model_selector_title">选择模型配置</string>
-    <string name="model_selector_close">关闭</string>
     <string name="model_selector_toggle">显示模型选择器</string>
     <string name="model_selector_toggle_desc">在聊天界面顶部显示模型配置选择器，方便快速切换不同的模型配置</string>
     <string name="model">模型</string>
@@ -65,7 +64,6 @@
     <string name="y_translation">Y轴位移: %1$s</string>
     <string name="confirm_delete_model_title">确认删除模型？</string>
     <string name="confirm_delete_model_message">删除后不可恢复，确定要删除该模型吗？</string>
-    <string name="delete">删除</string>
     <string name="no_models_available">没有可用的模型</string>
     <string name="please_select_model">请选择一个模型</string>
     <string name="how_to_import">如何制作和导入模型?</string>
@@ -854,7 +852,6 @@
     <string name="model_prompts_title">提示词设置</string>
     <string name="select_persona_config">选择AI助手的人设卡配置</string>
     <string name="select_prompt_config">请选择系统提示词配置</string>
-    <string name="create_new">新建</string>
     <string name="manage_all_prompts">管理所有提示词配置</string>
     <string name="custom_system_prompts">自定义系统提示词</string>
     <string name="customize_ai_behavior">定制AI的行为和语气风格</string>
@@ -1312,7 +1309,6 @@
     <string name="deployment_date">部署: %1$s</string>
     <string name="redeploy">重新部署</string>
     <string name="deploy">部署</string>
-    <string name="edit">编辑</string>
     <string name="edit_remote_service">编辑远程服务</string>
     <string name="edit_plugin_info">编辑插件信息</string>
     <string name="name">名称</string>
@@ -1913,7 +1909,6 @@
     <string name="not_supported">不支持</string>
     <string name="permission_level_set_active">已将%1$s设为当前活动权限级别</string>
     <string name="no_description">暂无描述</string>
-    <string name="view_details">查看详情</string>
     <string name="builtin">内置</string>
     <string name="external">外部</string>
     
@@ -2160,6 +2155,7 @@
     <string name="show_input_processing_status_desc">在输入框上方显示AI正在处理任务的状态</string>
     <string name="avatar_customization_title">自定义头像</string>
     <string name="user_avatar_label">用户头像</string>
+    <string name="global_user_avatar_label">全局用户头像</string>
     <string name="ai_avatar_label">AI 头像</string>
     <string name="avatar_shape_title">头像形状</string>
     <string name="avatar_shape_circle">圆形</string>
@@ -2200,7 +2196,6 @@
     <string name="get_models_list">获取模型列表</string>
     <string name="getting_models_list">正在获取模型列表...</string>
     <string name="models_list_success">成功获取 %d 个模型</string>
-    <string name="unknown_error">未知错误</string>
     <string name="get_models_list_failed">获取模型列表失败: %s</string>
     <string name="default_config_no_models_list">使用默认配置时无法获取模型列表</string>
     <string name="fill_endpoint_and_key">请先填写API端点和密钥</string>
@@ -2220,8 +2215,6 @@
     <string name="no_models_found">没有找到可用模型</string>
     <string name="models_displayed">已显示 %d 个模型</string>
     <string name="models_displayed_filtered"> (已过滤)</string>
-    <string name="close">关闭</string>
-    
     <!-- API Provider names -->
     <string name="provider_openai">OpenAI (GPT系列)</string>
     <string name="provider_anthropic">Anthropic (Claude系列)</string>
@@ -2240,8 +2233,6 @@
     <string name="provider_other">其他提供商</string>
     <string name="select_api_provider_title">选择API提供商</string>
     <string name="search_providers">搜索提供商</string>
-    <string name="cancel">取消</string>
-    
     <!-- ModelParametersSection strings -->
     <string name="max_tokens_name">最大生成Token数</string>
     <string name="max_tokens_description">控制AI每次最多生成的Token数量</string>
@@ -2266,7 +2257,6 @@
     <string name="repetition_control_parameters">重复控制参数</string>
     <string name="reset">重置</string>
     <string name="reset_parameters">重置参数</string>
-    <string name="save">保存</string>
     <string name="save_parameters">保存参数</string>
     <string name="api_name_format">API名称: %s</string>
     <string name="collapse">收起</string>
@@ -2363,5 +2353,88 @@
     <string name="screen_title_tool_tester">工具测试中心</string>
     <string name="screen_title_text_to_speech">文本转语音</string>
     <string name="screen_title_speech_to_text">语音识别</string>
+    
+    <!-- Model Prompts Settings Screen -->
+    <string name="unknown_error">未知错误</string>
+    <string name="file_read_error">读取文件失败: %1$s</string>
+    <string name="character_cards">角色卡</string>
+    <string name="tags">标签</string>
+    <string name="old_config">旧配置</string>
+    <string name="save_successful">保存成功</string>
+    <string name="character_card_management">角色卡管理</string>
+    <string name="create_new">新建</string>
+    <string name="ai_creation">AI创作</string>
+    <string name="edit">编辑</string>
+    <string name="delete">删除</string>
+    <string name="character_setting_preview">角色设定：%1$s...</string>
+    <string name="other_content_preview">其他内容：%1$s...</string>
+    <string name="advanced_custom_preview">高级自定义：%1$s...</string>
+    <string name="tag_management">标签管理</string>
+    <string name="create_new_tag">新建标签</string>
+    <string name="tag_market">标签市场</string>
+    <string name="system_tags">系统标签</string>
+    <string name="custom_tags">自定义标签</string>
+    <string name="content_preview">内容：%1$s...</string>
+    <string name="old_prompt_config">旧版提示词配置</string>
+    <string name="old_prompt_config_desc">这些是旧版系统的提示词配置，您可以查看和复制内容到新的角色卡系统中。</string>
+    <string name="intro_prompt_preview">引导词：%1$s...</string>
+    <string name="view_details">查看详情</string>
+    <string name="create_character_card">新建角色卡</string>
+    <string name="edit_character_card">编辑角色卡</string>
+    <string name="character_card_name">角色卡名称</string>
+    <string name="description_optional">描述（可选）</string>
+    <string name="character_setting_prompt">角色设定（引导词）</string>
+    <string name="other_content_prompt">其他内容（引导词）</string>
+    <string name="select_tags">选择标签</string>
+    <string name="system_tags_auto_added">系统标签（自动加入）</string>
+    <string name="advanced_custom_prompt">高级自定义（引导词）</string>
+    <string name="notes_info_not_appended">备注信息（不会被拼接到提示词中）</string>
+    <string name="notes_placeholder">可以记录角色卡来源、作者信息等</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    <string name="create_tag">新建标签</string>
+    <string name="edit_tag">编辑标签</string>
+    <string name="tag_name">标签名称</string>
+    <string name="tag_type">标签类型</string>
+    <string name="prompt_content">提示词内容</string>
+    <string name="old_config_details">旧版配置详情</string>
+    <string name="config_name_format">配置名称：%1$s</string>
+    <string name="intro_prompt_label">引导词：</string>
+    <string name="copy_intro_prompt">复制引导词</string>
+    <string name="tone_prompt_label">语气词：</string>
+    <string name="copy_tone_prompt">复制语气词</string>
+    <string name="copy_all_content">复制全部内容</string>
+    <string name="old_config_usage_tip">您可以复制这些内容到新的角色卡系统中使用。</string>
+    <string name="close">关闭</string>
+    
+    <!-- Waifu Mode Settings Screen -->
+    <string name="waifu_mode">Waifu模式</string>
+    <string name="waifu_mode_description">启用后，AI的回复将按标点分割逐句发送，营造更自然的对话体验。</string>
+    <string name="enable_waifu_mode">启用Waifu模式</string>
+    <string name="waifu_mode_toggle_desc">AI回复将按标点分割发送</string>
+    <string name="typing_speed_settings">打字速度设置</string>
+    <string name="typing_speed_desc">控制每字符的延迟时间，模拟真人打字节奏</string>
+    <string name="current_speed_format">当前速度：每秒 %.1f 字符</string>
+    <string name="speed_fast">快</string>
+    <string name="speed_slow">慢</string>
+    <string name="current_delay_format">当前：%dms/字符</string>
+    <string name="remove_punctuation">移除句末标点符号</string>
+    <string name="remove_punctuation_desc">移除句子末尾的句号、问号、感叹号</string>
+    <string name="disable_action_emoticons">禁止动作表情</string>
+    <string name="disable_action_emoticons_desc">禁止AI使用（动作表情）格式</string>
+    <string name="action_emoticons_notice">注意：此项设置仅由额外提示词控制，只能减少频率并不能保证百分百禁止，建议在提示词配置中进行针对性说明</string>
+    <string name="enable_emoticons">启用表情包</string>
+    <string name="emoticons_desc">在对话中插入情绪状态标签，增强表达效果</string>
+    <string name="available_emoticons">可用表情：crying, like_you, happy, surprised, miss_you, speechless, angry, confused, sad</string>
+    <string name="enable_selfie_feature">启用自拍功能</string>
+    <string name="selfie_feature_desc">允许AI生成角色自拍图片，需要配置外貌提示词</string>
+    <string name="appearance_prompt">外貌提示词</string>
+    <string name="appearance_prompt_desc">描述角色的外貌特征，用于生成自拍图片</string>
+    <string name="appearance_description_label">外貌描述</string>
+    <string name="appearance_prompt_placeholder">例如：long hair, purple eyes, sweater vest...</string>
+    <string name="appearance_prompt_tip">提示：使用英文关键词描述外貌特征，多个关键词用逗号分隔</string>
+    <string name="feature_explanation">功能说明</string>
+    <string name="waifu_mode_explanation">• 普通模式：AI回复一次性全部发送\n• Waifu模式：AI回复按句子分割，每句独立气泡\n• 智能延迟：根据句子长度计算延迟时间\n• 自动清理：移除状态标签，只显示纯文本\n• 可选功能：移除句末标点、禁止动作表情、启用表情包\n• 适用场景：模拟更自然的对话节奏\n• 注意：此模式对工具调用的适配可能不佳</string>
+    <string name="settings_saved_message">设置已保存</string>
     
 </resources>

@@ -10,10 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.Color
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import kotlinx.coroutines.launch
 
@@ -76,14 +78,14 @@ fun WaifuModeSettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Waifu模式",
+                            text = stringResource(R.string.waifu_mode),
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "启用后，AI的回复将按标点分割逐句发送，营造更自然的对话体验。",
+                        text = stringResource(R.string.waifu_mode_description),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     )
@@ -106,13 +108,13 @@ fun WaifuModeSettingsScreen(
                             modifier = Modifier.weight(1f)
                         ) {
                             Text(
-                                text = "启用Waifu模式",
+                                text = stringResource(R.string.enable_waifu_mode),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
-                                text = "AI回复将按标点分割发送",
+                                text = stringResource(R.string.waifu_mode_toggle_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
@@ -140,13 +142,13 @@ fun WaifuModeSettingsScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         Text(
-                            text = "打字速度设置",
+                            text = stringResource(R.string.typing_speed_settings),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "控制每字符的延迟时间，模拟真人打字节奏",
+                            text = stringResource(R.string.typing_speed_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
@@ -155,7 +157,7 @@ fun WaifuModeSettingsScreen(
                         // 显示当前速度
                         val charsPerSecond = if (charDelay > 0) 1000f / charDelay else 0f
                         Text(
-                            text = "当前速度：每秒 %.1f 字符".format(charsPerSecond),
+                            text = stringResource(R.string.current_speed_format, charsPerSecond),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -169,7 +171,7 @@ fun WaifuModeSettingsScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = "快",
+                                text = stringResource(R.string.speed_fast),
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.width(30.dp)
                             )
@@ -186,14 +188,14 @@ fun WaifuModeSettingsScreen(
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
-                                text = "慢",
+                                text = stringResource(R.string.speed_slow),
                                 style = MaterialTheme.typography.bodySmall,
                                 modifier = Modifier.width(30.dp)
                             )
                         }
                         
                         Text(
-                            text = "当前：${charDelay}ms/字符",
+                            text = stringResource(R.string.current_delay_format, charDelay),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -219,13 +221,13 @@ fun WaifuModeSettingsScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "移除句末标点符号",
+                                    text = stringResource(R.string.remove_punctuation),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "移除句子末尾的句号、问号、感叹号",
+                                    text = stringResource(R.string.remove_punctuation_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
@@ -262,19 +264,19 @@ fun WaifuModeSettingsScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "禁止动作表情",
+                                    text = stringResource(R.string.disable_action_emoticons),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "禁止AI使用（动作表情）格式",
+                                    text = stringResource(R.string.disable_action_emoticons_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "注意：此项设置仅由额外提示词控制，只能减少频率并不能保证百分百禁止，建议在提示词配置中进行针对性说明",
+                                    text = stringResource(R.string.action_emoticons_notice),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.error.copy(alpha = 0.8f)
                                 )
@@ -311,19 +313,19 @@ fun WaifuModeSettingsScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "启用表情包",
+                                    text = stringResource(R.string.enable_emoticons),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "在对话中插入情绪状态标签，增强表达效果",
+                                    text = stringResource(R.string.emoticons_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "可用表情：crying, like_you, happy, surprised, miss_you, speechless, angry, confused, sad",
+                                    text = stringResource(R.string.available_emoticons),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                                 )
@@ -360,13 +362,13 @@ fun WaifuModeSettingsScreen(
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    text = "启用自拍功能",
+                                    text = stringResource(R.string.enable_selfie_feature),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "允许AI生成角色自拍图片，需要配置外貌提示词",
+                                    text = stringResource(R.string.selfie_feature_desc),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                 )
@@ -387,13 +389,13 @@ fun WaifuModeSettingsScreen(
                         if (enableSelfie) {
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "外貌提示词",
+                                text = stringResource(R.string.appearance_prompt),
                                 style = MaterialTheme.typography.titleSmall,
                                 fontWeight = FontWeight.Medium
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "描述角色的外貌特征，用于生成自拍图片",
+                                text = stringResource(R.string.appearance_prompt_desc),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
@@ -411,8 +413,8 @@ fun WaifuModeSettingsScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                label = { Text("外貌描述") },
-                                placeholder = { Text("例如：long hair, purple eyes, sweater vest...") },
+                                label = { Text(stringResource(R.string.appearance_description_label)) },
+                                placeholder = { Text(stringResource(R.string.appearance_prompt_placeholder)) },
                                 minLines = 3,
                                 maxLines = 6,
                                 colors = OutlinedTextFieldDefaults.colors(
@@ -423,7 +425,7 @@ fun WaifuModeSettingsScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "提示：使用英文关键词描述外貌特征，多个关键词用逗号分隔",
+                                text = stringResource(R.string.appearance_prompt_tip),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                             )
@@ -453,20 +455,14 @@ fun WaifuModeSettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "功能说明",
+                            text = stringResource(R.string.feature_explanation),
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Medium
                         )
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "• 普通模式：AI回复一次性全部发送\n" +
-                                "• Waifu模式：AI回复按句子分割，每句独立气泡\n" +
-                                "• 智能延迟：根据句子长度计算延迟时间\n" +
-                                "• 自动清理：移除状态标签，只显示纯文本\n" +
-                                "• 可选功能：移除句末标点、禁止动作表情、启用表情包\n" +
-                                "• 适用场景：模拟更自然的对话节奏\n" +
-                                "• 注意：此模式对工具调用的适配可能不佳",
+                        text = stringResource(R.string.waifu_mode_explanation),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f)
                     )
@@ -495,7 +491,7 @@ fun WaifuModeSettingsScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "设置已保存",
+                            text = stringResource(R.string.settings_saved_message),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF4CAF50)
                         )

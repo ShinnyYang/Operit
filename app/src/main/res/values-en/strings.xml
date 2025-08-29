@@ -4,7 +4,6 @@
     
     <!-- Model selector related -->
     <string name="model_selector_title">Select Model Configuration</string>
-    <string name="model_selector_close">Close</string>
     <string name="model_selector_toggle">Show Model Selector</string>
     <string name="model_selector_toggle_desc">Show model configuration selector at the top of the chat interface for easy switching between different model configurations</string>
     <string name="model">Model</string>
@@ -65,8 +64,6 @@
     <string name="y_translation">Y Translation: %1$s</string>
     <string name="confirm_delete_model_title">Confirm Delete Model?</string>
     <string name="confirm_delete_model_message">This action cannot be undone. Are you sure you want to delete this model?</string>
-    <string name="delete">Delete</string>
-    <string name="cancel">Cancel</string>
     <string name="no_models_available">No models available</string>
     <string name="please_select_model">Please select a model</string>
     <string name="how_to_import">How to create and import models?</string>
@@ -429,7 +426,6 @@
     <string name="custom_description">Custom Introduction</string>
     <string name="preferences_hint">Enter your personal introduction (max 100 characters)</string>
     <string name="enter_preferences">Enter your personal introduction here...</string>
-    <string name="save">Save</string>
     <string name="edit_preferences">Edit Preferences</string>
     <string name="reset_preferences">Reset Preferences</string>
     <string name="set_preferences">Set Preferences</string>
@@ -856,7 +852,6 @@
     <string name="model_prompts_title">Prompt Settings</string>
     <string name="select_persona_config">Select AI Assistant Persona Card Configuration</string>
     <string name="select_prompt_config">Select System Prompt Configuration</string>
-    <string name="create_new">New</string>
     <string name="manage_all_prompts">Manage All Prompt Configurations</string>
     <string name="custom_system_prompts">Custom System Prompts</string>
     <string name="customize_ai_behavior">Customize AI Behavior and Tone</string>
@@ -1256,7 +1251,6 @@
     <string name="deployment_date">Deployed: %1$s</string>
     <string name="redeploy">Redeploy</string>
     <string name="deploy">Deploy</string>
-    <string name="edit">Edit</string>
     <string name="edit_remote_service">Edit Remote Service</string>
     <string name="edit_plugin_info">Edit Plugin Info</string>
     <string name="name">Name</string>
@@ -1923,7 +1917,6 @@
     <string name="not_supported">Not Supported</string>
     <string name="permission_level_set_active">Set %1$s as the current active permission level</string>
     <string name="no_description">No description</string>
-    <string name="view_details">View Details</string>
     <string name="builtin">Built-in</string>
     <string name="external">External</string>
     
@@ -2170,6 +2163,7 @@
     <string name="show_input_processing_status_desc">Show AI task processing status above input box</string>
     <string name="avatar_customization_title">Avatar Customization</string>
     <string name="user_avatar_label">User Avatar</string>
+    <string name="global_user_avatar_label">Global User Avatar</string>
     <string name="ai_avatar_label">AI Avatar</string>
     <string name="avatar_shape_title">Avatar Shape</string>
     <string name="avatar_shape_circle">Circle</string>
@@ -2206,7 +2200,6 @@
     <string name="get_models_list">Get Models List</string>
     <string name="getting_models_list">Getting models list...</string>
     <string name="models_list_success">Successfully retrieved %d models</string>
-    <string name="unknown_error">Unknown error</string>
     <string name="get_models_list_failed">Failed to get models list: %s</string>
     <string name="default_config_no_models_list">Cannot get models list when using default configuration</string>
     <string name="fill_endpoint_and_key">Please fill in API endpoint and key first</string>
@@ -2224,8 +2217,6 @@
     <string name="no_models_found">No models found</string>
     <string name="models_displayed">Showing %d models</string>
     <string name="models_displayed_filtered"> (filtered)</string>
-    <string name="close">Close</string>
-    
     <!-- API Provider names -->
     <string name="provider_openai">OpenAI (GPT Series)</string>
     <string name="provider_anthropic">Anthropic (Claude Series)</string>
@@ -2361,5 +2352,88 @@
     <string name="screen_title_tool_tester">Tool Testing Center</string>
     <string name="screen_title_text_to_speech">Text to Speech</string>
     <string name="screen_title_speech_to_text">Speech Recognition</string>
+    
+    <!-- Model Prompts Settings Screen -->
+    <string name="unknown_error">Unknown error</string>
+    <string name="file_read_error">Failed to read file: %1$s</string>
+    <string name="character_cards">Character Cards</string>
+    <string name="tags">Tags</string>
+    <string name="old_config">Old Config</string>
+    <string name="save_successful">Save successful</string>
+    <string name="character_card_management">Card Management</string>
+    <string name="create_new">Create</string>
+    <string name="ai_creation">AI Creation</string>
+    <string name="edit">Edit</string>
+    <string name="delete">Delete</string>
+    <string name="character_setting_preview">Character Setting: %1$s...</string>
+    <string name="other_content_preview">Other Content: %1$s...</string>
+    <string name="advanced_custom_preview">Advanced Custom: %1$s...</string>
+    <string name="tag_management">Tag Management</string>
+    <string name="create_new_tag">Create Tag</string>
+    <string name="tag_market">Tag Market</string>
+    <string name="system_tags">System Tags</string>
+    <string name="custom_tags">Custom Tags</string>
+    <string name="content_preview">Content: %1$s...</string>
+    <string name="old_prompt_config">Legacy Prompt Configuration</string>
+    <string name="old_prompt_config_desc">These are prompt configurations from the legacy system. You can view and copy content to the new character card system.</string>
+    <string name="intro_prompt_preview">Intro Prompt: %1$s...</string>
+    <string name="view_details">View Details</string>
+    <string name="create_character_card">Create Character Card</string>
+    <string name="edit_character_card">Edit Character Card</string>
+    <string name="character_card_name">Character Card Name</string>
+    <string name="description_optional">Description (Optional)</string>
+    <string name="character_setting_prompt">Character Setting (Prompt)</string>
+    <string name="other_content_prompt">Other Content (Prompt)</string>
+    <string name="select_tags">Select Tags</string>
+    <string name="system_tags_auto_added">System Tags (Auto-added)</string>
+    <string name="advanced_custom_prompt">Advanced Custom (Prompt)</string>
+    <string name="notes_info_not_appended">Notes (Not appended to prompts)</string>
+    <string name="notes_placeholder">Record character card source, author info, etc.</string>
+    <string name="save">Save</string>
+    <string name="cancel">Cancel</string>
+    <string name="create_tag">Create Tag</string>
+    <string name="edit_tag">Edit Tag</string>
+    <string name="tag_name">Tag Name</string>
+    <string name="tag_type">Tag Type</string>
+    <string name="prompt_content">Prompt Content</string>
+    <string name="old_config_details">Legacy Configuration Details</string>
+    <string name="config_name_format">Configuration Name: %1$s</string>
+    <string name="intro_prompt_label">Intro Prompt:</string>
+    <string name="copy_intro_prompt">Copy Intro Prompt</string>
+    <string name="tone_prompt_label">Tone Prompt:</string>
+    <string name="copy_tone_prompt">Copy Tone Prompt</string>
+    <string name="copy_all_content">Copy All Content</string>
+    <string name="old_config_usage_tip">You can copy this content for use in the new character card system.</string>
+    <string name="close">Close</string>
+    
+    <!-- Waifu Mode Settings Screen -->
+    <string name="waifu_mode">Waifu Mode</string>
+    <string name="waifu_mode_description">When enabled, AI responses will be split by punctuation and sent sentence by sentence for a more natural conversation experience.</string>
+    <string name="enable_waifu_mode">Enable Waifu Mode</string>
+    <string name="waifu_mode_toggle_desc">AI responses will be split and sent by sentences</string>
+    <string name="typing_speed_settings">Typing Speed Settings</string>
+    <string name="typing_speed_desc">Control the delay time per character to simulate real typing rhythm</string>
+    <string name="current_speed_format">Current speed: %.1f characters per second</string>
+    <string name="speed_fast">Fast</string>
+    <string name="speed_slow">Slow</string>
+    <string name="current_delay_format">Current: %dms/character</string>
+    <string name="remove_punctuation">Remove End Punctuation</string>
+    <string name="remove_punctuation_desc">Remove periods, question marks, and exclamation marks at the end of sentences</string>
+    <string name="disable_action_emoticons">Disable Action Emoticons</string>
+    <string name="disable_action_emoticons_desc">Prevent AI from using (action emoticon) format</string>
+    <string name="action_emoticons_notice">Note: This setting is only controlled by additional prompts, which can only reduce frequency and cannot guarantee 100% prevention. It is recommended to provide targeted instructions in prompt configuration</string>
+    <string name="enable_emoticons">Enable Emoticons</string>
+    <string name="emoticons_desc">Insert emotional state tags in conversations to enhance expression</string>
+    <string name="available_emoticons">Available emoticons: crying, like_you, happy, surprised, miss_you, speechless, angry, confused, sad</string>
+    <string name="enable_selfie_feature">Enable Selfie Feature</string>
+    <string name="selfie_feature_desc">Allow AI to generate character selfie images, requires appearance prompt configuration</string>
+    <string name="appearance_prompt">Appearance Prompt</string>
+    <string name="appearance_prompt_desc">Describe character appearance features for generating selfie images</string>
+    <string name="appearance_description_label">Appearance Description</string>
+    <string name="appearance_prompt_placeholder">e.g.: long hair, purple eyes, sweater vest...</string>
+    <string name="appearance_prompt_tip">Tip: Use English keywords to describe appearance features, separate multiple keywords with commas</string>
+    <string name="feature_explanation">Feature Explanation</string>
+    <string name="waifu_mode_explanation">• Normal Mode: AI responses sent all at once\n• Waifu Mode: AI responses split by sentences, each in separate bubbles\n• Smart Delay: Calculate delay time based on sentence length\n• Auto Cleanup: Remove status tags, show only plain text\n• Optional Features: Remove end punctuation, disable action emoticons, enable emoticons\n• Use Case: Simulate more natural conversation rhythm\n• Note: This mode may not adapt well to tool calls</string>
+    <string name="settings_saved_message">Settings saved</string>
     
 </resources> 

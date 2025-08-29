@@ -29,13 +29,17 @@ fun AvatarPicker(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Text(text = label, style = MaterialTheme.typography.titleSmall)
+        Text(
+            text = label, 
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
 
         Box(
             modifier = Modifier
-                .size(100.dp)
+                .size(70.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(onClick = onAvatarChange)
@@ -53,7 +57,7 @@ fun AvatarPicker(
                 Icon(
                     imageVector = Icons.Default.Person,
                     contentDescription = "Default Avatar",
-                    modifier = Modifier.size(50.dp),
+                    modifier = Modifier.size(35.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -62,11 +66,20 @@ fun AvatarPicker(
         OutlinedButton(
             onClick = onAvatarReset,
             enabled = avatarUri != null,
-            modifier = Modifier.height(36.dp)
+            modifier = Modifier
+                .height(32.dp)
+                .padding(horizontal = 4.dp)
         ) {
-            Icon(imageVector = Icons.Default.Refresh, contentDescription = "Reset Avatar", modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(text = "重置")
+            Icon(
+                imageVector = Icons.Default.Refresh, 
+                contentDescription = "Reset Avatar", 
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(modifier = Modifier.width(3.dp))
+            Text(
+                text = "重置",
+                style = MaterialTheme.typography.bodySmall
+            )
         }
     }
 } 

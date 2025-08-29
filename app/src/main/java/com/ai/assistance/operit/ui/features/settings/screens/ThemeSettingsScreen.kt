@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Brightness4
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Remove
@@ -50,6 +51,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
+import com.ai.assistance.operit.data.model.CharacterCard
 import com.ai.assistance.operit.ui.features.settings.components.ColorPickerDialog
 import com.ai.assistance.operit.ui.features.settings.components.ColorSelectionItem
 import com.ai.assistance.operit.ui.features.settings.components.MediaTypeOption
@@ -80,6 +83,26 @@ fun ThemeSettingsScreen() {
     val context = LocalContext.current
     val preferencesManager = remember { UserPreferencesManager(context) }
     val scope = rememberCoroutineScope()
+
+    // 添加角色卡管理器
+    val characterCardManager = remember { CharacterCardManager.getInstance(context) }
+
+    // 获取当前活跃角色卡
+    val activeCharacterCard = characterCardManager.activeCharacterCardFlow.collectAsState(
+        initial = CharacterCard(
+            id = "default_character",
+            name = "默认角色卡",
+            description = "",
+            characterSetting = "",
+            otherContent = "",
+            attachedTagIds = emptyList(),
+            advancedCustomPrompt = "",
+            marks = "",
+            isDefault = true,
+            createdAt = System.currentTimeMillis(),
+            updatedAt = System.currentTimeMillis()
+        )
+    ).value
 
     // Collect theme settings
     val themeMode =
@@ -169,9 +192,24 @@ fun ThemeSettingsScreen() {
     // Collect on color mode
     val onColorMode = preferencesManager.onColorMode.collectAsState(initial = UserPreferencesManager.ON_COLOR_MODE_AUTO).value
 
-    // Collect custom chat title
-    val customChatTitle = preferencesManager.customChatTitle.collectAsState(initial = null).value
 
+
+    var showSaveSuccessMessage by remember { mutableStateOf(false) }
+
+    // 自动保存主题到当前角色卡的函数
+    val saveThemeToActiveCharacterCard: () -> Unit = {
+        scope.launch {
+            preferencesManager.saveCurrentThemeToCharacterCard(activeCharacterCard.id)
+        }
+    }
+
+    // 包装的保存函数，会同时保存设置和角色卡主题
+    fun saveThemeSettingsWithCharacterCard(saveAction: suspend () -> Unit) {
+        scope.launch {
+            saveAction()
+            saveThemeToActiveCharacterCard()
+        }
+    }
 
     // Default color definitions
     val defaultPrimaryColor = Color.Magenta.toArgb()
@@ -237,15 +275,17 @@ fun ThemeSettingsScreen() {
     var avatarShapeInput by remember { mutableStateOf(avatarShape) }
     var avatarCornerRadiusInput by remember { mutableStateOf(avatarCornerRadius) }
 
+    // 添加全局用户头像状态
+    val globalUserAvatarUri = preferencesManager.globalUserAvatarUri.collectAsState(initial = null).value
+    var globalUserAvatarUriInput by remember { mutableStateOf(globalUserAvatarUri) }
+
     // On color mode state
     var onColorModeInput by remember { mutableStateOf(onColorMode) }
 
-    // Custom chat title state
-    var customChatTitleInput by remember(customChatTitle) { mutableStateOf(customChatTitle ?: "") }
+
 
     var showColorPicker by remember { mutableStateOf(false) }
     var currentColorPickerMode by remember { mutableStateOf("primary") }
-    var showSaveSuccessMessage by remember { mutableStateOf(false) }
 
     // Video player state
     val exoPlayer = remember {
@@ -585,7 +625,7 @@ fun ThemeSettingsScreen() {
             avatarShape,
             avatarCornerRadius,
             onColorMode,
-            customChatTitle
+            globalUserAvatarUri
     ) {
         themeModeInput = themeMode
         useSystemThemeInput = useSystemTheme
@@ -624,7 +664,7 @@ fun ThemeSettingsScreen() {
         avatarShapeInput = avatarShape
         avatarCornerRadiusInput = avatarCornerRadius
         onColorModeInput = onColorMode
-        customChatTitleInput = customChatTitle ?: ""
+        globalUserAvatarUriInput = globalUserAvatarUri
     }
 
     // Avatar picker and cropper launcher
@@ -635,19 +675,33 @@ fun ThemeSettingsScreen() {
             val croppedUri = result.uriContent
             if (croppedUri != null) {
                 scope.launch {
-                    val uniqueName = if (avatarPickerMode == "user") "user_avatar" else "ai_avatar"
+                    val uniqueName = when (avatarPickerMode) {
+                        "user" -> "user_avatar"
+                        "ai" -> "ai_avatar"
+                        "global_user" -> "global_user_avatar"
+                        else -> "user_avatar"
+                    }
                     val internalUri = FileUtils.copyFileToInternalStorage(context, croppedUri, uniqueName)
                     if (internalUri != null) {
-                        if (avatarPickerMode == "user") {
-                            Log.d("ThemeSettings", "User avatar saved to: $internalUri")
-                            userAvatarUriInput = internalUri.toString()
-                            preferencesManager.saveThemeSettings(customUserAvatarUri = internalUri.toString())
-                        } else { // "ai"
-                            Log.d("ThemeSettings", "AI avatar saved to: $internalUri")
-                            aiAvatarUriInput = internalUri.toString()
-                            preferencesManager.saveThemeSettings(customAiAvatarUri = internalUri.toString())
+                        when (avatarPickerMode) {
+                            "user" -> {
+                                Log.d("ThemeSettings", "User avatar saved to: $internalUri")
+                                userAvatarUriInput = internalUri.toString()
+                                saveThemeSettingsWithCharacterCard {
+                                    preferencesManager.saveThemeSettings(customUserAvatarUri = internalUri.toString())
+                                }
+                            }
+                            "ai" -> {
+                                Log.d("ThemeSettings", "AI avatar saved to: $internalUri")
+                                aiAvatarUriInput = internalUri.toString()
+                                preferencesManager.saveThemeSettings(customAiAvatarUri = internalUri.toString())
+                            }
+                            "global_user" -> {
+                                Log.d("ThemeSettings", "Global user avatar saved to: $internalUri")
+                                globalUserAvatarUriInput = internalUri.toString()
+                                preferencesManager.saveThemeSettings(globalUserAvatarUri = internalUri.toString())
+                            }
                         }
-                        showSaveSuccessMessage = true
                         Toast.makeText(context, context.getString(R.string.avatar_updated), Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(context, context.getString(R.string.theme_copy_failed), Toast.LENGTH_LONG).show()
@@ -707,6 +761,65 @@ fun ThemeSettingsScreen() {
     val scrollState = rememberScrollState()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp).verticalScroll(scrollState)) {
+        // ======= 角色卡主题绑定信息 =======
+        Card(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+            colors = cardModifier,
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 显示头像但不可编辑
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (aiAvatarUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(Uri.parse(aiAvatarUri)),
+                            contentDescription = "角色头像",
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Person,
+                            contentDescription = "默认头像",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "当前角色: ${activeCharacterCard.name}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = "主题设置将自动绑定到此角色卡",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Icon(
+                    Icons.Default.Link,
+                    contentDescription = "绑定",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+
         // ======= SECTION 1: THEME MODE =======
         ThemeSectionTitle(
                 title = stringResource(id = R.string.theme_title_mode),
@@ -744,9 +857,8 @@ fun ThemeSettingsScreen() {
                             checked = useSystemThemeInput,
                             onCheckedChange = {
                                 useSystemThemeInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(useSystemTheme = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -774,11 +886,10 @@ fun ThemeSettingsScreen() {
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     themeModeInput = UserPreferencesManager.THEME_MODE_LIGHT
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(
                                                 themeMode = UserPreferencesManager.THEME_MODE_LIGHT
                                         )
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -789,11 +900,10 @@ fun ThemeSettingsScreen() {
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     themeModeInput = UserPreferencesManager.THEME_MODE_DARK
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(
                                                 themeMode = UserPreferencesManager.THEME_MODE_DARK
                                         )
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -838,9 +948,8 @@ fun ThemeSettingsScreen() {
                             checked = statusBarTransparentInput,
                             onCheckedChange = {
                                 statusBarTransparentInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(statusBarTransparent = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -871,9 +980,8 @@ fun ThemeSettingsScreen() {
                             enabled = !statusBarTransparentInput,
                             onCheckedChange = {
                                 useCustomStatusBarColorInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(useCustomStatusBarColor = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -926,9 +1034,8 @@ fun ThemeSettingsScreen() {
                             checked = toolbarTransparentInput,
                             onCheckedChange = {
                                 toolbarTransparentInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(toolbarTransparent = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -961,9 +1068,8 @@ fun ThemeSettingsScreen() {
                             checked = chatHeaderTransparentInput,
                             onCheckedChange = {
                                 chatHeaderTransparentInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(chatHeaderTransparent = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -991,11 +1097,10 @@ fun ThemeSettingsScreen() {
                                 checked = chatHeaderOverlayModeInput,
                                 onCheckedChange = {
                                     chatHeaderOverlayModeInput = it
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(
                                                 chatHeaderOverlayMode = it
                                         )
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -1029,9 +1134,8 @@ fun ThemeSettingsScreen() {
                             checked = chatInputTransparentInput,
                             onCheckedChange = {
                                 chatInputTransparentInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(chatInputTransparent = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -1069,9 +1173,8 @@ fun ThemeSettingsScreen() {
                             checked = forceAppBarContentColorInput,
                             onCheckedChange = {
                                 forceAppBarContentColorInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(forceAppBarContentColor = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -1094,9 +1197,8 @@ fun ThemeSettingsScreen() {
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     appBarContentColorModeInput = UserPreferencesManager.APP_BAR_CONTENT_COLOR_MODE_LIGHT
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(appBarContentColorMode = UserPreferencesManager.APP_BAR_CONTENT_COLOR_MODE_LIGHT)
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -1106,9 +1208,8 @@ fun ThemeSettingsScreen() {
                                 modifier = Modifier.weight(1f),
                                 onClick = {
                                     appBarContentColorModeInput = UserPreferencesManager.APP_BAR_CONTENT_COLOR_MODE_DARK
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(appBarContentColorMode = UserPreferencesManager.APP_BAR_CONTENT_COLOR_MODE_DARK)
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -1178,9 +1279,8 @@ fun ThemeSettingsScreen() {
                             checked = useCustomColorsInput,
                             onCheckedChange = {
                                 useCustomColorsInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(useCustomColors = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -1243,9 +1343,8 @@ fun ThemeSettingsScreen() {
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 onColorModeInput = UserPreferencesManager.ON_COLOR_MODE_AUTO
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(onColorMode = UserPreferencesManager.ON_COLOR_MODE_AUTO)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                         )
@@ -1255,9 +1354,8 @@ fun ThemeSettingsScreen() {
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 onColorModeInput = UserPreferencesManager.ON_COLOR_MODE_LIGHT
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(onColorMode = UserPreferencesManager.ON_COLOR_MODE_LIGHT)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                         )
@@ -1267,9 +1365,8 @@ fun ThemeSettingsScreen() {
                             modifier = Modifier.weight(1f),
                             onClick = {
                                 onColorModeInput = UserPreferencesManager.ON_COLOR_MODE_DARK
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(onColorMode = UserPreferencesManager.ON_COLOR_MODE_DARK)
-                                    showSaveSuccessMessage = true
                                 }
                                 }
                         )
@@ -1379,9 +1476,8 @@ fun ThemeSettingsScreen() {
                         modifier = Modifier.weight(1f)
                     ) {
                         chatStyleInput = UserPreferencesManager.CHAT_STYLE_CURSOR
-                        scope.launch {
+                        saveThemeSettingsWithCharacterCard {
                             preferencesManager.saveThemeSettings(chatStyle = UserPreferencesManager.CHAT_STYLE_CURSOR)
-                            showSaveSuccessMessage = true
                         }
                     }
 
@@ -1391,9 +1487,8 @@ fun ThemeSettingsScreen() {
                         modifier = Modifier.weight(1f)
                     ) {
                         chatStyleInput = UserPreferencesManager.CHAT_STYLE_BUBBLE
-                        scope.launch {
+                        saveThemeSettingsWithCharacterCard {
                             preferencesManager.saveThemeSettings(chatStyle = UserPreferencesManager.CHAT_STYLE_BUBBLE)
-                            showSaveSuccessMessage = true
                         }
                     }
                 }
@@ -1425,9 +1520,8 @@ fun ThemeSettingsScreen() {
                         checked = showThinkingProcessInput,
                         onCheckedChange = {
                             showThinkingProcessInput = it
-                            scope.launch {
+                            saveThemeSettingsWithCharacterCard {
                                 preferencesManager.saveThemeSettings(showThinkingProcess = it)
-                                showSaveSuccessMessage = true
                             }
                         }
                     )
@@ -1453,9 +1547,8 @@ fun ThemeSettingsScreen() {
                         checked = showStatusTagsInput,
                         onCheckedChange = {
                             showStatusTagsInput = it
-                            scope.launch {
+                            saveThemeSettingsWithCharacterCard {
                                 preferencesManager.saveThemeSettings(showStatusTags = it)
-                                showSaveSuccessMessage = true
                             }
                         }
                     )
@@ -1481,9 +1574,8 @@ fun ThemeSettingsScreen() {
                             checked = showInputProcessingStatusInput,
                             onCheckedChange = {
                                 showInputProcessingStatusInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(showInputProcessingStatus = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -1498,10 +1590,10 @@ fun ThemeSettingsScreen() {
         )
         Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
             Column(modifier = Modifier.padding(16.dp)) {
+                // User Avatar Pickers - 横向排列
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     // User Avatar Picker
                     AvatarPicker(
@@ -1513,28 +1605,36 @@ fun ThemeSettingsScreen() {
                         },
                         onAvatarReset = {
                             userAvatarUriInput = null
-                            scope.launch {
+                            saveThemeSettingsWithCharacterCard {
                                 preferencesManager.saveThemeSettings(customUserAvatarUri = "")
                             }
                         }
                     )
 
-                    // AI Avatar Picker
+                    // Global User Avatar Picker
                     AvatarPicker(
-                        label = stringResource(id = R.string.ai_avatar_label),
-                        avatarUri = aiAvatarUriInput,
+                        label = stringResource(id = R.string.global_user_avatar_label),
+                        avatarUri = globalUserAvatarUriInput,
                         onAvatarChange = {
-                            avatarPickerMode = "ai"
+                            avatarPickerMode = "global_user"
                             avatarImagePicker.launch("image/*")
                         },
                         onAvatarReset = {
-                            aiAvatarUriInput = null
+                            globalUserAvatarUriInput = null
                             scope.launch {
-                                preferencesManager.saveThemeSettings(customAiAvatarUri = "")
+                                preferencesManager.saveThemeSettings(globalUserAvatarUri = "")
                             }
                         }
                     )
                 }
+
+                // 添加说明文字
+                Text(
+                    text = "说明：左侧的用户头像是角色卡专属设置，为空时将使用右侧的全局用户头像。全局用户头像在所有角色卡中共享使用。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 8.dp)
+                )
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -1553,9 +1653,8 @@ fun ThemeSettingsScreen() {
                         modifier = Modifier.weight(1f)
                     ) {
                         avatarShapeInput = UserPreferencesManager.AVATAR_SHAPE_CIRCLE
-                        scope.launch {
+                        saveThemeSettingsWithCharacterCard {
                             preferencesManager.saveThemeSettings(avatarShape = UserPreferencesManager.AVATAR_SHAPE_CIRCLE)
-                            showSaveSuccessMessage = true
                         }
                     }
                     ChatStyleOption(
@@ -1564,9 +1663,8 @@ fun ThemeSettingsScreen() {
                         modifier = Modifier.weight(1f)
                     ) {
                         avatarShapeInput = UserPreferencesManager.AVATAR_SHAPE_SQUARE
-                        scope.launch {
+                        saveThemeSettingsWithCharacterCard {
                             preferencesManager.saveThemeSettings(avatarShape = UserPreferencesManager.AVATAR_SHAPE_SQUARE)
-                            showSaveSuccessMessage = true
                         }
                     }
                 }
@@ -1589,9 +1687,8 @@ fun ThemeSettingsScreen() {
                                 onClick = {
                                     val newValue = (avatarCornerRadiusInput - 1f).coerceIn(0f, 16f)
                                     avatarCornerRadiusInput = newValue
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(avatarCornerRadius = newValue)
-                                        showSaveSuccessMessage = true
                                     }
                                 },
                                 shape = CircleShape,
@@ -1612,9 +1709,8 @@ fun ThemeSettingsScreen() {
                                 onClick = {
                                     val newValue = (avatarCornerRadiusInput + 1f).coerceIn(0f, 16f)
                                     avatarCornerRadiusInput = newValue
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(avatarCornerRadius = newValue)
-                                        showSaveSuccessMessage = true
                                     }
                                 },
                                 shape = CircleShape,
@@ -1667,9 +1763,8 @@ fun ThemeSettingsScreen() {
                             checked = useBackgroundImageInput,
                             onCheckedChange = {
                                 useBackgroundImageInput = it
-                                scope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(useBackgroundImage = it)
-                                    showSaveSuccessMessage = true
                                 }
                             }
                     )
@@ -1702,12 +1797,11 @@ fun ThemeSettingsScreen() {
                                             UserPreferencesManager.MEDIA_TYPE_IMAGE
                                     if (backgroundImageUriInput != null) {
                                         // If there's already a background, save the media type
-                                        scope.launch {
+                                        saveThemeSettingsWithCharacterCard {
                                             preferencesManager.saveThemeSettings(
                                                     backgroundMediaType =
                                                             UserPreferencesManager.MEDIA_TYPE_IMAGE
                                             )
-                                            showSaveSuccessMessage = true
                                         }
                                     }
                                 }
@@ -1725,12 +1819,11 @@ fun ThemeSettingsScreen() {
                                             UserPreferencesManager.MEDIA_TYPE_VIDEO
                                     if (backgroundImageUriInput != null) {
                                         // If there's already a background, save the media type
-                                        scope.launch {
+                                        saveThemeSettingsWithCharacterCard {
                                             preferencesManager.saveThemeSettings(
                                                     backgroundMediaType =
                                                             UserPreferencesManager.MEDIA_TYPE_VIDEO
                                             )
-                                            showSaveSuccessMessage = true
                                         }
                                     }
                                 }
@@ -1858,12 +1951,11 @@ fun ThemeSettingsScreen() {
                                             onClick = {
                                                 videoBackgroundMutedInput =
                                                         !videoBackgroundMutedInput
-                                                scope.launch {
+                                                saveThemeSettingsWithCharacterCard {
                                                     preferencesManager.saveThemeSettings(
                                                             videoBackgroundMuted =
                                                                     videoBackgroundMutedInput
                                                     )
-                                                    showSaveSuccessMessage = true
                                                 }
                                             },
                                             modifier =
@@ -1898,12 +1990,11 @@ fun ThemeSettingsScreen() {
                                     IconButton(
                                             onClick = {
                                                 videoBackgroundLoopInput = !videoBackgroundLoopInput
-                                                scope.launch {
+                                                saveThemeSettingsWithCharacterCard {
                                                     preferencesManager.saveThemeSettings(
                                                             videoBackgroundLoop =
                                                                     videoBackgroundLoopInput
                                                     )
-                                                    showSaveSuccessMessage = true
 
                                                     // Show Toast notification about status change
                                                     Toast.makeText(
@@ -2062,12 +2153,11 @@ fun ThemeSettingsScreen() {
                             if (kotlin.math.abs(lastSavedOpacity - backgroundImageOpacityInput) >
                                             0.01f
                             ) {
-                                currentScope.launch {
+                                saveThemeSettingsWithCharacterCard {
                                     preferencesManager.saveThemeSettings(
                                             backgroundImageOpacity = backgroundImageOpacityInput
                                     )
                                     lastSavedOpacity = backgroundImageOpacityInput
-                                    showSaveSuccessMessage = true
                                 }
                             }
                         }
@@ -2119,9 +2209,8 @@ fun ThemeSettingsScreen() {
                                 checked = useBackgroundBlurInput,
                                 onCheckedChange = {
                                     useBackgroundBlurInput = it
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(useBackgroundBlur = it)
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                         )
@@ -2145,12 +2234,11 @@ fun ThemeSettingsScreen() {
                                 if (kotlin.math.abs(lastSavedBlurRadius - backgroundBlurRadiusInput) >
                                                 0.1f
                                 ) {
-                                    scope.launch {
+                                    saveThemeSettingsWithCharacterCard {
                                         preferencesManager.saveThemeSettings(
                                                 backgroundBlurRadius = backgroundBlurRadiusInput
                                         )
                                         lastSavedBlurRadius = backgroundBlurRadiusInput
-                                        showSaveSuccessMessage = true
                                     }
                                 }
                             }
@@ -2180,6 +2268,8 @@ fun ThemeSettingsScreen() {
                 onClick = {
                     scope.launch {
                         preferencesManager.resetThemeSettings()
+                        // 同时删除当前角色卡的主题配置
+                        preferencesManager.deleteCharacterCardTheme(activeCharacterCard.id)
                         // Reset local state after reset
                         themeModeInput = UserPreferencesManager.THEME_MODE_LIGHT
                         useSystemThemeInput = true
@@ -2214,8 +2304,8 @@ fun ThemeSettingsScreen() {
                         avatarShapeInput = UserPreferencesManager.AVATAR_SHAPE_CIRCLE
                         avatarCornerRadiusInput = 8f
                         onColorModeInput = UserPreferencesManager.ON_COLOR_MODE_AUTO
-                        customChatTitleInput = ""
                         showSaveSuccessMessage = true
+                        globalUserAvatarUriInput = null
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)
@@ -2259,7 +2349,7 @@ fun ThemeSettingsScreen() {
                         pipIconColor?.let { chatHeaderPipIconColorInput = it }
 
                         // Save the colors
-                        scope.launch {
+                        saveThemeSettingsWithCharacterCard {
                             when (currentColorPickerMode) {
                                 "primary" ->
                                         primaryColor?.let {
@@ -2292,39 +2382,13 @@ fun ThemeSettingsScreen() {
                                             )
                                         }
                             }
-                            showSaveSuccessMessage = true
                         }
                     },
                     onDismiss = { showColorPicker = false }
             )
         }
 
-        // ======= SECTION: UI TEXT =======
-        ThemeSectionTitle(
-            title = stringResource(id = R.string.ui_text_title),
-            icon = Icons.Default.TextFields
-        )
-        Card(modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp), colors = cardModifier) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                OutlinedTextField(
-                    value = customChatTitleInput,
-                    onValueChange = { customChatTitleInput = it },
-                    label = { Text(stringResource(id = R.string.custom_chat_title_label)) },
-                    placeholder = { Text(stringResource(id = R.string.custom_chat_title_placeholder)) },
-                    modifier = Modifier.fillMaxWidth(),
-                    trailingIcon = {
-                        IconButton(onClick = {
-                            scope.launch {
-                                preferencesManager.saveThemeSettings(customChatTitle = customChatTitleInput)
-                                showSaveSuccessMessage = true
-                            }
-                        }) {
-                            Icon(Icons.Default.Save, contentDescription = stringResource(id = R.string.save_title_desc))
-                        }
-                    }
-                )
-            }
-        }
+
     }
 }
 

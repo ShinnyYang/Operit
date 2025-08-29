@@ -53,6 +53,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.sample
 import androidx.compose.runtime.snapshotFlow
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -216,6 +217,7 @@ fun AIChatScreen(
     val scrollState = rememberScrollState()
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
+    val characterCardManager = remember { CharacterCardManager.getInstance(context) }
 
     // 确保每次应用启动时正确处理配置界面的显示逻辑
     LaunchedEffect(apiKey) {
@@ -614,7 +616,12 @@ fun AIChatScreen(
                                 chatHeaderHistoryIconColor = chatHeaderHistoryIconColor,
                                 chatHeaderPipIconColor = chatHeaderPipIconColor,
                                 chatHeaderOverlayMode = chatHeaderOverlayMode,
-                                chatStyle = chatStyle // Pass chat style
+                                chatStyle = chatStyle, // Pass chat style
+                                onSwitchCharacter = { characterId ->
+                                    coroutineScope.launch {
+                                        characterCardManager.setActiveCharacterCard(characterId)
+                                    }
+                                }
                         )
 
                         // The settings bar is aligned to the bottom-end of the parent Box,

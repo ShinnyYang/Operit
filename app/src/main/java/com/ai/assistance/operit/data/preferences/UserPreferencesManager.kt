@@ -130,6 +130,9 @@ class UserPreferencesManager(private val context: Context) {
         private val KEY_ON_COLOR_MODE = stringPreferencesKey("on_color_mode")
         private val KEY_CUSTOM_CHAT_TITLE = stringPreferencesKey("custom_chat_title")
         private val KEY_SHOW_INPUT_PROCESSING_STATUS = booleanPreferencesKey("show_input_processing_status")
+        
+        // 全局用户头像设置
+        private val KEY_GLOBAL_USER_AVATAR_URI = stringPreferencesKey("global_user_avatar_uri")
 
 
         const val AVATAR_SHAPE_CIRCLE = "circle"
@@ -333,6 +336,18 @@ class UserPreferencesManager(private val context: Context) {
                 preferences[KEY_CUSTOM_AI_AVATAR_URI]
             }
 
+    // 全局用户头像设置
+    val globalUserAvatarUri: Flow<String?> =
+            context.userPreferencesDataStore.data.map { preferences ->
+                preferences[KEY_GLOBAL_USER_AVATAR_URI]
+            }
+
+    // 获取有效的用户头像（优先角色卡设置，如果为空则使用全局设置）
+    val effectiveUserAvatarUri: Flow<String?> =
+            context.userPreferencesDataStore.data.map { preferences ->
+                preferences[KEY_CUSTOM_USER_AVATAR_URI] ?: preferences[KEY_GLOBAL_USER_AVATAR_URI]
+            }
+
     val avatarShape: Flow<String> =
             context.userPreferencesDataStore.data.map { preferences ->
                 preferences[KEY_AVATAR_SHAPE] ?: AVATAR_SHAPE_CIRCLE
@@ -357,6 +372,46 @@ class UserPreferencesManager(private val context: Context) {
         context.userPreferencesDataStore.data.map { preferences ->
             preferences[KEY_SHOW_INPUT_PROCESSING_STATUS] ?: true
         }
+
+    fun getAiAvatarForCharacterCardFlow(characterCardId: String): Flow<String?> {
+        return context.userPreferencesDataStore.data.map { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_AI_AVATAR_URI.name}")
+            preferences[key]
+        }
+    }
+    
+    suspend fun saveAiAvatarForCharacterCard(characterCardId: String, avatarUri: String?) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_AI_AVATAR_URI.name}")
+            if (avatarUri != null) {
+                preferences[key] = avatarUri
+            } else {
+                preferences.remove(key)
+            }
+        }
+    }
+
+    fun getCustomChatTitleForCharacterCardFlow(characterCardId: String): Flow<String?> {
+        return context.userPreferencesDataStore.data.map { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_CHAT_TITLE.name}")
+            preferences[key]
+        }
+    }
+    
+    suspend fun saveCustomChatTitleForCharacterCard(characterCardId: String, title: String?) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_CHAT_TITLE.name}")
+            if (!title.isNullOrEmpty()) {
+                preferences[key] = title
+            } else {
+                preferences.remove(key)
+            }
+        }
+    }
 
     // 保存主题设置
     suspend fun saveThemeSettings(
@@ -393,7 +448,8 @@ class UserPreferencesManager(private val context: Context) {
             avatarCornerRadius: Float? = null,
             onColorMode: String? = null,
             customChatTitle: String? = null,
-            showInputProcessingStatus: Boolean? = null
+            showInputProcessingStatus: Boolean? = null,
+            globalUserAvatarUri: String? = null
     ) {
         context.userPreferencesDataStore.edit { preferences ->
             themeMode?.let { preferences[THEME_MODE] = it }
@@ -434,6 +490,8 @@ class UserPreferencesManager(private val context: Context) {
             onColorMode?.let { preferences[KEY_ON_COLOR_MODE] = it }
             customChatTitle?.let { preferences[KEY_CUSTOM_CHAT_TITLE] = it }
             showInputProcessingStatus?.let { preferences[KEY_SHOW_INPUT_PROCESSING_STATUS] = it }
+            // 全局用户头像单独保存，不跟随角色卡主题
+            globalUserAvatarUri?.let { preferences[KEY_GLOBAL_USER_AVATAR_URI] = it }
         }
     }
 
@@ -474,6 +532,8 @@ class UserPreferencesManager(private val context: Context) {
             preferences.remove(KEY_ON_COLOR_MODE)
             preferences.remove(KEY_CUSTOM_CHAT_TITLE)
             preferences.remove(KEY_SHOW_INPUT_PROCESSING_STATUS)
+            // 重置全局用户头像
+            preferences.remove(KEY_GLOBAL_USER_AVATAR_URI)
         }
     }
 
@@ -703,5 +763,161 @@ class UserPreferencesManager(private val context: Context) {
     // 重置用户偏好
     suspend fun resetPreferences() {
         context.userPreferencesDataStore.edit { preferences -> preferences.clear() }
+    }
+
+    // ========== 角色卡主题绑定功能 ==========
+
+    /**
+     * 获取角色卡对应的主题配置键前缀
+     */
+    private fun getCharacterCardThemePrefix(characterCardId: String): String {
+        return "character_card_theme_${characterCardId}_"
+    }
+
+    private fun getAllStringThemeKeys(): List<Preferences.Key<String>> {
+        return listOf(
+            THEME_MODE, BACKGROUND_IMAGE_URI, BACKGROUND_MEDIA_TYPE, APP_BAR_CONTENT_COLOR_MODE,
+            CHAT_STYLE, KEY_CUSTOM_USER_AVATAR_URI, KEY_CUSTOM_AI_AVATAR_URI, KEY_AVATAR_SHAPE,
+            KEY_ON_COLOR_MODE, KEY_CUSTOM_CHAT_TITLE
+            // 注意：KEY_GLOBAL_USER_AVATAR_URI 不包含在内，因为全局用户头像不跟随角色卡主题切换
+        )
+    }
+
+    private fun getAllBooleanThemeKeys(): List<Preferences.Key<Boolean>> {
+        return listOf(
+            USE_SYSTEM_THEME, USE_CUSTOM_COLORS, USE_BACKGROUND_IMAGE, VIDEO_BACKGROUND_MUTED,
+            VIDEO_BACKGROUND_LOOP, TOOLBAR_TRANSPARENT, USE_CUSTOM_STATUS_BAR_COLOR,
+            STATUS_BAR_TRANSPARENT, CHAT_HEADER_TRANSPARENT, CHAT_INPUT_TRANSPARENT,
+            FORCE_APP_BAR_CONTENT_COLOR_ENABLED, CHAT_HEADER_OVERLAY_MODE, USE_BACKGROUND_BLUR,
+            KEY_SHOW_THINKING_PROCESS, KEY_SHOW_STATUS_TAGS, KEY_SHOW_INPUT_PROCESSING_STATUS
+        )
+    }
+
+    private fun getAllIntThemeKeys(): List<Preferences.Key<Int>> {
+        return listOf(
+            CUSTOM_PRIMARY_COLOR, CUSTOM_SECONDARY_COLOR, CUSTOM_STATUS_BAR_COLOR,
+            CHAT_HEADER_HISTORY_ICON_COLOR, CHAT_HEADER_PIP_ICON_COLOR
+        )
+    }
+
+    private fun getAllFloatThemeKeys(): List<Preferences.Key<Float>> {
+        return listOf(
+            BACKGROUND_IMAGE_OPACITY, BACKGROUND_BLUR_RADIUS, KEY_AVATAR_CORNER_RADIUS
+        )
+    }
+
+    /**
+     * 将当前主题配置复制到指定角色卡
+     */
+    suspend fun copyCurrentThemeToCharacterCard(characterCardId: String) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+            
+
+            getAllStringThemeKeys().forEach { key ->
+                preferences[key]?.let { value ->
+                    preferences[stringPreferencesKey("${prefix}${key.name}")] = value
+                }
+            }
+            getAllBooleanThemeKeys().forEach { key ->
+                preferences[key]?.let { value ->
+                    preferences[booleanPreferencesKey("${prefix}${key.name}")] = value
+                }
+            }
+            getAllIntThemeKeys().forEach { key ->
+                preferences[key]?.let { value ->
+                    preferences[intPreferencesKey("${prefix}${key.name}")] = value
+                }
+            }
+            getAllFloatThemeKeys().forEach { key ->
+                preferences[key]?.let { value ->
+                    preferences[floatPreferencesKey("${prefix}${key.name}")] = value
+                }
+            }
+        }
+    }
+
+    /**
+     * 切换到指定角色卡的主题配置
+     */
+    suspend fun switchToCharacterCardTheme(characterCardId: String) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+
+            getAllStringThemeKeys().forEach { key ->
+                val cardKey = stringPreferencesKey("${prefix}${key.name}")
+                if (preferences.contains(cardKey)) {
+                    preferences[key] = preferences[cardKey]!!
+                } else {
+                    preferences.remove(key)
+                }
+            }
+            getAllBooleanThemeKeys().forEach { key ->
+                val cardKey = booleanPreferencesKey("${prefix}${key.name}")
+                if (preferences.contains(cardKey)) {
+                    preferences[key] = preferences[cardKey]!!
+                } else {
+                    preferences.remove(key)
+                }
+            }
+            getAllIntThemeKeys().forEach { key ->
+                val cardKey = intPreferencesKey("${prefix}${key.name}")
+                if (preferences.contains(cardKey)) {
+                    preferences[key] = preferences[cardKey]!!
+                } else {
+                    preferences.remove(key)
+                }
+            }
+            getAllFloatThemeKeys().forEach { key ->
+                val cardKey = floatPreferencesKey("${prefix}${key.name}")
+                if (preferences.contains(cardKey)) {
+                    preferences[key] = preferences[cardKey]!!
+                } else {
+                    preferences.remove(key)
+                }
+            }
+        }
+    }
+
+    /**
+     * 保存当前主题配置到指定角色卡
+     */
+    suspend fun saveCurrentThemeToCharacterCard(characterCardId: String) {
+        copyCurrentThemeToCharacterCard(characterCardId)
+    }
+
+    /**
+     * 删除指定角色卡的主题配置
+     */
+    suspend fun deleteCharacterCardTheme(characterCardId: String) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = getCharacterCardThemePrefix(characterCardId)
+
+            getAllStringThemeKeys().forEach { key ->
+                preferences.remove(stringPreferencesKey("${prefix}${key.name}"))
+            }
+            getAllBooleanThemeKeys().forEach { key ->
+                preferences.remove(booleanPreferencesKey("${prefix}${key.name}"))
+            }
+            getAllIntThemeKeys().forEach { key ->
+                preferences.remove(intPreferencesKey("${prefix}${key.name}"))
+            }
+            getAllFloatThemeKeys().forEach { key ->
+                preferences.remove(floatPreferencesKey("${prefix}${key.name}"))
+            }
+        }
+    }
+
+    /**
+     * 检查指定角色卡是否有主题配置
+     */
+    suspend fun hasCharacterCardTheme(characterCardId: String): Boolean {
+        val preferences = context.userPreferencesDataStore.data.first()
+        val prefix = getCharacterCardThemePrefix(characterCardId)
+
+        return getAllStringThemeKeys().any { key -> preferences.contains(stringPreferencesKey("${prefix}${key.name}")) } ||
+                getAllBooleanThemeKeys().any { key -> preferences.contains(booleanPreferencesKey("${prefix}${key.name}")) } ||
+                getAllIntThemeKeys().any { key -> preferences.contains(intPreferencesKey("${prefix}${key.name}")) } ||
+                getAllFloatThemeKeys().any { key -> preferences.contains(floatPreferencesKey("${prefix}${key.name}")) }
     }
 }

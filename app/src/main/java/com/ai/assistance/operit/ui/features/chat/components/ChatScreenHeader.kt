@@ -48,6 +48,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.text.font.FontWeight
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
+import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import kotlinx.coroutines.flow.flowOf
 
 @Composable
 fun useFloatingWindowLauncher(
@@ -77,13 +80,21 @@ fun ChatScreenHeader(
         currentChatId: String,
         chatHeaderTransparent: Boolean,
         chatHeaderHistoryIconColor: Int?,
-        chatHeaderPipIconColor: Int?
+        chatHeaderPipIconColor: Int?,
+        onCharacterSwitcherClick: () -> Unit
 ) {
     val context = LocalContext.current
     val colorScheme = MaterialTheme.colorScheme
     val typography = MaterialTheme.typography
     val currentChatTitle = chatHistories.find { it.id == currentChatId }?.title
     val scope = rememberCoroutineScope()
+
+    val characterCardManager = remember { CharacterCardManager.getInstance(context) }
+    val userPreferencesManager = remember { UserPreferencesManager(context) }
+    val activeCharacterCard by characterCardManager.activeCharacterCardFlow.collectAsState(initial = null)
+    val activeCharacterAvatarUri by remember(activeCharacterCard?.id) {
+        activeCharacterCard?.id?.let { userPreferencesManager.getAiAvatarForCharacterCardFlow(it) } ?: flowOf(null)
+    }.collectAsState(initial = null)
 
     val permissionLauncher =
         rememberLauncherForActivityResult(
@@ -118,12 +129,14 @@ fun ChatScreenHeader(
             ChatHeader(
                     showChatHistorySelector = showChatHistorySelector,
                     onToggleChatHistorySelector = { actualViewModel.toggleChatHistorySelector() },
-                    currentChatTitle = currentChatTitle,
                     modifier = Modifier,
                     isFloatingMode = actualViewModel.isFloatingMode.value,
                     onLaunchFloatingWindow = launchFloatingWindow,
                     historyIconColor = chatHeaderHistoryIconColor,
-                    pipIconColor = chatHeaderPipIconColor
+                    pipIconColor = chatHeaderPipIconColor,
+                    activeCharacterName = activeCharacterCard?.name ?: "",
+                    activeCharacterAvatarUri = activeCharacterAvatarUri,
+                    onCharacterClick = onCharacterSwitcherClick
             )
         }
 
