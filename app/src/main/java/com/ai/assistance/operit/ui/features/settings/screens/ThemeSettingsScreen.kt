@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Brightness4
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.Crop
 import androidx.compose.material.icons.filled.Image
@@ -278,6 +279,10 @@ fun ThemeSettingsScreen() {
     // 添加全局用户头像状态
     val globalUserAvatarUri = preferencesManager.globalUserAvatarUri.collectAsState(initial = null).value
     var globalUserAvatarUriInput by remember { mutableStateOf(globalUserAvatarUri) }
+
+    // 添加全局用户名称状态
+    val globalUserName = preferencesManager.globalUserName.collectAsState(initial = null).value
+    var globalUserNameInput by remember { mutableStateOf(globalUserName) }
 
     // On color mode state
     var onColorModeInput by remember { mutableStateOf(onColorMode) }
@@ -625,7 +630,8 @@ fun ThemeSettingsScreen() {
             avatarShape,
             avatarCornerRadius,
             onColorMode,
-            globalUserAvatarUri
+            globalUserAvatarUri,
+            globalUserName
     ) {
         themeModeInput = themeMode
         useSystemThemeInput = useSystemTheme
@@ -665,6 +671,7 @@ fun ThemeSettingsScreen() {
         avatarCornerRadiusInput = avatarCornerRadius
         onColorModeInput = onColorMode
         globalUserAvatarUriInput = globalUserAvatarUri
+        globalUserNameInput = globalUserName
     }
 
     // Avatar picker and cropper launcher
@@ -1638,6 +1645,56 @@ fun ThemeSettingsScreen() {
 
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
+                // 全局用户名称设置
+                Text(
+                    text = stringResource(id = R.string.global_user_name_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                
+                OutlinedTextField(
+                    value = globalUserNameInput ?: "",
+                    onValueChange = { globalUserNameInput = it },
+                    label = { Text(stringResource(id = R.string.global_user_name_label)) },
+                    placeholder = { Text(stringResource(id = R.string.global_user_name_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    singleLine = true,
+                    trailingIcon = {
+                        if (globalUserNameInput.isNullOrEmpty()) {
+                            IconButton(
+                                onClick = {
+                                    globalUserNameInput = ""
+                                    scope.launch {
+                                        preferencesManager.saveThemeSettings(globalUserName = "")
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Clear, contentDescription = stringResource(id = R.string.clear_action))
+                            }
+                        } else {
+                            IconButton(
+                                onClick = {
+                                    scope.launch {
+                                        preferencesManager.saveThemeSettings(globalUserName = globalUserNameInput)
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.Save, contentDescription = stringResource(id = R.string.save_action))
+                            }
+                        }
+                    }
+                )
+
+                Text(
+                    text = stringResource(id = R.string.global_user_name_desc),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                )
+
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
                 Text(
                     text = stringResource(id = R.string.avatar_shape_title),
                     style = MaterialTheme.typography.titleMedium,
@@ -2306,6 +2363,7 @@ fun ThemeSettingsScreen() {
                         onColorModeInput = UserPreferencesManager.ON_COLOR_MODE_AUTO
                         showSaveSuccessMessage = true
                         globalUserAvatarUriInput = null
+                        globalUserNameInput = null
                     }
                 },
                 modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)

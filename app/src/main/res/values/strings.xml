@@ -2080,6 +2080,7 @@
     <string name="default_profile">默认配置</string>
     <string name="date_format_chinese">yyyy年MM月dd日</string>
     <string name="save_action">保存</string>
+    <string name="clear_action">清空</string>
     <string name="edit_profile">编辑配置</string>
     <string name="select_preference_profile">请选择偏好配置</string>
     <string name="new_action">新建</string>
@@ -2163,6 +2164,13 @@
     <string name="avatar_corner_radius">头像圆角</string>
     <string name="avatar_corner_decrease">减小圆角</string>
     <string name="avatar_corner_increase">增大圆角</string>
+    
+    <!-- Global User Name Settings -->
+    <string name="global_user_name_title">全局用户名称</string>
+    <string name="global_user_name_label">用户名称</string>
+    <string name="global_user_name_placeholder">请输入您的名称</string>
+    <string name="global_user_name_desc">设置一个全局用户名称，将在所有对话中被AI用来称呼您。这个名称在所有角色卡中共享使用。</string>
+    
     <string name="ui_text_title">界面文本</string>
     <string name="custom_chat_title_label">自定义聊天标题</string>
     <string name="custom_chat_title_placeholder">例如：AI助手</string>

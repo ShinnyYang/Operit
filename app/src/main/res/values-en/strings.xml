@@ -2088,6 +2088,7 @@
     <string name="default_profile">Default Profile</string>
     <string name="date_format_chinese">yyyy/MM/dd</string>
     <string name="save_action">Save</string>
+    <string name="clear_action">Clear</string>
     <string name="edit_profile">Edit Profile</string>
     <string name="select_preference_profile">Please select preference profile</string>
     <string name="new_action">New</string>
@@ -2171,6 +2172,13 @@
     <string name="avatar_corner_radius">Avatar Corner Radius</string>
     <string name="avatar_corner_decrease">Decrease Corner</string>
     <string name="avatar_corner_increase">Increase Corner</string>
+    
+    <!-- Global User Name Settings -->
+    <string name="global_user_name_title">Global User Name</string>
+    <string name="global_user_name_label">User Name</string>
+    <string name="global_user_name_placeholder">Please enter your name</string>
+    <string name="global_user_name_desc">Set a global user name that will be used by AI to address you in all conversations. This name is shared across all character cards.</string>
+    
     <string name="ui_text_title">UI Text</string>
     <string name="custom_chat_title_label">Custom Chat Title</string>
     <string name="custom_chat_title_placeholder">e.g.: AI Assistant</string>

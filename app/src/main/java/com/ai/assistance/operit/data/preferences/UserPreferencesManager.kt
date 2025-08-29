@@ -133,6 +133,9 @@ class UserPreferencesManager(private val context: Context) {
         
         // 全局用户头像设置
         private val KEY_GLOBAL_USER_AVATAR_URI = stringPreferencesKey("global_user_avatar_uri")
+        
+        // 全局用户名称设置
+        private val KEY_GLOBAL_USER_NAME = stringPreferencesKey("global_user_name")
 
 
         const val AVATAR_SHAPE_CIRCLE = "circle"
@@ -342,6 +345,12 @@ class UserPreferencesManager(private val context: Context) {
                 preferences[KEY_GLOBAL_USER_AVATAR_URI]
             }
 
+    // 全局用户名称设置
+    val globalUserName: Flow<String?> =
+            context.userPreferencesDataStore.data.map { preferences ->
+                preferences[KEY_GLOBAL_USER_NAME]
+            }
+
     // 获取有效的用户头像（优先角色卡设置，如果为空则使用全局设置）
     val effectiveUserAvatarUri: Flow<String?> =
             context.userPreferencesDataStore.data.map { preferences ->
@@ -449,7 +458,8 @@ class UserPreferencesManager(private val context: Context) {
             onColorMode: String? = null,
             customChatTitle: String? = null,
             showInputProcessingStatus: Boolean? = null,
-            globalUserAvatarUri: String? = null
+            globalUserAvatarUri: String? = null,
+            globalUserName: String? = null
     ) {
         context.userPreferencesDataStore.edit { preferences ->
             themeMode?.let { preferences[THEME_MODE] = it }
@@ -492,6 +502,8 @@ class UserPreferencesManager(private val context: Context) {
             showInputProcessingStatus?.let { preferences[KEY_SHOW_INPUT_PROCESSING_STATUS] = it }
             // 全局用户头像单独保存，不跟随角色卡主题
             globalUserAvatarUri?.let { preferences[KEY_GLOBAL_USER_AVATAR_URI] = it }
+            // 全局用户名称单独保存，不跟随角色卡主题
+            globalUserName?.let { preferences[KEY_GLOBAL_USER_NAME] = it }
         }
     }
 
@@ -534,6 +546,8 @@ class UserPreferencesManager(private val context: Context) {
             preferences.remove(KEY_SHOW_INPUT_PROCESSING_STATUS)
             // 重置全局用户头像
             preferences.remove(KEY_GLOBAL_USER_AVATAR_URI)
+            // 重置全局用户名称
+            preferences.remove(KEY_GLOBAL_USER_NAME)
         }
     }
 
@@ -779,7 +793,7 @@ class UserPreferencesManager(private val context: Context) {
             THEME_MODE, BACKGROUND_IMAGE_URI, BACKGROUND_MEDIA_TYPE, APP_BAR_CONTENT_COLOR_MODE,
             CHAT_STYLE, KEY_CUSTOM_USER_AVATAR_URI, KEY_CUSTOM_AI_AVATAR_URI, KEY_AVATAR_SHAPE,
             KEY_ON_COLOR_MODE, KEY_CUSTOM_CHAT_TITLE
-            // 注意：KEY_GLOBAL_USER_AVATAR_URI 不包含在内，因为全局用户头像不跟随角色卡主题切换
+            // 注意：KEY_GLOBAL_USER_AVATAR_URI 和 KEY_GLOBAL_USER_NAME 不包含在内，因为全局设置不跟随角色卡主题切换
         )
     }
 

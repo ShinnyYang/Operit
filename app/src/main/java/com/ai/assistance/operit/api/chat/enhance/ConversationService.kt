@@ -48,6 +48,7 @@ class ConversationService(private val context: Context) {
 
     private val apiPreferences = ApiPreferences.getInstance(context)
     private val characterCardManager = CharacterCardManager.getInstance(context)
+    private val userPreferencesManager = preferencesManager
     private val conversationMutex = Mutex()
 
     /**
@@ -208,9 +209,14 @@ class ConversationService(private val context: Context) {
                     "$systemPrompt$waifuRulesText"
                 }
 
+                // 替换提示词中的占位符
+                val finalSystemPromptWithReplacements = replacePromptPlaceholders(
+                    finalSystemPrompt,
+                    activeCard.name
+                )
 
-                Log.d(TAG, "最终系统提示词: $finalSystemPrompt")
-                preparedHistory.add(0, Pair("system", finalSystemPrompt))
+                Log.d(TAG, "最终系统提示词: $finalSystemPromptWithReplacements")
+                preparedHistory.add(0, Pair("system", finalSystemPromptWithReplacements))
             }
 
             // Process each message in chat history
@@ -902,6 +908,27 @@ Now, generate ONLY the complete and final merged file content.
                 }
             }
         } else ""
+    }
+
+    /**
+     * Replaces placeholders in the system prompt with actual values.
+     * This is necessary because the AI might return placeholders like {{user}} or {{char}}.
+     *
+     * @param prompt The system prompt containing placeholders.
+     * @param aiName The actual AI name to replace {{char}}.
+     * @return The prompt with placeholders replaced.
+     */
+    private suspend fun replacePromptPlaceholders(prompt: String, aiName: String): String {
+        var finalPrompt = prompt
+        
+        // 获取全局用户名
+        val globalUserName = userPreferencesManager.globalUserName.first() ?: "User"
+        
+        // 替换占位符
+        finalPrompt = finalPrompt.replace("{{user}}", globalUserName)
+        finalPrompt = finalPrompt.replace("{{char}}", aiName)
+        
+        return finalPrompt
     }
 }
 

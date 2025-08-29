@@ -208,24 +208,6 @@ fun CharacterItem(
                     )
                 }
                 
-                // 选中状态指示器
-                if (isSelected) {
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(16.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            Icons.Rounded.Check,
-                            contentDescription = "Selected",
-                            modifier = Modifier.size(10.dp),
-                            tint = Color.White
-                        )
-                    }
-                }
             }
             
             Spacer(modifier = Modifier.width(12.dp))
