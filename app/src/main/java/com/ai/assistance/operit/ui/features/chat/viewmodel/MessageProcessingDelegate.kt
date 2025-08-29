@@ -8,10 +8,12 @@ import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.core.chat.AIMessageManager
 import com.ai.assistance.operit.data.model.*
 import com.ai.assistance.operit.data.model.InputProcessingState as EnhancedInputProcessingState
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.util.NetworkUtils
 import com.ai.assistance.operit.util.stream.SharedStream
 import com.ai.assistance.operit.util.stream.share
+import com.ai.assistance.operit.util.WaifuMessageProcessor
+import com.ai.assistance.operit.data.preferences.ApiPreferences
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -186,8 +189,15 @@ class MessageProcessingDelegate(
                     "创建带流的AI消息, stream is null: ${aiMessage.contentStream == null}, timestamp: ${aiMessage.timestamp}"
                 )
 
-                withContext(Dispatchers.Main) { addMessageToChat(aiMessage) }
-
+                // 检查是否启用waifu模式来决定是否显示流式过程
+                val apiPreferences = ApiPreferences.getInstance(context)
+                val isWaifuModeEnabled = apiPreferences.enableWaifuModeFlow.first()
+                
+                // 只有在非waifu模式下才添加初始的AI消息
+                if (!isWaifuModeEnabled) {
+                    withContext(Dispatchers.Main) { addMessageToChat(aiMessage) }
+                }
+                
                 // 启动一个独立的协程来收集流内容并持续更新数据库
                 streamCollectionJob =
                     viewModelScope.launch(Dispatchers.IO) {
@@ -198,8 +208,12 @@ class MessageProcessingDelegate(
                             val updatedMessage = aiMessage.copy(content = content)
                             // 防止后续读取不到
                             aiMessage.content = content
-                            addMessageToChat(updatedMessage)
-                            _scrollToBottomEvent.tryEmit(Unit)
+                            
+                            // 只有在非waifu模式下才显示流式更新
+                            if (!isWaifuModeEnabled) {
+                                addMessageToChat(updatedMessage)
+                                _scrollToBottomEvent.tryEmit(Unit)
+                            }
                         }
                     }
 
@@ -219,11 +233,79 @@ class MessageProcessingDelegate(
                 try {
                     // 尝试访问 aiMessage，如果未初始化会抛出 UninitializedPropertyAccessException
                     val finalContent = aiMessage.content
-                    val finalMessage = aiMessage.copy(content = finalContent, contentStream = null)
-                    withContext(Dispatchers.Main) { addMessageToChat(finalMessage) }
+                    
+                    // 检查是否启用了waifu模式并且内容适合分句
+                    withContext(Dispatchers.IO) {
+                        val apiPreferences = ApiPreferences.getInstance(context)
+                        val isWaifuModeEnabled = apiPreferences.enableWaifuModeFlow.first()
+                        
+                        if (isWaifuModeEnabled && WaifuMessageProcessor.shouldSplitMessage(finalContent)) {
+                            Log.d(TAG, "Waifu模式已启用，开始创建独立消息，内容长度: ${finalContent.length}")
+                            
+                            // 获取配置的字符延迟时间和标点符号设置
+                            val charDelay = apiPreferences.waifuCharDelayFlow.first().toLong()
+                            val removePunctuation = apiPreferences.waifuRemovePunctuationFlow.first()
+                            
+                            // 删除原始的空消息（因为在waifu模式下我们没有显示流式过程）
+                            // 不需要显示空的AI消息
+                            
+                            // 启动一个协程来创建独立的句子消息
+                            viewModelScope.launch(Dispatchers.IO) {
+                                Log.d(TAG, "开始Waifu独立消息创建，字符延迟: ${charDelay}ms/字符，移除标点: $removePunctuation")
+                                
+                                // 分割句子
+                                val sentences = WaifuMessageProcessor.splitMessageBySentences(finalContent, removePunctuation)
+                                Log.d(TAG, "分割出${sentences.size}个句子")
+                                
+                                // 为每个句子创建独立的消息
+                                for ((index, sentence) in sentences.withIndex()) {
+                                    // 根据当前句子字符数计算延迟（模拟说话时间）
+                                    val characterCount = sentence.length
+                                    val calculatedDelay = WaifuMessageProcessor.calculateSentenceDelay(characterCount, charDelay)
+                                    
+                                    if (index > 0) {
+                                        // 如果不是第一句，先延迟再发送
+                                        Log.d(TAG, "当前句字符数: $characterCount, 计算延迟: ${calculatedDelay}ms")
+                                        delay(calculatedDelay)
+                                    }
+                                    
+                                    Log.d(TAG, "创建第${index + 1}个独立消息: $sentence")
+                                    
+                                    // 创建独立的AI消息
+                                    val sentenceMessage = ChatMessage(
+                                        sender = "ai",
+                                        content = sentence,
+                                        contentStream = null,
+                                        timestamp = System.currentTimeMillis() + index * 10 // 确保时间戳不同
+                                    )
+                                    
+                                    withContext(Dispatchers.Main) {
+                                        addMessageToChat(sentenceMessage)
+                                        _scrollToBottomEvent.tryEmit(Unit)
+                                    }
+                                }
+                                
+                                Log.d(TAG, "Waifu独立消息创建完成")
+                            }
+                        } else {
+                            // 普通模式，直接清理流
+                            val finalMessage = aiMessage.copy(content = finalContent, contentStream = null)
+                            withContext(Dispatchers.Main) { addMessageToChat(finalMessage) }
+                        }
+                    }
                 } catch (e: UninitializedPropertyAccessException) {
                     // aiMessage 未初始化，忽略清理步骤
                     Log.d(TAG, "AI消息未初始化，跳过流清理步骤")
+                } catch (e: Exception) {
+                    Log.e(TAG, "处理waifu模式时出错", e)
+                    // 如果waifu模式处理失败，回退到普通模式
+                    try {
+                        val finalContent = aiMessage.content
+                        val finalMessage = aiMessage.copy(content = finalContent, contentStream = null)
+                        withContext(Dispatchers.Main) { addMessageToChat(finalMessage) }
+                    } catch (ex: Exception) {
+                        Log.e(TAG, "回退到普通模式也失败", ex)
+                    }
                 }
 
                 // 清理job引用

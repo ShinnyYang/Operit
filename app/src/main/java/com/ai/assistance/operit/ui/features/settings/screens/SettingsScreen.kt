@@ -49,12 +49,13 @@ fun SettingsScreen(
         navigateToModelConfig: () -> Unit,
         navigateToThemeSettings: () -> Unit,
         navigateToModelPrompts: () -> Unit,
-        navigateToFunctionalPrompts: () -> Unit,
         navigateToFunctionalConfig: () -> Unit,
         navigateToChatHistorySettings: () -> Unit,
         navigateToLanguageSettings: () -> Unit,
         navigateToSpeechServicesSettings: () -> Unit,
-        navigateToCustomHeadersSettings: () -> Unit
+        navigateToCustomHeadersSettings: () -> Unit,
+        navigateToPersonaCardGeneration: () -> Unit,
+        navigateToWaifuModeSettings: () -> Unit
 ) {
         val context = LocalContext.current
         val apiPreferences = remember { ApiPreferences.getInstance(context) }
@@ -187,11 +188,20 @@ fun SettingsScreen(
                                 onClick = navigateToModelPrompts
                         )
                         
+                        // 新增：人设卡生成
                         CompactSettingsItem(
-                                title = stringResource(R.string.settings_functional_prompt_title),
-                                subtitle = stringResource(id = R.string.settings_functional_prompts_subtitle),
-                                icon = Icons.Default.Settings,
-                                onClick = navigateToFunctionalPrompts
+                                title = stringResource(R.string.persona_card_generation),
+                                subtitle = stringResource(R.string.persona_card_generation_desc),
+                                icon = Icons.Default.Face,
+                                onClick = navigateToPersonaCardGeneration
+                        )
+                        
+                        // 新增：Waifu模式设置
+                        CompactSettingsItem(
+                                title = stringResource(R.string.waifu_mode_settings),
+                                subtitle = stringResource(R.string.waifu_mode_settings_desc),
+                                icon = Icons.Default.EmojiEmotions,
+                                onClick = navigateToWaifuModeSettings
                         )
                 }
 
@@ -529,20 +539,6 @@ private fun CompactSlider(
                                 }
                         }
                 }
-
-                Slider(
-                        value = sliderValue,
-                        onValueChange = {
-                                sliderValue = it
-                                textValue = df.format(it)
-                        },
-                        onValueChangeFinished = {
-                                onValueChange(sliderValue)
-                        },
-                        valueRange = valueRange,
-                        steps = steps,
-                        modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                )
         }
 }
 

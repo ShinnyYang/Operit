@@ -18,10 +18,10 @@ import com.ai.assistance.operit.core.tools.packTool.PackageManager
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.InputProcessingState
 import com.ai.assistance.operit.data.model.PlanItem
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.model.ToolInvocation
 import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
 import com.ai.assistance.operit.ui.permissions.ToolCategory
 import com.ai.assistance.operit.util.stream.Stream
 import com.ai.assistance.operit.util.stream.StreamCollector
@@ -396,17 +396,17 @@ class EnhancedAIService private constructor(private val context: Context) {
 
     /** Send a message to the AI service */
     suspend fun sendMessage(
-            message: String,
-            chatHistory: List<Pair<String, String>> = emptyList(),
-            workspacePath: String? = null,
-            functionType: FunctionType = FunctionType.CHAT,
-            promptFunctionType: PromptFunctionType = PromptFunctionType.CHAT,
-            enableThinking: Boolean = false,
-            thinkingGuidance: Boolean = false,
-            enableMemoryAttachment: Boolean = true,
-            maxTokens: Int,
-            tokenUsageThreshold: Double,
-            onNonFatalError: suspend (error: String) -> Unit = {}
+        message: String,
+        chatHistory: List<Pair<String, String>> = emptyList(),
+        workspacePath: String? = null,
+        functionType: FunctionType = FunctionType.CHAT,
+        promptFunctionType: PromptFunctionType = PromptFunctionType.CHAT,
+        enableThinking: Boolean = false,
+        thinkingGuidance: Boolean = false,
+        enableMemoryAttachment: Boolean = true,
+        maxTokens: Int,
+        tokenUsageThreshold: Double,
+        onNonFatalError: suspend (error: String) -> Unit = {}
     ): Stream<String> {
         Log.d(
                 TAG,

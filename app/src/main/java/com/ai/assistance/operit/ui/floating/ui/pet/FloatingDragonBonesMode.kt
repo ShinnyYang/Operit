@@ -35,7 +35,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.repository.DragonBonesRepository
 import com.ai.assistance.operit.ui.components.ManagedDragonBonesView
 import com.ai.assistance.operit.ui.floating.FloatContext

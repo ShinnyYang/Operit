@@ -55,7 +55,7 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.speech.SpeechServiceFactory
 import com.ai.assistance.operit.api.voice.VoiceServiceFactory
 import com.ai.assistance.operit.data.model.ChatMessage
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.common.WaveVisualizer
 import com.ai.assistance.operit.ui.floating.FloatContext

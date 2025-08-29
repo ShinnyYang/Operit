@@ -9,8 +9,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.common.NavItem
 import com.ai.assistance.operit.ui.features.about.screens.AboutScreen
 import com.ai.assistance.operit.ui.features.assistant.screens.AssistantConfigScreen
@@ -21,11 +23,10 @@ import com.ai.assistance.operit.ui.features.memory.screens.MemoryScreen
 import com.ai.assistance.operit.ui.features.packages.screens.PackageManagerScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ChatHistorySettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.FunctionalConfigScreen
-import com.ai.assistance.operit.ui.features.settings.screens.FunctionalPromptConfigScreen
 import com.ai.assistance.operit.ui.features.settings.screens.LanguageSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ModelConfigScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ModelPromptsSettingsScreen
-import com.ai.assistance.operit.ui.features.settings.screens.PromptMarketScreen
+import com.ai.assistance.operit.ui.features.settings.screens.TagMarketScreen
 import com.ai.assistance.operit.ui.features.settings.screens.SettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.SpeechServicesSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ThemeSettingsScreen
@@ -61,8 +62,8 @@ sealed class Screen(
         open val parentScreen: Screen? = null,
         // 对应的导航项，用于侧边栏高亮显示
         open val navItem: NavItem? = null,
-        // 屏幕标题资源ID或字符串
-        open val titleRes: String? = null
+        // 屏幕标题资源ID
+        open val titleRes: Int? = null
 ) {
     // 屏幕内容渲染函数
     @Composable
@@ -112,7 +113,7 @@ sealed class Screen(
         }
     }
 
-    data object MemoryBase : Screen(navItem = NavItem.MemoryBase, titleRes = "记忆库") {
+    data object MemoryBase : Screen(navItem = NavItem.MemoryBase, titleRes = R.string.screen_title_memory_base) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -210,12 +211,13 @@ sealed class Screen(
                     navigateToModelConfig = { navigateTo(ModelConfig) },
                     navigateToThemeSettings = { navigateTo(ThemeSettings) },
                     navigateToModelPrompts = { navigateTo(ModelPromptsSettings) },
-                    navigateToFunctionalPrompts = { navigateTo(FunctionalPromptConfig) },
                     navigateToFunctionalConfig = { navigateTo(FunctionalConfig) },
                     navigateToChatHistorySettings = { navigateTo(ChatHistorySettings) },
                     navigateToLanguageSettings = { navigateTo(LanguageSettings) },
                     navigateToSpeechServicesSettings = { navigateTo(SpeechServicesSettings) },
-                    navigateToCustomHeadersSettings = { navigateTo(CustomHeadersSettings) }
+                    navigateToCustomHeadersSettings = { navigateTo(CustomHeadersSettings) },
+                    navigateToPersonaCardGeneration = { navigateTo(PersonaCardGeneration) },
+                    navigateToWaifuModeSettings = { navigateTo(WaifuModeSettings) }
             )
         }
     }
@@ -306,7 +308,6 @@ sealed class Screen(
                     navigateToModelConfig = { navigateTo(ModelConfig) },
                     navigateToModelPrompts = { navigateTo(ModelPromptsSettings) },
                     navigateToFunctionalConfig = { navigateTo(FunctionalConfig) },
-                    navigateToFunctionalPrompts = { navigateTo(FunctionalPromptConfig) },
                     navigateToUserPreferences = { navigateTo(UserPreferencesSettings) }
             )
         }
@@ -330,7 +331,7 @@ sealed class Screen(
 
     // Secondary screens - Settings
     data object ToolPermission :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "工具权限") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_tool_permissions) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -347,7 +348,7 @@ sealed class Screen(
     }
 
     data class UserPreferencesGuide(var profileName: String = "", var profileId: String = "") :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "用户偏好引导") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_user_preferences_guide) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -372,7 +373,7 @@ sealed class Screen(
     }
 
     data object UserPreferencesSettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "用户偏好设置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_user_preferences_settings) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -394,7 +395,7 @@ sealed class Screen(
     }
 
     data object ModelConfig :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "模型与参数配置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_model_config) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -411,7 +412,7 @@ sealed class Screen(
     }
     // 添加SpeechServicesSettings屏幕定义
     data object SpeechServicesSettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "语音服务设置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_speech_services_settings) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -429,7 +430,7 @@ sealed class Screen(
     
     // 添加自定义请求头设置屏幕
     data object CustomHeadersSettings :
-        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "自定义请求头") {
+        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_custom_headers_settings) {
         @Composable
         override fun Content(
             navController: NavController,
@@ -445,35 +446,9 @@ sealed class Screen(
         }
     }
     
-    // 添加FunctionalPromptConfig屏幕定义 - 放在FunctionalConfig之后
-    data object FunctionalPromptConfig :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "功能提示词配置") {
-        @Composable
-        override fun Content(
-                navController: NavController,
-                navigateTo: ScreenNavigationHandler,
-                updateNavItem: NavItemChangeHandler,
-                onGoBack: () -> Unit,
-                hasBackgroundImage: Boolean,
-                onLoading: (Boolean) -> Unit,
-                onError: (String) -> Unit,
-                onGestureConsumed: (Boolean) -> Unit
-        ) {
-            // 检查是否是从助手配置界面导航过来的
-            val fromAssistant =
-                    navController.previousBackStackEntry?.destination?.route?.contains(
-                            "AssistantConfig"
-                    ) == true
-    
-            com.ai.assistance.operit.ui.features.settings.screens.FunctionalPromptConfigScreen(
-                    onBackPressed = onGoBack,
-                    onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) }
-            )
-        }
-    }
-
-    data object PromptMarket :
-        Screen(parentScreen = ModelPromptsSettings, navItem = NavItem.Settings, titleRes = "提示词市场") {
+    // 新增：人设卡生成页面
+    data object PersonaCardGeneration :
+        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_persona_card_generation) {
         @Composable
         override fun Content(
             navController: NavController,
@@ -485,12 +460,54 @@ sealed class Screen(
             onError: (String) -> Unit,
             onGestureConsumed: (Boolean) -> Unit
         ) {
-            PromptMarketScreen(onBackPressed = onGoBack)
+            com.ai.assistance.operit.ui.features.settings.screens.PersonaCardGenerationScreen(
+                onNavigateToSettings = { navigateTo(Settings) },
+                onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
+                onNavigateToModelConfig = { navigateTo(ModelConfig) },
+                onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) }
+            )
+        }
+    }
+
+    // 新增：Waifu模式设置页面
+    data object WaifuModeSettings :
+        Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_waifu_mode_settings) {
+        @Composable
+        override fun Content(
+            navController: NavController,
+            navigateTo: ScreenNavigationHandler,
+            updateNavItem: NavItemChangeHandler,
+            onGoBack: () -> Unit,
+            hasBackgroundImage: Boolean,
+            onLoading: (Boolean) -> Unit,
+            onError: (String) -> Unit,
+            onGestureConsumed: (Boolean) -> Unit
+        ) {
+            com.ai.assistance.operit.ui.features.settings.screens.WaifuModeSettingsScreen(
+                onNavigateBack = onGoBack
+            )
+        }
+    }
+    
+    data object TagMarket :
+        Screen(parentScreen = ModelPromptsSettings, navItem = NavItem.Settings, titleRes = R.string.screen_title_tag_market) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                updateNavItem: NavItemChangeHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            TagMarketScreen(onBackPressed = onGoBack)
         }
     }
 
     data object ModelPromptsSettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "模型提示词设置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_model_prompts_settings) {
                 @Composable
                 override fun Content(
                     navController: NavController,
@@ -504,14 +521,14 @@ sealed class Screen(
                     ) {
                         ModelPromptsSettingsScreen(
                             onBackPressed = onGoBack,
-                    onNavigateToFunctionalPrompts = { navigateTo(FunctionalPromptConfig) },
-                    onNavigateToMarket = { navigateTo(PromptMarket) }
+                                            onNavigateToMarket = { navigateTo(TagMarket) },
+                    onNavigateToPersonaGeneration = { navigateTo(PersonaCardGeneration) }
                             )
                         }
                     }
                     
                     data object FunctionalConfig :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "功能模型配置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_functional_config) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -531,7 +548,7 @@ sealed class Screen(
     }
 
     data object ThemeSettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "主题设置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_theme_settings) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -548,7 +565,7 @@ sealed class Screen(
     }
 
     data object ChatHistorySettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "聊天记录管理") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_chat_history_settings) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -565,7 +582,7 @@ sealed class Screen(
     }
 
     data object LanguageSettings :
-            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = "语言设置") {
+            Screen(parentScreen = Settings, navItem = NavItem.Settings, titleRes = R.string.screen_title_language_settings) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -583,7 +600,7 @@ sealed class Screen(
 
     // Toolbox secondary screens
     data object FormatConverter :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "万能格式转换") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_format_converter) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -600,7 +617,7 @@ sealed class Screen(
     }
 
     data object FileManager :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "文件管理器") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_file_manager) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -617,7 +634,7 @@ sealed class Screen(
     }
 
     data object Terminal :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "命令终端") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_terminal) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -634,7 +651,7 @@ sealed class Screen(
     }
 
     data object TerminalAutoConfig :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "终端自动配置") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_terminal_auto_config) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -651,7 +668,7 @@ sealed class Screen(
     }
 
     data object AppPermissions :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "应用权限管理") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_app_permissions) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -668,7 +685,7 @@ sealed class Screen(
     }
 
     data object UIDebugger :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "UI调试工具") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_ui_debugger) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -685,7 +702,7 @@ sealed class Screen(
     }
 
     data object ShellExecutor :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "命令执行器") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_shell_executor) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -702,7 +719,7 @@ sealed class Screen(
     }
 
     data object Logcat :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "日志查看器") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_logcat) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -720,7 +737,7 @@ sealed class Screen(
 
     // FFmpeg Toolbox screen
     data object FFmpegToolbox :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "FFmpeg工具箱") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_ffmpeg_toolbox) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -738,7 +755,7 @@ sealed class Screen(
 
     // 流式Markdown演示屏幕
     data object MarkdownDemo :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "流式Markdown演示") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_markdown_demo) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -756,7 +773,7 @@ sealed class Screen(
 
     // 工具测试屏幕
     data object ToolTester :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "工具测试中心") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_tool_tester) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -774,7 +791,7 @@ sealed class Screen(
 
     // 在MarkdownDemo对象后添加TextToSpeech对象
     data object TextToSpeech :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "文本转语音") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_text_to_speech) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -792,7 +809,7 @@ sealed class Screen(
 
     // Tools screens
     data object SpeechToText :
-            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = "语音识别") {
+            Screen(parentScreen = Toolbox, navItem = NavItem.Toolbox, titleRes = R.string.screen_title_speech_to_text) {
         @Composable
         override fun Content(
                 navController: NavController,
@@ -809,7 +826,8 @@ sealed class Screen(
     }
 
     // 获取屏幕标题
-    fun getTitle(): String = titleRes ?: ""
+    @Composable
+    fun getTitle(): String = titleRes?.let { stringResource(it) } ?: ""
 
     // 判断是否为二级屏幕
     val isSecondaryScreen: Boolean

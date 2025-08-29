@@ -13,20 +13,15 @@ object SystemPromptConfig {
       THINKING_GUIDANCE_SECTION
 
       BEHAVIOR GUIDELINES:
-      - You MUST only invoke ONE TOOL at a time. This is absolutely critical.
-      - Keep your responses concise and to the point. Avoid lengthy explanations unless specifically requested.
-      - At the end of your response, you must and can only choose ONE of the following three ending methods (they are mutually exclusive and cannot be used together):
-        1. Tool Call: When you need to perform a specific operation, call the tool at the end of your response. Do not output anything after the tool call.
-        2. Task Completion: When a task is fully completed, use <status type="complete"></status> at the end of your response.
-        3. Wait for User Input: When user input is needed or when in doubt, use <status type="wait_for_user_need"></status> at the end of your response.
-      - Important Rules:
-        • These three ending methods are mutually exclusive - only choose one for each response.
-        • If both a tool call and a status marker appear in the same message, the tool will not be executed.
-        • When explicitly calling a tool, do not output task completion markers and waiting markers.
-        • If no status is specified, the system will automatically default to waiting for user input.
-        • Only respond to the current step. Do NOT repeat all previous content in your new responses.
-        • Maintain conversational context naturally without explicitly referencing previous interactions.
-        • Be honest about limitations; use tools to retrieve forgotten information instead of guessing, and clearly state when information is unavailable.
+      - Invoke only ONE tool per turn.
+      - Be concise. Avoid lengthy explanations unless requested.
+      - Don't repeat previous conversation steps. Maintain context naturally.
+      - Be honest about your limitations. If you don't know something, say so.
+      - End every response in exactly ONE of the following ways:
+        1. Tool Call: To perform an action. A tool call must be the absolute last thing in your response. Nothing can follow it.
+        2. Task Complete: Use `<status type="complete"></status>` when the entire task is finished.
+        3. Wait for User: Use `<status type="wait_for_user_need"></status>` if you need user input or are unsure how to proceed.
+      - Critical Rule: The three ending methods are mutually exclusive. A tool call will be ignored if a status tag is also present.
 
       WEB_WORKSPACE_GUIDELINES_SECTION
 
@@ -43,8 +38,6 @@ object SystemPromptConfig {
       </tool>
 
       Based on user needs, proactively select the most appropriate tool or combination of tools. For complex tasks, you can break down the problem and use different tools step by step to solve it. After using each tool, clearly explain the execution results and suggest the next steps.
-
-      CUSTOM_TONE_PROMPT
 
       PACKAGE SYSTEM
       - Some additional functionality is available through packages
@@ -110,12 +103,6 @@ object SystemPromptConfig {
       These tools can be used freely:
       - get_notifications: Get device notifications. Parameters: limit (maximum number of notifications to return, default 10), include_ongoing (whether to include ongoing notifications, default false)
       - get_device_location: Get current device location. Parameters: high_accuracy (whether to use high accuracy mode, default false), timeout (timeout in seconds, default 10)
-
-      UI AUTOMATION ADVICE:
-      - Element targeting options:
-        • Lists: use index parameter (e.g., "resourceId item 2")
-        • Precise: use bounds "[left,top][right,bottom]"
-        • Fallback: use "tap x y" for coordinate-based clicks
   """.trimIndent()
 
   /** Planning mode prompt section that will be inserted when planning feature is enabled */
@@ -169,21 +156,15 @@ object SystemPromptConfig {
         THINKING_GUIDANCE_SECTION
 
         行为准则：
-        - 你每次只能调用一个工具。这一点至关重要。
-        - 保持响应简洁明了。除非特别要求，避免冗长的解释。
-        - 在你的响应末尾，你必须且只能选择以下三种结束方式之一（它们互斥，不能同时使用）：
-          1. 工具调用：当你需要执行特定操作时，在响应的最后调用工具，调用后不要有任何其他输出。
-          2. 任务完成标记：当任务完全完成时，在响应的最后使用<status type=\"complete\"></status>。
-          3. 等待用户输入标记：当需要用户进一步输入或有疑问时，在响应的最后使用<status type=\"wait_for_user_need\"></status>。
-        - 重要规则：
-          • 这三种结束方式互斥，每次响应末尾只能选择一种。
-          • 如果在同一条消息中同时使用工具调用和标记，工具将不会被执行。
-          • 在明确要调用工具的时候，请不要输出任务完成标记和等待标记。
-          • 如果未指定状态，系统将自动默认等待用户输入。
-          • 只有在完全确定任务已完成时才使用任务完成标记。
-        - 只响应当前步骤。不要在新的响应中重复之前的所有内容。
-        - 自然地保持对话上下文，不要明确引用之前的交互。
-        - 诚实地说明限制；使用工具检索遗忘的信息而不是猜测，并明确说明信息不可用的情况。
+        - 每次响应只能调用一个工具。
+        - 回答应简洁明了，除非用户要求，否则避免冗长的解释。
+        - 不要重复之前的对话步骤，自然地保持上下文。
+        - 坦诚承认自己的局限性，如果不知道某事，就直接说明。
+        - 每次响应都必须以以下三种方式之一结束：
+          1. 工具调用：用于执行操作。工具调用必须是响应的最后一部分，后面不能有任何内容。
+          2. 任务完成：当整个任务完成时，使用 `<status type="complete"></status>`。
+          3. 等待用户：当你需要用户输入或不确定如何继续时，使用 `<status type="wait_for_user_need"></status>`。
+        - 关键规则：以上三种结束方式互斥。如果响应中同时包含工具调用和状态标签，工具调用将被忽略。
        
         WEB_WORKSPACE_GUIDELINES_SECTION
         
@@ -200,8 +181,6 @@ object SystemPromptConfig {
         </tool>
         
         根据用户需求，主动选择最合适的工具或工具组合。对于复杂任务，你可以分解问题并使用不同的工具逐步解决。使用每个工具后，清楚地解释执行结果并建议下一步。
-
-        CUSTOM_TONE_PROMPT
         
         包系统：
         - 一些额外功能通过包提供
@@ -266,12 +245,6 @@ object SystemPromptConfig {
         这些工具可以随意使用：
         - get_notifications: 获取设备通知内容。参数：limit（最大返回条数，默认10），include_ongoing（是否包含常驻通知，默认false）
         - get_device_location: 获取设备当前位置信息。参数：high_accuracy（是否使用高精度模式，默认false），timeout（超时时间（秒），默认10）
-
-        UI自动化建议：
-        - 元素定位选项：
-          • 列表：使用index参数（例如，"resourceId item 2"）
-          • 精确：使用bounds "[left,top][right,bottom]"
-          • 备用：使用"tap x y"进行基于坐标的点击
     """.trimIndent()
 
   /** 中文版本规划模式提示 */
@@ -321,23 +294,17 @@ object SystemPromptConfig {
    *
    * @param systemPrompt The original system prompt
    * @param customIntroPrompt The custom introduction prompt (about Operit)
-   * @param customTonePrompt The custom tone prompt (about helping tone)
    * @return The system prompt with custom prompts applied
    */
   fun applyCustomPrompts(
           systemPrompt: String,
-          customIntroPrompt: String,
-          customTonePrompt: String
+          customIntroPrompt: String
   ): String {
     // Replace the default prompts with custom ones if provided and non-empty
     var result = systemPrompt
 
     if (customIntroPrompt.isNotEmpty()) {
       result = result.replace("BEGIN_SELF_INTRODUCTION_SECTION", customIntroPrompt)
-    }
-
-    if (customTonePrompt.isNotEmpty()) {
-      result = result.replace("CUSTOM_TONE_PROMPT", customTonePrompt)
     }
 
     return result
@@ -482,7 +449,6 @@ object SystemPromptConfig {
    * @param workspacePath The current workspace path, if available.
    * @param enablePlanning Whether planning mode is enabled
    * @param customIntroPrompt Custom introduction prompt text
-   * @param customTonePrompt Custom tone prompt text
    * @param thinkingGuidance Whether thinking guidance is enabled
    * @param customSystemPromptTemplate Custom system prompt template (empty means use built-in)
    * @return The complete system prompt with custom prompts, package information and planning
@@ -493,7 +459,6 @@ object SystemPromptConfig {
           workspacePath: String?,
           enablePlanning: Boolean = false,
           customIntroPrompt: String,
-          customTonePrompt: String,
           thinkingGuidance: Boolean = false,
           customSystemPromptTemplate: String = ""
   ): String {
@@ -501,7 +466,7 @@ object SystemPromptConfig {
     val basePrompt = getSystemPrompt(packageManager, workspacePath, enablePlanning, false, thinkingGuidance, customSystemPromptTemplate)
 
     // Apply custom prompts
-    return applyCustomPrompts(basePrompt, customIntroPrompt, customTonePrompt)
+    return applyCustomPrompts(basePrompt, customIntroPrompt)
   }
 
   /** Original method for backward compatibility */

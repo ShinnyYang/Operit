@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.api.chat.EnhancedAIService
+import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
 import kotlinx.coroutines.CoroutineScope
@@ -62,6 +63,15 @@ class ApiConfigDelegate(
     private val _apiKey = MutableStateFlow("")
     val apiKey: StateFlow<String> = _apiKey.asStateFlow()
 
+    private val _apiEndpoint = MutableStateFlow("")
+    val apiEndpoint: StateFlow<String> = _apiEndpoint.asStateFlow()
+
+    private val _modelName = MutableStateFlow("")
+    val modelName: StateFlow<String> = _modelName.asStateFlow()
+
+    private val _apiProviderType = MutableStateFlow(ApiProviderType.DEEPSEEK)
+    val apiProviderType: StateFlow<ApiProviderType> = _apiProviderType.asStateFlow()
+
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
 
@@ -74,6 +84,9 @@ class ApiConfigDelegate(
                 // 获取默认配置并设置到当前状态
                 val defaultConfig = modelConfigManager.getModelConfigFlow(ModelConfigManager.DEFAULT_CONFIG_ID).first()
                 _apiKey.value = defaultConfig.apiKey
+                _apiEndpoint.value = defaultConfig.apiEndpoint
+                _modelName.value = defaultConfig.modelName
+                _apiProviderType.value = defaultConfig.apiProviderType
                 
                 // 标记初始化完成
                 _isInitialized.value = true
@@ -171,6 +184,21 @@ class ApiConfigDelegate(
         _apiKey.value = key
     }
 
+    /** 更新API端点 */
+    fun updateApiEndpoint(endpoint: String) {
+        _apiEndpoint.value = endpoint
+    }
+
+    /** 更新模型名称 */
+    fun updateModelName(modelName: String) {
+        _modelName.value = modelName
+    }
+
+    /** 更新API提供商类型 */
+    fun updateApiProviderType(providerType: ApiProviderType) {
+        _apiProviderType.value = providerType
+    }
+
     /** 保存API设置 */
     fun saveApiSettings() {
         viewModelScope.launch {
@@ -178,16 +206,16 @@ class ApiConfigDelegate(
                 // 获取当前配置
                 val currentConfig = modelConfigManager.getModelConfigFlow(DEFAULT_CONFIG_ID).first()
 
-                // 只更新API密钥，保留其他现有配置
+                // 更新所有API相关配置
                 modelConfigManager.updateModelConfig(
                         DEFAULT_CONFIG_ID,
                         _apiKey.value,
-                        currentConfig.apiEndpoint, // 保留现有端点
-                        currentConfig.modelName, // 保留现有模型名称
-                        currentConfig.apiProviderType // 保留现有提供商类型
+                        _apiEndpoint.value,
+                        _modelName.value,
+                        _apiProviderType.value
                 )
 
-                Log.d(TAG, "API密钥已保存到ModelConfigManager")
+                Log.d(TAG, "API配置已保存到ModelConfigManager")
 
                 // 在IO线程上创建服务，避免阻塞
                 val enhancedAiService = withContext(Dispatchers.IO) {

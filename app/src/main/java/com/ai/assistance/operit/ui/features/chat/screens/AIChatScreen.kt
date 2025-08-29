@@ -22,11 +22,13 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.tooling.preview.Preview
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.data.model.AITool
+import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.ToolParameter
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -48,7 +50,9 @@ import com.ai.assistance.operit.ui.main.components.LocalAppBarContentColor
 import com.ai.assistance.operit.ui.main.screens.GestureStateHolder
 import java.io.File
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.sample
+import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -128,6 +132,9 @@ fun AIChatScreen(
 
     // Collect state from ViewModel
     val apiKey by actualViewModel.apiKey.collectAsState()
+    val apiEndpoint by actualViewModel.apiEndpoint.collectAsState()
+    val modelName by actualViewModel.modelName.collectAsState()
+    val apiProviderType by actualViewModel.apiProviderType.collectAsState()
     val isConfigured by actualViewModel.isConfigured.collectAsState()
     val chatHistory by actualViewModel.chatHistory.collectAsState()
     val userMessage by actualViewModel.userMessage.collectAsState()
@@ -152,6 +159,50 @@ fun AIChatScreen(
     val scrollToBottomEvent = actualViewModel.scrollToBottomEvent
     // 从ViewModel收集新的状态
     val shouldShowConfigDialog by actualViewModel.shouldShowConfigDialog.collectAsState()
+
+    // 添加模型建议对话框状态
+    var showModelSuggestionDialog by remember { mutableStateOf(false) }
+
+    // 当模型名称加载后，检查是否为建议更换的模型
+    LaunchedEffect(modelName) {
+        if (modelName.isNotBlank() && modelName.contains("deepseek-r1-0528-qwen3-8b:free", ignoreCase = true)) {
+            showModelSuggestionDialog = true
+        }
+    }
+
+    // 模型建议对话框
+    if (showModelSuggestionDialog) {
+        AlertDialog(
+            onDismissRequest = { showModelSuggestionDialog = false },
+            title = { Text(stringResource(R.string.model_suggestion_title)) },
+            text = { Text(stringResource(R.string.model_suggestion_message)) },
+            confirmButton = {
+                Row {
+                    TextButton(onClick = {
+                        showModelSuggestionDialog = false
+                        // 如果用户已输入token，直接保存配置
+                        actualViewModel.updateApiKey(ApiPreferences.DEFAULT_API_KEY)
+                        actualViewModel.updateApiEndpoint(ApiPreferences.DEFAULT_API_ENDPOINT)
+                        actualViewModel.updateModelName(ApiPreferences.DEFAULT_MODEL_NAME)
+                        actualViewModel.updateApiProviderType(ApiProviderType.DEEPSEEK)
+                        actualViewModel.saveApiSettings()
+
+                        // 新增：重置状态以重新显示配置界面
+                        ConfigurationStateHolder.hasConfirmedDefaultInSession = false
+                        actualViewModel.showConfigurationScreen()
+                        
+                    }) {
+                        Text(stringResource(R.string.change_model))
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showModelSuggestionDialog = false }) {
+                    Text(stringResource(R.string.ignore))
+                }
+            }
+        )
+    }
 
 
     // 添加WebView刷新相关状态
@@ -479,12 +530,13 @@ fun AIChatScreen(
             // 根据前面的逻辑条件决定是否显示配置界面
             if (showConfig) {
                 ConfigurationScreen(
-                        apiEndpoint = "",
+                        apiEndpoint = apiEndpoint,
                         apiKey = apiKey,
-                        modelName = "",
-                        onApiEndpointChange = {},
+                        modelName = modelName,
+                        onApiEndpointChange = { actualViewModel.updateApiEndpoint(it) },
                         onApiKeyChange = { actualViewModel.updateApiKey(it) },
-                        onModelNameChange = {},
+                        onModelNameChange = { actualViewModel.updateModelName(it) },
+                        onApiProviderTypeChange = { actualViewModel.updateApiProviderType(it) },
                         onSaveConfig = {
                             actualViewModel.saveApiSettings()
                             // 保存配置后导航到聊天界面

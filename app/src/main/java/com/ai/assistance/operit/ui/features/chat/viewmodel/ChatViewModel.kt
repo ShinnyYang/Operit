@@ -14,6 +14,7 @@ import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.core.chat.AIMessageManager
 import com.ai.assistance.operit.core.invitation.InvitationManager
 import com.ai.assistance.operit.core.tools.AIToolHandler
+import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ChatMessage
@@ -21,7 +22,7 @@ import com.ai.assistance.operit.data.model.PlanItem
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.InvitationRepository
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.ui.features.chat.attachments.AttachmentManager
 import com.ai.assistance.operit.ui.features.chat.webview.LocalWebServer
 import com.ai.assistance.operit.ui.floating.FloatingMode
@@ -158,6 +159,9 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     // Use lazy initialization for exposed properties to avoid circular reference issues
     // API配置相关
     val apiKey: StateFlow<String> by lazy { apiConfigDelegate.apiKey }
+    val apiEndpoint: StateFlow<String> by lazy { apiConfigDelegate.apiEndpoint }
+    val modelName: StateFlow<String> by lazy { apiConfigDelegate.modelName }
+    val apiProviderType: StateFlow<ApiProviderType> by lazy { apiConfigDelegate.apiProviderType }
     val isConfigured: StateFlow<Boolean> by lazy { apiConfigDelegate.isConfigured }
     val isApiConfigInitialized: StateFlow<Boolean> by lazy { apiConfigDelegate.isInitialized }
 
@@ -166,6 +170,10 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
     fun onConfigDialogConfirmed() {
         _shouldShowConfigDialog.value = false
+    }
+
+    fun showConfigurationScreen() {
+        _shouldShowConfigDialog.value = true
     }
 
     val enableAiPlanning: StateFlow<Boolean> by lazy { apiConfigDelegate.enableAiPlanning }
@@ -473,6 +481,12 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
     // API配置相关方法
     fun updateApiKey(key: String) = apiConfigDelegate.updateApiKey(key)
+
+    fun updateApiEndpoint(endpoint: String) = apiConfigDelegate.updateApiEndpoint(endpoint)
+
+    fun updateModelName(modelName: String) = apiConfigDelegate.updateModelName(modelName)
+
+    fun updateApiProviderType(providerType: ApiProviderType) = apiConfigDelegate.updateApiProviderType(providerType)
     fun saveApiSettings() = apiConfigDelegate.saveApiSettings()
     fun useDefaultConfig() {
         if (apiConfigDelegate.useDefaultConfig()) {
@@ -1200,7 +1214,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
         _shouldShowConfigDialog.value = hasDefaultKey
     }
-
+    
     // 用于启动文件选择器并处理结果
     fun startFileChooserForResult(intent: Intent, callback: (Int, Intent?) -> Unit) {
         fileChooserCallback = callback

@@ -14,8 +14,9 @@ import com.ai.assistance.operit.core.tools.UIPageResultData
 import com.ai.assistance.operit.core.tools.SimplifiedUINode
 import com.ai.assistance.operit.core.config.FunctionalPrompts
 import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.data.preferences.FunctionalPromptManager
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
+import com.ai.assistance.operit.data.model.PromptFunctionType
+import com.ai.assistance.operit.data.preferences.PromptTagManager
 import com.ai.assistance.operit.data.preferences.preferencesManager
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.stream.plugins.StreamXmlPlugin
@@ -46,7 +47,7 @@ class ConversationService(private val context: Context) {
     }
 
     private val apiPreferences = ApiPreferences.getInstance(context)
-    private val functionalPromptManager = FunctionalPromptManager(context)
+    private val characterCardManager = CharacterCardManager.getInstance(context)
     private val conversationMutex = Mutex()
 
     /**
@@ -167,9 +168,21 @@ class ConversationService(private val context: Context) {
                 // Check if planning is enabled
                 val planningEnabled = apiPreferences.enableAiPlanningFlow.first()
 
-                // Get prompts for the specific function type from FunctionalPromptManager
-                val (introPrompt, tonePrompt) =
-                        functionalPromptManager.getPromptForFunction(promptFunctionType)
+                // 根据功能类型获取对应的提示词
+                val activeCard = characterCardManager.activeCharacterCardFlow.first()
+                val systemTagId =
+                        when (promptFunctionType) {
+                            PromptFunctionType.VOICE -> PromptTagManager.SYSTEM_VOICE_TAG_ID
+                            PromptFunctionType.DESKTOP_PET ->
+                                    PromptTagManager.SYSTEM_DESKTOP_PET_TAG_ID
+                            else -> PromptTagManager.SYSTEM_CHAT_TAG_ID
+                        }
+                
+                val introPrompt =
+                        characterCardManager.combinePrompts(
+                                activeCard.id,
+                                listOf(systemTagId)
+                        )
 
                 // 获取自定义系统提示模板
                 val customSystemPromptTemplate = apiPreferences.customSystemPromptTemplateFlow.first()
@@ -181,22 +194,23 @@ class ConversationService(private val context: Context) {
                         workspacePath,
                         planningEnabled,
                         introPrompt,
-                                tonePrompt,
                                 thinkingGuidance,
                                 customSystemPromptTemplate
                 )
 
-                if (preferencesText.isNotEmpty()) {
-                    preparedHistory.add(
-                            0,
-                            Pair(
-                                    "system",
-                                    "$systemPrompt\n\nUser preference description: $preferencesText"
-                            )
-                    )
+                // 构建waifu特殊规则
+                val waifuRulesText = if(apiPreferences.enableWaifuModeFlow.first()) buildWaifuRulesText() else ""
+
+                // 构建最终的系统提示词
+                val finalSystemPrompt = if (preferencesText.isNotEmpty()) {
+                    "$systemPrompt$waifuRulesText\n\nUser preference description: $preferencesText"
                 } else {
-                    preparedHistory.add(0, Pair("system", systemPrompt))
+                    "$systemPrompt$waifuRulesText"
                 }
+
+
+                Log.d(TAG, "最终系统提示词: $finalSystemPrompt")
+                preparedHistory.add(0, Pair("system", finalSystemPrompt))
             }
 
             // Process each message in chat history
@@ -849,6 +863,45 @@ Now, generate ONLY the complete and final merged file content.
             }
         }
         return AITool(type, parameters)
+    }
+
+    /**
+     * 构建waifu模式的特殊规则文本
+     * @return 格式化的waifu规则文本，如果没有规则则返回空字符串
+     */
+    private suspend fun buildWaifuRulesText(): String {
+        val waifuDisableActions = apiPreferences.waifuDisableActionsFlow.first()
+        val waifuEnableEmoticons = apiPreferences.waifuEnableEmoticonsFlow.first()
+        val waifuEnableSelfie = apiPreferences.waifuEnableSelfieFlow.first()
+        val waifuSelfiePrompt = apiPreferences.waifuSelfiePromptFlow.first()
+        val waifuRules = mutableListOf<String>()
+        
+        if (waifuDisableActions) {
+            waifuRules.add("**你必须遵守:禁止使用动作表情，禁止描述动作表情，只允许使用纯文本进行对话，禁止使用括号将动作表情包裹起来，禁止输出括号'()',但是会使用更多'呐，嘛~，诶？，嗯…，唔…，昂？，哦'等语气词**")
+        }
+        
+        if (waifuEnableEmoticons) {
+            waifuRules.add("**表达情绪规则：你必须在每个句末判断句中包含的情绪或增强语气，并使用<emotion>标签在句末插入情绪状态。后续会根据情绪生成表情包。可用情绪包括：crying, like_you, happy, surprised, miss_you, speechless, angry, confused, sad。例如：<emotion>happy</emotion>、<emotion>miss_you</emotion>等。如果没有这些情绪则不插入。**")
+        }
+        
+        if (waifuEnableSelfie) {
+            val selfieRule = buildString {
+                append("**绘图（自拍）**: 当你需要自拍时，你会调用绘图功能。")
+                append("\n*   **基础关键词**: `$waifuSelfiePrompt`。")
+                append("\n*   **自定义内容**: 你会根据主人的要求，在基础关键词后添加表情、动作、穿着、背景等描述。")
+                append("\n*   **合影**: 如果需要主人出镜，你会根据指令明确包含`2 girl` （2 girl 代表2个女孩主人也是女孩，主人为黑色长发可爱女生）等关键词。")
+            }
+            waifuRules.add(selfieRule)
+        }
+        
+        return if (waifuRules.isNotEmpty()) {
+            buildString {
+                append("\n\n[Extra Rules]")
+                waifuRules.forEach { rule ->
+                    append("\n- $rule")
+                }
+            }
+        } else ""
     }
 }
 

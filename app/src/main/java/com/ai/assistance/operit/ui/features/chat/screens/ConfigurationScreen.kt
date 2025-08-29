@@ -18,10 +18,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.data.preferences.FreeUsagePreferences
-import com.ai.assistance.operit.ui.features.chat.components.config.*
+import com.ai.assistance.operit.ui.features.chat.components.config.TokenInfoDialog
 import kotlinx.coroutines.CoroutineScope
 
 /** 简洁风格的AI助手配置界面 */
@@ -33,6 +35,7 @@ fun ConfigurationScreen(
         onApiEndpointChange: (String) -> Unit,
         onApiKeyChange: (String) -> Unit,
         onModelNameChange: (String) -> Unit,
+        onApiProviderTypeChange: (ApiProviderType) -> Unit,
         onSaveConfig: () -> Unit,
         onError: (String) -> Unit,
         coroutineScope: CoroutineScope,
@@ -45,15 +48,10 @@ fun ConfigurationScreen(
         // 获取Context
         val context = LocalContext.current
 
-        // 初始化免费使用偏好
-        val freeUsagePreferences = remember { FreeUsagePreferences(context) }
-        val nextAvailableDate by freeUsagePreferences.nextAvailableDateFlow.collectAsState()
-        val waitDays = remember(nextAvailableDate) { freeUsagePreferences.getWaitDays() }
-
         // 状态管理
         var apiKeyInput by remember { mutableStateOf(if (isUsingDefault) "" else apiKey) }
         var showTokenInfoDialog by remember { mutableStateOf(false) }
-        var showFreeUsageDialog by remember { mutableStateOf(false) }
+        var showOneClickConfig by remember { mutableStateOf(false) }
 
         // 使用默认密钥的状态检测
         val isUsingDefaultApiKey by
@@ -87,36 +85,25 @@ fun ConfigurationScreen(
         }
 
         // 免费使用确认对话框
-        if (showFreeUsageDialog) {
-                FreeUsageConfirmDialog(
-                        onDismiss = { showFreeUsageDialog = false },
-                        onConfirm = {
-                                showFreeUsageDialog = false
-
-                                // Record usage
-                                if (freeUsagePreferences.canUseFreeTier()) {
-                                        freeUsagePreferences.recordUsage()
-
-                                        // Apply free API settings
-                                        apiKeyInput = ""
-
-                                        onApiKeyChange(ApiPreferences.DEFAULT_API_KEY)
-                                        onApiEndpointChange(ApiPreferences.DEFAULT_API_ENDPOINT)
-                                        onModelNameChange(ApiPreferences.DEFAULT_MODEL_NAME)
-
-                                        onUseDefault()
-                                } else {
-                                        onError(
-                                                context.getString(
-                                                        R.string.config_free_usage_exceeded
-                                                )
+        if (showOneClickConfig) {
+                Dialog(
+                        onDismissRequest = { showOneClickConfig = false },
+                        properties = DialogProperties(usePlatformDefaultWidth = false)
+                ) {
+                        OneClickConfigWebViewScreen(
+                                onBackPressed = { showOneClickConfig = false },
+                                onConfigCreated = { fetchedApiKey ->
+                                        onApiKeyChange(fetchedApiKey)
+                                        onApiEndpointChange(
+                                                "https://api.cccielo.cn/v1/chat/completions"
                                         )
+                                        onModelNameChange("deepseek/deepseek-r1-0528-qwen3-8b:free")
+                                        onApiProviderTypeChange(ApiProviderType.OTHER)
+                                        onSaveConfig()
+                                        showOneClickConfig = false
                                 }
-                        },
-                        canUseToday = freeUsagePreferences.canUseFreeTier(),
-                        nextAvailableDate = nextAvailableDate,
-                        waitDays = waitDays
-                )
+                        )
+                }
         }
 
         // 主界面 - 简洁设计
@@ -211,6 +198,7 @@ fun ConfigurationScreen(
                                                         ApiPreferences.DEFAULT_API_ENDPOINT
                                                 )
                                                 onModelNameChange(ApiPreferences.DEFAULT_MODEL_NAME)
+                                                onApiProviderTypeChange(ApiProviderType.DEEPSEEK)
                                                 onSaveConfig()
                                         } else {
                                                 // 否则显示获取token的对话框
@@ -264,11 +252,11 @@ fun ConfigurationScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                                // 左侧 - 薅作者的
+                                // 左侧 - 薅贡献者的
                                 TextButton(
                                         onClick = {
                                                 // 显示确认对话框
-                                                showFreeUsageDialog = true
+                                                showOneClickConfig = true
                                         },
                                         modifier = Modifier.weight(1f),
                                         enabled = true

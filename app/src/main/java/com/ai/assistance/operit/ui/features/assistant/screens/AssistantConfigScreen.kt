@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dragonbones.rememberDragonBonesController
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.model.FunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.preferences.*
 import com.ai.assistance.operit.ui.features.assistant.components.DragonBonesConfigSection
 import com.ai.assistance.operit.ui.features.assistant.components.DragonBonesPreviewSection
@@ -40,7 +41,6 @@ fun AssistantConfigScreen(
         navigateToModelConfig: () -> Unit,
         navigateToModelPrompts: () -> Unit,
         navigateToFunctionalConfig: () -> Unit,
-        navigateToFunctionalPrompts: () -> Unit,
         navigateToUserPreferences: () -> Unit
 ) {
         val context = LocalContext.current
@@ -49,10 +49,8 @@ fun AssistantConfigScreen(
         val uiState by viewModel.uiState.collectAsState()
 
         // Preferences Managers
-        val functionalPromptManager = remember { FunctionalPromptManager(context) }
         val functionalConfigManager = remember { FunctionalConfigManager(context) }
         val modelConfigManager = remember { ModelConfigManager(context) }
-        val promptPreferences = remember { PromptPreferencesManager(context) }
         val userPrefsManager = remember { UserPreferencesManager(context) }
 
         // 启动文件选择器
@@ -93,21 +91,6 @@ fun AssistantConfigScreen(
                         .getUserPreferencesFlow(activeUserPrefProfileId)
                         .collectAsState(initial = null)
         val activeUserPrefProfileName = activeUserPrefProfile?.name ?: stringResource(R.string.processing)
-
-        // 根据所选功能获取数据
-        val promptProfileId by
-                functionalPromptManager
-                        .getPromptProfileIdForFunction(selectedFunctionType)
-                        .collectAsState(
-                                initial =
-                                        FunctionalPromptManager.getDefaultProfileIdForFunction(
-                                                selectedFunctionType
-                                        )
-                        )
-        val promptProfile by
-                promptPreferences
-                        .getPromptProfileFlow(promptProfileId)
-                        .collectAsState(initial = null)
 
         val functionType =
                 when (selectedFunctionType) {
@@ -249,24 +232,6 @@ fun AssistantConfigScreen(
                                 HowToImportSection()
 
                                 Spacer(modifier = Modifier.height(12.dp))
-
-                                // 功能配置区域
-                                Column(
-                                        modifier =
-                                                Modifier.fillMaxWidth()
-                                                        .padding(bottom = 4.dp, start = 4.dp)
-                                ) {
-                                        Text(
-                                                stringResource(R.string.function_config_title),
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.Bold
-                                        )
-                                        Text(
-                                                stringResource(R.string.function_config_desc),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                }
                                 Surface(
                                         modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp),
@@ -282,56 +247,12 @@ fun AssistantConfigScreen(
                                                                 horizontal = 8.dp
                                                         )
                                         ) {
-                                                // 功能切换器
-                                                Row(
-                                                        modifier =
-                                                                Modifier.fillMaxWidth()
-                                                                        .padding(vertical = 4.dp),
-                                                        horizontalArrangement =
-                                                                Arrangement.spacedBy(6.dp)
-                                                ) {
-                                                        PromptFunctionType.values().forEach {
-                                                                functionType ->
-                                                                FilterChip(
-                                                                        modifier = Modifier.weight(1f),
-                                                                        selected =
-                                                                                selectedFunctionType ==
-                                                                                        functionType,
-                                                                        onClick = {
-                                                                                selectedFunctionType =
-                                                                                        functionType
-                                                                        },
-                                                                        label = {
-                                                                                Text(
-                                                                                        text = when (functionType) {
-                                                                                            PromptFunctionType.CHAT -> context.getString(R.string.chat_function)
-                                                                                            PromptFunctionType.VOICE -> context.getString(R.string.voice_function)
-                                                                                            PromptFunctionType.DESKTOP_PET -> context.getString(R.string.desktop_pet_function)
-                                                                                        },
-                                                                                        maxLines = 1,
-                                                                                        style = MaterialTheme.typography.bodySmall
-                                                                                )
-                                                                        }
-                                                                )
-                                                        }
-                                                }
-
-                                                Divider(
-                                                        modifier = Modifier.padding(vertical = 4.dp)
-                                                )
 
                                                 SettingItem(
                                                         icon = Icons.Default.Face,
                                                         title = stringResource(R.string.user_personality),
                                                         value = activeUserPrefProfileName,
                                                         onClick = navigateToUserPreferences
-                                                )
-
-                                                SettingItem(
-                                                        icon = Icons.Default.Message,
-                                                        title = stringResource(R.string.function_prompt),
-                                                        value = promptProfile?.name ?: stringResource(R.string.not_configured),
-                                                        onClick = navigateToFunctionalPrompts
                                                 )
 
                                                 SettingItem(

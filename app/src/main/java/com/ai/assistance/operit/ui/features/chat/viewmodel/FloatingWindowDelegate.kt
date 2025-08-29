@@ -13,8 +13,8 @@ import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.ChatMessage
 import com.ai.assistance.operit.data.model.InputProcessingState
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.model.toSerializable
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
 import com.ai.assistance.operit.services.FloatingChatService
 import com.ai.assistance.operit.ui.floating.FloatingMode
 import com.ai.assistance.operit.ui.permissions.ToolCategory
@@ -26,13 +26,13 @@ import kotlinx.coroutines.launch
 
 /** 委托类，负责管理悬浮窗交互 */
 class FloatingWindowDelegate(
-        private val context: Context,
-        private val viewModelScope: CoroutineScope,
-        private val onMessageReceived: (String, PromptFunctionType) -> Unit,
-        private val onAttachmentRequested: (String) -> Unit,
-        private val onAttachmentRemoveRequested: (String) -> Unit,
-        private val onCancelMessageRequested: () -> Unit,
-        private val inputProcessingState: StateFlow<InputProcessingState>
+    private val context: Context,
+    private val viewModelScope: CoroutineScope,
+    private val onMessageReceived: (String, PromptFunctionType) -> Unit,
+    private val onAttachmentRequested: (String) -> Unit,
+    private val onAttachmentRemoveRequested: (String) -> Unit,
+    private val onCancelMessageRequested: () -> Unit,
+    private val inputProcessingState: StateFlow<InputProcessingState>
 ) {
     companion object {
         private const val TAG = "FloatingWindowDelegate"

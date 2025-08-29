@@ -51,9 +51,8 @@ import com.ai.assistance.operit.data.model.ModelConfigSummary
 import com.ai.assistance.operit.data.model.PreferenceProfile
 import com.ai.assistance.operit.data.model.PromptProfile
 import com.ai.assistance.operit.data.preferences.FunctionalConfigManager
-import com.ai.assistance.operit.data.preferences.FunctionalPromptManager
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
-import com.ai.assistance.operit.data.preferences.PromptFunctionType
+import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.preferences.PromptPreferencesManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.permissions.PermissionLevel
@@ -104,24 +103,7 @@ fun ChatSettingsBar(
     LaunchedEffect(Unit) { configSummaries = modelConfigManager.getAllConfigSummaries() }
     val currentConfigId =
             configMapping[FunctionType.CHAT] ?: FunctionalConfigManager.DEFAULT_CONFIG_ID
-
-    // 将提示词选择逻辑封装到组件内部
-    val functionalPromptManager = remember { FunctionalPromptManager(context) }
-    val promptPreferencesManager = remember { PromptPreferencesManager(context) }
-    val promptMapping by
-            functionalPromptManager.functionPromptMappingFlow.collectAsState(initial = emptyMap())
-    var promptProfiles by remember { mutableStateOf<List<PromptProfile>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        val profileIds = promptPreferencesManager.profileListFlow.first()
-        promptProfiles =
-                profileIds.map { id -> promptPreferencesManager.getPromptProfileFlow(id).first() }
-    }
-    val currentPromptProfileId =
-            promptMapping[PromptFunctionType.CHAT]
-                    ?: FunctionalPromptManager.getDefaultProfileIdForFunction(
-                            PromptFunctionType.CHAT
-                    )
-
+            
     // 新增：用户偏好（记忆）选择逻辑
     val userPreferencesManager = remember { UserPreferencesManager(context) }
     val activeProfileId by
@@ -136,13 +118,6 @@ fun ChatSettingsBar(
     val onSelectModel: (String) -> Unit = { selectedId ->
         scope.launch {
             functionalConfigManager.setConfigForFunction(FunctionType.CHAT, selectedId)
-            EnhancedAIService.refreshServiceForFunction(context, FunctionType.CHAT)
-        }
-    }
-    
-    val onSelectPrompt: (String) -> Unit = { selectedId ->
-        scope.launch {
-            functionalPromptManager.setPromptProfileForFunction(PromptFunctionType.CHAT, selectedId)
             EnhancedAIService.refreshServiceForFunction(context, FunctionType.CHAT)
         }
     }
@@ -267,24 +242,6 @@ fun ChatSettingsBar(
                                     onInfoClick = {
                                         infoPopupContent =
                                                 context.getString(R.string.model_config) to context.getString(R.string.model_config_desc)
-                                        showMenu = false
-                                    }
-                            )
-
-                            // 提示词选择器
-                            PromptSelectorItem(
-                                promptProfiles = promptProfiles,
-                                currentProfileId = currentPromptProfileId,
-                                onSelectPrompt = onSelectPrompt,
-                                expanded = showPromptDropdown,
-                                    onExpandedChange = { showPromptDropdown = it },
-                                    onManageClick = {
-                                        onNavigateToModelPrompts()
-                                        showMenu = false
-                                    },
-                                    onInfoClick = {
-                                        infoPopupContent =
-                                                context.getString(R.string.prompt) to context.getString(R.string.prompt_desc)
                                         showMenu = false
                                     }
                             )

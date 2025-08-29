@@ -57,6 +57,15 @@ class ApiPreferences private constructor(private val context: Context) {
         // Key for Memory Attachment
         val ENABLE_MEMORY_ATTACHMENT = booleanPreferencesKey("enable_memory_attachment")
 
+        // Key for Waifu Mode
+        val ENABLE_WAIFU_MODE = booleanPreferencesKey("enable_waifu_mode")
+        val WAIFU_CHAR_DELAY = intPreferencesKey("waifu_char_delay") // 每字符延迟（毫秒）
+        val WAIFU_REMOVE_PUNCTUATION = booleanPreferencesKey("waifu_remove_punctuation") // 是否移除标点符号
+        val WAIFU_DISABLE_ACTIONS = booleanPreferencesKey("waifu_disable_actions") // 是否禁止动作表情
+        val WAIFU_ENABLE_EMOTICONS = booleanPreferencesKey("waifu_enable_emoticons") // 是否启用表情包
+        val WAIFU_ENABLE_SELFIE = booleanPreferencesKey("waifu_enable_selfie") // 是否启用自拍功能
+        val WAIFU_SELFIE_PROMPT = stringPreferencesKey("waifu_selfie_prompt") // 自拍功能的外貌提示词
+
         // Key for Context Length
         val CONTEXT_LENGTH = floatPreferencesKey("context_length")
 
@@ -65,7 +74,6 @@ class ApiPreferences private constructor(private val context: Context) {
 
         // Custom Prompt Settings
         val CUSTOM_INTRO_PROMPT = stringPreferencesKey("custom_intro_prompt")
-        val CUSTOM_TONE_PROMPT = stringPreferencesKey("custom_tone_prompt")
         
         // Custom System Prompt Template (Advanced Configuration)
         val CUSTOM_SYSTEM_PROMPT_TEMPLATE = stringPreferencesKey("custom_system_prompt_template")
@@ -81,6 +89,15 @@ class ApiPreferences private constructor(private val context: Context) {
         // Default value for Memory Attachment
         const val DEFAULT_ENABLE_MEMORY_ATTACHMENT = true
 
+        // Default value for Waifu Mode
+        const val DEFAULT_ENABLE_WAIFU_MODE = false
+        const val DEFAULT_WAIFU_CHAR_DELAY = 500 // 500ms per character (2 chars per second)
+        const val DEFAULT_WAIFU_REMOVE_PUNCTUATION = false // 默认保留标点符号
+        const val DEFAULT_WAIFU_DISABLE_ACTIONS = false // 默认允许动作表情
+        const val DEFAULT_WAIFU_ENABLE_EMOTICONS = false // 默认不启用表情包
+        const val DEFAULT_WAIFU_ENABLE_SELFIE = false // 默认不启用自拍功能
+        const val DEFAULT_WAIFU_SELFIE_PROMPT = "kipfel (vrchat), long hair, Matcha color hair, purple eyes, sweater vest,  black skirt, black necktie, collared shirt, long sleeves, black headwear, beanie, pleated skirt, hair bun, white shirt, hair ribbon,  hairclip, hair between eyes, black footwear, blush, hair ornament, cat hat,  very long hair,sweater, animal ear headwear, bag, bandaid on leg, socks" // 默认外貌提示词
+
         // Default value for Context Length (in K)
         const val DEFAULT_CONTEXT_LENGTH = 48.0f
 
@@ -89,7 +106,6 @@ class ApiPreferences private constructor(private val context: Context) {
 
         // Default values for custom prompts
         const val DEFAULT_INTRO_PROMPT = "你是Operit，一个全能AI助手，旨在解决用户提出的任何任务。你有各种工具可以调用，以高效完成复杂的请求。"
-        const val DEFAULT_TONE_PROMPT = "保持有帮助的语气，并清楚地传达限制。使用问题库根据用户的风格、偏好和过去的信息个性化响应。"
         
         // Default system prompt template (empty means use built-in template)
         const val DEFAULT_SYSTEM_PROMPT_TEMPLATE = ""
@@ -166,6 +182,42 @@ class ApiPreferences private constructor(private val context: Context) {
             preferences[ENABLE_MEMORY_ATTACHMENT] ?: DEFAULT_ENABLE_MEMORY_ATTACHMENT
         }
 
+    // Flow for Waifu Mode
+    val enableWaifuModeFlow: Flow<Boolean> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[ENABLE_WAIFU_MODE] ?: DEFAULT_ENABLE_WAIFU_MODE
+        }
+
+    val waifuCharDelayFlow: Flow<Int> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_CHAR_DELAY] ?: DEFAULT_WAIFU_CHAR_DELAY
+        }
+
+    val waifuRemovePunctuationFlow: Flow<Boolean> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_REMOVE_PUNCTUATION] ?: DEFAULT_WAIFU_REMOVE_PUNCTUATION
+        }
+
+    val waifuDisableActionsFlow: Flow<Boolean> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_DISABLE_ACTIONS] ?: DEFAULT_WAIFU_DISABLE_ACTIONS
+        }
+
+    val waifuEnableEmoticonsFlow: Flow<Boolean> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_ENABLE_EMOTICONS] ?: DEFAULT_WAIFU_ENABLE_EMOTICONS
+        }
+
+    val waifuEnableSelfieFlow: Flow<Boolean> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_ENABLE_SELFIE] ?: DEFAULT_WAIFU_ENABLE_SELFIE
+        }
+
+    val waifuSelfiePromptFlow: Flow<String> =
+        context.apiDataStore.data.map { preferences ->
+            preferences[WAIFU_SELFIE_PROMPT] ?: DEFAULT_WAIFU_SELFIE_PROMPT
+        }
+
     // Flow for Context Length
     val contextLengthFlow: Flow<Float> =
         context.apiDataStore.data.map { preferences ->
@@ -184,10 +236,7 @@ class ApiPreferences private constructor(private val context: Context) {
                 preferences[CUSTOM_INTRO_PROMPT] ?: DEFAULT_INTRO_PROMPT
             }
 
-    val customTonePromptFlow: Flow<String> =
-            context.apiDataStore.data.map { preferences ->
-                preferences[CUSTOM_TONE_PROMPT] ?: DEFAULT_TONE_PROMPT
-            }
+
 
     // Custom System Prompt Template Flow
     val customSystemPromptTemplateFlow: Flow<String> =
@@ -232,6 +281,49 @@ class ApiPreferences private constructor(private val context: Context) {
     suspend fun saveEnableMemoryAttachment(isEnabled: Boolean) {
         context.apiDataStore.edit { preferences ->
             preferences[ENABLE_MEMORY_ATTACHMENT] = isEnabled
+        }
+    }
+
+    // Save Waifu Mode setting
+    suspend fun saveEnableWaifuMode(isEnabled: Boolean) {
+        context.apiDataStore.edit { preferences ->
+            preferences[ENABLE_WAIFU_MODE] = isEnabled
+        }
+    }
+
+    suspend fun saveWaifuCharDelay(delayMs: Int) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_CHAR_DELAY] = delayMs
+        }
+    }
+
+    suspend fun saveWaifuRemovePunctuation(removePunctuation: Boolean) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_REMOVE_PUNCTUATION] = removePunctuation
+        }
+    }
+
+    suspend fun saveWaifuDisableActions(disableActions: Boolean) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_DISABLE_ACTIONS] = disableActions
+        }
+    }
+
+    suspend fun saveWaifuEnableEmoticons(enableEmoticons: Boolean) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_ENABLE_EMOTICONS] = enableEmoticons
+        }
+    }
+
+    suspend fun saveWaifuEnableSelfie(enableSelfie: Boolean) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_ENABLE_SELFIE] = enableSelfie
+        }
+    }
+
+    suspend fun saveWaifuSelfiePrompt(selfiePrompt: String) {
+        context.apiDataStore.edit { preferences ->
+            preferences[WAIFU_SELFIE_PROMPT] = selfiePrompt
         }
     }
 
@@ -297,10 +389,9 @@ class ApiPreferences private constructor(private val context: Context) {
     }
 
     // Save custom prompts
-    suspend fun saveCustomPrompts(introPrompt: String, tonePrompt: String) {
+    suspend fun saveCustomPrompts(introPrompt: String) {
         context.apiDataStore.edit { preferences ->
             preferences[CUSTOM_INTRO_PROMPT] = introPrompt
-            preferences[CUSTOM_TONE_PROMPT] = tonePrompt
         }
     }
 
@@ -315,7 +406,6 @@ class ApiPreferences private constructor(private val context: Context) {
     suspend fun resetCustomPrompts() {
         context.apiDataStore.edit { preferences ->
             preferences[CUSTOM_INTRO_PROMPT] = DEFAULT_INTRO_PROMPT
-            preferences[CUSTOM_TONE_PROMPT] = DEFAULT_TONE_PROMPT
         }
     }
 

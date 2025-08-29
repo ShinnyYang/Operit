@@ -6,7 +6,10 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,758 +30,1407 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.PopupProperties
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
 import com.ai.assistance.operit.R
-import com.ai.assistance.operit.core.config.SystemPromptConfig
-import com.ai.assistance.operit.data.model.PromptProfile
-import com.ai.assistance.operit.data.preferences.ApiPreferences
+import com.ai.assistance.operit.data.model.CharacterCard
+import com.ai.assistance.operit.data.model.PromptTag
+import com.ai.assistance.operit.data.model.TagType
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
+import com.ai.assistance.operit.data.preferences.PromptTagManager
 import com.ai.assistance.operit.data.preferences.PromptPreferencesManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.BufferedReader
+import java.io.InputStreamReader
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun ModelPromptsSettingsScreen(
         onBackPressed: () -> Unit = {},
-        onNavigateToFunctionalPrompts: () -> Unit = {},
-        onNavigateToMarket: () -> Unit = {}
+        onNavigateToMarket: () -> Unit = {},
+        onNavigateToPersonaGeneration: () -> Unit = {}
 ) {
     val context = LocalContext.current
-            val apiPreferences = remember { ApiPreferences.getInstance(context) }
-    val promptPreferencesManager = remember { PromptPreferencesManager(context) }
     val scope = rememberCoroutineScope()
+    
+    // 管理器
+    val characterCardManager = remember { CharacterCardManager.getInstance(context) }
+    val promptTagManager = remember { PromptTagManager.getInstance(context) }
+    val oldPromptPreferencesManager = remember { PromptPreferencesManager(context) }
+    
+    // 状态
+    var currentTab by remember { mutableStateOf(0) } // 0: 角色卡, 1: 标签, 2: 旧配置
     var showSaveSuccessMessage by remember { mutableStateOf(false) }
+    var refreshTrigger by remember { mutableStateOf(0) }
 
-    // 提示词配置文件列表
-    val profileList =
-            promptPreferencesManager.profileListFlow.collectAsState(initial = listOf("default"))
-                    .value
+    // 角色卡相关状态
+    val characterCardList by characterCardManager.characterCardListFlow.collectAsState(initial = emptyList())
+    var showAddCharacterCardDialog by remember { mutableStateOf(false) }
+    var showEditCharacterCardDialog by remember { mutableStateOf(false) }
+    var editingCharacterCard by remember { mutableStateOf<CharacterCard?>(null) }
+    
+    // 酒馆角色卡导入相关状态
+    var showImportSuccessMessage by remember { mutableStateOf(false) }
+    var showImportErrorMessage by remember { mutableStateOf(false) }
+    var importErrorMessage by remember { mutableStateOf("") }
 
-    // 对话框状态
-    var showAddProfileDialog by remember { mutableStateOf(false) }
-    var newProfileName by remember { mutableStateOf("") }
-
-    // 选中的配置文件
-    var selectedProfileId by remember { mutableStateOf(profileList.firstOrNull() ?: "default") }
-    val selectedProfile = remember { mutableStateOf<PromptProfile?>(null) }
-
-    // 编辑状态
-    var editMode by remember { mutableStateOf(false) }
-
-    // 默认提示词
-    val defaultIntroPrompt = promptPreferencesManager.defaultIntroPrompt
-    val defaultTonePrompt = promptPreferencesManager.defaultTonePrompt
-
-    // 编辑状态的提示词
-    var introPromptInput by remember { mutableStateOf(defaultIntroPrompt) }
-    var tonePromptInput by remember { mutableStateOf(defaultTonePrompt) }
-
-    // 高级配置状态
-    var showAdvancedConfig by remember { mutableStateOf(false) }
-    var systemPromptTemplateInput by remember { mutableStateOf("") }
-
-    // 动画状态
-    val listState = rememberLazyListState()
-
-    // 下拉菜单状态
-    var isDropdownExpanded by remember { mutableStateOf(false) }
-
-    // 获取所有配置文件的名称映射(id -> name)
-    val profileNameMap = remember { mutableStateMapOf<String, String>() }
-
-    // 加载所有配置文件名称
-    LaunchedEffect(profileList) {
-        profileList.forEach { profileId ->
-            val profile = promptPreferencesManager.getPromptProfileFlow(profileId).first()
-            profileNameMap[profileId] = profile.name
-        }
-    }
-
-    // 初始化提示词配置
-    LaunchedEffect(Unit) { promptPreferencesManager.initializeIfNeeded() }
-
-    // 加载选中的配置文件
-    LaunchedEffect(selectedProfileId) {
-        promptPreferencesManager.getPromptProfileFlow(selectedProfileId).collect { profile ->
-            selectedProfile.value = profile
-            // 初始化编辑字段
-            introPromptInput = profile.introPrompt
-            tonePromptInput = profile.tonePrompt
-        }
-    }
-
-    // 加载自定义系统提示模板
-    LaunchedEffect(Unit) {
-        apiPreferences.customSystemPromptTemplateFlow.collect { template ->
-            systemPromptTemplateInput = template
-        }
-    }
-
-    // 保存提示词函数
-    fun savePrompts() {
-        val profile = selectedProfile.value
-        if (profile != null) {
+    // 文件选择器
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
             scope.launch {
-                // 保存到提示词配置
-                promptPreferencesManager.updatePromptProfile(
-                    profileId = profile.id,
-                    introPrompt = introPromptInput,
-                    tonePrompt = tonePromptInput
-                )
-                
-                // 保存自定义系统提示模板（如果在高级配置中修改了）
-                if (showAdvancedConfig) {
-                    apiPreferences.saveCustomSystemPromptTemplate(systemPromptTemplateInput)
+                try {
+                    val inputStream = context.contentResolver.openInputStream(uri)
+                    val reader = BufferedReader(InputStreamReader(inputStream))
+                    val jsonContent = reader.readText()
+                    reader.close()
+                    
+                    val result = characterCardManager.createCharacterCardFromTavernJson(jsonContent)
+                    result.onSuccess { newCardId ->
+                        showImportSuccessMessage = true
+                        refreshTrigger++
+                    }.onFailure { exception ->
+                        importErrorMessage = exception.message ?: "未知错误"
+                        showImportErrorMessage = true
+                    }
+                } catch (e: Exception) {
+                    importErrorMessage = "读取文件失败: ${e.message}"
+                    showImportErrorMessage = true
+                }
+            }
+        }
+    }
+    
+    // 标签相关状态
+    val tagList by promptTagManager.tagListFlow.collectAsState(initial = emptyList())
+    var showAddTagDialog by remember { mutableStateOf(false) }
+    var showEditTagDialog by remember { mutableStateOf(false) }
+    var editingTag by remember { mutableStateOf<PromptTag?>(null) }
+
+    // 旧配置相关状态
+    val oldProfileList by oldPromptPreferencesManager.profileListFlow.collectAsState(initial = emptyList())
+    var showOldConfigDialog by remember { mutableStateOf(false) }
+    var selectedOldProfileId by remember { mutableStateOf("") }
+    
+    // 初始化
+    LaunchedEffect(Unit) {
+        characterCardManager.initializeIfNeeded()
+    }
+    
+    // 获取所有标签
+    var allTags by remember { mutableStateOf(emptyList<PromptTag>()) }
+    LaunchedEffect(tagList) {
+        scope.launch {
+            val tags = promptTagManager.getAllTags()
+            allTags = tags
+        }
+    }
+
+    // 获取所有角色卡
+    var allCharacterCards by remember { mutableStateOf(emptyList<CharacterCard>()) }
+    LaunchedEffect(characterCardList, refreshTrigger) {
+        scope.launch {
+            val cards = characterCardManager.getAllCharacterCards()
+            allCharacterCards = cards
+        }
+    }
+    
+    // 保存角色卡
+    fun saveCharacterCard() {
+        editingCharacterCard?.let { card ->
+            scope.launch {
+                if (card.id.isEmpty()) {
+                    // 新建
+                    characterCardManager.createCharacterCard(card)
+                } else {
+                    // 更新
+                    characterCardManager.updateCharacterCard(card)
+                }
+                showAddCharacterCardDialog = false
+                showEditCharacterCardDialog = false
+                editingCharacterCard = null
+                showSaveSuccessMessage = true
+                refreshTrigger++
+            }
+        }
+    }
+
+    // 保存标签
+    fun saveTag() {
+        editingTag?.let { tag ->
+            scope.launch {
+                if (tag.id.isEmpty()) {
+                    // 新建
+                    promptTagManager.createPromptTag(
+                        name = tag.name,
+                        description = tag.description,
+                        promptContent = tag.promptContent,
+                        tagType = tag.tagType
+                    )
+                } else {
+                    // 更新
+                    promptTagManager.updatePromptTag(
+                        id = tag.id,
+                        name = tag.name,
+                        description = tag.description,
+                        promptContent = tag.promptContent
+                    )
+                }
+                showEditTagDialog = false
+                editingTag = null
+                showSaveSuccessMessage = true
+            }
+        }
+    }
+
+    // 删除角色卡
+    fun deleteCharacterCard(id: String) {
+        scope.launch {
+            characterCardManager.deleteCharacterCard(id)
+        }
+    }
+    
+    // 删除标签
+    fun deleteTag(id: String) {
+        scope.launch {
+            promptTagManager.deletePromptTag(id)
+            }
+        }
+    
+    CustomScaffold() { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // 标签栏
+                TabRow(selectedTabIndex = currentTab) {
+                    Tab(
+                        selected = currentTab == 0,
+                        onClick = { currentTab = 0 }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("角色卡", fontSize = 14.sp)
+                        }
+                    }
+                    Tab(
+                        selected = currentTab == 1,
+                        onClick = { currentTab = 1 }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                            Icon(
+                                Icons.Default.Label,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("标签", fontSize = 14.sp)
+                        }
+                    }
+                    Tab(
+                        selected = currentTab == 2,
+                        onClick = { currentTab = 2 }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.History,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text("旧配置", fontSize = 14.sp)
+                        }
+                    }
+                                }
+
+                // 内容区域
+                when (currentTab) {
+                    0 -> CharacterCardTab(
+                        characterCards = allCharacterCards,
+                        allTags = allTags,
+                        onAddCharacterCard = {
+                            editingCharacterCard = CharacterCard(
+                                id = "",
+                                name = "",
+                                description = "",
+                                characterSetting = "",
+                                otherContent = "",
+                                attachedTagIds = emptyList(),
+                                advancedCustomPrompt = "",
+                                marks = ""
+                            )
+                            showAddCharacterCardDialog = true
+                        },
+                        onEditCharacterCard = { card ->
+                            editingCharacterCard = card.copy()
+                            showEditCharacterCardDialog = true
+                        },
+                        onDeleteCharacterCard = { deleteCharacterCard(it) },
+                        onNavigateToPersonaGeneration = onNavigateToPersonaGeneration,
+                        onImportTavernCard = {
+                            filePickerLauncher.launch("application/json")
+                        }
+                    )
+                    1 -> TagTab(
+                        tags = allTags,
+                        onAddTag = {
+                            editingTag = PromptTag(
+                                id = "",
+                                name = "",
+                                description = "",
+                                promptContent = "",
+                                tagType = TagType.CUSTOM
+                            )
+                            showAddTagDialog = true
+                        },
+                        onEditTag = { tag ->
+                            editingTag = tag.copy()
+                            showEditTagDialog = true
+                        },
+                        onDeleteTag = { deleteTag(it) },
+                        onNavigateToMarket = onNavigateToMarket
+                    )
+                    2 -> OldConfigTab(
+                        profileList = oldProfileList,
+                        promptPreferencesManager = oldPromptPreferencesManager,
+                        onShowOldConfig = { profileId ->
+                            selectedOldProfileId = profileId
+                            showOldConfigDialog = true
+                        }
+                    )
+                }
+            }
+            
+                        // 成功保存消息
+            if (showSaveSuccessMessage) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(1500)
+                    showSaveSuccessMessage = false
                 }
                 
-                showSaveSuccessMessage = true
-                editMode = false
-            }
-        }
-    }
-
-    CustomScaffold(
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = { 
-                    if (editMode) {
-                        // 如果是编辑模式，点击时保存
-                        savePrompts()
-                    } else {
-                        // 如果不是编辑模式，进入编辑模式
-                        editMode = true
-                    }
-                },
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                shape = CircleShape,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    if (editMode) Icons.Default.Check else Icons.Default.Edit,
-                    contentDescription = if (editMode) stringResource(R.string.save_prompts) else stringResource(R.string.edit_preferences)
-                )
-            }
-        }
-    ) { paddingValues ->
-        Box(modifier = Modifier.padding(paddingValues).fillMaxSize()) {
-            Column(
-                    modifier =
-                            Modifier.fillMaxSize()
-                                .padding(horizontal = 12.dp, vertical = 4.dp)
-                                .verticalScroll(rememberScrollState())
-            ) {
-                // 配置文件选择区域 - 卡片内的布局重新组织
                 Card(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    border = BorderStroke(0.7.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                        
-                        // 配置选择器区 - 标签和新建按钮放在一行
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            // 配置文件选择标签 - 更大的字体
-                            Text(
-                                stringResource(R.string.select_prompt_config),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Medium,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                TextButton(
-                                    onClick = onNavigateToMarket,
-                                    modifier = Modifier.height(28.dp),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                ) {
-                                    Text("提示词市场", fontSize = 12.sp)
-                                }
-
-                                // 高级配置切换按钮
-                                TextButton(
-                                    onClick = { showAdvancedConfig = !showAdvancedConfig },
-                                    modifier = Modifier.height(28.dp),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = if (showAdvancedConfig) MaterialTheme.colorScheme.primary 
-                                                      else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Text("高级配置", fontSize = 12.sp)
-                                }
-
-                                // 新建按钮 - 更小的尺寸
-                                OutlinedButton(
-                                    onClick = { showAddProfileDialog = true },
-                                    shape = RoundedCornerShape(16.dp),
-                                    border = BorderStroke(0.8.dp, MaterialTheme.colorScheme.primary),
-                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                    modifier = Modifier.height(28.dp),
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    Icon(
-                                        Icons.Default.Add,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(2.dp))
-                                    Text(
-                                        stringResource(R.string.create_new),
-                                        fontSize = 12.sp,
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
-                            }
-                        }
-                        
-                        val selectedProfileName = profileNameMap[selectedProfileId] ?: stringResource(R.string.unnamed_config)
-                        
-                        Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { isDropdownExpanded = true },
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            tonalElevation = 0.5.dp,
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
                         ) {
                             Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                            imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                                    )
+                        Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                            text = "保存成功",
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                        
+            // 导入成功消息
+            if (showImportSuccessMessage) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(2000)
+                    showImportSuccessMessage = false
+                }
+                
+                Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                        ) {
+                            Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileDownload,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = stringResource(R.string.tavern_card_import_success),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+            
+            // 导入失败消息
+            if (showImportErrorMessage) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(3000)
+                    showImportErrorMessage = false
+                }
+                
+                Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(vertical = 12.dp, horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp),
+                    shape = RoundedCornerShape(6.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
                             ) {
                                 Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = selectedProfileName,
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Normal,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                                
-                                AnimatedContent(
-                                    targetState = isDropdownExpanded,
-                                    transitionSpec = {
-                                        fadeIn() + scaleIn() with fadeOut() + scaleOut()
-                                    }
-                                ) { expanded ->
-                                    Icon(
-                                        if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                                        contentDescription = stringResource(R.string.select_model),
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // 操作按钮
-                        Row(
-                            modifier = Modifier.padding(top = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            // 删除按钮
-                            if (selectedProfileId != "default") {
-                                TextButton(
-                                    onClick = {
-                                        scope.launch {
-                                            promptPreferencesManager.deleteProfile(selectedProfileId)
-                                            selectedProfileId = profileList.firstOrNull { it != selectedProfileId } ?: "default"
-                                        }
-                                    },
-                                    contentPadding = PaddingValues(horizontal = 12.dp),
-                                    colors = ButtonDefaults.textButtonColors(
-                                        contentColor = MaterialTheme.colorScheme.error
-                                    ),
-                                    modifier = Modifier.height(36.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Delete,
-                                        contentDescription = null,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text(stringResource(R.string.delete_config), fontSize = 14.sp)
-                                }
-                            }
-                        }
-                    }
-
-                    // 下拉菜单
-                    DropdownMenu(
-                        expanded = isDropdownExpanded,
-                        onDismissRequest = { isDropdownExpanded = false },
-                        modifier = Modifier.width(280.dp),
-                        properties = PopupProperties(focusable = true)
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        profileList.forEach { profileId ->
-                            val profileName = profileNameMap[profileId] ?: stringResource(R.string.unnamed_config)
-                            val isSelected = profileId == selectedProfileId
-                            
-                            DropdownMenuItem(
-                                text = { 
+                        Icon(
+                            imageVector = Icons.Default.Error,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Column {
                                     Text(
-                                        text = profileName,
-                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
-                                    )
-                                },
-                                leadingIcon = null,
-                                trailingIcon = if (isSelected) { {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(8.dp)
-                                            .background(MaterialTheme.colorScheme.primary, CircleShape)
-                                    )
-                                }} else null,
-                                onClick = {
-                                    selectedProfileId = profileId
-                                    isDropdownExpanded = false
-                                    editMode = false
-                                },
-                                colors = MenuDefaults.itemColors(
-                                    textColor = if (isSelected) MaterialTheme.colorScheme.primary 
-                                              else MaterialTheme.colorScheme.onSurface
-                                ),
-                                modifier = Modifier.padding(horizontal = 4.dp)
+                                text = stringResource(R.string.tavern_card_import_failed),
+                                color = MaterialTheme.colorScheme.error,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
                             )
-                            
-                            if (profileId != profileList.last()) {
-                                Divider(modifier = Modifier.padding(horizontal = 8.dp), thickness = 0.5.dp)
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                // 提示词详情
-                AnimatedVisibility(
-                    visible = selectedProfile.value != null,
-                    enter = fadeIn() + expandVertically(),
-                    exit = fadeOut() + shrinkVertically()
-                ) {
-                    val profile = selectedProfile.value
-                    if (profile != null) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(8.dp),
-                                colors =
-                                        CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface
-                            ),
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                        ) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(bottom = 8.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Message,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = stringResource(R.string.custom_system_prompts),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
+                            if (importErrorMessage.isNotBlank()) {
+                                Text(
+                                    text = importErrorMessage,
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 12.sp
                                     )
                                 }
-
-                                Text(
-                                    text = stringResource(R.string.customize_ai_behavior),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-
-                                // AI self-introduction prompt
-                                Text(
-                                    text = stringResource(R.string.ai_self_introduction),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 4.dp)
-                                )
-
-                                OutlinedTextField(
-                                        value =
-                                                if (editMode) introPromptInput
-                                                else profile.introPrompt,
-                                    onValueChange = { if (editMode) introPromptInput = it },
-                                    label = { Text(stringResource(R.string.intro_prompt)) },
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                    placeholder = { Text(defaultIntroPrompt) },
-                                    minLines = 3,
-                                    enabled = editMode
-                                )
-
-                                // AI tone and style prompt
-                                Text(
-                                    text = stringResource(R.string.ai_tone_style),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 4.dp, top = 8.dp)
-                                )
-
-                                OutlinedTextField(
-                                        value =
-                                                if (editMode) tonePromptInput
-                                                else profile.tonePrompt,
-                                    onValueChange = { if (editMode) tonePromptInput = it },
-                                    label = { Text(stringResource(R.string.tone_prompt)) },
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    placeholder = { Text(defaultTonePrompt) },
-                                    minLines = 3,
-                                    enabled = editMode
-                                )
-
-                                // 高级配置区域
-                                AnimatedVisibility(
-                                    visible = showAdvancedConfig,
-                                    enter = fadeIn() + expandVertically(),
-                                    exit = fadeOut() + shrinkVertically()
-                                ) {
-                                    Column(modifier = Modifier.fillMaxWidth()) {
-                                        Divider(
-                                            modifier = Modifier.padding(vertical = 16.dp),
-                                            color = MaterialTheme.colorScheme.outlineVariant.copy(0.3f)
-                                        )
-
-                                        Text(
-                                            text = "系统提示模板 (高级配置)",
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(bottom = 4.dp)
-                                        )
-
-                                        Text(
-                                            text = "自定义整个系统提示模板。留空则使用默认模板。修改此项需要重新启动对话才能生效。",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(bottom = 8.dp)
-                                        )
-
-                                        // 查看默认模板和重置按钮
-                                        var showDefaultTemplate by remember { mutableStateOf(false) }
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            TextButton(
-                                                onClick = { showDefaultTemplate = !showDefaultTemplate }
-                                            ) {
-                                                Text(if (showDefaultTemplate) "隐藏默认模板" else "查看默认模板")
-                                            }
-
-                                            if (editMode && systemPromptTemplateInput.isNotEmpty()) {
-                                                TextButton(
-                                                    onClick = {
-                                                        systemPromptTemplateInput = ""
-                                                    }
-                                                ) {
-                                                    Text("重置为默认")
-                                                }
-                                            }
-                                        }
-
-                                        // 默认模板展示区域
-                                        AnimatedVisibility(
-                                            visible = showDefaultTemplate,
-                                            enter = fadeIn() + expandVertically(),
-                                            exit = fadeOut() + shrinkVertically()
-                                        ) {
-                                            Card(
-                                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                            ) {
-                                                Column(modifier = Modifier.padding(12.dp)) {
-                                                    Text(
-                                                        "默认模板（只读）：",
-                                                        style = MaterialTheme.typography.labelMedium,
-                                                        fontWeight = FontWeight.Bold,
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                    SelectionContainer {
-                                                        Text(
-                                                            text = SystemPromptConfig.SYSTEM_PROMPT_TEMPLATE_CN,
-                                                            style = MaterialTheme.typography.bodySmall.copy(
-                                                                fontFamily = FontFamily.Monospace
-                                                            ),
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .background(
-                                                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.5f),
-                                                                    RoundedCornerShape(4.dp)
-                                                                )
-                                                                .padding(8.dp)
-                                                                .heightIn(max = 200.dp)
-                                                                .verticalScroll(rememberScrollState())
-                                                        )
-                                                    }
-                                                    if (editMode) {
-                                                        Row(
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                            horizontalArrangement = Arrangement.End
-                                                        ) {
-                                                            TextButton(
-                                                                onClick = {
-                                                                    systemPromptTemplateInput = SystemPromptConfig.SYSTEM_PROMPT_TEMPLATE_CN
-                                                                }
-                                                            ) {
-                                                                Text("复制到编辑框")
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-
-                                        OutlinedTextField(
-                                            value = systemPromptTemplateInput,
-                                            onValueChange = {
-                                                if (editMode) {
-                                                    systemPromptTemplateInput = it
-                                                }
-                                            },
-                                            label = { Text("系统提示模板") },
-                                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 8.dp),
-                                            placeholder = { Text("留空使用默认模板...") },
-                                            minLines = 8,
-                                            maxLines = 15,
-                                            enabled = editMode,
-                                            textStyle = MaterialTheme.typography.bodySmall.copy(
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        )
-                                    }
-                                }
-
-                                if (editMode) {
-                                    Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.End
-                                    ) {
-                                        TextButton(
-                                            onClick = {
-                                                introPromptInput = defaultIntroPrompt
-                                                tonePromptInput = defaultTonePrompt
-                                                if (showAdvancedConfig) {
-                                                    systemPromptTemplateInput = ""
-                                                }
-                                            }
-                                        ) { Text(stringResource(R.string.restore_default_prompts)) }
-
-                                        Spacer(modifier = Modifier.width(8.dp))
-
-                                        Button(
-                                            onClick = {
-                                                savePrompts()
-                                            }
-                                        ) { Text(stringResource(R.string.save_prompts)) }
-                                    }
-                                }
-                            }
                         }
-                    }
-                }
-
-                // 提示词解释卡片
-                Card(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp),
-                    shape = RoundedCornerShape(12.dp),
-                        colors =
-                                CardDefaults.cardColors(
-                                        containerColor =
-                                                MaterialTheme.colorScheme.surfaceVariant.copy(
-                                                        alpha = 0.7f
-                                                )
-                    )
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.about_system_prompts),
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-
-                        Text(
-                            text = stringResource(R.string.system_prompts_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-
-                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            PromptInfoRow(
-                                title = stringResource(R.string.ai_self_introduction), 
-                                description = stringResource(R.string.intro_prompt_desc)
-                            )
-                            PromptInfoRow(
-                                title = stringResource(R.string.ai_tone_style), 
-                                description = stringResource(R.string.tone_prompt_desc)
-                            )
-                        }
-                        
-                        Text(
-                            text = stringResource(R.string.prompt_tip),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-
-                // 成功保存消息
-                if (showSaveSuccessMessage) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                        shape = RoundedCornerShape(8.dp),
-                            colors =
-                                    CardDefaults.cardColors(
-                                            containerColor =
-                                                    MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.prompts_saved),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    }
-
-                    LaunchedEffect(showSaveSuccessMessage) {
-                        kotlinx.coroutines.delay(3000)
-                        showSaveSuccessMessage = false
                     }
                 }
             }
         }
     }
     
-    // 新建配置文件对话框
-    if (showAddProfileDialog) {
-        AlertDialog(
-            onDismissRequest = {
-                showAddProfileDialog = false
-                newProfileName = ""
+    // 新建角色卡对话框
+    if (showAddCharacterCardDialog) {
+        CharacterCardDialog(
+            characterCard = editingCharacterCard ?: CharacterCard(
+                id = "",
+                name = "",
+                description = "",
+                characterSetting = "",
+                otherContent = "",
+                attachedTagIds = emptyList(),
+                advancedCustomPrompt = ""
+            ),
+            allTags = allTags,
+            onDismiss = {
+                showAddCharacterCardDialog = false
+                editingCharacterCard = null
             },
+            onSave = {
+                editingCharacterCard = it
+                saveCharacterCard()
+            }
+        )
+    }
+    
+    // 编辑角色卡对话框
+    if (showEditCharacterCardDialog) {
+        CharacterCardDialog(
+            characterCard = editingCharacterCard ?: CharacterCard(
+                id = "",
+                name = "",
+                description = "",
+                characterSetting = "",
+                otherContent = "",
+                attachedTagIds = emptyList(),
+                advancedCustomPrompt = ""
+            ),
+            allTags = allTags,
+            onDismiss = {
+                showEditCharacterCardDialog = false
+                editingCharacterCard = null
+            },
+            onSave = {
+                editingCharacterCard = it
+                saveCharacterCard()
+                                }
+        )
+                        }
+                        
+    // 新建标签对话框
+    if (showAddTagDialog) {
+        TagDialog(
+            tag = editingTag ?: PromptTag(
+                id = "",
+                name = "",
+                description = "",
+                promptContent = "",
+                tagType = TagType.CUSTOM
+            ),
+            onDismiss = {
+                showAddTagDialog = false
+                editingTag = null
+            },
+            onSave = {
+                editingTag = it
+                saveTag()
+            }
+        )
+    }
+    
+    // 编辑标签对话框
+    if (showEditTagDialog) {
+        TagDialog(
+            tag = editingTag ?: PromptTag(
+                id = "",
+                name = "",
+                description = "",
+                promptContent = "",
+                tagType = TagType.CUSTOM
+            ),
+            onDismiss = {
+                showEditTagDialog = false
+                editingTag = null
+            },
+            onSave = {
+                editingTag = it
+                saveTag()
+            }
+        )
+    }
+    
+    // 旧配置查看对话框
+    if (showOldConfigDialog) {
+        OldConfigDialog(
+            profileId = selectedOldProfileId,
+            promptPreferencesManager = oldPromptPreferencesManager,
+            onDismiss = {
+                showOldConfigDialog = false
+                selectedOldProfileId = ""
+                                        }
+        )
+    }
+    
+    // 成功保存消息
+}
+
+// 角色卡标签页
+@Composable
+fun CharacterCardTab(
+    characterCards: List<CharacterCard>,
+    allTags: List<PromptTag>,
+    onAddCharacterCard: () -> Unit,
+    onEditCharacterCard: (CharacterCard) -> Unit,
+    onDeleteCharacterCard: (String) -> Unit,
+    onNavigateToPersonaGeneration: () -> Unit,
+    onImportTavernCard: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            // 标题和按钮区域
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 第一行：标题和新建按钮
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                                    Text(
+                        text = "角色卡管理",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Button(
+                        onClick = onAddCharacterCard,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("新建", fontSize = 13.sp)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 第二行：功能按钮
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onNavigateToPersonaGeneration,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("AI创作", fontSize = 12.sp)
+                    }
+                    
+                    OutlinedButton(
+                        onClick = onImportTavernCard,
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(stringResource(R.string.import_tavern_card), fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+
+        // 角色卡列表
+        items(characterCards) { characterCard ->
+            CharacterCardItem(
+                characterCard = characterCard,
+                allTags = allTags,
+                onEdit = { onEditCharacterCard(characterCard) },
+                onDelete = { onDeleteCharacterCard(characterCard.id) }
+            )
+        }
+    }
+}
+
+// 角色卡项目
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CharacterCardItem(
+    characterCard: CharacterCard,
+    allTags: List<PromptTag>,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            ),
+        border = BorderStroke(
+            width = 0.5.dp,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
+                        ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            // 标题和操作按钮
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                        text = characterCard.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                    if (characterCard.description.isNotBlank()) {
+                                Text(
+                            text = characterCard.description,
+                            style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    IconButton(
+                        onClick = onEdit,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.size(16.dp))
+                    }
+                    
+                    if (!characterCard.isDefault) {
+                        IconButton(
+                            onClick = onDelete,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp))
+                        }
+                    }
+                }
+            }
+            
+            // 角色设定预览
+            if (characterCard.characterSetting.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                    text = "角色设定：${characterCard.characterSetting.take(40)}...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+            
+            // 其他内容预览
+            if (characterCard.otherContent.isNotBlank()) {
+                                    Text(
+                    text = "其他内容：${characterCard.otherContent.take(40)}...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+            
+            // 附着的标签
+            if (characterCard.attachedTagIds.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(6.dp))
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    characterCard.attachedTagIds.take(3).forEach { tagId ->
+                        val tag = allTags.find { it.id == tagId }
+                        tag?.let {
+                            AssistChip(
+                                onClick = { },
+                                label = { Text(it.name, fontSize = 10.sp) },
+                                colors = AssistChipDefaults.assistChipColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                ),
+                                modifier = Modifier.height(24.dp)
+                                        )
+                        }
+                    }
+                    if (characterCard.attachedTagIds.size > 3) {
+                                        Text(
+                            text = "+${characterCard.attachedTagIds.size - 3}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 10.sp
+                        )
+                    }
+                }
+            }
+            
+            // 高级自定义提示词预览
+            if (characterCard.advancedCustomPrompt.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                    text = "高级自定义：${characterCard.advancedCustomPrompt.take(40)}...",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 11.sp
+                )
+            }
+        }
+    }
+}
+
+// 标签标签页
+@Composable
+fun TagTab(
+    tags: List<PromptTag>,
+    onAddTag: () -> Unit,
+    onEditTag: (PromptTag) -> Unit,
+    onDeleteTag: (String) -> Unit,
+    onNavigateToMarket: () -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+            // 标题和按钮区域
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 第一行：标题和新建按钮
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                    Text(
+                        text = "标签管理",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Button(
+                        onClick = onAddTag,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("新建标签", fontSize = 13.sp)
+                    }
+                }
+                
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                // 第二行：标签市场按钮
+                OutlinedButton(
+                    onClick = onNavigateToMarket,
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                ) {
+                    Icon(Icons.Default.Store, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("标签市场", fontSize = 12.sp)
+                }
+            }
+        }
+        
+        // 系统标签
+        val systemTags = tags.filter { it.isSystemTag }
+        if (systemTags.isNotEmpty()) {
+            item {
+                                                    Text(
+                    text = "系统标签",
+                    style = MaterialTheme.typography.titleMedium,
+                                                        fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+            }
+            
+            items(systemTags) { tag ->
+                TagItem(
+                    tag = tag,
+                    onEdit = { onEditTag(tag) },
+                    onDelete = { onDeleteTag(tag.id) }
+                )
+            }
+        }
+        
+        // 自定义标签
+        val customTags = tags.filter { !it.isSystemTag }
+        if (customTags.isNotEmpty()) {
+            item {
+                                Text(
+                    text = "自定义标签",
+                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+            }
+            
+            items(customTags) { tag ->
+                TagItem(
+                    tag = tag,
+                    onEdit = { onEditTag(tag) },
+                    onDelete = { onDeleteTag(tag.id) }
+                )
+            }
+        }
+    }
+}
+
+// 标签项目
+@Composable
+fun TagItem(
+    tag: PromptTag,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+                                        ) {
+                                            Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (tag.isSystemTag) 
+                MaterialTheme.colorScheme.secondaryContainer 
+            else 
+                MaterialTheme.colorScheme.surface
+        )
+    ) {
+                                                        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                    text = tag.name,
+                                            style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                                        )
+                if (tag.description.isNotBlank()) {
+                                                        Text(
+                        text = tag.description,
+                                            style = MaterialTheme.typography.bodySmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp
+                    )
+                }
+                if (tag.promptContent.isNotBlank()) {
+                    Text(
+                        text = "内容：${tag.promptContent.take(50)}...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                                        )
+                                    }
+                                }
+
+                                    Row(
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                    ) {
+                IconButton(
+                    onClick = onEdit,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = "编辑", modifier = Modifier.size(16.dp))
+                }
+                
+                if (!tag.isSystemTag) {
+                    IconButton(
+                        onClick = onDelete,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp))
+                                                            }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+// 旧配置标签页
+@Composable
+fun OldConfigTab(
+    profileList: List<String>,
+    promptPreferencesManager: PromptPreferencesManager,
+    onShowOldConfig: (String) -> Unit
+) {
+    LazyColumn(
+        modifier = Modifier.fillMaxSize().padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        item {
+                                                    Text(
+                text = "旧版提示词配置",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            
+                                                        Text(
+                text = "这些是旧版系统的提示词配置，您可以查看和复制内容到新的角色卡系统中。",
+                style = MaterialTheme.typography.bodyMedium,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+                fontSize = 13.sp
+            )
+        }
+        
+        items(profileList) { profileId ->
+            OldConfigItem(
+                profileId = profileId,
+                promptPreferencesManager = promptPreferencesManager,
+                onShowConfig = { onShowOldConfig(profileId) }
+            )
+        }
+    }
+}
+
+// 旧配置项目
+@Composable
+fun OldConfigItem(
+    profileId: String,
+    promptPreferencesManager: PromptPreferencesManager,
+    onShowConfig: () -> Unit
+) {
+    val profile by promptPreferencesManager.getPromptProfileFlow(profileId).collectAsState(
+        initial = null
+    )
+    
+    profile?.let { promptProfile ->
+        Card(
+                                            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(6.dp)
+        ) {
+                        Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onShowConfig)
+                    .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = promptProfile.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    if (promptProfile.introPrompt.isNotBlank()) {
+                        Text(
+                            text = "引导词：${promptProfile.introPrompt.take(50)}...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                
+                            Icon(
+                    Icons.AutoMirrored.Filled.ArrowForward,
+                    contentDescription = "查看详情",
+                                tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp)
+                            )
+            }
+        }
+    }
+}
+
+// 角色卡对话框
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun CharacterCardDialog(
+    characterCard: CharacterCard,
+    allTags: List<PromptTag>,
+    onDismiss: () -> Unit,
+    onSave: (CharacterCard) -> Unit
+) {
+    var name by remember(characterCard.id) { mutableStateOf(characterCard.name) }
+    var description by remember(characterCard.id) { mutableStateOf(characterCard.description) }
+    var characterSetting by remember(characterCard.id) { mutableStateOf(characterCard.characterSetting) }
+    var otherContent by remember(characterCard.id) { mutableStateOf(characterCard.otherContent) }
+    var attachedTagIds by remember(characterCard.id) { mutableStateOf(characterCard.attachedTagIds) }
+    var advancedCustomPrompt by remember(characterCard.id) { mutableStateOf(characterCard.advancedCustomPrompt) }
+    var marks by remember(characterCard.id) { mutableStateOf(characterCard.marks) }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+                            Text(
+                if (characterCard.id.isEmpty()) "新建角色卡" else "编辑角色卡",
+                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold
+                            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("角色卡名称") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("描述（可选）") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                OutlinedTextField(
+                    value = characterSetting,
+                    onValueChange = { characterSetting = it },
+                    label = { Text("角色设定（引导词）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+                
+                OutlinedTextField(
+                    value = otherContent,
+                    onValueChange = { otherContent = it },
+                    label = { Text("其他内容（引导词）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+                
+                // 标签选择
+                        Text(
+                    text = "选择标签",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // 过滤掉系统标签，只显示自定义标签
+                    allTags.filter { !it.isSystemTag }.forEach { tag ->
+                        val isSelected = attachedTagIds.contains(tag.id)
+                        FilterChip(
+                            selected = isSelected,
+                            onClick = {
+                                attachedTagIds = if (isSelected) {
+                                    attachedTagIds.filter { it != tag.id }
+                                } else {
+                                    attachedTagIds + tag.id
+                                }
+                            },
+                            label = { Text(tag.name) }
+                        )
+                    }
+                }
+                
+                // 显示系统标签信息（只读）
+                if (allTags.any { it.isSystemTag }) {
+                    Text(
+                        text = "系统标签（自动加入）",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        allTags.filter { it.isSystemTag }.forEach { tag ->
+                            FilterChip(
+                                selected = true,
+                                onClick = { /* 系统标签不可点击 */ },
+                                enabled = false,
+                                label = { Text(tag.name) }
+                            )
+                        }
+                    }
+                }
+                
+                OutlinedTextField(
+                    value = advancedCustomPrompt,
+                    onValueChange = { advancedCustomPrompt = it },
+                    label = { Text("高级自定义（引导词）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 3
+                )
+                
+                OutlinedTextField(
+                    value = marks,
+                    onValueChange = { marks = it },
+                    label = { Text("备注信息（不会被拼接到提示词中）") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
+                    placeholder = { Text("可以记录角色卡来源、作者信息等") }
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(
+                        characterCard.copy(
+                            name = name,
+                            description = description,
+                            characterSetting = characterSetting,
+                            otherContent = otherContent,
+                            attachedTagIds = attachedTagIds,
+                            advancedCustomPrompt = advancedCustomPrompt,
+                            marks = marks
+                        )
+                    )
+                }
+            ) {
+                Text("保存")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+                    }
+                }
+    )
+    }
+    
+// 标签对话框
+@Composable
+fun TagDialog(
+    tag: PromptTag,
+    onDismiss: () -> Unit,
+    onSave: (PromptTag) -> Unit
+) {
+    var name by remember { mutableStateOf(tag.name) }
+    var description by remember { mutableStateOf(tag.description) }
+    var promptContent by remember { mutableStateOf(tag.promptContent) }
+    var tagType by remember { mutableStateOf(tag.tagType) }
+    
+        AlertDialog(
+        onDismissRequest = onDismiss,
             title = {
                 Text(
-                    stringResource(R.string.new_prompt_config_title),
-                    style = MaterialTheme.typography.titleMedium,
+                if (tag.id.isEmpty()) "新建标签" else "编辑标签",
+                style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
             },
             text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("标签名称") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("描述（可选）") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+                
+                if (!tag.isSystemTag) {
+                    // 只有自定义标签可以选择类型
                     Text(
-                        stringResource(R.string.new_prompt_config_desc),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "标签类型",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        TagType.values().filter { it != TagType.CUSTOM }.forEach { type ->
+                            FilterChip(
+                                selected = tagType == type,
+                                onClick = { tagType = type },
+                                label = { Text(type.name) }
+                            )
+                        }
+                    }
+                }
+                
                     OutlinedTextField(
-                        value = newProfileName,
-                        onValueChange = { newProfileName = it },
-                        label = { Text(stringResource(R.string.config_name), fontSize = 12.sp) },
-                        placeholder = { Text(stringResource(R.string.config_name_placeholder), fontSize = 12.sp) },
+                    value = promptContent,
+                    onValueChange = { promptContent = it },
+                    label = { Text("提示词内容") },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp),
-                        singleLine = true
+                    minLines = 4
                     )
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        if (newProfileName.isNotBlank()) {
-                            scope.launch {
-                                        val profileId =
-                                                promptPreferencesManager.createProfile(
-                                                        newProfileName
-                                                )
-                                selectedProfileId = profileId
-                                showAddProfileDialog = false
-                                newProfileName = ""
-                            }
-                        }
-                    },
-                    shape = RoundedCornerShape(8.dp)
-                ) { Text(stringResource(R.string.create), fontSize = 13.sp) }
+                    onSave(
+                        tag.copy(
+                            name = name,
+                            description = description,
+                            promptContent = promptContent,
+                            tagType = tagType
+                        )
+                    )
+                }
+            ) {
+                Text("保存")
+            }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        showAddProfileDialog = false
-                        newProfileName = ""
-                    }
-                ) { Text(stringResource(R.string.cancel), fontSize = 13.sp) }
-            },
-            shape = RoundedCornerShape(12.dp)
-        )
-    }
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    )
 }
 
+// 旧配置查看对话框
 @Composable
-fun PromptInfoRow(title: String, description: String) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+fun OldConfigDialog(
+    profileId: String,
+    promptPreferencesManager: PromptPreferencesManager,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    val profile by promptPreferencesManager.getPromptProfileFlow(profileId).collectAsState(
+        initial = null
+    )
+    
+    // 复制到剪贴板的函数
+    fun copyToClipboard(text: String, label: String) {
+        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        val clip = android.content.ClipData.newPlainText(label, text)
+        clipboard.setPrimaryClip(clip)
+        // 这里可以添加一个 Toast 提示，但为了简洁我们先不添加
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "旧版配置详情",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            profile?.let { promptProfile ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Text(
+                        text = "配置名称：${promptProfile.name}",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    if (promptProfile.introPrompt.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "引导词：",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            IconButton(
+                                onClick = { copyToClipboard(promptProfile.introPrompt, "引导词") },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "复制引导词",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        SelectionContainer {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Text(
+                                    text = promptProfile.introPrompt,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    if (promptProfile.tonePrompt.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
         Text(
-            text = title,
+                                text = "语气词：",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            IconButton(
+                                onClick = { copyToClipboard(promptProfile.tonePrompt, "语气词") },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    Icons.Default.ContentCopy,
+                                    contentDescription = "复制语气词",
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+                        SelectionContainer {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            ) {
+                                Text(
+                                    text = promptProfile.tonePrompt,
             style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurface
-        )
+                                    modifier = Modifier.padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    // 复制全部内容按钮
+                    val allContent = buildString {
+                        append("配置名称：${promptProfile.name}\n\n")
+                        if (promptProfile.introPrompt.isNotBlank()) {
+                            append("引导词：\n${promptProfile.introPrompt}\n\n")
+                        }
+                        if (promptProfile.tonePrompt.isNotBlank()) {
+                            append("语气词：\n${promptProfile.tonePrompt}")
+                        }
+                    }
+                    
+                    OutlinedButton(
+                        onClick = { copyToClipboard(allContent, "旧版配置") },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("复制全部内容", fontSize = 14.sp)
+                    }
         
         Text(
-            text = description,
+                        text = "您可以复制这些内容到新的角色卡系统中使用。",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        
-        Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
     }
+        }
+    )
 }
