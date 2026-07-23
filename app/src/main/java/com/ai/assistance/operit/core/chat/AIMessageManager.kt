@@ -726,6 +726,35 @@ object AIMessageManager {
             return ChatMarkupRegex.anyXmlTag.replace(text, " ").trim()
         }
 
+        fun condenseToolParams(block: String, maxParams: Int = 8): String {
+            val params = ChatMarkupRegex.toolParamPattern.findAll(block).mapNotNull { match ->
+                val paramName = match.groupValues.getOrNull(1)?.trim().orEmpty()
+                val rawValue = stripXmlTagsForReview(match.groupValues.getOrNull(2).orEmpty())
+                val preview = condenseHeadTail(rawValue, headChars = 72, tailChars = 32)
+                if (paramName.isBlank() || preview.isBlank()) {
+                    null
+                } else {
+                    "$paramName=$preview"
+                }
+            }.toList()
+            if (params.isEmpty()) return ""
+            val visible = params.take(maxParams)
+            val omittedCount = (params.size - visible.size).coerceAtLeast(0)
+            return buildString {
+                append(visible.joinToString("; "))
+                if (omittedCount > 0) {
+                    append("; ...+")
+                    append(omittedCount)
+                }
+            }
+        }
+
+        fun condenseToolBodyPreview(block: String): String {
+            val bodyWithoutParams = ChatMarkupRegex.toolParamPattern.replace(extractXmlBody(block), " ")
+            val cleanedBody = stripXmlTagsForReview(bodyWithoutParams)
+            return condenseHeadTail(cleanedBody, headChars = 120, tailChars = 48)
+        }
+
         fun condenseToolResultPreview(block: String): String {
             val resultBody =
                 ChatMarkupRegex.contentTag.find(block)?.groupValues?.getOrNull(1)
@@ -866,8 +895,20 @@ object AIMessageManager {
                     }
                     "tool" -> {
                         val name = seg.toolName ?: "tool"
-                        // 对话回顾会进入后续上下文。这里只保留工具名，避免参数被重复携带并干扰下一轮决策。
-                        context.getString(R.string.ai_message_tool_start, name)
+                        val paramsPreview = condenseToolParams(seg.raw)
+                        val bodyPreview = condenseToolBodyPreview(seg.raw)
+                        buildString {
+                            append(context.getString(R.string.ai_message_tool_start, name))
+                            if (paramsPreview.isNotBlank()) {
+                                append(" ")
+                                append(paramsPreview)
+                            }
+                            if (bodyPreview.isNotBlank()) {
+                                if (paramsPreview.isNotBlank()) append(" | ")
+                                else append(" ")
+                                append(bodyPreview)
+                            }
+                        }.trim().ifBlank { null }
                     }
                     "tool_result" -> {
                         val s = seg.status?.lowercase()
@@ -1032,7 +1073,7 @@ object AIMessageManager {
         if (topPackages.isEmpty()) {
             val emptyMessage =
                 if (useEnglish) {
-                    "No package-prefixed tool usage was detected in this summary window, so no package was preheated."
+                    "No activated packages were detected in this summary window."
                 } else {
                     context.getString(R.string.ai_message_package_warmup_empty)
                 }
@@ -1041,7 +1082,7 @@ object AIMessageManager {
 
         val intro =
             if (useEnglish) {
-                "The following high-frequency packages have been activated by this warmup. Treat them as already activated: use the attached tool prompts directly and do not call use_package again."
+                "The following activated packages can be used directly."
             } else {
                 context.getString(R.string.ai_message_package_warmup_intro)
             }
@@ -1074,7 +1115,7 @@ object AIMessageManager {
 
                     if (useEnglish) {
                         appendLine("${index + 1}. Package ${stat.packageName} (${stat.count} hits)")
-                        appendLine("   Warmup state: activated. Use the tool prompt below directly; do not call use_package for ${stat.packageName} again.")
+                        appendLine("   Activated package: the tool prompt below can be used directly.")
                     } else {
                         appendLine(
                             context.getString(
@@ -1084,7 +1125,7 @@ object AIMessageManager {
                                 stat.count
                             )
                         )
-                        appendLine("   预热状态：已激活。直接按下方工具提示调用，不要再次对 ${stat.packageName} 调用 use_package。")
+                        appendLine("   已激活包：以下工具提示可以直接使用。")
                     }
                     appendLine(indentBlock(resultText, "   "))
                     if (index != topPackages.lastIndex) {
