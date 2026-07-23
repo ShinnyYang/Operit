@@ -24,6 +24,7 @@ class WorkflowScheduler(private val context: Context) {
     companion object {
         private const val TAG = "WorkflowScheduler"
         private const val WORK_NAME_PREFIX = "workflow_"
+        private const val RETRY_BACKOFF_DELAY_MINUTES = 1L
         
         // Schedule types
         const val SCHEDULE_TYPE_INTERVAL = "interval"
@@ -103,6 +104,11 @@ class WorkflowScheduler(private val context: Context) {
             intervalMinutes, TimeUnit.MINUTES
         )
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                RETRY_BACKOFF_DELAY_MINUTES,
+                TimeUnit.MINUTES
+            )
             .setInputData(
                 workDataOf(
                     WorkflowWorker.KEY_WORKFLOW_ID to workflowId,
@@ -150,6 +156,11 @@ class WorkflowScheduler(private val context: Context) {
 
         val workRequest = OneTimeWorkRequestBuilder<WorkflowWorker>()
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                RETRY_BACKOFF_DELAY_MINUTES,
+                TimeUnit.MINUTES
+            )
             .setInputData(
                 workDataOf(
                     WorkflowWorker.KEY_WORKFLOW_ID to workflowId,
@@ -207,6 +218,11 @@ class WorkflowScheduler(private val context: Context) {
                     intervalMinutes, TimeUnit.MINUTES
                 )
                     .setConstraints(constraints)
+                    .setBackoffCriteria(
+                        BackoffPolicy.EXPONENTIAL,
+                        RETRY_BACKOFF_DELAY_MINUTES,
+                        TimeUnit.MINUTES
+                    )
                     .setInputData(
                         workDataOf(
                             WorkflowWorker.KEY_WORKFLOW_ID to workflowId,
@@ -246,6 +262,11 @@ class WorkflowScheduler(private val context: Context) {
 
         val workRequest = OneTimeWorkRequestBuilder<WorkflowWorker>()
             .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.EXPONENTIAL,
+                RETRY_BACKOFF_DELAY_MINUTES,
+                TimeUnit.MINUTES
+            )
             .setInputData(
                 workDataOf(
                     WorkflowWorker.KEY_WORKFLOW_ID to workflowId,

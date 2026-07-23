@@ -7014,11 +7014,7 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="character_card_memory_profile_fixed_profile">Configuración fija</string>
     <string name="character_card_memory_profile_specify_fixed_profile">Especificar configuración de memoria fija</string>
     <string name="character_card_memory_profile_select">Seleccionar configuración de memoria</string>
-    <string name="github_login_method_description">Selecciona el método de inicio de sesión de GitHub. El modo integrado es adecuado para dispositivos que no pueden abrir un navegador externo; el modo de navegador externo tiene mejor compatibilidad.</string>
-    <string name="github_login_method_embedded">Iniciar sesión con página integrada</string>
-    <string name="github_login_method_external">Iniciar sesión con navegador externo</string>
     <string name="github_login_external_waiting">Se ha abierto el navegador. Vuelve a la aplicación después de completar la autorización.</string>
-    <string name="github_login_external_cancelled">Autorización de GitHub cancelada</string>
     <string name="artifact_publication_pending_review_waiting_schedule">En revisión, espera la programación de publicación</string>
     <string name="artifact_publication_approved_waiting_schedule">Aprobado, espera la programación de publicación</string>
     <string name="toolpkg_widget_host_label">Widget personalizado</string>

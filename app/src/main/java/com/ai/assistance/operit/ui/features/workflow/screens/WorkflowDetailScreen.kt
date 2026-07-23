@@ -47,6 +47,7 @@ import com.ai.assistance.operit.data.model.ExtractNode
 import com.ai.assistance.operit.data.model.ExtractMode
 import com.ai.assistance.operit.data.model.ParameterValue
 import com.ai.assistance.operit.data.model.ToolParameterSchema
+import com.ai.assistance.operit.data.model.WorkflowExecutionFailureStage
 import com.ai.assistance.operit.data.model.WorkflowExecutionRecord
 import com.ai.assistance.operit.ui.components.CustomScaffold
 import com.ai.assistance.operit.ui.features.workflow.viewmodel.WorkflowViewModel
@@ -93,6 +94,20 @@ private fun ExtractMode.toDisplayText(): String {
         ExtractMode.CONCAT -> stringResource(R.string.workflow_extract_mode_concat)
         ExtractMode.RANDOM_INT -> stringResource(R.string.workflow_extract_mode_random_int)
         ExtractMode.RANDOM_STRING -> stringResource(R.string.workflow_extract_mode_random_string)
+    }
+}
+
+@Composable
+private fun WorkflowExecutionFailureStage.toDisplayText(): String {
+    return when (this) {
+        WorkflowExecutionFailureStage.WORKFLOW_STARTUP ->
+            stringResource(R.string.workflow_execution_failure_stage_startup)
+        WorkflowExecutionFailureStage.RUNTIME_INITIALIZATION ->
+            stringResource(R.string.workflow_execution_failure_stage_runtime_initialization)
+        WorkflowExecutionFailureStage.WORKFLOW_EXECUTION ->
+            stringResource(R.string.workflow_execution_failure_stage_execution)
+        WorkflowExecutionFailureStage.CANCELLATION ->
+            stringResource(R.string.workflow_execution_failure_stage_cancellation)
     }
 }
 
@@ -609,6 +624,26 @@ private fun WorkflowExecutionLogDialog(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    record.failureStage?.let { failureStage ->
+                        Text(
+                            text = stringResource(
+                                R.string.workflow_execution_log_failure_stage,
+                                failureStage.toDisplayText()
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    record.failureReason?.let { failureReason ->
+                        Text(
+                            text = stringResource(
+                                R.string.workflow_execution_log_failure_reason,
+                                failureReason
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                     if (filteredLogs.isEmpty()) {
                         Text(
                             text = if (nodeName.isNullOrBlank()) {

@@ -216,6 +216,12 @@
     <string name="workflow_execution_log_node_title">节点日志：%1$s</string>
     <string name="workflow_execution_log_empty">暂无执行日志</string>
     <string name="workflow_execution_log_empty_for_node">该节点暂无执行日志：%1$s</string>
+    <string name="workflow_execution_log_failure_stage">失败阶段：%1$s</string>
+    <string name="workflow_execution_log_failure_reason">异常原文：%1$s</string>
+    <string name="workflow_execution_failure_stage_startup">工作流启动</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">运行环境初始化</string>
+    <string name="workflow_execution_failure_stage_execution">工作流执行</string>
+    <string name="workflow_execution_failure_stage_cancellation">执行取消</string>
     <string name="workflow_edit_dialog_title">编辑工作流</string>
     <string name="workflow_enabled_label">启用工作流</string>
     <string name="workflow_disabled">已禁用</string>
@@ -4369,11 +4375,7 @@
 
     <string name="github_account">GitHub 账户</string>
     <string name="login_github">登录 GitHub</string>
-    <string name="github_login_method_description">请选择 GitHub 登录方式。内嵌模式适合无法调起外部浏览器的设备，外部浏览器模式兼容性更好。</string>
-    <string name="github_login_method_embedded">使用内嵌页面登录</string>
-    <string name="github_login_method_external">使用外部浏览器登录</string>
     <string name="github_login_external_waiting">已打开浏览器，请在完成授权后返回应用。</string>
-    <string name="github_login_external_cancelled">已取消 GitHub 授权</string>
     <string name="publish_mcp_plugins_to_market">• 发布您的 MCP 插件到市场</string>
     <string name="manage_published_plugins">• 管理您已发布的插件</string>
     <string name="better_installation_experience">• 获得更好的安装体验</string>
@@ -6972,6 +6974,9 @@
     <string name="workflow_unknown_error">未知错误</string>
     <string name="workflow_in_list_type_mismatch">IN 列表类型不匹配：同时包含数字和非数字 right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">开始执行工作流: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">工作流运行环境初始化失败：%1$s</string>
+    <string name="workflow_log_startup_failed">工作流启动失败：%1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">工作流执行已取消：%1$s</string>
     <string name="workflow_log_no_trigger_node">工作流没有触发节点</string>
     <string name="workflow_log_trigger_node_not_exist">指定的触发节点不存在: %1$s</string>
     <string name="workflow_log_scheduled_trigger">定时触发: 只执行指定触发节点 %1$s</string>

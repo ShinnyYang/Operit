@@ -6944,11 +6944,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="character_card_memory_profile_fixed_profile">Konfigurasi Tetap</string>
     <string name="character_card_memory_profile_specify_fixed_profile">Tentukan Konfigurasi Ingatan Tetap</string>
     <string name="character_card_memory_profile_select">Pilih Konfigurasi Ingatan</string>
-    <string name="github_login_method_description">Sila pilih kaedah log masuk GitHub. Mod terbenam sesuai untuk peranti yang tidak boleh membuka penyemak imbas luaran, manakala mod penyemak imbas luaran lebih serasi.</string>
-    <string name="github_login_method_embedded">Log Masuk Menggunakan Halaman Terbenam</string>
-    <string name="github_login_method_external">Log Masuk Menggunakan Penyemak Imbas Luaran</string>
     <string name="github_login_external_waiting">Penyemak imbas telah dibuka, sila kembali ke aplikasi selepas selesai pengesahan.</string>
-    <string name="github_login_external_cancelled">Pengesahan GitHub telah dibatalkan</string>
     <string name="artifact_publication_pending_review_waiting_schedule">Dalam semakan, sila tunggu penjadualan penerbitan</string>
     <string name="artifact_publication_approved_waiting_schedule">Diluluskan, sila tunggu penjadualan penerbitan</string>
     <string name="toolpkg_widget_host_label">Widget Tersuai</string>

@@ -1,7 +1,6 @@
 package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
-import android.net.Uri
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -9,7 +8,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.ai.assistance.operit.BuildConfig
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -41,14 +39,8 @@ data class GitHubUser(
 class GitHubAuthPreferences(private val context: Context) {
 
     companion object {
-        // GitHub OAuth相关配置
-        val GITHUB_CLIENT_ID = BuildConfig.GITHUB_CLIENT_ID
-        val GITHUB_CLIENT_SECRET = BuildConfig.GITHUB_CLIENT_SECRET
         const val GITHUB_SCOPE = "notifications,public_repo,user:email,read:user"
-        private const val REQUIRED_AUTH_VERSION = 2
-        private const val GITHUB_REDIRECT_SCHEME = "operit"
-        private const val GITHUB_REDIRECT_HOST = "github-oauth-callback"
-        const val GITHUB_REDIRECT_URI = "$GITHUB_REDIRECT_SCHEME://$GITHUB_REDIRECT_HOST"
+        private const val REQUIRED_AUTH_VERSION = 3
         
         // 认证相关键
         private val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
@@ -60,7 +52,9 @@ class GitHubAuthPreferences(private val context: Context) {
         private val LAST_LOGIN_TIME = longPreferencesKey("last_login_time")
         private val AUTH_VERSION = longPreferencesKey("auth_version")
         private val GRANTED_SCOPE = stringPreferencesKey("granted_scope")
-        private val PENDING_OAUTH_STATE = stringPreferencesKey("pending_oauth_state")
+        private val ACTIVE_OAUTH_TRANSACTION_ID = stringPreferencesKey("active_oauth_transaction_id")
+        private val ACTIVE_OAUTH_DELIVERY_CREDENTIAL = stringPreferencesKey("active_oauth_delivery_credential")
+        private val ACTIVE_OAUTH_EXPIRES_AT = longPreferencesKey("active_oauth_expires_at")
         
         @Volatile
         private var INSTANCE: GitHubAuthPreferences? = null
@@ -71,16 +65,6 @@ class GitHubAuthPreferences(private val context: Context) {
             }
         }
 
-        fun createOAuthState(): String {
-            val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-            return (1..32)
-                .map { chars.random() }
-                .joinToString("")
-        }
-
-        fun isOAuthRedirectUri(uri: Uri?): Boolean {
-            return uri?.scheme == GITHUB_REDIRECT_SCHEME && uri.host == GITHUB_REDIRECT_HOST
-        }
     }
 
     private val json = Json { 
@@ -168,6 +152,15 @@ class GitHubAuthPreferences(private val context: Context) {
             refreshToken?.let {
                 preferences[REFRESH_TOKEN] = it
             }
+            if (refreshToken == null) {
+                preferences.remove(REFRESH_TOKEN)
+            }
+            if (expiresIn == null) {
+                preferences.remove(TOKEN_EXPIRES_AT)
+            }
+            preferences.remove(ACTIVE_OAUTH_TRANSACTION_ID)
+            preferences.remove(ACTIVE_OAUTH_DELIVERY_CREDENTIAL)
+            preferences.remove(ACTIVE_OAUTH_EXPIRES_AT)
         }
     }
 
@@ -177,27 +170,6 @@ class GitHubAuthPreferences(private val context: Context) {
     suspend fun updateUserInfo(userInfo: GitHubUser) {
         context.githubAuthDataStore.edit { preferences ->
             preferences[USER_INFO] = json.encodeToString(userInfo)
-        }
-    }
-
-    /**
-     * 更新访问令牌
-     */
-    suspend fun updateAccessToken(
-        accessToken: String,
-        tokenType: String = "bearer",
-        expiresIn: Long? = null,
-        grantedScope: String? = null
-    ) {
-        context.githubAuthDataStore.edit { preferences ->
-            preferences[ACCESS_TOKEN] = accessToken
-            preferences[TOKEN_TYPE] = tokenType
-            preferences[AUTH_VERSION] = REQUIRED_AUTH_VERSION.toLong()
-            preferences[GRANTED_SCOPE] = grantedScope.orEmpty()
-            
-            expiresIn?.let {
-                preferences[TOKEN_EXPIRES_AT] = System.currentTimeMillis() + (it * 1000)
-            }
         }
     }
 
@@ -258,33 +230,39 @@ class GitHubAuthPreferences(private val context: Context) {
         }
     }
 
-    suspend fun setPendingOAuthState(state: String) {
+    suspend fun saveActiveOAuthTransaction(
+        transactionId: String,
+        deliveryCredential: String,
+        expiresAt: Long
+    ) {
         context.githubAuthDataStore.edit { preferences ->
-            preferences[PENDING_OAUTH_STATE] = state
+            preferences[ACTIVE_OAUTH_TRANSACTION_ID] = transactionId
+            preferences[ACTIVE_OAUTH_DELIVERY_CREDENTIAL] = deliveryCredential
+            preferences[ACTIVE_OAUTH_EXPIRES_AT] = expiresAt
         }
     }
 
-    suspend fun consumePendingOAuthState(): String? {
+    suspend fun getActiveOAuthTransaction(): ActiveGitHubOAuthTransaction? {
         val preferences = context.githubAuthDataStore.data.first()
-        val state = preferences[PENDING_OAUTH_STATE]
-        context.githubAuthDataStore.edit { mutablePreferences ->
-            mutablePreferences.remove(PENDING_OAUTH_STATE)
+        val transactionId = preferences[ACTIVE_OAUTH_TRANSACTION_ID]
+        val deliveryCredential = preferences[ACTIVE_OAUTH_DELIVERY_CREDENTIAL]
+        val expiresAt = preferences[ACTIVE_OAUTH_EXPIRES_AT]
+        if (transactionId == null || deliveryCredential == null || expiresAt == null) {
+            return null
         }
-        return state
+        if (System.currentTimeMillis() >= expiresAt) {
+            clearActiveOAuthTransaction()
+            return null
+        }
+        return ActiveGitHubOAuthTransaction(transactionId, deliveryCredential, expiresAt)
     }
 
-    /**
-     * 生成GitHub OAuth授权URL
-     */
-    fun getAuthorizationUrl(state: String = createOAuthState()): String {
-        return Uri.parse("https://github.com/login/oauth/authorize")
-            .buildUpon()
-            .appendQueryParameter("client_id", GITHUB_CLIENT_ID)
-            .appendQueryParameter("redirect_uri", GITHUB_REDIRECT_URI)
-            .appendQueryParameter("scope", GITHUB_SCOPE)
-            .appendQueryParameter("state", state)
-            .build()
-            .toString()
+    suspend fun clearActiveOAuthTransaction() {
+        context.githubAuthDataStore.edit { mutablePreferences ->
+            mutablePreferences.remove(ACTIVE_OAUTH_TRANSACTION_ID)
+            mutablePreferences.remove(ACTIVE_OAUTH_DELIVERY_CREDENTIAL)
+            mutablePreferences.remove(ACTIVE_OAUTH_EXPIRES_AT)
+        }
     }
 
     /**
@@ -298,4 +276,10 @@ class GitHubAuthPreferences(private val context: Context) {
             null
         }
     }
-} 
+}
+
+data class ActiveGitHubOAuthTransaction(
+    val transactionId: String,
+    val deliveryCredential: String,
+    val expiresAt: Long
+)

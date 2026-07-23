@@ -227,6 +227,12 @@
     <string name="workflow_execution_log_node_title">Node logs: %1$s</string>
     <string name="workflow_execution_log_empty">No execution logs yet</string>
     <string name="workflow_execution_log_empty_for_node">No logs for node: %1$s</string>
+    <string name="workflow_execution_log_failure_stage">Failure stage: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Original exception: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Workflow startup</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Runtime initialization</string>
+    <string name="workflow_execution_failure_stage_execution">Workflow execution</string>
+    <string name="workflow_execution_failure_stage_cancellation">Execution cancelled</string>
     <string name="workflow_edit_dialog_title">Edit Workflow</string>
     <string name="workflow_enabled_label">Enable workflow</string>
     <string name="workflow_disabled">Disabled</string>
@@ -6498,6 +6504,9 @@
     <string name="workflow_unknown_error">Unknown error</string>
     <string name="workflow_in_list_type_mismatch">IN list type mismatch: contains numbers and non-numbers right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Starting workflow execution: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Workflow runtime initialization failed: %1$s</string>
+    <string name="workflow_log_startup_failed">Workflow startup failed: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Workflow execution cancelled: %1$s</string>
     <string name="workflow_log_no_trigger_node">Workflow has no trigger node</string>
     <string name="workflow_log_trigger_node_not_exist">Specified trigger node does not exist: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Scheduled trigger: executing specified trigger node %1$s</string>
@@ -7737,11 +7746,7 @@
     <string name="speech_services_vits_options_placeholder">{\"sample_rate\":\"22050\",\"noise_scale\":\"0.667\",\"length_scale\":\"1.0\",\"noise_w\":\"0.8\",\"frontend\":\"lexicon\"}</string>
     <string name="speech_services_vits_options_hint">Optional: sample_rate, threads, noise_scale, length_scale, noise_w, frontend, text_mode, speaker_count, input names, blank/bos/eos tokens, model_path, config_path, lexicon_path, etc.</string>
     <string name="speech_services_vits_options_error">Invalid VITS/Piper Parameters JSON</string>
-    <string name="github_login_method_description">Please select a GitHub login method. Embedded mode is suitable for devices that cannot launch an external browser; external browser mode offers better compatibility.</string>
-    <string name="github_login_method_embedded">Login with Embedded Page</string>
-    <string name="github_login_method_external">Login with External Browser</string>
     <string name="github_login_external_waiting">Browser opened. Please return to the app after completing authorization.</string>
-    <string name="github_login_external_cancelled">GitHub authorization cancelled</string>
     <string name="chat_message_locator_favorites_filter">Favorites Only</string>
     <string name="attachment_package">Package</string>
     <string name="attachment_package_select_title">Select Package</string>

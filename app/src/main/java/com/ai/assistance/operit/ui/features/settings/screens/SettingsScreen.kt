@@ -37,7 +37,7 @@ import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.repository.ChatHistoryManager
-import com.ai.assistance.operit.ui.features.github.GitHubLoginWebViewDialog
+import com.ai.assistance.operit.ui.features.github.GitHubLoginDialog
 import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
@@ -137,7 +137,7 @@ fun SettingsScreen(
                 }
 
                 if (showGitHubLogin) {
-                        GitHubLoginWebViewDialog(
+                        GitHubLoginDialog(
                                 onDismissRequest = { showGitHubLogin = false }
                         )
                 }

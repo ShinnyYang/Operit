@@ -876,14 +876,24 @@ private fun UnifiedCanvasRenderer(
             )
         }
 
-        val revealInstruction = layoutResult.instructions.filterIsInstance<DrawInstruction.TextLayout>().singleOrNull()
-        val targetLength = revealInstruction?.layout?.text?.length ?: 0
+        val textLayoutInstructions = layoutResult.instructions.filterIsInstance<DrawInstruction.TextLayout>()
+        val textLayoutLengths =
+            remember(layoutResult.instructions) {
+                textLayoutInstructions.map { instruction ->
+                    instruction.layout.text.length
+                }
+            }
+        val targetLength = textLayoutLengths.sum()
         val revealHasImageSpans =
-            (revealInstruction?.text as? Spanned)
-                ?.getSpans(0, targetLength, ImageSpan::class.java)
-                ?.isNotEmpty() == true
-        val shouldAnimateTypewriter = enableTypewriter && !revealHasImageSpans
+            textLayoutInstructions.any { instruction ->
+                (instruction.text as? Spanned)
+                    ?.getSpans(0, instruction.layout.text.length, ImageSpan::class.java)
+                    ?.isNotEmpty() == true
+            }
+        val shouldAnimateTypewriter =
+            enableTypewriter && targetLength > 0 && !revealHasImageSpans
         val revealAnim = remember(nodeKey) { Animatable(0f) }
+        // 多段文本按累计字符长度显露；不这么做会让 markdown 分段的尾节点失去 200ms 横向切割。
         LaunchedEffect(shouldAnimateTypewriter) {
             if (!shouldAnimateTypewriter) {
                 revealAnim.snapTo(targetLength.toFloat())
@@ -915,10 +925,11 @@ private fun UnifiedCanvasRenderer(
             }
         }
 
-        val revealValue = if (shouldAnimateTypewriter) revealAnim.value else targetLength.toFloat()
-        val baseLen = floor(revealValue).toInt().coerceIn(0, targetLength)
-        val partial = if (shouldAnimateTypewriter) {
-            (revealValue - baseLen.toFloat()).coerceIn(0f, 1f)
+        val revealValue =
+            if (shouldAnimateTypewriter) revealAnim.value else targetLength.toFloat()
+        val revealedCharCount = floor(revealValue).toInt().coerceIn(0, targetLength)
+        val revealedCharFraction = if (shouldAnimateTypewriter) {
+            (revealValue - revealedCharCount.toFloat()).coerceIn(0f, 1f)
         } else {
             1f
         }
@@ -1022,6 +1033,7 @@ private fun UnifiedCanvasRenderer(
                     canvas.nativeCanvas.getClipBounds(clipBounds)
 
                     // 只绘制在可见区域内的指令
+                    var textLayoutStartOffset = 0
                     layoutResult.instructions.forEach { instruction ->
                         when (instruction) {
                             is DrawInstruction.Text -> {
@@ -1054,6 +1066,11 @@ private fun UnifiedCanvasRenderer(
                                 }
                             }
                             is DrawInstruction.TextLayout -> {
+                                val layoutLength = instruction.layout.text.length
+                                val layoutStartOffset = textLayoutStartOffset
+                                val layoutEndOffset = layoutStartOffset + layoutLength
+                                textLayoutStartOffset = layoutEndOffset
+
                                 // 使用 StaticLayout 绘制（自动换行）
                                 val layoutTop = instruction.y
                                 val layoutBottom = instruction.y + instruction.layout.height
@@ -1062,16 +1079,35 @@ private fun UnifiedCanvasRenderer(
                                     canvas.nativeCanvas.save()
                                     canvas.nativeCanvas.translate(instruction.x, instruction.y)
 
-                                    if (shouldAnimateTypewriter && revealInstruction === instruction && targetLength > 0 && baseLen < targetLength) {
-                                        val layout = instruction.layout
+                                    // 每个 TextLayout 在累计字符序列中占一个连续区间：
+                                    // 已经过的区间完整绘制，当前区间裁剪绘制，后续区间暂不绘制。
+                                    val shouldDrawFully =
+                                        !shouldAnimateTypewriter ||
+                                            revealedCharCount >= layoutEndOffset
+                                    val shouldDrawPartially =
+                                        shouldAnimateTypewriter &&
+                                            layoutLength > 0 &&
+                                            revealedCharCount >= layoutStartOffset &&
+                                            revealedCharCount < layoutEndOffset
 
-                                        val offsetForLine = baseLen.coerceIn(0, (targetLength - 1).coerceAtLeast(0))
+                                    if (shouldDrawPartially) {
+                                        val layout = instruction.layout
+                                        val localBaseLen =
+                                            (revealedCharCount - layoutStartOffset)
+                                                .coerceIn(0, layoutLength)
+
+                                        val offsetForLine =
+                                            localBaseLen.coerceIn(
+                                                0,
+                                                (layoutLength - 1).coerceAtLeast(0),
+                                            )
                                         val line = layout.getLineForOffset(offsetForLine)
                                         val lineTopPx = layout.getLineTop(line).toFloat()
                                         val lineBottomPx = layout.getLineBottom(line).toFloat()
 
-                                        val safeBaseLen = baseLen.coerceIn(0, targetLength)
-                                        val safeNextLen = (baseLen + 1).coerceAtMost(targetLength)
+                                        val safeBaseLen = localBaseLen.coerceIn(0, layoutLength)
+                                        val safeNextLen =
+                                            (localBaseLen + 1).coerceAtMost(layoutLength)
                                         val x0 = layout.getPrimaryHorizontal(safeBaseLen)
                                         
                                         // 检查下一个字符是否换行
@@ -1099,7 +1135,9 @@ private fun UnifiedCanvasRenderer(
                                         // 会瞬间显示出该行后续的文字，产生闪烁。
                                         // 现在统一使用分段绘制逻辑，并仅在字符宽度有效时才绘制淡入部分。
 
-                                        val visibleRight = (charMinX + charWidth * partial).coerceIn(charMinX, charMaxX)
+                                        val visibleRight =
+                                            (charMinX + charWidth * revealedCharFraction)
+                                                .coerceIn(charMinX, charMaxX)
 
                                         // 1. 绘制当前行之前的所有行
                                         canvas.nativeCanvas.save()
@@ -1117,7 +1155,10 @@ private fun UnifiedCanvasRenderer(
 
                                         // 3. 绘制当前正在显示的字符（带淡入效果）
                                         if (charWidth > 0.01f) {
-                                            val alphaInt = (partial * 255f).toInt().coerceIn(0, 255)
+                                            val alphaInt =
+                                                (revealedCharFraction * 255f)
+                                                    .toInt()
+                                                    .coerceIn(0, 255)
                                             canvas.nativeCanvas.save()
                                             canvas.nativeCanvas.clipRect(charMinX, lineTopPx, visibleRight, lineBottomPx)
                                             // 注意：saveLayerAlpha 在某些情况下可能会对其包含的内容做混合，如果不需要可以简化
@@ -1127,7 +1168,7 @@ private fun UnifiedCanvasRenderer(
                                             canvas.nativeCanvas.restore()
                                             canvas.nativeCanvas.restore()
                                         }
-                                    } else {
+                                    } else if (shouldDrawFully) {
                                         drawInlineCodeBackgrounds(instruction.layout, canvas.nativeCanvas)
                                         instruction.layout.draw(canvas.nativeCanvas)
                                     }

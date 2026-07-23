@@ -6947,11 +6947,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="character_card_memory_profile_fixed_profile">Konfigurasi Tetap</string>
     <string name="character_card_memory_profile_specify_fixed_profile">Tentukan Konfigurasi Memori Tetap</string>
     <string name="character_card_memory_profile_select">Pilih Konfigurasi Memori</string>
-    <string name="github_login_method_description">Silakan pilih metode login GitHub. Mode tertanam cocok untuk perangkat yang tidak dapat membuka browser eksternal, mode browser eksternal memiliki kompatibilitas yang lebih baik.</string>
-    <string name="github_login_method_embedded">Login dengan Halaman Tertanam</string>
-    <string name="github_login_method_external">Login dengan Browser Eksternal</string>
     <string name="github_login_external_waiting">Browser telah dibuka, silakan kembali ke aplikasi setelah menyelesaikan otorisasi.</string>
-    <string name="github_login_external_cancelled">Otorisasi GitHub dibatalkan</string>
     <string name="artifact_publication_pending_review_waiting_schedule">Sedang ditinjau, harap tunggu jadwal rilis</string>
     <string name="artifact_publication_approved_waiting_schedule">Disetujui, harap tunggu jadwal rilis</string>
     <string name="toolpkg_widget_host_label">Widget Kustom</string>

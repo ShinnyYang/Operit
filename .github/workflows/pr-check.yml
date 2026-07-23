@@ -302,11 +302,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          {
-            echo "sdk.dir=$ANDROID_HOME"
-            echo 'GITHUB_CLIENT_ID='
-            echo 'GITHUB_CLIENT_SECRET='
-          } > local.properties
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Restore JVM dependency cache
         id: cache-jvm-deps

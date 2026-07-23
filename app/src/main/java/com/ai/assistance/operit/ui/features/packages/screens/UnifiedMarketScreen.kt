@@ -92,7 +92,7 @@ import com.ai.assistance.operit.data.api.MarketV2ManifestCategory
 import com.ai.assistance.operit.data.api.MarketV2Notification
 import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
 import com.ai.assistance.operit.data.preferences.GitHubUser
-import com.ai.assistance.operit.ui.features.github.GitHubLoginWebViewDialog
+import com.ai.assistance.operit.ui.features.github.GitHubLoginDialog
 import com.ai.assistance.operit.ui.features.packages.market.BindMarketSearchToTopBar
 import com.ai.assistance.operit.ui.features.packages.market.MarketBrowseSection
 import com.ai.assistance.operit.ui.features.packages.market.MarketStatsType
@@ -801,7 +801,7 @@ private fun MarketMinePane(
     }
 
     if (showLoginDialog) {
-        GitHubLoginWebViewDialog(
+        GitHubLoginDialog(
             onDismissRequest = { showLoginDialog = false },
             onLoginSuccess = { showLoginDialog = false }
         )

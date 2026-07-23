@@ -41,10 +41,15 @@ class WorkflowWorker(
             if (result.isSuccess) {
                 AppLogger.d(TAG, "Workflow execution succeeded: ${result.getOrNull()}")
                 Result.success()
+            } else if (result.exceptionOrNull() is WorkflowExecutionRetryableException) {
+                AppLogger.w(TAG, "Workflow runtime is not ready; WorkManager will retry: ${result.exceptionOrNull()?.message}")
+                Result.retry()
             } else {
                 AppLogger.e(TAG, "Workflow execution failed: ${result.exceptionOrNull()?.message}")
                 Result.failure()
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
         } catch (e: Exception) {
             AppLogger.e(TAG, "Error executing workflow", e)
             Result.failure()

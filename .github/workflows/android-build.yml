@@ -191,21 +191,11 @@ jobs:
           git diff --exit-code -- examples/github.js
           python3 tools/example_packages/sync_example_packages.py --no-hot-reload
 
-      - name: Configure Android build
-        env:
-          GITHUB_CLIENT_ID: ${{ secrets.OPERIT_GITHUB_CLIENT_ID }}
-          GITHUB_CLIENT_SECRET: ${{ secrets.OPERIT_GITHUB_CLIENT_SECRET }}
+      - name: Configure Android SDK
         shell: bash
         run: |
           set -euo pipefail
-          : "${GITHUB_CLIENT_ID:?OPERIT_GITHUB_CLIENT_ID is required}"
-          : "${GITHUB_CLIENT_SECRET:?OPERIT_GITHUB_CLIENT_SECRET is required}"
-          umask 077
-          {
-            echo "sdk.dir=$ANDROID_HOME"
-            echo "GITHUB_CLIENT_ID=$GITHUB_CLIENT_ID"
-            echo "GITHUB_CLIENT_SECRET=$GITHUB_CLIENT_SECRET"
-          } > local.properties
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
 
       - name: Run Gradle build
         id: gradle-build

@@ -43,7 +43,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
 import com.ai.assistance.operit.ui.components.CustomScaffold
-import com.ai.assistance.operit.ui.features.github.GitHubLoginWebViewDialog
+import com.ai.assistance.operit.ui.features.github.GitHubLoginDialog
+import com.ai.assistance.operit.ui.features.github.clearGitHubOAuthBrowserSession
 import kotlinx.coroutines.launch
 
 @Composable
@@ -117,7 +118,10 @@ fun GitHubAccountScreen() {
 
                         OutlinedButton(
                             onClick = {
-                                scope.launch { githubAuth.logout() }
+                                scope.launch {
+                                    clearGitHubOAuthBrowserSession()
+                                    githubAuth.logout()
+                                }
                             }
                         ) {
                             Icon(Icons.Default.Logout, contentDescription = null)
@@ -198,7 +202,7 @@ fun GitHubAccountScreen() {
     }
 
     if (showGitHubLogin) {
-        GitHubLoginWebViewDialog(
+        GitHubLoginDialog(
             onDismissRequest = { showGitHubLogin = false }
         )
     }

@@ -3907,11 +3907,7 @@
     <string name="closed">닫힘</string>
     <string name="github_account">GitHub 계정</string>
     <string name="login_github">GitHub에 로그인</string>
-    <string name="github_login_method_description">GitHub 로그인 방법을 선택하세요. 내장 모드는 외부 브라우저를 시작할 수 없는 장치에 적합합니다. 외부 브라우저 모드는 더 나은 호환성을 제공합니다.</string>
-    <string name="github_login_method_embedded">내장 페이지로 로그인</string>
-    <string name="github_login_method_external">외부 브라우저로 로그인</string>
     <string name="github_login_external_waiting">브라우저가 열렸습니다. 인증 완료 후 앱으로 복귀해주세요.</string>
-    <string name="github_login_external_cancelled">GitHub 인증이 취소되었습니다.</string>
     <string name="publish_mcp_plugins_to_market">• MCP 플러그인을 마켓에 게시하세요</string>
     <string name="manage_published_plugins">• 게시된 플러그인 관리</string>
     <string name="better_installation_experience">• 더 나은 설치 경험을 얻으세요</string>
