@@ -217,6 +217,12 @@
     <string name="workflow_execution_log_node_title">Jurnalul nodului:%1$s</string>
     <string name="workflow_execution_log_empty">Nu există jurnale de execuție</string>
     <string name="workflow_execution_log_empty_for_node">Acest nod nu are încă jurnale de execuție:%1$s</string>
+    <string name="workflow_execution_log_failure_stage">Etapa eșecului: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Excepția originală: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Pornirea fluxului de lucru</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Inițializarea mediului de execuție</string>
+    <string name="workflow_execution_failure_stage_execution">Executarea fluxului de lucru</string>
+    <string name="workflow_execution_failure_stage_cancellation">Executare anulată</string>
     <string name="workflow_edit_dialog_title">Fluxul de lucru de editare</string>
     <string name="workflow_enabled_label">Activarea fluxului de lucru</string>
     <string name="workflow_disabled">A fost dezactivat</string>
@@ -4370,11 +4376,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
 
     <string name="github_account">GitHub Cont</string>
     <string name="login_github">Autentificare GitHub</string>
-    <string name="github_login_method_description">Vă rugăm să alegeți GitHub Modalități de autentificare. Modul încorporat este potrivit pentru dispozitivele care nu pot deschide un browser extern, iar modul cu browser extern oferă o compatibilitate mai bună.</string>
-    <string name="github_login_method_embedded">Autentificare folosind o pagină încorporată</string>
-    <string name="github_login_method_external">Autentificare folosind un browser extern</string>
     <string name="github_login_external_waiting">Browserul este deschis; vă rugăm să reveniți la aplicație după finalizarea autorizării.</string>
-    <string name="github_login_external_cancelled">A fost anulat GitHub Autorizare</string>
     <string name="publish_mcp_plugins_to_market">• Publicați-vă MCP Adăugarea pluginului în magazin</string>
     <string name="manage_published_plugins">• Gestionați pluginurile pe care le-ați publicat</string>
     <string name="better_installation_experience">• O experiență de instalare îmbunătățită</string>
@@ -6973,6 +6975,9 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="workflow_unknown_error">Eroare necunoscută</string>
     <string name="workflow_in_list_type_mismatch">IN Tipurile de liste nu se potrivesc: conțin atât cifre, cât și caractere non-numerice right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Începe executarea fluxului de lucru: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Inițializarea mediului fluxului de lucru a eșuat: %1$s</string>
+    <string name="workflow_log_startup_failed">Pornirea fluxului de lucru a eșuat: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Executarea fluxului de lucru a fost anulată: %1$s</string>
     <string name="workflow_log_no_trigger_node">Nodul de declanșare nu a fost activat în fluxul de lucru</string>
     <string name="workflow_log_trigger_node_not_exist">Nodul de declanșare specificat nu există: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Declanșare programată: Se execută numai nodul de declanșare specificat %1$s</string>
