@@ -1429,6 +1429,12 @@
     <string name="workflow_execution_log_node_title">Registro del nodo: %1$s</string>
     <string name="workflow_execution_log_empty">No hay registros de ejecución</string>
     <string name="workflow_execution_log_empty_for_node">No hay registros de ejecución para este nodo: %1$s</string>
+    <string name="workflow_execution_log_failure_stage">Etapa del fallo: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Excepción original: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Inicio del flujo de trabajo</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Inicialización del entorno de ejecución</string>
+    <string name="workflow_execution_failure_stage_execution">Ejecución del flujo de trabajo</string>
+    <string name="workflow_execution_failure_stage_cancellation">Ejecución cancelada</string>
     <string name="workflow_edit_dialog_title">Editar flujo de trabajo</string>
     <string name="workflow_enabled_label">Habilitar flujo de trabajo</string>
     <string name="workflow_disabled">Deshabilitado</string>
@@ -6435,6 +6441,9 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="workflow_unknown_error">Error desconocido.</string>
     <string name="workflow_in_list_type_mismatch">Los tipos de la lista IN no coinciden: contiene valores numéricos y no numéricos right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Iniciando ejecución del flujo de trabajo: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Error al inicializar el entorno del flujo de trabajo: %1$s</string>
+    <string name="workflow_log_startup_failed">Error al iniciar el flujo de trabajo: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Ejecución del flujo de trabajo cancelada: %1$s</string>
     <string name="workflow_log_no_trigger_node">El flujo de trabajo no tiene un nodo de activación.</string>
     <string name="workflow_log_trigger_node_not_exist">El nodo de activación especificado no existe: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Activación programada: solo se ejecuta el nodo de activación especificado %1$s</string>

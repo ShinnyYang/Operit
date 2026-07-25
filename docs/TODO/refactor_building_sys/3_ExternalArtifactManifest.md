@@ -16,11 +16,12 @@ last_reviewed: 2026-07-14
 
 ## 旧实现情况
 
-- `libs.zip`、`jniLibs.zip`、`models.zip` 和 `subpack.zip` 由仓库外流程准备
-- 当前工作树中的四个目标目录只有 `.keep`
+- `libs.zip`、`jniLibs.zip` 和 `subpack.zip` 由仓库外流程准备；默认 STT 模型已迁移到 Gradle 生成 assets 流程
+- 当前工作树中的三个非模型目标目录只有 `.keep`
 - Gradle 无法说明本地文件的来源、版本、许可证、hash 和唯一消费者
 - 原计划记录了部分归档内容，但当前工作树不能直接证明这些记录
-- `arsc.jar`、GIF native 库和 `libc++_shared.so` 的真实所有权尚未完成审计
+- `arsc.jar` 已无当前消费者；GIF native 库由 Maven 的 `android-gif-drawable` 提供且与归档副本一致
+- `libc++_shared.so` 的唯一所有者仍需完成审计
 
 ## 预期的新实现情况
 
@@ -45,10 +46,10 @@ last_reviewed: 2026-07-14
 
 ## 计划
 
-1. 取得四个实际归档，并对归档本身与解包文件计算 SHA-256 和大小。
+1. 取得三个实际归档，并对归档本身与解包文件计算 SHA-256 和大小。
 2. 检查 AAR、JAR、Manifest、classes、native 库、ABI 和许可证。
-3. 搜索 `arsc.jar` 的源码 import、字节码引用和运行时加载点。
-4. 列出每个同名 `.so` 的全部提供者，确认 GIF native 库与 C++ runtime 的唯一所有者。
+3. 搜索 `arsc.jar` 的源码 import、字节码引用和运行时加载点。[DONE: 当前无消费者]
+4. 列出每个同名 `.so` 的全部提供者，确认 GIF native 库与 C++ runtime 的唯一所有者。[部分完成：GIF 库与 Maven 副本 SHA-256 一致]
 5. 登记 Sherpa NCNN、Sherpa MNN、streamnative 和 ripgrep 等源码 native 目标。
 6. 写入 manifest，并让每个目标路径只能映射到一个消费者。
 

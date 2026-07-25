@@ -443,7 +443,7 @@ AI自动分类管理记忆，支持时间查询/导入导出/自动总结，智�
 
 **开发者须知：**
 - 📚 [开源共创指南](docs/doc-src/dev-core/CONTRIBUTING.md) | [脚本开发指南](docs/SCRIPT_DEV_GUIDE.md)
-- 📦 构建项目需从 [Google Drive](https://drive.google.com/drive/folders/1g-Q_i7cf6Ua4KX9ZM6V282EEZvTVVfF7?usp=sharing) 下载依赖库压缩包（`models.zip`、`subpack.zip`、`jniLibs.zip`、`libs.zip`）
+- 📦 构建项目需从 [Google Drive](https://drive.google.com/drive/folders/1g-Q_i7cf6Ua4KX9ZM6V282EEZvTVVfF7?usp=sharing) 下载非模型依赖压缩包（`subpack.zip`、`jniLibs.zip`、`libs.zip`）；默认本地 STT 模型会在 Android 构建期按 `app/config/stt-model-assets.properties` 自动获取并校验
 - 💬 加入社区讨论：[QQ群](https://qm.qq.com/q/Sa4fKEH7sO) | [Discord](https://discord.gg/YnV9MWurRF)
 
 ### 💖 贡献者

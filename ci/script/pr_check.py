@@ -43,6 +43,7 @@ ANDROID_FULL_PATTERNS = (
     ".github/workflows/pr-check.yml",
     ".gitmodules",
     "app/build.gradle.kts",
+    "app/config/**",
     "app/src/main/cpp/**",
     "build.gradle.kts",
     "cmake/**",

@@ -198,6 +198,12 @@
     <string name="workflow_execution_log_node_title">Registro do nó: %1$s</string>
     <string name="workflow_execution_log_empty">Ainda não há registro de execução</string>
     <string name="workflow_execution_log_empty_for_node">Não há log de execução para este nó: %1$s</string>
+    <string name="workflow_execution_log_failure_stage">Etapa da falha: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Exceção original: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Inicialização do fluxo de trabalho</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Inicialização do ambiente de execução</string>
+    <string name="workflow_execution_failure_stage_execution">Execução do fluxo de trabalho</string>
+    <string name="workflow_execution_failure_stage_cancellation">Execução cancelada</string>
     <string name="workflow_edit_dialog_title">Editar fluxo de trabalho</string>
     <string name="workflow_enabled_label">Habilitar fluxo de trabalho</string>
     <string name="workflow_disabled">Desabilitado</string>
@@ -5697,6 +5703,9 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="workflow_unknown_error">erro desconhecido</string>
     <string name="workflow_in_list_type_mismatch">Incompatibilidade de tipo de lista IN: contém números e não números right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Iniciar execução do fluxo de trabalho: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Falha ao inicializar o ambiente do fluxo de trabalho: %1$s</string>
+    <string name="workflow_log_startup_failed">Falha ao iniciar o fluxo de trabalho: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Execução do fluxo de trabalho cancelada: %1$s</string>
     <string name="workflow_log_no_trigger_node">O fluxo de trabalho não tem nó acionador</string>
     <string name="workflow_log_trigger_node_not_exist">O nó acionador especificado não existe: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Gatilho agendado: execute apenas o nó de gatilho especificado %1$s</string>

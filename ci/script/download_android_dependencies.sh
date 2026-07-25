@@ -32,10 +32,9 @@ download() {
   test -s "$destination/$file_name"
 }
 
-download "1iiVkHVXLtcK6WX2LHwajTygMESn4bW4D" "libs.zip"
+download "1Va1os7PRpCF3xtTwfx5kO11D7eIAvARG" "libs.zip"
 
 if [[ "$profile" == "full" ]]; then
-  download "1UUv500OQLGwUje6zD1VuYZzNV_29CXLh" "models.zip"
-  download "1yD7Xd3apvmNyAQcvfXeaer5WA1zzd97w" "subpack.zip"
-  download "156f7qBnBMwuo8oAyNyF0wgBDN5iGv_Me" "jniLibs.zip"
+  download "1SQs_dVPD6ldvwteqoUVjvBLjTWvr5Fpv" "subpack.zip"
+  download "1-W4fjjUwoShnB8Rh9RT5Gl8sHiGyQUaM" "jniLibs.zip"
 fi
