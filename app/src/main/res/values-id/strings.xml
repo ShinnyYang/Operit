@@ -326,6 +326,12 @@
     <string name="workflow_execution_log_node_title">Log Node: %1$s</string>
     <string name="workflow_execution_log_empty">Belum ada log eksekusi</string>
     <string name="workflow_execution_log_empty_for_node">Node ini belum memiliki log eksekusi: %1$s</string>
+    <string name="workflow_execution_log_failure_stage">Tahap kegagalan: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Eksepsi asli: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Memulai workflow</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Inisialisasi runtime</string>
+    <string name="workflow_execution_failure_stage_execution">Eksekusi workflow</string>
+    <string name="workflow_execution_failure_stage_cancellation">Eksekusi dibatalkan</string>
     <string name="workflow_edit_dialog_title">Edit Alur Kerja</string>
 
     <string name="workflow_operator_label">Operator</string>
@@ -6109,6 +6115,9 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="workflow_unknown_error">Kesalahan tidak diketahui</string>
     <string name="workflow_in_list_type_mismatch">Ketidakcocokan tipe daftar IN: berisi angka dan non-angka secara bersamaan right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Memulai eksekusi workflow: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Inisialisasi runtime workflow gagal: %1$s</string>
+    <string name="workflow_log_startup_failed">Memulai workflow gagal: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Eksekusi workflow dibatalkan: %1$s</string>
     <string name="workflow_log_no_trigger_node">Workflow tidak memiliki node pemicu</string>
     <string name="workflow_log_trigger_node_not_exist">Node pemicu yang ditentukan tidak ada: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Pemicu terjadwal: hanya mengeksekusi node pemicu yang ditentukan %1$s</string>

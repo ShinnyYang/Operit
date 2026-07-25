@@ -202,6 +202,12 @@
     <string name="workflow_execution_log_node_title">Log nod: %1$s</string>
     <string name="workflow_execution_log_empty">Tiada log pelaksanaan buat masa ini</string>
     <string name="workflow_execution_log_empty_for_node">Tiada log pelaksanaan untuk nod ini buat masa ini: %1$s</string>
+    <string name="workflow_execution_log_failure_stage">Peringkat kegagalan: %1$s</string>
+    <string name="workflow_execution_log_failure_reason">Pengecualian asal: %1$s</string>
+    <string name="workflow_execution_failure_stage_startup">Permulaan aliran kerja</string>
+    <string name="workflow_execution_failure_stage_runtime_initialization">Permulaan masa jalan</string>
+    <string name="workflow_execution_failure_stage_execution">Pelaksanaan aliran kerja</string>
+    <string name="workflow_execution_failure_stage_cancellation">Pelaksanaan dibatalkan</string>
     <string name="workflow_edit_dialog_title">Edit Aliran Kerja</string>
 
     <string name="workflow_enabled_label">Dayakan aliran kerja</string>
@@ -5942,6 +5948,9 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="workflow_unknown_error">Ralat tidak diketahui</string>
     <string name="workflow_in_list_type_mismatch">Jenis senarai IN tidak sepadan: mengandungi nombor dan bukan nombor serentak right=\'%1$s\'</string>
     <string name="workflow_log_start_execution">Mula melaksanakan aliran kerja: %1$s (%2$s)</string>
+    <string name="workflow_log_runtime_initialization_failed">Gagal memulakan masa jalan aliran kerja: %1$s</string>
+    <string name="workflow_log_startup_failed">Gagal memulakan aliran kerja: %1$s</string>
+    <string name="workflow_log_execution_cancelled_reason">Pelaksanaan aliran kerja dibatalkan: %1$s</string>
     <string name="workflow_log_no_trigger_node">Aliran kerja tiada nod pencetus</string>
     <string name="workflow_log_trigger_node_not_exist">Nod pencetus yang ditentukan tidak wujud: %1$s</string>
     <string name="workflow_log_scheduled_trigger">Pencetus berjadual: hanya melaksanakan nod pencetus %1$s yang ditentukan</string>
