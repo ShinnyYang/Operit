@@ -187,8 +187,6 @@ android {
     sourceSets {
         getByName("main") {
             assets.setSrcDirs(listOf(generatedMainAssetsDir.get().asFile))
-            // android-gif-drawable supplies the identical native library from Maven Central.
-            jniLibs.exclude("**/libpl_droidsonroids_gif.so")
         }
     }
 
