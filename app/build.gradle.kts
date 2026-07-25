@@ -1,6 +1,12 @@
 import java.io.File
 import java.io.FileInputStream
+import java.net.HttpURLConnection
+import java.net.URI
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
+import java.security.MessageDigest
 import java.util.Properties
+import org.gradle.api.tasks.Sync
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
@@ -20,9 +26,171 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+data class SttModelAsset(
+    val targetPath: String,
+    val sourceUrl: String,
+    val expectedBytes: Long,
+    val expectedSha256: String,
+)
+
+fun sha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    file.inputStream().use { input ->
+        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+        while (true) {
+            val read = input.read(buffer)
+            if (read < 0) break
+            digest.update(buffer, 0, read)
+        }
+    }
+    return digest.digest().joinToString(separator = "") { byte -> "%02x".format(byte) }
+}
+
+fun parseSttModelAssetManifest(manifestFile: File): List<SttModelAsset> {
+    return manifestFile.readLines()
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && !it.startsWith("#") }
+        .mapIndexed { index, line ->
+            val parts = line.split("|")
+            require(parts.size == 6) {
+                "Invalid STT model asset manifest line ${index + 1}: expected 6 fields"
+            }
+            val targetPath = parts[0]
+            require(!targetPath.startsWith("/") && !targetPath.contains("..") && !targetPath.contains('\\')) {
+                "Invalid STT model asset target path: $targetPath"
+            }
+            SttModelAsset(
+                targetPath = targetPath,
+                sourceUrl = parts[1],
+                expectedBytes = parts[2].toLong(),
+                expectedSha256 = parts[3].lowercase(),
+            )
+        }
+}
+
+fun verifySttModelAsset(file: File, asset: SttModelAsset): Boolean {
+    return file.isFile &&
+        file.length() == asset.expectedBytes &&
+        sha256(file) == asset.expectedSha256
+}
+
+fun downloadSttModelAsset(asset: SttModelAsset, destination: File) {
+    destination.parentFile.mkdirs()
+    require(destination.parentFile.isDirectory) {
+        "Unable to create STT model asset directory: ${destination.parent}"
+    }
+
+    val tempFile = File(destination.parentFile, "${destination.name}.download")
+    if (tempFile.exists()) {
+        tempFile.delete()
+    }
+
+    val connection = URI(asset.sourceUrl).toURL().openConnection() as HttpURLConnection
+    connection.instanceFollowRedirects = true
+    connection.connectTimeout = 30_000
+    connection.readTimeout = 120_000
+    connection.setRequestProperty("User-Agent", "Operit Android build STT asset sync")
+    try {
+        val responseCode = connection.responseCode
+        require(responseCode in 200..299) {
+            "Unable to download ${asset.targetPath}: HTTP $responseCode from ${asset.sourceUrl}"
+        }
+        connection.inputStream.use { input ->
+            tempFile.outputStream().use { output ->
+                input.copyTo(output)
+            }
+        }
+    } finally {
+        connection.disconnect()
+    }
+
+    require(verifySttModelAsset(tempFile, asset)) {
+        "Downloaded STT model asset failed verification: ${asset.targetPath}"
+    }
+    Files.move(tempFile.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING)
+}
+
+val sttModelAssetsManifestFile = layout.projectDirectory.file("config/stt-model-assets.properties")
+val generatedSttModelAssetsDir = layout.buildDirectory.dir("generated/stt-model-assets")
+val generatedMainAssetsDir = layout.buildDirectory.dir("generated/main-assets")
+
+val syncSttModelAssets by tasks.registering {
+    description = "Downloads and verifies generated assets for local STT recognition."
+    group = "build setup"
+
+    inputs.file(sttModelAssetsManifestFile)
+    outputs.dir(generatedSttModelAssetsDir)
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val manifestFile = sttModelAssetsManifestFile.asFile
+        val assets = parseSttModelAssetManifest(manifestFile)
+        val outputRoot = generatedSttModelAssetsDir.get().asFile
+        outputRoot.mkdirs()
+
+        val outputRootPath = outputRoot.toPath().toAbsolutePath().normalize()
+        val expectedFiles = mutableSetOf<File>()
+
+        assets.forEach { asset ->
+            val destinationPath = outputRootPath.resolve(asset.targetPath).normalize()
+            require(destinationPath.startsWith(outputRootPath)) {
+                "STT model asset target escapes generated assets directory: ${asset.targetPath}"
+            }
+            val destination = destinationPath.toFile()
+            expectedFiles.add(destination.canonicalFile)
+
+            if (!verifySttModelAsset(destination, asset)) {
+                if (destination.exists() && !destination.delete()) {
+                    error("Unable to replace invalid STT model asset: ${destination.path}")
+                }
+                downloadSttModelAsset(asset, destination)
+            }
+
+            require(verifySttModelAsset(destination, asset)) {
+                "STT model asset verification failed after sync: ${asset.targetPath}"
+            }
+        }
+
+        outputRoot.walkBottomUp()
+            .filter { it.isFile && it.canonicalFile !in expectedFiles }
+            .forEach { file ->
+                require(file.delete()) {
+                    "Unable to remove stale STT model asset: ${file.path}"
+                }
+            }
+        outputRoot.walkBottomUp()
+            .filter { it.isDirectory && it != outputRoot && it.list()?.isEmpty() == true }
+            .forEach { directory ->
+                require(directory.delete()) {
+                    "Unable to remove empty STT model asset directory: ${directory.path}"
+                }
+            }
+    }
+}
+
+val syncMainAssets by tasks.registering(Sync::class) {
+    description = "Assembles application assets with verified generated STT model files."
+    group = "build setup"
+    dependsOn(syncSttModelAssets)
+
+    from("src/main/assets") {
+        exclude("models/**")
+    }
+    from(generatedSttModelAssetsDir)
+    into(generatedMainAssetsDir)
+}
+
 android {
     namespace = "com.ai.assistance.operit"
     compileSdk = 36
+
+    sourceSets {
+        getByName("main") {
+            assets.setSrcDirs(listOf(generatedMainAssetsDir.get().asFile))
+            // android-gif-drawable supplies the identical native library from Maven Central.
+            jniLibs.exclude("**/libpl_droidsonroids_gif.so")
+        }
+    }
 
     signingConfigs {
         val releaseKeystorePath = localProperties.getProperty("RELEASE_STORE_FILE")
@@ -189,6 +357,14 @@ android {
 //    }
 }
 
+tasks.named("preBuild") {
+    dependsOn(syncMainAssets)
+}
+
+tasks.matching { it.name.matches(Regex("merge.*Assets")) }.configureEach {
+    dependsOn(syncMainAssets)
+}
+
 kotlin {
     compilerOptions {
         jvmTarget = JvmTarget.JVM_17
@@ -211,8 +387,22 @@ dependencies {
     implementation("com.google.android.filament:gltfio-android:1.69.2")
     implementation("com.google.android.filament:filament-utils-android:1.69.2")
     implementation(libs.androidx.ui.graphics.android)
-    // Vendored binary dependencies live in app/libs, including ffmpeg-kit and its Java-side deps.
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+    // The remaining vendored artifact is the custom FFmpegKit AAR.
+    implementation(
+        fileTree(
+            mapOf(
+                "dir" to "libs",
+                "include" to listOf("*.aar", "*.jar"),
+                "exclude" to listOf(
+                    "arsc.jar",
+                    "smart-exception-common-0.2.1.jar",
+                    "smart-exception-java-0.2.1.jar",
+                ),
+            )
+        )
+    )
+    implementation("com.arthenica:smart-exception-common:0.2.1")
+    implementation("com.arthenica:smart-exception-java:0.2.1")
     implementation(libs.androidx.runtime.android)
     implementation(libs.androidx.ui.text.android)
     implementation(libs.androidx.animation.android)

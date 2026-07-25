@@ -12,13 +12,29 @@ from pathlib import Path, PurePosixPath
 
 PROFILE_ARCHIVES = {
     "jvm": ("libs.zip",),
-    "full": ("libs.zip", "models.zip", "subpack.zip", "jniLibs.zip"),
+    "full": ("libs.zip", "subpack.zip", "jniLibs.zip"),
 }
 ARCHIVE_ROOTS = {
     "libs.zip": "app/libs",
-    "models.zip": "app/src/main/assets/models",
     "subpack.zip": "app/src/main/assets/subpack",
     "jniLibs.zip": "app/src/main/jniLibs",
+}
+EXCLUDED_ARCHIVE_MEMBERS = {
+    "libs.zip": frozenset(
+        {
+            PurePosixPath("app/libs/arsc.jar"),
+            PurePosixPath("app/libs/smart-exception-common-0.2.1.jar"),
+            PurePosixPath("app/libs/smart-exception-java-0.2.1.jar"),
+        }
+    ),
+    "jniLibs.zip": frozenset(
+        {
+            PurePosixPath("app/src/main/jniLibs/arm64-v8a/libpl_droidsonroids_gif.so"),
+            PurePosixPath("app/src/main/jniLibs/armeabi-v7a/libpl_droidsonroids_gif.so"),
+            PurePosixPath("app/src/main/jniLibs/x86/libpl_droidsonroids_gif.so"),
+            PurePosixPath("app/src/main/jniLibs/x86_64/libpl_droidsonroids_gif.so"),
+        }
+    ),
 }
 MAX_ARCHIVE_MEMBERS = 100_000
 MAX_MEMBER_BYTES = 4 * 1024**3
@@ -143,7 +159,10 @@ def extract_archive(archive: Path, repository: Path) -> set[Path]:
             raise ValueError(f"invalid Android dependency archive {archive}: {error}") from error
         reset_output_root(repository, allowed_root)
         outputs: set[Path] = set()
+        excluded_members = EXCLUDED_ARCHIVE_MEMBERS.get(archive.name, frozenset())
         for info in stream.infolist():
+            if PurePosixPath(info.filename) in excluded_members:
+                continue
             output = extract_member(stream, info, repository)
             if output is not None:
                 outputs.add(output)
@@ -164,7 +183,6 @@ def verify_outputs(profile: str, repository: Path, extracted_files: set[Path]) -
         raise ValueError("libs.zip did not provide an AAR or JAR in app/libs")
     if profile == "full":
         for relative_path in (
-            "app/src/main/assets/models",
             "app/src/main/assets/subpack",
             "app/src/main/jniLibs",
         ):

@@ -134,6 +134,12 @@ jobs:
           path: ${{ env.MANUAL_DEPS_DIR }}
           key: android-full-deps-${{ runner.os }}-${{ hashFiles('ci/script/download_android_dependencies.sh', 'ci/script/prepare_android_dependencies.py') }}
 
+      - name: Restore generated STT asset cache
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: app/build/generated/stt-model-assets
+          key: stt-model-assets-${{ runner.os }}-${{ hashFiles('app/config/stt-model-assets.properties') }}
+
       - name: Download Android dependencies
         if: steps.cache-manual-deps.outputs.cache-hit != 'true'
         run: bash ci/script/download_android_dependencies.sh full "$MANUAL_DEPS_DIR"

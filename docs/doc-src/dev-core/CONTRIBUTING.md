@@ -94,7 +94,7 @@ python3 ./tools/example_packages/sync_example_packages.py --no-hot-reload
 ./gradlew assembleDebug
 ```
 
-本地构建需要手动依赖时，按 [Android 编译指南](./BUILDING.md) 下载并放置 `models.zip`、`subpack.zip`、`jniLibs.zip` 和 `libs.zip`，不要将这些文件提交到 Git。
+本地构建需要手动依赖时，按 [Android 编译指南](./BUILDING.md) 下载并放置 `subpack.zip`、`jniLibs.zip` 和 `libs.zip`，不要将这些文件提交到 Git。默认本地 STT 模型由 Android 构建按 `app/config/stt-model-assets.properties` 自动准备。
 
 ## 创建 Pull Request
 

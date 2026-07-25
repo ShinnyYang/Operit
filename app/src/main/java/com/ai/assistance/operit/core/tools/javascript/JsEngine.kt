@@ -1784,6 +1784,11 @@ class JsEngine(private val context: Context) {
         }
 
         @JavascriptInterface
+        fun registerToolPkgChatMessageHook(specJson: String) {
+            toolPkgRegistrationSession.appendChatMessageHook(specJson)
+        }
+
+        @JavascriptInterface
         fun registerToolPkgToolLifecycleHook(specJson: String) {
             toolPkgRegistrationSession.appendToolLifecycleHook(specJson)
         }
