@@ -1,5 +1,6 @@
 package com.ai.assistance.operit.ui.features.github
 
+import android.annotation.SuppressLint
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +29,7 @@ import com.ai.assistance.operit.ui.common.browser.BrowserCallbackDialog
 import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.launch
 
+@SuppressLint("LocalContextGetResourceValueCall")
 @Composable
 fun GitHubLoginDialog(
     onDismissRequest: () -> Unit,
