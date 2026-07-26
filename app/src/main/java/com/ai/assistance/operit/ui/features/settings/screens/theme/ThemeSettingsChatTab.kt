@@ -31,6 +31,7 @@ import com.ai.assistance.operit.util.FileUtils
 import com.canhub.cropper.CropImageContract
 import com.canhub.cropper.CropImageContractOptions
 import com.canhub.cropper.CropImageOptions
+import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -71,7 +72,7 @@ private enum class ThemeSettingsAvatarPickerMode(val uniqueName: String) {
 internal data class ThemeSettingsChatRuntimeState(
     val context: android.content.Context,
     val scope: CoroutineScope,
-    val preferencesManager: UserPreferencesManager,
+    val preferencesManager: ThemeSettingsDraftPreferences,
     val displayPreferencesManager: DisplayPreferencesManager,
     val saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     val bubbleUserBubbleLiquidGlassInput: Boolean,
@@ -218,6 +219,7 @@ internal fun rememberThemeSettingsChatRuntime(
                         val internalUri =
                             FileUtils.copyFileToInternalStorage(context, croppedUri, uniqueName)
                         if (internalUri != null) {
+                            state.preferencesManager.registerStagedAsset(internalUri.toString())
                             val enabledForAi =
                                 !state.bubbleAiBubbleLiquidGlassInput &&
                                     !state.bubbleAiBubbleWaterGlassInput
@@ -318,6 +320,7 @@ internal fun rememberThemeSettingsChatRuntime(
                         parseNinePatchBubbleParams(context, uri)
                             ?: parseNinePatchBubbleParams(context, internalUri)
                     if (autoParams == null) {
+                        internalUri.path?.let { path -> File(path).delete() }
                         Toast.makeText(
                             context,
                             context.getString(R.string.theme_copy_failed),
@@ -327,6 +330,7 @@ internal fun rememberThemeSettingsChatRuntime(
                     }
 
                     val internalUriString = internalUri.toString()
+                    state.preferencesManager.registerStagedAsset(internalUriString)
                     val renderMode = UserPreferencesManager.BUBBLE_IMAGE_RENDER_MODE_NINE_PATCH
                     state.onBubbleImageRenderModeInputChange(renderMode)
                     when (bubbleImagePickerTarget) {
@@ -421,6 +425,7 @@ internal fun rememberThemeSettingsChatRuntime(
                         when (avatarPickerMode) {
                             ThemeSettingsAvatarPickerMode.USER -> {
                                 AppLogger.d("ThemeSettings", "User avatar saved to: $internalUri")
+                                state.preferencesManager.registerStagedAsset(internalUri.toString())
                                 state.onUserAvatarUriInputChange(internalUri.toString())
                                 state.saveThemeSettingsWithCharacterCard {
                                     state.preferencesManager.saveThemeSettings(
@@ -430,6 +435,7 @@ internal fun rememberThemeSettingsChatRuntime(
                             }
                             ThemeSettingsAvatarPickerMode.AI -> {
                                 AppLogger.d("ThemeSettings", "AI avatar saved to: $internalUri")
+                                state.preferencesManager.registerStagedAsset(internalUri.toString())
                                 state.onAiAvatarUriInputChange(internalUri.toString())
                                 state.saveThemeSettingsWithCharacterCard {
                                     state.preferencesManager.saveThemeSettings(
@@ -1114,6 +1120,7 @@ private fun rememberBubbleFontPicker(shared: ThemeSettingsShared): BubbleFontPic
                     val internalUri = FileUtils.copyFileToInternalStorage(context, uri, targetName)
                     if (internalUri != null) {
                         val isUser = targetName == "bubble_user_font"
+                        shared.preferencesManager.registerStagedAsset(internalUri.toString())
                         shared.saveThemeSettingsWithCharacterCard {
                             if (isUser) {
                                 shared.preferencesManager.saveThemeSettings(

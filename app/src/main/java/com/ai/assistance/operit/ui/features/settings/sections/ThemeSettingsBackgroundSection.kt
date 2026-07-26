@@ -55,6 +55,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.ui.features.settings.screens.theme.ThemeSettingsDraftPreferences
 import com.ai.assistance.operit.ui.features.settings.components.MediaTypeOption
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
@@ -70,7 +71,7 @@ private fun calculateLuminance(color: Color): Float {
 internal fun ThemeSettingsBackgroundSection(
     cardColors: CardColors,
     context: Context,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     exoPlayer: ExoPlayer,
     launchImageCrop: (Uri) -> Unit,

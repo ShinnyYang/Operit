@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.ui.features.settings.screens.theme.ThemeSettingsDraftPreferences
 import com.ai.assistance.operit.ui.features.settings.components.AvatarPicker
 import com.ai.assistance.operit.ui.features.settings.components.ChatStyleOption
 import kotlinx.coroutines.CoroutineScope
@@ -45,7 +46,7 @@ import kotlinx.coroutines.launch
 internal fun ThemeSettingsFontSection(
     cardColors: CardColors,
     context: Context,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     useCustomFontInput: Boolean,
     onUseCustomFontInputChange: (Boolean) -> Unit,
@@ -287,7 +288,7 @@ internal fun ThemeSettingsFontSection(
 internal fun ThemeSettingsAvatarSection(
     cardColors: CardColors,
     scope: CoroutineScope,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
     displayPreferencesManager: DisplayPreferencesManager,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     userAvatarUriInput: String?,

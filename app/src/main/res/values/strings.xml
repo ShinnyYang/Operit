@@ -751,6 +751,14 @@
     <string name="theme_bg_opacity">背景不透明度: %1$d%%</string>
     <string name="theme_reset">重置为默认主题</string>
     <string name="theme_saved">设置已保存</string>
+    <string name="theme_target_title">编辑主题对象</string>
+    <string name="theme_unsaved_title">保存主题修改？</string>
+    <string name="theme_unsaved_message">当前主题对象的修改尚未保存。</string>
+    <string name="theme_save_failed">主题保存失败</string>
+    <string name="theme_save_and_continue">保存并继续</string>
+    <string name="theme_discard_and_continue">不保存</string>
+    <string name="theme_edit_target_character">正在编辑此角色卡的主题</string>
+    <string name="theme_edit_target_group">正在编辑此角色群聊的主题</string>
     <string name="theme_video_too_large">视频文件过大，可能导致应用卡顿或崩溃。请选择小于30MB的视频。</string>
     <string name="theme_video_saved">背景视频已保存</string>
     <string name="theme_image_saved">背景图片已保存</string>

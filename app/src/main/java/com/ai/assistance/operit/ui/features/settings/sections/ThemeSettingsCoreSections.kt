@@ -52,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.ui.features.settings.screens.theme.ThemeSettingsDraftPreferences
 import com.ai.assistance.operit.ui.features.settings.components.ChatStyleOption
 import com.ai.assistance.operit.ui.features.settings.components.ColorSelectionItem
 import com.ai.assistance.operit.ui.features.settings.components.ThemeModeOption
@@ -127,9 +128,9 @@ internal fun ThemeSettingsCharacterBindingInfoCard(
                 Text(
                     text =
                         if (isGroupTarget) {
-                            stringResource(R.string.theme_auto_bind_character_group)
+                            stringResource(R.string.theme_edit_target_group)
                         } else {
-                            stringResource(R.string.theme_auto_bind_character_card)
+                            stringResource(R.string.theme_edit_target_character)
                         },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -154,7 +155,7 @@ internal fun ThemeSettingsThemeModeSection(
     themeModeInput: String,
     onThemeModeInputChange: (String) -> Unit,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
 ) {
     ThemeSettingsSectionTitle(
         title = stringResource(id = R.string.theme_title_mode),
@@ -355,7 +356,7 @@ internal fun ThemeSettingsChatStyleSection(
     bubbleAiContentPaddingRightInput: Float,
     onBubbleAiContentPaddingRightInputChange: (Float) -> Unit,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
     showInputStyleControls: Boolean = true,
 ) {
     ThemeSettingsSectionTitle(
@@ -2555,7 +2556,7 @@ internal fun ThemeSettingsDisplayOptionsSection(
     showChatFloatingDotsAnimationInput: Boolean,
     onShowChatFloatingDotsAnimationInputChange: (Boolean) -> Unit,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
-    preferencesManager: UserPreferencesManager,
+    preferencesManager: ThemeSettingsDraftPreferences,
 ) {
     ThemeSettingsSectionTitle(
         title = stringResource(id = R.string.display_options_title),

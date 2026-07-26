@@ -21,6 +21,7 @@ import com.ai.assistance.operit.data.model.OperitCharacterCardPayload
 import com.ai.assistance.operit.data.model.PromptFunctionType
 import com.ai.assistance.operit.data.model.ActivePrompt
 import com.ai.assistance.operit.data.repository.CustomEmojiRepository
+import com.ai.assistance.operit.data.repository.ChatHistoryManager
 import com.google.gson.Gson
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonElement
@@ -321,6 +322,7 @@ class CharacterCardManager private constructor(private val context: Context) {
     
     // 更新角色卡
     suspend fun updateCharacterCard(card: CharacterCard) {
+        val previousName = getCharacterCard(card.id).name
         dataStore.edit { preferences ->
             preferences[stringPreferencesKey("character_card_${card.id}_name")] = card.name
             preferences[stringPreferencesKey("character_card_${card.id}_description")] = card.description
@@ -353,6 +355,9 @@ class CharacterCardManager private constructor(private val context: Context) {
             // 更新修改时间
             preferences[longPreferencesKey("character_card_${card.id}_updated_at")] = System.currentTimeMillis()
         }
+        if (previousName != card.name) {
+            ChatHistoryManager.getInstance(context).renameCharacterCardInChats(previousName, card.name)
+        }
     }
     
     // 删除角色卡
@@ -366,6 +371,7 @@ class CharacterCardManager private constructor(private val context: Context) {
     }
 
     private suspend fun deleteCharacterCardLocked(id: String) {
+        val deletedCardName = getCharacterCard(id).name
         var deletedActiveCard = false
         dataStore.edit { preferences ->
             // 从列表中移除
@@ -419,6 +425,10 @@ class CharacterCardManager private constructor(private val context: Context) {
         waifuPreferences.deleteCharacterCardWaifuSettings(id)
         // 删除角色卡对应的自定义表情配置
         customEmojiRepository.deleteCharacterCardEmojis(id)
+        val hasSameNamedCard = getAllCharacterCards().any { card -> card.name == deletedCardName }
+        if (!hasSameNamedCard) {
+            ChatHistoryManager.getInstance(context).clearCharacterCardBinding(deletedCardName)
+        }
 
         val activeGroupId = CharacterGroupCardManager.getInstance(context)
             .observeActiveCharacterGroupId()
@@ -559,9 +569,11 @@ class CharacterCardManager private constructor(private val context: Context) {
         dataStore.edit { preferences ->
             setupDefaultCharacterCard(preferences, DEFAULT_CHARACTER_CARD_ID)
         }
-        // 同时也重置头像和主题
-        ActivePromptManager.getInstance(context).saveAiAvatarForPrompt(
-            ActivePrompt.CharacterCard(DEFAULT_CHARACTER_CARD_ID),
+        val defaultTarget = ActivePrompt.CharacterCard(DEFAULT_CHARACTER_CARD_ID)
+        val activePromptManager = ActivePromptManager.getInstance(context)
+        activePromptManager.resetThemeDraft(defaultTarget)
+        activePromptManager.saveAiAvatarForPrompt(
+            defaultTarget,
             "file:///android_asset/operit.png",
         )
     }

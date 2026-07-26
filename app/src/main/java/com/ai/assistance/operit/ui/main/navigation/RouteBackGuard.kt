@@ -32,10 +32,13 @@ class RouteBackGuardRegistry {
     fun hasGuard(routeInstanceId: String): Boolean =
         synchronized(lock) { registrations.containsKey(routeInstanceId) }
 
-    suspend fun canNavigateBack(routeInstanceId: String): Boolean {
+    suspend fun canLeaveRoute(routeInstanceId: String): Boolean {
         val handler = synchronized(lock) { registrations[routeInstanceId]?.handler }
         return handler?.invoke() ?: true
     }
+
+    @Deprecated("Use canLeaveRoute")
+    suspend fun canNavigateBack(routeInstanceId: String): Boolean = canLeaveRoute(routeInstanceId)
 }
 
 val LocalRouteBackGuardRegistry = compositionLocalOf<RouteBackGuardRegistry?> { null }

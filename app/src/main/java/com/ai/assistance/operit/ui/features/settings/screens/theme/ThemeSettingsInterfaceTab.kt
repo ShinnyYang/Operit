@@ -22,12 +22,10 @@ import kotlinx.coroutines.launch
 internal fun ThemeSettingsInterfaceTab(
     shared: ThemeSettingsShared,
     cardColors: CardColors,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     ThemeSettingsInterfaceColorPanel(
         shared = shared,
         cardColors = cardColors,
-        onShowSaveSuccessMessage = onShowSaveSuccessMessage,
     )
 }
 
@@ -36,7 +34,6 @@ internal fun ThemeSettingsInterfaceTab(
 private fun ThemeSettingsInterfaceColorPanel(
     shared: ThemeSettingsShared,
     cardColors: CardColors,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     val preferencesManager = shared.preferencesManager
     val navigationDrawerAppearance = rememberNavigationDrawerAppearance()
@@ -181,7 +178,6 @@ private fun ThemeSettingsInterfaceColorPanel(
     ThemeSettingsColorCustomizationSection(
         cardColors = cardColors,
         preferencesManager = preferencesManager,
-        scope = shared.scope,
         saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
         statusBarHiddenInput = statusBarHiddenInput,
         onStatusBarHiddenInputChange = { statusBarHiddenInput = it },
@@ -233,7 +229,6 @@ private fun ThemeSettingsInterfaceColorPanel(
             currentColorPickerMode = it
             showColorPicker = true
         },
-        onShowSaveSuccessMessage = onShowSaveSuccessMessage,
         contentMode = ThemeSettingsColorContentMode.INTERFACE,
     )
 
@@ -324,4 +319,3 @@ private fun saveSelectedThemeColor(
         }
     }
 }
-

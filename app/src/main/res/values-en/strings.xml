@@ -837,6 +837,14 @@
     <string name="theme_bg_opacity">Background opacity: %1$d%%</string>
     <string name="theme_reset">Reset to Default Theme</string>
     <string name="theme_saved">Settings saved</string>
+    <string name="theme_target_title">Theme target</string>
+    <string name="theme_unsaved_title">Save theme changes?</string>
+    <string name="theme_unsaved_message">Changes for the current theme target have not been saved.</string>
+    <string name="theme_save_failed">Failed to save theme</string>
+    <string name="theme_save_and_continue">Save and continue</string>
+    <string name="theme_discard_and_continue">Don't save</string>
+    <string name="theme_edit_target_character">Editing this character card's theme</string>
+    <string name="theme_edit_target_group">Editing this character group's theme</string>
     <string name="theme_video_too_large">Video file is too large and may cause lag or crashes. Please select videos less than 30MB.</string>
     <string name="theme_video_saved">Background video saved</string>
     <string name="theme_image_saved">Background image saved</string>

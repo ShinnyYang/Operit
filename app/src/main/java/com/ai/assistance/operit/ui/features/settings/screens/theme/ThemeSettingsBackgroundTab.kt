@@ -15,8 +15,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ai.assistance.operit.R
-import com.ai.assistance.operit.data.model.ActivePrompt
-import com.ai.assistance.operit.data.preferences.ActivePromptManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.features.settings.sections.ThemeSettingsBackgroundSection
 import com.ai.assistance.operit.ui.features.settings.sections.SaveThemeSettingsAction
@@ -37,7 +35,6 @@ internal fun ThemeSettingsBackgroundTab(
     shared: ThemeSettingsShared,
     cardColors: androidx.compose.material3.CardColors,
     scrollState: androidx.compose.foundation.ScrollState,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     val preferencesManager = shared.preferencesManager
     val useBackgroundImage by preferencesManager.useBackgroundImage.collectAsState(initial = false)
@@ -82,18 +79,13 @@ internal fun ThemeSettingsBackgroundTab(
         context = shared.context,
         scope = shared.scope,
         preferencesManager = preferencesManager,
-        activePromptManager = shared.activePromptManager,
-        activePrompt = shared.activePrompt,
         saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
-        backgroundImageUri = backgroundImageUri,
         backgroundImageUriInput = backgroundImageUriInput,
         onBackgroundImageUriInputChange = { backgroundImageUriInput = it },
-        onUseBackgroundImageInputChange = { useBackgroundImageInput = it },
         backgroundMediaTypeInput = backgroundMediaTypeInput,
         onBackgroundMediaTypeInputChange = { backgroundMediaTypeInput = it },
         videoBackgroundMutedInput = videoBackgroundMutedInput,
         videoBackgroundLoopInput = videoBackgroundLoopInput,
-        onShowSaveSuccessMessage = onShowSaveSuccessMessage,
     )
 
     ThemeSettingsBackgroundSection(
@@ -133,19 +125,14 @@ internal data class ThemeSettingsBackgroundRuntime(
 internal fun rememberThemeSettingsBackgroundRuntime(
     context: Context,
     scope: CoroutineScope,
-    preferencesManager: UserPreferencesManager,
-    activePromptManager: ActivePromptManager,
-    activePrompt: ActivePrompt,
+    preferencesManager: ThemeSettingsDraftPreferences,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
-    backgroundImageUri: String?,
     backgroundImageUriInput: String?,
     onBackgroundImageUriInputChange: (String?) -> Unit,
-    onUseBackgroundImageInputChange: (Boolean) -> Unit,
     backgroundMediaTypeInput: String,
     onBackgroundMediaTypeInputChange: (String) -> Unit,
     videoBackgroundMutedInput: Boolean,
     videoBackgroundLoopInput: Boolean,
-    onShowSaveSuccessMessage: () -> Unit,
 ): ThemeSettingsBackgroundRuntime {
     val exoPlayer = remember {
         ExoPlayer.Builder(context)
@@ -190,58 +177,6 @@ internal fun rememberThemeSettingsBackgroundRuntime(
         }
     }
 
-    LaunchedEffect(Unit) {
-        backgroundImageUri?.let { uriString ->
-            if (uriString.startsWith("content://")) {
-                try {
-                    val uri = Uri.parse(uriString)
-                    scope.launch {
-                        val internalUri =
-                            FileUtils.copyFileToInternalStorage(
-                                context,
-                                uri,
-                                "migrated_background",
-                            )
-                        if (internalUri != null) {
-                            AppLogger.d(
-                                "ThemeSettings",
-                                "Migrated background image to: $internalUri",
-                            )
-                            val saved = activePromptManager.saveThemeForActivePrompt(activePrompt) {
-                                preferencesManager.saveThemeSettings(
-                                    backgroundImageUri = internalUri.toString(),
-                                )
-                            }
-                            if (saved) {
-                                onBackgroundImageUriInputChange(internalUri.toString())
-                                Toast.makeText(
-                                    context,
-                                    context.getString(R.string.background_image_migrated),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
-                            }
-                        }
-                    }
-                } catch (e: Exception) {
-                    AppLogger.e("ThemeSettings", "Error migrating background image", e)
-                    scope.launch {
-                        val saved = activePromptManager.saveThemeForActivePrompt(activePrompt) {
-                            preferencesManager.saveThemeSettings(useBackgroundImage = false)
-                        }
-                        if (saved) {
-                            onUseBackgroundImageInputChange(false)
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.background_image_access_failed),
-                                Toast.LENGTH_LONG,
-                            ).show()
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     LaunchedEffect(backgroundImageUriInput, backgroundMediaTypeInput) {
         if (!backgroundImageUriInput.isNullOrEmpty() &&
             backgroundMediaTypeInput == UserPreferencesManager.MEDIA_TYPE_VIDEO
@@ -280,6 +215,7 @@ internal fun rememberThemeSettingsBackgroundRuntime(
                             FileUtils.copyFileToInternalStorage(context, croppedUri, "background")
                         if (internalUri != null) {
                             AppLogger.d("ThemeSettings", "Background image saved to: $internalUri")
+                            preferencesManager.registerStagedAsset(internalUri.toString())
                             onBackgroundImageUriInputChange(internalUri.toString())
                             onBackgroundMediaTypeInputChange(UserPreferencesManager.MEDIA_TYPE_IMAGE)
                             saveThemeSettingsWithCharacterCard {
@@ -288,7 +224,6 @@ internal fun rememberThemeSettingsBackgroundRuntime(
                                     backgroundMediaType = UserPreferencesManager.MEDIA_TYPE_IMAGE,
                                 )
                             }
-                            onShowSaveSuccessMessage()
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.theme_image_saved),
@@ -399,6 +334,7 @@ internal fun rememberThemeSettingsBackgroundRuntime(
 
                         if (internalUri != null) {
                             AppLogger.d("ThemeSettings", "Background video saved to: $internalUri")
+                            preferencesManager.registerStagedAsset(internalUri.toString())
                             onBackgroundImageUriInputChange(internalUri.toString())
                             onBackgroundMediaTypeInputChange(UserPreferencesManager.MEDIA_TYPE_VIDEO)
                             saveThemeSettingsWithCharacterCard {
@@ -407,7 +343,6 @@ internal fun rememberThemeSettingsBackgroundRuntime(
                                     backgroundMediaType = UserPreferencesManager.MEDIA_TYPE_VIDEO,
                                 )
                             }
-                            onShowSaveSuccessMessage()
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.theme_video_saved),

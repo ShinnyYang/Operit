@@ -33,7 +33,6 @@ import kotlinx.coroutines.launch
 internal fun ThemeSettingsBasicTab(
     shared: ThemeSettingsShared,
     cardColors: CardColors,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     val preferencesManager = shared.preferencesManager
     val useSystemTheme by preferencesManager.useSystemTheme.collectAsState(initial = true)
@@ -99,7 +98,6 @@ internal fun ThemeSettingsBasicTab(
     ThemeSettingsBasicColorPanel(
         shared = shared,
         cardColors = cardColors,
-        onShowSaveSuccessMessage = onShowSaveSuccessMessage,
     )
 
     ThemeSettingsFontSection(
@@ -137,6 +135,7 @@ private fun rememberGlobalFontPicker(
                             FileUtils.copyFileToInternalStorage(context, uri, "custom_font")
                         if (internalUri != null) {
                             AppLogger.d("ThemeSettings", "Font file saved to: $internalUri")
+                            preferencesManager.registerStagedAsset(internalUri.toString())
                             shared.saveThemeSettingsWithCharacterCard {
                                 preferencesManager.saveThemeSettings(
                                     customFontPath = internalUri.toString(),
@@ -173,7 +172,6 @@ private fun rememberGlobalFontPicker(
 private fun ThemeSettingsBasicColorPanel(
     shared: ThemeSettingsShared,
     cardColors: CardColors,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     val preferencesManager = shared.preferencesManager
     val navigationDrawerAppearance = rememberNavigationDrawerAppearance()
@@ -318,7 +316,6 @@ private fun ThemeSettingsBasicColorPanel(
     ThemeSettingsColorCustomizationSection(
         cardColors = cardColors,
         preferencesManager = preferencesManager,
-        scope = shared.scope,
         saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
         statusBarHiddenInput = statusBarHiddenInput,
         onStatusBarHiddenInputChange = { statusBarHiddenInput = it },
@@ -370,7 +367,6 @@ private fun ThemeSettingsBasicColorPanel(
             currentColorPickerMode = it
             showColorPicker = true
         },
-        onShowSaveSuccessMessage = onShowSaveSuccessMessage,
         contentMode = ThemeSettingsColorContentMode.PALETTE,
     )
 
@@ -461,4 +457,3 @@ private fun saveSelectedThemeColor(
         }
     }
 }
-

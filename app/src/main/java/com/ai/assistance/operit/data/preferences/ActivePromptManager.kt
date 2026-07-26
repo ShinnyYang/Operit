@@ -70,19 +70,37 @@ class ActivePromptManager private constructor(context: Context) {
 
     suspend fun resetThemeForActivePrompt(target: ActivePrompt): Boolean {
         val reset = themeOperations.runForTarget(target) {
-            userPreferencesManager.resetThemeSettings()
-            when (target) {
-                is ActivePrompt.CharacterGroup ->
-                    userPreferencesManager.deleteCharacterGroupTheme(target.id)
-
-                is ActivePrompt.CharacterCard ->
-                    userPreferencesManager.deleteCharacterCardTheme(target.id)
-            }
+            userPreferencesManager.resetVisualThemeForPrompt(
+                target = target,
+                updateCurrentProjection = true,
+            )
         }
         if (!reset) {
             AppLogger.w(TAG, "Ignoring theme reset because the active prompt changed")
         }
         return reset
+    }
+
+    suspend fun commitThemeDraft(
+        target: ActivePrompt,
+        values: ThemePreferenceValues,
+    ) {
+        themeOperations.runTransition {
+            userPreferencesManager.replaceThemeForPrompt(
+                target = target,
+                values = values,
+                updateCurrentProjection = getActivePrompt() == target,
+            )
+        }
+    }
+
+    suspend fun resetThemeDraft(target: ActivePrompt) {
+        themeOperations.runTransition {
+            userPreferencesManager.resetVisualThemeForPrompt(
+                target = target,
+                updateCurrentProjection = getActivePrompt() == target,
+            )
+        }
     }
 
     suspend fun saveAiAvatarForPrompt(target: ActivePrompt, avatarUri: String?) {

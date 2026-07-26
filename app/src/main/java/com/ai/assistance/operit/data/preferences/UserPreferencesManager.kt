@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.data.model.ActivePrompt
 import com.ai.assistance.operit.data.model.LegacyUserProfile
 import com.ai.assistance.operit.data.model.MemorySpace
 import com.ai.assistance.operit.data.model.CharacterCardMemoryProfileBindingMode
@@ -1849,6 +1850,185 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
+    private fun themePrefixForPrompt(target: ActivePrompt): String {
+        return when (target) {
+            is ActivePrompt.CharacterCard -> getCharacterCardThemePrefix(target.id)
+            is ActivePrompt.CharacterGroup -> getCharacterGroupThemePrefix(target.id)
+        }
+    }
+
+    private fun isVisualThemeStringKey(key: Preferences.Key<String>): Boolean {
+        return key != KEY_CUSTOM_AI_AVATAR_URI && key != KEY_CUSTOM_CHAT_TITLE
+    }
+
+    private fun clearVisualThemeValues(preferences: MutablePreferences, prefix: String?) {
+        getAllStringThemeKeys()
+            .filter(::isVisualThemeStringKey)
+            .forEach { key ->
+                val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+                preferences.remove(targetKey)
+            }
+        getAllBooleanThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            preferences.remove(targetKey)
+        }
+        getAllIntThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            preferences.remove(targetKey)
+        }
+        getAllFloatThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            preferences.remove(targetKey)
+        }
+    }
+
+    private fun readThemePreferenceValues(
+        preferences: Preferences,
+        prefix: String?,
+    ): ThemePreferenceValues {
+        val defaults = ThemePreferenceValues.defaultVisual()
+        val strings = defaults.strings.toMutableMap()
+        val booleans = defaults.booleans.toMutableMap()
+        val ints = defaults.ints.toMutableMap()
+        val floats = defaults.floats.toMutableMap()
+
+        getAllStringThemeKeys().forEach { key ->
+            val sourceKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            preferences[sourceKey]?.let { strings[key.name] = it }
+        }
+        getAllBooleanThemeKeys().forEach { key ->
+            val sourceKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            preferences[sourceKey]?.let { booleans[key.name] = it }
+        }
+        getAllIntThemeKeys().forEach { key ->
+            val sourceKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            preferences[sourceKey]?.let { ints[key.name] = it }
+        }
+        getAllFloatThemeKeys().forEach { key ->
+            val sourceKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            preferences[sourceKey]?.let { floats[key.name] = it }
+        }
+
+        fun copyLegacyRepeatYValue(
+            verticalKey: Preferences.Key<Float>,
+            horizontalKey: Preferences.Key<Float>,
+        ) {
+            val verticalSourceKey = prefix?.let { floatPreferencesKey("${it}${verticalKey.name}") }
+                ?: verticalKey
+            if (!preferences.contains(verticalSourceKey)) {
+                val horizontalSourceKey = prefix?.let { floatPreferencesKey("${it}${horizontalKey.name}") }
+                    ?: horizontalKey
+                preferences[horizontalSourceKey]?.let { floats[verticalKey.name] = it }
+            }
+        }
+
+        copyLegacyRepeatYValue(BUBBLE_USER_IMAGE_REPEAT_Y_START, BUBBLE_USER_IMAGE_REPEAT_START)
+        copyLegacyRepeatYValue(BUBBLE_USER_IMAGE_REPEAT_Y_END, BUBBLE_USER_IMAGE_REPEAT_END)
+        copyLegacyRepeatYValue(BUBBLE_AI_IMAGE_REPEAT_Y_START, BUBBLE_AI_IMAGE_REPEAT_START)
+        copyLegacyRepeatYValue(BUBBLE_AI_IMAGE_REPEAT_Y_END, BUBBLE_AI_IMAGE_REPEAT_END)
+
+        return ThemePreferenceValues(
+            strings = strings,
+            booleans = booleans,
+            ints = ints,
+            floats = floats,
+        )
+    }
+
+    private fun writeVisualThemeValues(
+        preferences: MutablePreferences,
+        prefix: String?,
+        values: ThemePreferenceValues,
+    ) {
+        getAllStringThemeKeys()
+            .filter(::isVisualThemeStringKey)
+            .forEach { key ->
+                val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+                val value = values.string(key.name)
+                if (value == null) {
+                    preferences.remove(targetKey)
+                } else {
+                    preferences[targetKey] = value
+                }
+            }
+        getAllBooleanThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val value = values.boolean(key.name)
+            if (value == null) {
+                preferences.remove(targetKey)
+            } else {
+                preferences[targetKey] = value
+            }
+        }
+        getAllIntThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val value = values.int(key.name)
+            if (value == null) {
+                preferences.remove(targetKey)
+            } else {
+                preferences[targetKey] = value
+            }
+        }
+        getAllFloatThemeKeys().forEach { key ->
+            val targetKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val value = values.float(key.name)
+            if (value == null) {
+                preferences.remove(targetKey)
+            } else {
+                preferences[targetKey] = value
+            }
+        }
+    }
+
+    private fun writeThemeTargetMetadata(
+        preferences: MutablePreferences,
+        prefix: String,
+        values: ThemePreferenceValues,
+    ) {
+        listOf(KEY_CUSTOM_AI_AVATAR_URI, KEY_CUSTOM_CHAT_TITLE).forEach { key ->
+            val targetKey = stringPreferencesKey("${prefix}${key.name}")
+            val value = values.string(key.name)
+            if (value == null) {
+                preferences.remove(targetKey)
+            } else {
+                preferences[targetKey] = value
+            }
+        }
+    }
+
+    suspend fun replaceThemeForPrompt(
+        target: ActivePrompt,
+        values: ThemePreferenceValues,
+        updateCurrentProjection: Boolean,
+    ) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = themePrefixForPrompt(target)
+            clearVisualThemeValues(preferences, prefix)
+            writeVisualThemeValues(preferences, prefix, values)
+            writeThemeTargetMetadata(preferences, prefix, values)
+            if (updateCurrentProjection) {
+                copyThemeValues(
+                    preferences = preferences,
+                    sourcePrefix = prefix,
+                    targetPrefix = null,
+                    clearMissingTargetValues = true,
+                )
+            }
+        }
+    }
+
+    suspend fun resetVisualThemeForPrompt(
+        target: ActivePrompt,
+        updateCurrentProjection: Boolean,
+    ) {
+        context.userPreferencesDataStore.edit { preferences ->
+            clearVisualThemeValues(preferences, themePrefixForPrompt(target))
+            if (updateCurrentProjection) {
+                clearVisualThemeValues(preferences, prefix = null)
+            }
+        }
+    }
+
     private suspend fun copyCurrentThemeToPrefix(prefix: String) {
         context.userPreferencesDataStore.edit { preferences ->
             copyThemeValues(
@@ -2026,126 +2206,103 @@ class UserPreferencesManager private constructor(private val context: Context) {
         val normalizedGroupId = characterGroupId?.trim()?.takeIf { it.isNotBlank() }
         val normalizedCardId = characterCardId?.trim()?.takeIf { it.isNotBlank() }
 
-        val sourcePrefix = when {
-            normalizedGroupId != null && hasCharacterGroupTheme(normalizedGroupId) ->
-                "character_group" to getCharacterGroupThemePrefix(normalizedGroupId)
+        val (source, sourceId, prefix) = when {
+            normalizedGroupId != null -> Triple(
+                "character_group",
+                normalizedGroupId,
+                getCharacterGroupThemePrefix(normalizedGroupId),
+            )
 
-            normalizedCardId != null && hasCharacterCardTheme(normalizedCardId) ->
-                "character_card" to getCharacterCardThemePrefix(normalizedCardId)
+            normalizedCardId != null -> Triple(
+                "character_card",
+                normalizedCardId,
+                getCharacterCardThemePrefix(normalizedCardId),
+            )
 
-            else -> "global" to null
-        }
-
-        val source = sourcePrefix.first
-        val prefix = sourcePrefix.second
-        val sourceId = when (source) {
-            "character_group" -> normalizedGroupId
-            "character_card" -> normalizedCardId
-            else -> null
+            else -> Triple("global", null, null)
         }
         val preferences = context.userPreferencesDataStore.data.first()
+        val values = readThemePreferenceValues(preferences, prefix)
 
-        fun stringValue(key: Preferences.Key<String>, defaultValue: String? = null): String? {
-            val resolvedKey = if (prefix != null) {
-                stringPreferencesKey("${prefix}${key.name}")
-            } else {
-                key
-            }
-            return preferences[resolvedKey] ?: defaultValue
-        }
+        fun stringValue(key: Preferences.Key<String>): String =
+            requireNotNull(values.string(key.name))
 
-        fun booleanValue(key: Preferences.Key<Boolean>, defaultValue: Boolean): Boolean {
-            val resolvedKey = if (prefix != null) {
-                booleanPreferencesKey("${prefix}${key.name}")
-            } else {
-                key
-            }
-            return preferences[resolvedKey] ?: defaultValue
-        }
+        fun optionalStringValue(key: Preferences.Key<String>): String? = values.string(key.name)
 
-        fun intValue(key: Preferences.Key<Int>): Int? {
-            val resolvedKey = if (prefix != null) {
-                intPreferencesKey("${prefix}${key.name}")
-            } else {
-                key
-            }
-            return preferences[resolvedKey]
-        }
+        fun booleanValue(key: Preferences.Key<Boolean>): Boolean =
+            requireNotNull(values.boolean(key.name))
 
-        fun floatValue(key: Preferences.Key<Float>, defaultValue: Float): Float {
-            val resolvedKey = if (prefix != null) {
-                floatPreferencesKey("${prefix}${key.name}")
-            } else {
-                key
-            }
-            return preferences[resolvedKey] ?: defaultValue
-        }
+        fun intValue(key: Preferences.Key<Int>): Int? = values.int(key.name)
+
+        fun floatValue(key: Preferences.Key<Float>): Float =
+            requireNotNull(values.float(key.name))
 
         return ThemePreferenceSnapshot(
             source = source,
             sourceId = sourceId,
-            themeMode = stringValue(THEME_MODE, THEME_MODE_LIGHT) ?: THEME_MODE_LIGHT,
-            useSystemTheme = booleanValue(USE_SYSTEM_THEME, true),
-            useCustomColors = booleanValue(USE_CUSTOM_COLORS, false),
+            themeMode = stringValue(THEME_MODE),
+            useSystemTheme = booleanValue(USE_SYSTEM_THEME),
+            useCustomColors = booleanValue(USE_CUSTOM_COLORS),
             customPrimaryColor = intValue(CUSTOM_PRIMARY_COLOR),
             customSecondaryColor = intValue(CUSTOM_SECONDARY_COLOR),
-            onColorMode = stringValue(KEY_ON_COLOR_MODE, ON_COLOR_MODE_AUTO) ?: ON_COLOR_MODE_AUTO,
-            useBackgroundImage = booleanValue(USE_BACKGROUND_IMAGE, false),
-            backgroundImageUri = stringValue(BACKGROUND_IMAGE_URI),
-            backgroundMediaType = stringValue(BACKGROUND_MEDIA_TYPE, MEDIA_TYPE_IMAGE)
-                ?: MEDIA_TYPE_IMAGE,
-            backgroundImageOpacity = floatValue(BACKGROUND_IMAGE_OPACITY, 0.3f),
-            chatHeaderTransparent = booleanValue(CHAT_HEADER_TRANSPARENT, false),
-            chatHeaderOverlayMode = booleanValue(CHAT_HEADER_OVERLAY_MODE, false),
-            chatInputTransparent = booleanValue(CHAT_INPUT_TRANSPARENT, false),
-            chatInputFloating = booleanValue(CHAT_INPUT_FLOATING, false),
-            chatInputLiquidGlass = booleanValue(CHAT_INPUT_LIQUID_GLASS, false),
-            chatInputWaterGlass = booleanValue(CHAT_INPUT_WATER_GLASS, false),
-            chatStyle = stringValue(CHAT_STYLE, CHAT_STYLE_CURSOR) ?: CHAT_STYLE_CURSOR,
-            inputStyle = stringValue(INPUT_STYLE, INPUT_STYLE_AGENT) ?: INPUT_STYLE_AGENT,
-            bubbleShowAvatar = booleanValue(BUBBLE_SHOW_AVATAR, true),
-            bubbleWideLayoutEnabled = booleanValue(BUBBLE_WIDE_LAYOUT_ENABLED, false),
-            cursorUserBubbleFollowTheme = booleanValue(CURSOR_USER_BUBBLE_FOLLOW_THEME, true),
+            onColorMode = stringValue(KEY_ON_COLOR_MODE),
+            useBackgroundImage = booleanValue(USE_BACKGROUND_IMAGE),
+            backgroundImageUri = optionalStringValue(BACKGROUND_IMAGE_URI),
+            backgroundMediaType = stringValue(BACKGROUND_MEDIA_TYPE),
+            backgroundImageOpacity = floatValue(BACKGROUND_IMAGE_OPACITY),
+            chatHeaderTransparent = booleanValue(CHAT_HEADER_TRANSPARENT),
+            chatHeaderOverlayMode = booleanValue(CHAT_HEADER_OVERLAY_MODE),
+            chatInputTransparent = booleanValue(CHAT_INPUT_TRANSPARENT),
+            chatInputFloating = booleanValue(CHAT_INPUT_FLOATING),
+            chatInputLiquidGlass = booleanValue(CHAT_INPUT_LIQUID_GLASS),
+            chatInputWaterGlass = booleanValue(CHAT_INPUT_WATER_GLASS),
+            chatStyle = stringValue(CHAT_STYLE),
+            inputStyle = stringValue(INPUT_STYLE),
+            bubbleShowAvatar = booleanValue(BUBBLE_SHOW_AVATAR),
+            bubbleWideLayoutEnabled = booleanValue(BUBBLE_WIDE_LAYOUT_ENABLED),
+            cursorUserBubbleFollowTheme = booleanValue(CURSOR_USER_BUBBLE_FOLLOW_THEME),
             cursorUserBubbleColor = intValue(CURSOR_USER_BUBBLE_COLOR),
             bubbleUserBubbleColor = intValue(BUBBLE_USER_BUBBLE_COLOR),
             bubbleAiBubbleColor = intValue(BUBBLE_AI_BUBBLE_COLOR),
             bubbleUserTextColor = intValue(BUBBLE_USER_TEXT_COLOR),
             bubbleAiTextColor = intValue(BUBBLE_AI_TEXT_COLOR),
-            bubbleUserUseImage = booleanValue(BUBBLE_USER_USE_IMAGE, false),
-            bubbleAiUseImage = booleanValue(BUBBLE_AI_USE_IMAGE, false),
-            bubbleUserImageUri = stringValue(BUBBLE_USER_IMAGE_URI),
-            bubbleAiImageUri = stringValue(BUBBLE_AI_IMAGE_URI),
-            bubbleImageRenderMode =
-                stringValue(
-                    BUBBLE_IMAGE_RENDER_MODE,
-                    BUBBLE_IMAGE_RENDER_MODE_TILED_NINE_SLICE
-                ) ?: BUBBLE_IMAGE_RENDER_MODE_TILED_NINE_SLICE,
-            bubbleUserRoundedCornersEnabled =
-                booleanValue(BUBBLE_USER_ROUNDED_CORNERS_ENABLED, true),
-            bubbleAiRoundedCornersEnabled =
-                booleanValue(BUBBLE_AI_ROUNDED_CORNERS_ENABLED, true),
-            bubbleUserContentPaddingLeft = floatValue(BUBBLE_USER_CONTENT_PADDING_LEFT, 12f),
-            bubbleUserContentPaddingRight = floatValue(BUBBLE_USER_CONTENT_PADDING_RIGHT, 12f),
-            bubbleAiContentPaddingLeft = floatValue(BUBBLE_AI_CONTENT_PADDING_LEFT, 12f),
-            bubbleAiContentPaddingRight = floatValue(BUBBLE_AI_CONTENT_PADDING_RIGHT, 12f),
-            customUserAvatarUri = stringValue(KEY_CUSTOM_USER_AVATAR_URI),
-            customAiAvatarUri = stringValue(KEY_CUSTOM_AI_AVATAR_URI),
-            avatarShape = stringValue(KEY_AVATAR_SHAPE, AVATAR_SHAPE_CIRCLE) ?: AVATAR_SHAPE_CIRCLE,
-            avatarCornerRadius = floatValue(KEY_AVATAR_CORNER_RADIUS, 8f),
-            fontType = stringValue(FONT_TYPE, FONT_TYPE_SYSTEM) ?: FONT_TYPE_SYSTEM,
-            systemFontName = stringValue(SYSTEM_FONT_NAME),
-            customFontPath = stringValue(CUSTOM_FONT_PATH),
-            fontScale = floatValue(FONT_SCALE, 1.0f),
-            showThinkingProcess = booleanValue(KEY_SHOW_THINKING_PROCESS, true),
-            showStatusTags = booleanValue(KEY_SHOW_STATUS_TAGS, true),
-            showModelProvider = booleanValue(KEY_SHOW_MODEL_PROVIDER, false),
-            showModelName = booleanValue(KEY_SHOW_MODEL_NAME, false),
-            showRoleName = booleanValue(KEY_SHOW_ROLE_NAME, true),
-            showUserName = booleanValue(KEY_SHOW_USER_NAME, true),
-            showMessageTokenStats = booleanValue(KEY_SHOW_MESSAGE_TOKEN_STATS, false),
-            showMessageTimingStats = booleanValue(KEY_SHOW_MESSAGE_TIMING_STATS, false),
-            showMessageTimestamp = booleanValue(KEY_SHOW_MESSAGE_TIMESTAMP, false),
-            showInputProcessingStatus = booleanValue(KEY_SHOW_INPUT_PROCESSING_STATUS, true)
+            bubbleUserUseImage = booleanValue(BUBBLE_USER_USE_IMAGE),
+            bubbleAiUseImage = booleanValue(BUBBLE_AI_USE_IMAGE),
+            bubbleUserImageUri = optionalStringValue(BUBBLE_USER_IMAGE_URI),
+            bubbleAiImageUri = optionalStringValue(BUBBLE_AI_IMAGE_URI),
+            bubbleImageRenderMode = stringValue(BUBBLE_IMAGE_RENDER_MODE),
+            bubbleUserRoundedCornersEnabled = booleanValue(BUBBLE_USER_ROUNDED_CORNERS_ENABLED),
+            bubbleAiRoundedCornersEnabled = booleanValue(BUBBLE_AI_ROUNDED_CORNERS_ENABLED),
+            bubbleUserContentPaddingLeft = floatValue(BUBBLE_USER_CONTENT_PADDING_LEFT),
+            bubbleUserContentPaddingRight = floatValue(BUBBLE_USER_CONTENT_PADDING_RIGHT),
+            bubbleAiContentPaddingLeft = floatValue(BUBBLE_AI_CONTENT_PADDING_LEFT),
+            bubbleAiContentPaddingRight = floatValue(BUBBLE_AI_CONTENT_PADDING_RIGHT),
+            customUserAvatarUri = optionalStringValue(KEY_CUSTOM_USER_AVATAR_URI),
+            customAiAvatarUri = optionalStringValue(KEY_CUSTOM_AI_AVATAR_URI),
+            avatarShape = stringValue(KEY_AVATAR_SHAPE),
+            avatarCornerRadius = floatValue(KEY_AVATAR_CORNER_RADIUS),
+            fontType = stringValue(FONT_TYPE),
+            systemFontName = optionalStringValue(SYSTEM_FONT_NAME),
+            customFontPath = optionalStringValue(CUSTOM_FONT_PATH),
+            fontScale = floatValue(FONT_SCALE),
+            showThinkingProcess = booleanValue(KEY_SHOW_THINKING_PROCESS),
+            showStatusTags = booleanValue(KEY_SHOW_STATUS_TAGS),
+            showModelProvider = booleanValue(KEY_SHOW_MODEL_PROVIDER),
+            showModelName = booleanValue(KEY_SHOW_MODEL_NAME),
+            showRoleName = booleanValue(KEY_SHOW_ROLE_NAME),
+            showUserName = booleanValue(KEY_SHOW_USER_NAME),
+            showMessageTokenStats = booleanValue(KEY_SHOW_MESSAGE_TOKEN_STATS),
+            showMessageTimingStats = booleanValue(KEY_SHOW_MESSAGE_TIMING_STATS),
+            showMessageTimestamp = booleanValue(KEY_SHOW_MESSAGE_TIMESTAMP),
+            showInputProcessingStatus = booleanValue(KEY_SHOW_INPUT_PROCESSING_STATUS),
+            useCustomFont = booleanValue(USE_CUSTOM_FONT),
+            cursorUserBubbleLiquidGlass = booleanValue(CURSOR_USER_BUBBLE_LIQUID_GLASS),
+            cursorUserBubbleWaterGlass = booleanValue(CURSOR_USER_BUBBLE_WATER_GLASS),
+            bubbleUserBubbleLiquidGlass = booleanValue(BUBBLE_USER_BUBBLE_LIQUID_GLASS),
+            bubbleUserBubbleWaterGlass = booleanValue(BUBBLE_USER_BUBBLE_WATER_GLASS),
+            bubbleAiBubbleLiquidGlass = booleanValue(BUBBLE_AI_BUBBLE_LIQUID_GLASS),
+            bubbleAiBubbleWaterGlass = booleanValue(BUBBLE_AI_BUBBLE_WATER_GLASS),
+            values = values,
         )
     }
 }

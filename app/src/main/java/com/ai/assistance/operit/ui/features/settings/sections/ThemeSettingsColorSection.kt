@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ColorLens
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardColors
 import androidx.compose.material3.HorizontalDivider
@@ -20,11 +19,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
+import com.ai.assistance.operit.ui.features.settings.screens.theme.ThemeSettingsDraftPreferences
 import com.ai.assistance.operit.ui.features.settings.components.ColorSelectionItem
 import com.ai.assistance.operit.ui.features.settings.components.ThemeModeOption
 import com.ai.assistance.operit.ui.theme.getTextColorForBackground
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 
 internal enum class ThemeSettingsColorContentMode {
     PALETTE,
@@ -36,8 +34,7 @@ internal enum class ThemeSettingsColorContentMode {
 @Composable
 internal fun ThemeSettingsColorCustomizationSection(
     cardColors: CardColors,
-    preferencesManager: UserPreferencesManager,
-    scope: CoroutineScope,
+    preferencesManager: ThemeSettingsDraftPreferences,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     statusBarHiddenInput: Boolean,
     onStatusBarHiddenInputChange: (Boolean) -> Unit,
@@ -86,7 +83,6 @@ internal fun ThemeSettingsColorCustomizationSection(
     onColorModeInput: String,
     onOnColorModeInputChange: (String) -> Unit,
     onShowColorPicker: (String) -> Unit,
-    onShowSaveSuccessMessage: () -> Unit,
     contentMode: ThemeSettingsColorContentMode,
 ) {
     val showPaletteControls = contentMode == ThemeSettingsColorContentMode.PALETTE
@@ -831,7 +827,11 @@ internal fun ThemeSettingsColorCustomizationSection(
                     onCheckedChange = {
                         onUseCustomColorsInputChange(it)
                         saveThemeSettingsWithCharacterCard {
-                            preferencesManager.saveThemeSettings(useCustomColors = it)
+                            preferencesManager.saveThemeSettings(
+                                useCustomColors = it,
+                                customPrimaryColor = if (it) primaryColorInput else null,
+                                customSecondaryColor = if (it) secondaryColorInput else null,
+                            )
                         }
                     },
                 )
@@ -977,20 +977,6 @@ internal fun ThemeSettingsColorCustomizationSection(
                     )
                 }
 
-                Button(
-                    onClick = {
-                        scope.launch {
-                            preferencesManager.saveThemeSettings(
-                                customPrimaryColor = primaryColorInput,
-                                customSecondaryColor = secondaryColorInput,
-                            )
-                            onShowSaveSuccessMessage()
-                        }
-                    },
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                ) {
-                    Text(stringResource(id = R.string.theme_save_colors))
-                }
             }
         }
     }

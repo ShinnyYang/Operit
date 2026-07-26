@@ -19,6 +19,7 @@ import com.ai.assistance.operit.data.model.ActivePrompt
 import com.ai.assistance.operit.data.model.CharacterGroupCard
 import com.ai.assistance.operit.data.model.GroupMemberConfig
 import com.ai.assistance.operit.data.repository.CustomEmojiRepository
+import com.ai.assistance.operit.data.repository.ChatHistoryManager
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -164,6 +165,7 @@ class CharacterGroupCardManager private constructor(private val context: Context
     }
 
     private suspend fun deleteCharacterGroupCardLocked(groupId: String) {
+        val groupAvatarUri = userPreferencesManager.getAiAvatarForCharacterGroupFlow(groupId).first()
         var deletedActiveGroup = false
         dataStore.edit { preferences ->
             val currentList = preferences[CHARACTER_GROUP_LIST]?.toMutableSet() ?: mutableSetOf()
@@ -180,6 +182,13 @@ class CharacterGroupCardManager private constructor(private val context: Context
         runCatching { userPreferencesManager.deleteCharacterGroupTheme(groupId) }
         runCatching { waifuPreferences.deleteCharacterGroupWaifuSettings(groupId) }
         runCatching { customEmojiRepository.deleteCharacterGroupEmojis(groupId) }
+        runCatching { ChatHistoryManager.getInstance(context).clearCharacterGroupBinding(groupId) }
+        if (isManagedDefaultGroupAvatar(groupAvatarUri, groupId)) {
+            val avatarPath = Uri.parse(groupAvatarUri).path
+            if (!avatarPath.isNullOrBlank()) {
+                runCatching { File(avatarPath).delete() }
+            }
+        }
 
         if (deletedActiveGroup) {
             val activeCardId = characterCardManager.observeActiveCharacterCardId().first()

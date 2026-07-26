@@ -30,7 +30,6 @@ import com.ai.assistance.operit.ui.features.settings.components.ChatStyleOption
 internal fun ThemeSettingsInputTab(
     shared: ThemeSettingsShared,
     cardColors: CardColors,
-    onShowSaveSuccessMessage: () -> Unit,
 ) {
     val preferencesManager = shared.preferencesManager
     val inputStyle by preferencesManager.inputStyle.collectAsState(
@@ -89,7 +88,6 @@ internal fun ThemeSettingsInputTab(
                             inputStyle = UserPreferencesManager.INPUT_STYLE_CLASSIC,
                         )
                     }
-                    onShowSaveSuccessMessage()
                 }
 
                 ChatStyleOption(
@@ -103,7 +101,6 @@ internal fun ThemeSettingsInputTab(
                             inputStyle = UserPreferencesManager.INPUT_STYLE_AGENT,
                         )
                     }
-                    onShowSaveSuccessMessage()
                 }
             }
         }
@@ -125,7 +122,6 @@ internal fun ThemeSettingsInputTab(
                     shared.saveThemeSettingsWithCharacterCard {
                         preferencesManager.saveThemeSettings(chatInputTransparent = it)
                     }
-                    onShowSaveSuccessMessage()
                 },
             )
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -138,7 +134,6 @@ internal fun ThemeSettingsInputTab(
                     shared.saveThemeSettingsWithCharacterCard {
                         preferencesManager.saveThemeSettings(chatInputFloating = it)
                     }
-                    onShowSaveSuccessMessage()
                 },
             )
 
@@ -159,7 +154,6 @@ internal fun ThemeSettingsInputTab(
                                 chatInputWaterGlass = if (it) false else null,
                             )
                         }
-                        onShowSaveSuccessMessage()
                     },
                 )
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
@@ -178,7 +172,6 @@ internal fun ThemeSettingsInputTab(
                                 chatInputLiquidGlass = if (it) false else null,
                             )
                         }
-                        onShowSaveSuccessMessage()
                     },
                 )
             }
@@ -209,4 +202,3 @@ private fun ThemeSettingsInputSwitch(
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
-
