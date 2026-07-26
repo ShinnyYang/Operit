@@ -33,6 +33,7 @@ internal data class ThemeSettingsShared(
     val preferencesManager: UserPreferencesManager,
     val displayPreferencesManager: DisplayPreferencesManager,
     val scope: CoroutineScope,
+    val activePromptManager: ActivePromptManager,
     val activePrompt: ActivePrompt,
     val activeCharacterCard: CharacterCard?,
     val activeCharacterGroup: CharacterGroupCard?,
@@ -74,6 +75,7 @@ internal fun ThemeSettingsContent() {
         preferencesManager = preferencesManager,
         displayPreferencesManager = displayPreferencesManager,
         scope = scope,
+        activePromptManager = activePromptManager,
         activePrompt = activePrompt,
         activeCharacterCard = activeCharacterCard,
         activeCharacterGroup = activeCharacterGroup,
@@ -85,6 +87,7 @@ internal fun ThemeSettingsContentEditor(
     preferencesManager: UserPreferencesManager,
     displayPreferencesManager: DisplayPreferencesManager,
     scope: CoroutineScope,
+    activePromptManager: ActivePromptManager,
     activePrompt: ActivePrompt,
     activeCharacterCard: CharacterCard?,
     activeCharacterGroup: CharacterGroupCard?,
@@ -108,27 +111,10 @@ internal fun ThemeSettingsContentEditor(
     val activeThemeTargetAvatarUri = activeGroupAvatarUri ?: activeCardAvatarUri
     val isGroupThemeTarget = activePrompt is ActivePrompt.CharacterGroup
 
-    fun saveThemeToActiveTarget() {
-        scope.launch {
-            when (activePrompt) {
-                is ActivePrompt.CharacterGroup -> {
-                    activeCharacterGroup?.id?.let {
-                        preferencesManager.saveCurrentThemeToCharacterGroup(it)
-                    }
-                }
-                is ActivePrompt.CharacterCard -> {
-                    activeCharacterCard?.id?.let {
-                        preferencesManager.saveCurrentThemeToCharacterCard(it)
-                    }
-                }
-            }
-        }
-    }
-
     fun saveThemeSettingsWithCharacterCard(saveAction: suspend () -> Unit) {
+        val target = activePrompt
         scope.launch {
-            saveAction()
-            saveThemeToActiveTarget()
+            activePromptManager.saveThemeForActivePrompt(target, saveAction)
         }
     }
 
@@ -137,6 +123,7 @@ internal fun ThemeSettingsContentEditor(
         preferencesManager = preferencesManager,
         displayPreferencesManager = displayPreferencesManager,
         scope = scope,
+        activePromptManager = activePromptManager,
         activePrompt = activePrompt,
         activeCharacterCard = activeCharacterCard,
         activeCharacterGroup = activeCharacterGroup,
@@ -191,14 +178,11 @@ internal fun ThemeSettingsContentEditor(
                 showSaveSuccessMessage = showSaveSuccessMessage,
                 onShowSaveSuccessMessageChange = { showSaveSuccessMessage = it },
                 onReset = {
+                    val target = activePrompt
                     scope.launch {
-                        preferencesManager.resetThemeSettings()
-                        if (isGroupThemeTarget) {
-                            activeCharacterGroup?.id?.let { preferencesManager.deleteCharacterGroupTheme(it) }
-                        } else {
-                            activeCharacterCard?.id?.let { preferencesManager.deleteCharacterCardTheme(it) }
+                        if (activePromptManager.resetThemeForActivePrompt(target)) {
+                            showSaveSuccessMessage = true
                         }
-                        showSaveSuccessMessage = true
                     }
                 },
             )

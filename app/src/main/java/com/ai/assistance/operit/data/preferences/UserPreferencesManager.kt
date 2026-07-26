@@ -2,6 +2,7 @@ package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
@@ -91,6 +92,8 @@ class UserPreferencesManager private constructor(private val context: Context) {
         private val CUSTOM_PRIMARY_COLOR = intPreferencesKey("custom_primary_color")
         private val CUSTOM_SECONDARY_COLOR = intPreferencesKey("custom_secondary_color")
         private val USE_CUSTOM_COLORS = booleanPreferencesKey("use_custom_colors")
+        private val CHARACTER_THEME_DEFAULT_MIGRATION_COMPLETED =
+            booleanPreferencesKey("character_theme_default_migration_completed")
         private val USE_BACKGROUND_IMAGE = booleanPreferencesKey("use_background_image")
         private val BACKGROUND_IMAGE_URI = stringPreferencesKey("background_image_uri")
         private val BACKGROUND_IMAGE_OPACITY = floatPreferencesKey("background_image_opacity")
@@ -1268,6 +1271,16 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
+    internal suspend fun saveCurrentThemeAiAvatar(avatarUri: String?) {
+        context.userPreferencesDataStore.edit { preferences ->
+            if (avatarUri.isNullOrEmpty()) {
+                preferences.remove(KEY_CUSTOM_AI_AVATAR_URI)
+            } else {
+                preferences[KEY_CUSTOM_AI_AVATAR_URI] = avatarUri
+            }
+        }
+    }
+
     fun getCustomChatTitleForCharacterCardFlow(characterCardId: String): Flow<String?> {
         return context.userPreferencesDataStore.data.map { preferences ->
             val prefix = getCharacterCardThemePrefix(characterCardId)
@@ -1304,6 +1317,16 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 preferences[key] = title
             } else {
                 preferences.remove(key)
+            }
+        }
+    }
+
+    internal suspend fun saveCurrentThemeChatTitle(title: String?) {
+        context.userPreferencesDataStore.edit { preferences ->
+            if (title.isNullOrEmpty()) {
+                preferences.remove(KEY_CUSTOM_CHAT_TITLE)
+            } else {
+                preferences[KEY_CUSTOM_CHAT_TITLE] = title
             }
         }
     }
@@ -1617,6 +1640,8 @@ class UserPreferencesManager private constructor(private val context: Context) {
             preferences.remove(CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR)
             preferences.remove(USE_CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR)
             preferences.remove(CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR)
+            preferences.remove(USE_CUSTOM_APP_BAR_COLOR)
+            preferences.remove(CUSTOM_APP_BAR_COLOR)
             preferences.remove(USE_CUSTOM_STATUS_BAR_COLOR)
             preferences.remove(CUSTOM_STATUS_BAR_COLOR)
             preferences.remove(STATUS_BAR_TRANSPARENT)
@@ -1780,101 +1805,80 @@ class UserPreferencesManager private constructor(private val context: Context) {
         )
     }
 
+    private fun copyThemeValues(
+        preferences: MutablePreferences,
+        sourcePrefix: String?,
+        targetPrefix: String?,
+        clearMissingTargetValues: Boolean,
+    ) {
+        getAllStringThemeKeys().forEach { key ->
+            val sourceKey = sourcePrefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = targetPrefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            if (preferences.contains(sourceKey)) {
+                preferences[targetKey] = preferences[sourceKey]!!
+            } else if (clearMissingTargetValues) {
+                preferences.remove(targetKey)
+            }
+        }
+        getAllBooleanThemeKeys().forEach { key ->
+            val sourceKey = sourcePrefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = targetPrefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            if (preferences.contains(sourceKey)) {
+                preferences[targetKey] = preferences[sourceKey]!!
+            } else if (clearMissingTargetValues) {
+                preferences.remove(targetKey)
+            }
+        }
+        getAllIntThemeKeys().forEach { key ->
+            val sourceKey = sourcePrefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = targetPrefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            if (preferences.contains(sourceKey)) {
+                preferences[targetKey] = preferences[sourceKey]!!
+            } else if (clearMissingTargetValues) {
+                preferences.remove(targetKey)
+            }
+        }
+        getAllFloatThemeKeys().forEach { key ->
+            val sourceKey = sourcePrefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = targetPrefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            if (preferences.contains(sourceKey)) {
+                preferences[targetKey] = preferences[sourceKey]!!
+            } else if (clearMissingTargetValues) {
+                preferences.remove(targetKey)
+            }
+        }
+    }
+
     private suspend fun copyCurrentThemeToPrefix(prefix: String) {
         context.userPreferencesDataStore.edit { preferences ->
-            getAllStringThemeKeys().forEach { key ->
-                preferences[key]?.let { value ->
-                    preferences[stringPreferencesKey("${prefix}${key.name}")] = value
-                }
-            }
-            getAllBooleanThemeKeys().forEach { key ->
-                preferences[key]?.let { value ->
-                    preferences[booleanPreferencesKey("${prefix}${key.name}")] = value
-                }
-            }
-            getAllIntThemeKeys().forEach { key ->
-                preferences[key]?.let { value ->
-                    preferences[intPreferencesKey("${prefix}${key.name}")] = value
-                }
-            }
-            getAllFloatThemeKeys().forEach { key ->
-                preferences[key]?.let { value ->
-                    preferences[floatPreferencesKey("${prefix}${key.name}")] = value
-                }
-            }
+            copyThemeValues(
+                preferences,
+                sourcePrefix = null,
+                targetPrefix = prefix,
+                clearMissingTargetValues = false,
+            )
         }
     }
 
     private suspend fun cloneThemeBetweenPrefixes(sourcePrefix: String, targetPrefix: String) {
         context.userPreferencesDataStore.edit { preferences ->
-            getAllStringThemeKeys().forEach { key ->
-                val sourceKey = stringPreferencesKey("${sourcePrefix}${key.name}")
-                preferences[sourceKey]?.let { value ->
-                    val targetKey = stringPreferencesKey("${targetPrefix}${key.name}")
-                    preferences[targetKey] = value
-                }
-            }
-
-            getAllBooleanThemeKeys().forEach { key ->
-                val sourceKey = booleanPreferencesKey("${sourcePrefix}${key.name}")
-                preferences[sourceKey]?.let { value ->
-                    val targetKey = booleanPreferencesKey("${targetPrefix}${key.name}")
-                    preferences[targetKey] = value
-                }
-            }
-
-            getAllIntThemeKeys().forEach { key ->
-                val sourceKey = intPreferencesKey("${sourcePrefix}${key.name}")
-                preferences[sourceKey]?.let { value ->
-                    val targetKey = intPreferencesKey("${targetPrefix}${key.name}")
-                    preferences[targetKey] = value
-                }
-            }
-
-            getAllFloatThemeKeys().forEach { key ->
-                val sourceKey = floatPreferencesKey("${sourcePrefix}${key.name}")
-                preferences[sourceKey]?.let { value ->
-                    val targetKey = floatPreferencesKey("${targetPrefix}${key.name}")
-                    preferences[targetKey] = value
-                }
-            }
+            copyThemeValues(
+                preferences,
+                sourcePrefix,
+                targetPrefix,
+                clearMissingTargetValues = false,
+            )
         }
     }
 
     private suspend fun switchToThemeByPrefix(prefix: String) {
         context.userPreferencesDataStore.edit { preferences ->
-            getAllStringThemeKeys().forEach { key ->
-                val cardKey = stringPreferencesKey("${prefix}${key.name}")
-                if (preferences.contains(cardKey)) {
-                    preferences[key] = preferences[cardKey]!!
-                } else {
-                    preferences.remove(key)
-                }
-            }
-            getAllBooleanThemeKeys().forEach { key ->
-                val cardKey = booleanPreferencesKey("${prefix}${key.name}")
-                if (preferences.contains(cardKey)) {
-                    preferences[key] = preferences[cardKey]!!
-                } else {
-                    preferences.remove(key)
-                }
-            }
-            getAllIntThemeKeys().forEach { key ->
-                val cardKey = intPreferencesKey("${prefix}${key.name}")
-                if (preferences.contains(cardKey)) {
-                    preferences[key] = preferences[cardKey]!!
-                } else {
-                    preferences.remove(key)
-                }
-            }
-            getAllFloatThemeKeys().forEach { key ->
-                val cardKey = floatPreferencesKey("${prefix}${key.name}")
-                if (preferences.contains(cardKey)) {
-                    preferences[key] = preferences[cardKey]!!
-                } else {
-                    preferences.remove(key)
-                }
-            }
+            copyThemeValues(
+                preferences,
+                sourcePrefix = prefix,
+                targetPrefix = null,
+                clearMissingTargetValues = true,
+            )
         }
     }
 
@@ -1895,12 +1899,67 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
-    private suspend fun hasThemeByPrefix(prefix: String): Boolean {
-        val preferences = context.userPreferencesDataStore.data.first()
+    private fun hasThemeByPrefix(preferences: Preferences, prefix: String): Boolean {
         return getAllStringThemeKeys().any { key -> preferences.contains(stringPreferencesKey("${prefix}${key.name}")) } ||
                 getAllBooleanThemeKeys().any { key -> preferences.contains(booleanPreferencesKey("${prefix}${key.name}")) } ||
                 getAllIntThemeKeys().any { key -> preferences.contains(intPreferencesKey("${prefix}${key.name}")) } ||
                 getAllFloatThemeKeys().any { key -> preferences.contains(floatPreferencesKey("${prefix}${key.name}")) }
+    }
+
+    private suspend fun hasThemeByPrefix(prefix: String): Boolean {
+        return hasThemeByPrefix(context.userPreferencesDataStore.data.first(), prefix)
+    }
+
+    private fun hasThemeContentByPrefix(preferences: Preferences, prefix: String): Boolean {
+        return getAllStringThemeKeys()
+            .filterNot { key -> key == KEY_CUSTOM_AI_AVATAR_URI || key == KEY_CUSTOM_CHAT_TITLE }
+            .any { key -> preferences.contains(stringPreferencesKey("${prefix}${key.name}")) } ||
+                getAllBooleanThemeKeys().any { key ->
+                    preferences.contains(booleanPreferencesKey("${prefix}${key.name}"))
+                } ||
+                getAllIntThemeKeys().any { key ->
+                    preferences.contains(intPreferencesKey("${prefix}${key.name}"))
+                } ||
+                getAllFloatThemeKeys().any { key ->
+                    preferences.contains(floatPreferencesKey("${prefix}${key.name}"))
+                }
+    }
+
+    private fun hasAnyScopedThemeContent(preferences: Preferences): Boolean {
+        return preferences.asMap().keys.any { key ->
+            val isScopedThemeKey =
+                key.name.startsWith("character_card_theme_") ||
+                    key.name.startsWith("character_group_theme_")
+            isScopedThemeKey &&
+                !key.name.endsWith("_${KEY_CUSTOM_AI_AVATAR_URI.name}") &&
+                !key.name.endsWith("_${KEY_CUSTOM_CHAT_TITLE.name}")
+        }
+    }
+
+    suspend fun migrateLegacyDefaultCharacterThemeIfEligible(
+        activeCharacterCardId: String?,
+        defaultCharacterWasCreated: Boolean,
+    ) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val defaultPrefix = getCharacterCardThemePrefix(CharacterCardManager.DEFAULT_CHARACTER_CARD_ID)
+            val shouldMigrate = ThemeScopeMigrationPolicy.shouldCopyLegacyThemeToDefaultCharacter(
+                migrationCompleted = preferences[CHARACTER_THEME_DEFAULT_MIGRATION_COMPLETED] ?: false,
+                activeCharacterCardId = activeCharacterCardId,
+                defaultCharacterId = CharacterCardManager.DEFAULT_CHARACTER_CARD_ID,
+                hasDefaultCharacterTheme = hasThemeContentByPrefix(preferences, defaultPrefix),
+                hasAnyScopedTheme = hasAnyScopedThemeContent(preferences),
+                defaultCharacterWasCreated = defaultCharacterWasCreated,
+            )
+            if (shouldMigrate) {
+                copyThemeValues(
+                    preferences,
+                    sourcePrefix = null,
+                    targetPrefix = defaultPrefix,
+                    clearMissingTargetValues = false,
+                )
+            }
+            preferences[CHARACTER_THEME_DEFAULT_MIGRATION_COMPLETED] = true
+        }
     }
 
     suspend fun copyCurrentThemeToCharacterCard(characterCardId: String) {

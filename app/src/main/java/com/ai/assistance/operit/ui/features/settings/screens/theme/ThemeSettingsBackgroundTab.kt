@@ -15,6 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.data.model.ActivePrompt
+import com.ai.assistance.operit.data.preferences.ActivePromptManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.features.settings.sections.ThemeSettingsBackgroundSection
 import com.ai.assistance.operit.ui.features.settings.sections.SaveThemeSettingsAction
@@ -80,6 +82,8 @@ internal fun ThemeSettingsBackgroundTab(
         context = shared.context,
         scope = shared.scope,
         preferencesManager = preferencesManager,
+        activePromptManager = shared.activePromptManager,
+        activePrompt = shared.activePrompt,
         saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
         backgroundImageUri = backgroundImageUri,
         backgroundImageUriInput = backgroundImageUriInput,
@@ -130,6 +134,8 @@ internal fun rememberThemeSettingsBackgroundRuntime(
     context: Context,
     scope: CoroutineScope,
     preferencesManager: UserPreferencesManager,
+    activePromptManager: ActivePromptManager,
+    activePrompt: ActivePrompt,
     saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
     backgroundImageUri: String?,
     backgroundImageUriInput: String?,
@@ -201,27 +207,35 @@ internal fun rememberThemeSettingsBackgroundRuntime(
                                 "ThemeSettings",
                                 "Migrated background image to: $internalUri",
                             )
-                            preferencesManager.saveThemeSettings(
-                                backgroundImageUri = internalUri.toString(),
-                            )
-                            onBackgroundImageUriInputChange(internalUri.toString())
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.background_image_migrated),
-                                Toast.LENGTH_SHORT,
-                            ).show()
+                            val saved = activePromptManager.saveThemeForActivePrompt(activePrompt) {
+                                preferencesManager.saveThemeSettings(
+                                    backgroundImageUri = internalUri.toString(),
+                                )
+                            }
+                            if (saved) {
+                                onBackgroundImageUriInputChange(internalUri.toString())
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.background_image_migrated),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
+                            }
                         }
                     }
                 } catch (e: Exception) {
                     AppLogger.e("ThemeSettings", "Error migrating background image", e)
                     scope.launch {
-                        preferencesManager.saveThemeSettings(useBackgroundImage = false)
-                        onUseBackgroundImageInputChange(false)
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.background_image_access_failed),
-                            Toast.LENGTH_LONG,
-                        ).show()
+                        val saved = activePromptManager.saveThemeForActivePrompt(activePrompt) {
+                            preferencesManager.saveThemeSettings(useBackgroundImage = false)
+                        }
+                        if (saved) {
+                            onUseBackgroundImageInputChange(false)
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.background_image_access_failed),
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        }
                     }
                 }
             }

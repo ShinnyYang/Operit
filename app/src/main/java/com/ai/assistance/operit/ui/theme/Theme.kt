@@ -46,6 +46,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImagePainter
 import coil.compose.rememberAsyncImagePainter
+import com.ai.assistance.operit.data.model.ActivePrompt
+import com.ai.assistance.operit.data.preferences.ActivePromptManager
+import com.ai.assistance.operit.data.preferences.CharacterCardManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager.Companion.ON_COLOR_MODE_AUTO
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager.Companion.ON_COLOR_MODE_DARK
@@ -92,7 +95,19 @@ private val LightColorScheme =
 fun OperitTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val preferencesManager = remember { UserPreferencesManager.getInstance(context) }
+    val activePromptManager = remember { ActivePromptManager.getInstance(context) }
     val coroutineScope = rememberCoroutineScope()
+    val activePrompt by activePromptManager.activePromptFlow.collectAsState(
+        initial = ActivePrompt.CharacterCard(CharacterCardManager.DEFAULT_CHARACTER_CARD_ID),
+    )
+
+    fun disableBackgroundForTarget(target: ActivePrompt) {
+        coroutineScope.launch {
+            activePromptManager.saveThemeForActivePrompt(target) {
+                preferencesManager.saveThemeSettings(useBackgroundImage = false)
+            }
+        }
+    }
 
     // 获取主题设置
     val useSystemTheme by preferencesManager.useSystemTheme.collectAsState(initial = true)
@@ -302,12 +317,7 @@ fun OperitTheme(content: @Composable () -> Unit) {
                                             "Error loading video background: ${e.message}",
                                             e
                                     )
-                                    // Fallback to no background if video can't be loaded
-                                    coroutineScope.launch {
-                                        preferencesManager.saveThemeSettings(
-                                                useBackgroundImage = false
-                                        )
-                                    }
+                                    disableBackgroundForTarget(activePrompt)
                                 }
                             }
                 } else {
@@ -377,7 +387,6 @@ fun OperitTheme(content: @Composable () -> Unit) {
 
                 if (useBackgroundImage && backgroundImageUri != null) {
                     val uri = Uri.parse(backgroundImageUri)
-                    val coroutineScope = rememberCoroutineScope()
 
                     if (backgroundMediaType == UserPreferencesManager.MEDIA_TYPE_IMAGE) {
                         val painter =
@@ -411,9 +420,7 @@ fun OperitTheme(content: @Composable () -> Unit) {
                                     }
                                 }
 
-                                coroutineScope.launch {
-                                    preferencesManager.saveThemeSettings(useBackgroundImage = false)
-                                }
+                                disableBackgroundForTarget(activePrompt)
                             }
                         }
 
