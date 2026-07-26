@@ -138,8 +138,8 @@ fun OperitApp(
     var queuedRouteTransition by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     fun requestRouteTransition(
-        onAllowed: () -> Unit,
         queueIfBusy: Boolean = true,
+        onAllowed: () -> Unit,
     ) {
         scope.launch {
             if (isRouteTransitionInProgress) {
@@ -164,7 +164,7 @@ fun OperitApp(
                 val queuedTransition = queuedRouteTransition
                 queuedRouteTransition = null
                 if (queuedTransition != null) {
-                    requestRouteTransition(queuedTransition)
+                    requestRouteTransition(onAllowed = queuedTransition)
                 }
             }
         }
@@ -276,7 +276,7 @@ fun OperitApp(
     }
 
     fun requestGoBack() {
-        requestRouteTransition(::performGoBack, queueIfBusy = false)
+        requestRouteTransition(queueIfBusy = false, onAllowed = ::performGoBack)
     }
 
     fun navigateToNavigationEntry(entry: NavigationEntrySpec) {

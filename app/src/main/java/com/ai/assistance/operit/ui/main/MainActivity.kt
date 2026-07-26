@@ -103,7 +103,7 @@ class MainActivity : ComponentActivity() {
     private var pendingSharedText: String? = null
     private var pendingShortcutNavItem by mutableStateOf<NavItem?>(null)
     private var pendingShortcutRequestId by mutableStateOf(0L)
-    private var currentMainNavItem by mutableStateOf(NavItem.AiChat)
+    private var currentMainNavItem by mutableStateOf<NavItem>(NavItem.AiChat)
     private var pendingRouteId by mutableStateOf<String?>(null)
     private var pendingRouteArgs by mutableStateOf<Map<String, Any?>>(emptyMap())
     private var pendingRouteRequestId by mutableStateOf(0L)
