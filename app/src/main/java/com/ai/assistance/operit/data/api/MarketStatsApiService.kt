@@ -397,7 +397,8 @@ data class MarketV2Comment(
     val author: MarketV2Author = MarketV2Author(),
     val body: String = "",
     val createdAt: String = "",
-    val updatedAt: String = ""
+    val updatedAt: String = "",
+    val likes: Int = 0
 )
 
 @Serializable
