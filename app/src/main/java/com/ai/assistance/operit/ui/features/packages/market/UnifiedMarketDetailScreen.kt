@@ -169,8 +169,7 @@ data class UnifiedMarketDetailReactionsState(
 
 enum class MarketCommentSortOption {
     NEWEST,
-    OLDEST,
-    MOST_LIKED
+    OLDEST
 }
 
 private fun sortMarketComments(
@@ -193,11 +192,6 @@ private fun sortMarketComments(
         when (sort) {
             MarketCommentSortOption.NEWEST -> roots.sortedByDescending { it.createdAt }
             MarketCommentSortOption.OLDEST -> roots.sortedBy { it.createdAt }
-            MarketCommentSortOption.MOST_LIKED ->
-                roots.sortedWith(
-                    compareByDescending<MarketV2Comment> { it.likes }
-                        .thenByDescending { it.createdAt }
-                )
         }
     val result = mutableListOf<MarketV2Comment>()
     fun appendThread(comment: MarketV2Comment) {
@@ -1102,8 +1096,7 @@ private fun UnifiedMarketDetailCommentsSectionHeader(
             ) {
                 listOf(
                     MarketCommentSortOption.NEWEST to stringResource(R.string.market_comment_sort_newest),
-                    MarketCommentSortOption.OLDEST to stringResource(R.string.market_comment_sort_oldest),
-                    MarketCommentSortOption.MOST_LIKED to stringResource(R.string.market_comment_sort_most_liked)
+                    MarketCommentSortOption.OLDEST to stringResource(R.string.market_comment_sort_oldest)
                 ).forEach { (option, label) ->
                     val selected = sortOption == option
                     Surface(

@@ -4632,7 +4632,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="market_sort_likes">Numărul de aprecieri</string>
     <string name="market_comment_sort_newest">Cele mai noi</string>
     <string name="market_comment_sort_oldest">Cele mai vechi</string>
-    <string name="market_comment_sort_most_liked">Cele mai apreciate</string>
     <string name="market_sort_featured">Selecție</string>
     <string name="market_filter_featured_only">Selecție</string>
     <string name="market_stat_downloads_short">Descărcare %1$d</string>
