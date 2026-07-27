@@ -6543,7 +6543,6 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="market_sort_downloads">Downloads</string>
     <string name="market_sort_likes">Curtidas</string>
     <string name="market_comment_sort_newest">Mais recentes</string>
-    <string name="market_comment_sort_oldest">Mais antigos</string>
     <string name="market_stat_downloads_short">%1$d downloads</string>
     <string name="open_asset">Abrir recurso</string>
     <string name="metadata_title">Metadados</string>

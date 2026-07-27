@@ -4056,7 +4056,6 @@
     <string name="market_sort_downloads">다운로드</string>
     <string name="market_sort_likes">좋아요</string>
     <string name="market_comment_sort_newest">최신순</string>
-    <string name="market_comment_sort_oldest">오래된순</string>
     <string name="market_stat_downloads_short">다운로드 %1$d회</string>
     <string name="open_asset">리소스 열기</string>
     <string name="metadata_title">메타데이터</string>

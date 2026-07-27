@@ -4630,7 +4630,6 @@
     <string name="market_sort_downloads">下载量</string>
     <string name="market_sort_likes">点赞量</string>
     <string name="market_comment_sort_newest">最新</string>
-    <string name="market_comment_sort_oldest">最旧</string>
     <string name="market_sort_featured">精选</string>
     <string name="market_filter_featured_only">精选</string>
     <string name="market_stat_downloads_short">下载 %1$d</string>

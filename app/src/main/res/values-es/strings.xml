@@ -4158,7 +4158,6 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="market_sort_downloads">Descargas</string>
     <string name="market_sort_likes">Me gusta</string>
     <string name="market_comment_sort_newest">Más recientes</string>
-    <string name="market_comment_sort_oldest">Más antiguos</string>
     <string name="market_stat_downloads_short">Descargas %1$d</string>
     <string name="open_asset">Abrir recurso</string>
     <string name="metadata_title">Metadatos</string>
