@@ -277,8 +277,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         const val BUBBLE_IMAGE_RENDER_MODE_TILED_NINE_SLICE = "tiled_nine_slice"
         const val BUBBLE_IMAGE_RENDER_MODE_NINE_PATCH = "nine_patch"
 
-        private val KEY_BACKGROUND_BLUR_RADIUS = floatPreferencesKey("background_blur_radius")
-        private val KEY_CHAT_STYLE = stringPreferencesKey("chat_style")
         private val KEY_SHOW_THINKING_PROCESS = booleanPreferencesKey("show_thinking_process")
         private val KEY_SHOW_STATUS_TAGS = booleanPreferencesKey("show_status_tags")
         private val KEY_SHOW_MODEL_PROVIDER = booleanPreferencesKey("show_model_provider")
@@ -1282,14 +1280,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
-    fun getCustomChatTitleForCharacterCardFlow(characterCardId: String): Flow<String?> {
-        return context.userPreferencesDataStore.data.map { preferences ->
-            val prefix = getCharacterCardThemePrefix(characterCardId)
-            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_CHAT_TITLE.name}")
-            preferences[key]
-        }
-    }
-    
     suspend fun saveCustomChatTitleForCharacterCard(characterCardId: String, title: String?) {
         context.userPreferencesDataStore.edit { preferences ->
             val prefix = getCharacterCardThemePrefix(characterCardId)
@@ -1299,14 +1289,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
             } else {
                 preferences.remove(key)
             }
-        }
-    }
-
-    fun getCustomChatTitleForCharacterGroupFlow(characterGroupId: String): Flow<String?> {
-        return context.userPreferencesDataStore.data.map { preferences ->
-            val prefix = getCharacterGroupThemePrefix(characterGroupId)
-            val key = stringPreferencesKey("${prefix}${KEY_CUSTOM_CHAT_TITLE.name}")
-            preferences[key]
         }
     }
 
@@ -1329,412 +1311,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
             } else {
                 preferences[KEY_CUSTOM_CHAT_TITLE] = title
             }
-        }
-    }
-
-    // 保存主题设置
-    suspend fun saveThemeSettings(
-            themeMode: String? = null,
-            useSystemTheme: Boolean? = null,
-            customPrimaryColor: Int? = null,
-            customSecondaryColor: Int? = null,
-            useCustomColors: Boolean? = null,
-            useBackgroundImage: Boolean? = null,
-            backgroundImageUri: String? = null,
-            backgroundImageOpacity: Float? = null,
-            backgroundMediaType: String? = null,
-            videoBackgroundMuted: Boolean? = null,
-            videoBackgroundLoop: Boolean? = null,
-            toolbarTransparent: Boolean? = null,
-            navigationDrawerWaterGlass: Boolean? = null,
-            navigationDrawerButtonLiquidGlass: Boolean? = null,
-            useCustomNavigationDrawerBackgroundColor: Boolean? = null,
-            customNavigationDrawerBackgroundColor: Int? = null,
-            useCustomNavigationDrawerAccentColor: Boolean? = null,
-            customNavigationDrawerAccentColor: Int? = null,
-            useCustomAppBarColor: Boolean? = null,
-            customAppBarColor: Int? = null,
-            useCustomStatusBarColor: Boolean? = null,
-            customStatusBarColor: Int? = null,
-            statusBarTransparent: Boolean? = null,
-            statusBarHidden: Boolean? = null,
-            chatHeaderTransparent: Boolean? = null,
-            chatInputTransparent: Boolean? = null,
-            chatInputFloating: Boolean? = null,
-            chatInputLiquidGlass: Boolean? = null,
-            chatInputWaterGlass: Boolean? = null,
-            forceAppBarContentColor: Boolean? = null,
-            appBarContentColorMode: String? = null,
-            chatHeaderHistoryIconColor: Int? = null,
-            chatHeaderPipIconColor: Int? = null,
-            chatHeaderOverlayMode: Boolean? = null,
-            useBackgroundBlur: Boolean? = null,
-            backgroundBlurRadius: Float? = null,
-            chatStyle: String? = null,
-            bubbleShowAvatar: Boolean? = null,
-            bubbleWideLayoutEnabled: Boolean? = null,
-            cursorUserBubbleFollowTheme: Boolean? = null,
-            cursorUserBubbleLiquidGlass: Boolean? = null,
-            cursorUserBubbleWaterGlass: Boolean? = null,
-            cursorUserBubbleColor: Int? = null,
-            bubbleUserBubbleLiquidGlass: Boolean? = null,
-            bubbleUserBubbleWaterGlass: Boolean? = null,
-            bubbleUserBubbleColor: Int? = null,
-            bubbleAiBubbleLiquidGlass: Boolean? = null,
-            bubbleAiBubbleWaterGlass: Boolean? = null,
-            bubbleAiBubbleColor: Int? = null,
-            bubbleUserTextColor: Int? = null,
-            bubbleAiTextColor: Int? = null,
-            bubbleUserUseCustomFont: Boolean? = null,
-            bubbleUserFontType: String? = null,
-            bubbleUserSystemFontName: String? = null,
-            bubbleUserCustomFontPath: String? = null,
-            bubbleAiUseCustomFont: Boolean? = null,
-            bubbleAiFontType: String? = null,
-            bubbleAiSystemFontName: String? = null,
-            bubbleAiCustomFontPath: String? = null,
-            bubbleUserUseImage: Boolean? = null,
-            bubbleAiUseImage: Boolean? = null,
-            bubbleUserImageUri: String? = null,
-            bubbleAiImageUri: String? = null,
-            bubbleUserImageCropLeft: Float? = null,
-            bubbleUserImageCropTop: Float? = null,
-            bubbleUserImageCropRight: Float? = null,
-            bubbleUserImageCropBottom: Float? = null,
-            bubbleUserImageRepeatStart: Float? = null,
-            bubbleUserImageRepeatEnd: Float? = null,
-            bubbleUserImageRepeatYStart: Float? = null,
-            bubbleUserImageRepeatYEnd: Float? = null,
-            bubbleUserImageScale: Float? = null,
-            bubbleAiImageCropLeft: Float? = null,
-            bubbleAiImageCropTop: Float? = null,
-            bubbleAiImageCropRight: Float? = null,
-            bubbleAiImageCropBottom: Float? = null,
-            bubbleAiImageRepeatStart: Float? = null,
-            bubbleAiImageRepeatEnd: Float? = null,
-            bubbleAiImageRepeatYStart: Float? = null,
-            bubbleAiImageRepeatYEnd: Float? = null,
-            bubbleAiImageScale: Float? = null,
-            bubbleImageRenderMode: String? = null,
-            bubbleUserRoundedCornersEnabled: Boolean? = null,
-            bubbleAiRoundedCornersEnabled: Boolean? = null,
-            bubbleUserContentPaddingLeft: Float? = null,
-            bubbleUserContentPaddingRight: Float? = null,
-            bubbleAiContentPaddingLeft: Float? = null,
-            bubbleAiContentPaddingRight: Float? = null,
-            showThinkingProcess: Boolean? = null,
-            showStatusTags: Boolean? = null,
-            showModelProvider: Boolean? = null,
-            showModelName: Boolean? = null,
-            showRoleName: Boolean? = null,
-            showUserName: Boolean? = null,
-            showMessageTokenStats: Boolean? = null,
-            showMessageTimingStats: Boolean? = null,
-            showMessageTimestamp: Boolean? = null,
-            customUserAvatarUri: String? = null,
-            customAiAvatarUri: String? = null,
-            avatarShape: String? = null,
-            avatarCornerRadius: Float? = null,
-            onColorMode: String? = null,
-            customChatTitle: String? = null,
-            showInputProcessingStatus: Boolean? = null,
-            showChatFloatingDotsAnimation: Boolean? = null,
-            inputStyle: String? = null,
-            useCustomFont: Boolean? = null,
-            fontType: String? = null,
-            systemFontName: String? = null,
-            customFontPath: String? = null,
-            fontScale: Float? = null
-    ) {
-        context.userPreferencesDataStore.edit { preferences ->
-            themeMode?.let { preferences[THEME_MODE] = it }
-            useSystemTheme?.let { preferences[USE_SYSTEM_THEME] = it }
-            customPrimaryColor?.let { preferences[CUSTOM_PRIMARY_COLOR] = it }
-            customSecondaryColor?.let { preferences[CUSTOM_SECONDARY_COLOR] = it }
-            useCustomColors?.let { preferences[USE_CUSTOM_COLORS] = it }
-            useBackgroundImage?.let { preferences[USE_BACKGROUND_IMAGE] = it }
-            backgroundImageUri?.let {
-                // Simply store the URI as a string in preferences
-                // No need to take persistent permissions as we're using internal storage
-                preferences[BACKGROUND_IMAGE_URI] = it
-            }
-            backgroundImageOpacity?.let { preferences[BACKGROUND_IMAGE_OPACITY] = it }
-            backgroundMediaType?.let { preferences[BACKGROUND_MEDIA_TYPE] = it }
-            videoBackgroundMuted?.let { preferences[VIDEO_BACKGROUND_MUTED] = it }
-            videoBackgroundLoop?.let { preferences[VIDEO_BACKGROUND_LOOP] = it }
-            toolbarTransparent?.let { preferences[TOOLBAR_TRANSPARENT] = it }
-            navigationDrawerWaterGlass?.let { preferences[NAVIGATION_DRAWER_WATER_GLASS] = it }
-            navigationDrawerButtonLiquidGlass?.let {
-                preferences[NAVIGATION_DRAWER_BUTTON_LIQUID_GLASS] = it
-            }
-            useCustomNavigationDrawerBackgroundColor?.let {
-                preferences[USE_CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR] = it
-            }
-            customNavigationDrawerBackgroundColor?.let {
-                preferences[CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR] = it
-            }
-            useCustomNavigationDrawerAccentColor?.let {
-                preferences[USE_CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR] = it
-            }
-            customNavigationDrawerAccentColor?.let {
-                preferences[CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR] = it
-            }
-            useCustomAppBarColor?.let { preferences[USE_CUSTOM_APP_BAR_COLOR] = it }
-            customAppBarColor?.let { preferences[CUSTOM_APP_BAR_COLOR] = it }
-            useCustomStatusBarColor?.let { preferences[USE_CUSTOM_STATUS_BAR_COLOR] = it }
-            customStatusBarColor?.let { preferences[CUSTOM_STATUS_BAR_COLOR] = it }
-            statusBarTransparent?.let { preferences[STATUS_BAR_TRANSPARENT] = it }
-            statusBarHidden?.let { preferences[STATUS_BAR_HIDDEN] = it }
-            chatHeaderTransparent?.let { preferences[CHAT_HEADER_TRANSPARENT] = it }
-            chatInputTransparent?.let { preferences[CHAT_INPUT_TRANSPARENT] = it }
-            chatInputFloating?.let { preferences[CHAT_INPUT_FLOATING] = it }
-            chatInputLiquidGlass?.let {
-                preferences[CHAT_INPUT_LIQUID_GLASS] = it
-                if (it) {
-                    preferences[CHAT_INPUT_WATER_GLASS] = false
-                }
-            }
-            chatInputWaterGlass?.let {
-                preferences[CHAT_INPUT_WATER_GLASS] = it
-                if (it) {
-                    preferences[CHAT_INPUT_LIQUID_GLASS] = false
-                }
-            }
-            forceAppBarContentColor?.let { preferences[FORCE_APP_BAR_CONTENT_COLOR_ENABLED] = it }
-            appBarContentColorMode?.let { preferences[APP_BAR_CONTENT_COLOR_MODE] = it }
-            chatHeaderHistoryIconColor?.let { preferences[CHAT_HEADER_HISTORY_ICON_COLOR] = it }
-            chatHeaderPipIconColor?.let { preferences[CHAT_HEADER_PIP_ICON_COLOR] = it }
-            chatHeaderOverlayMode?.let { preferences[CHAT_HEADER_OVERLAY_MODE] = it }
-            useBackgroundBlur?.let { preferences[USE_BACKGROUND_BLUR] = it }
-            backgroundBlurRadius?.let { preferences[BACKGROUND_BLUR_RADIUS] = it }
-            chatStyle?.let { preferences[CHAT_STYLE] = it }
-            bubbleShowAvatar?.let { preferences[BUBBLE_SHOW_AVATAR] = it }
-            bubbleWideLayoutEnabled?.let { preferences[BUBBLE_WIDE_LAYOUT_ENABLED] = it }
-            cursorUserBubbleFollowTheme?.let { preferences[CURSOR_USER_BUBBLE_FOLLOW_THEME] = it }
-            cursorUserBubbleLiquidGlass?.let {
-                preferences[CURSOR_USER_BUBBLE_LIQUID_GLASS] = it
-                if (it) {
-                    preferences[CURSOR_USER_BUBBLE_WATER_GLASS] = false
-                }
-            }
-            cursorUserBubbleWaterGlass?.let {
-                preferences[CURSOR_USER_BUBBLE_WATER_GLASS] = it
-                if (it) {
-                    preferences[CURSOR_USER_BUBBLE_LIQUID_GLASS] = false
-                }
-            }
-            cursorUserBubbleColor?.let { preferences[CURSOR_USER_BUBBLE_COLOR] = it }
-            bubbleUserBubbleLiquidGlass?.let {
-                preferences[BUBBLE_USER_BUBBLE_LIQUID_GLASS] = it
-                if (it) {
-                    preferences[BUBBLE_USER_BUBBLE_WATER_GLASS] = false
-                    preferences[BUBBLE_USER_USE_IMAGE] = false
-                }
-            }
-            bubbleUserBubbleWaterGlass?.let {
-                preferences[BUBBLE_USER_BUBBLE_WATER_GLASS] = it
-                if (it) {
-                    preferences[BUBBLE_USER_BUBBLE_LIQUID_GLASS] = false
-                    preferences[BUBBLE_USER_USE_IMAGE] = false
-                }
-            }
-            bubbleUserBubbleColor?.let { preferences[BUBBLE_USER_BUBBLE_COLOR] = it }
-            bubbleAiBubbleLiquidGlass?.let {
-                preferences[BUBBLE_AI_BUBBLE_LIQUID_GLASS] = it
-                if (it) {
-                    preferences[BUBBLE_AI_BUBBLE_WATER_GLASS] = false
-                    preferences[BUBBLE_AI_USE_IMAGE] = false
-                }
-            }
-            bubbleAiBubbleWaterGlass?.let {
-                preferences[BUBBLE_AI_BUBBLE_WATER_GLASS] = it
-                if (it) {
-                    preferences[BUBBLE_AI_BUBBLE_LIQUID_GLASS] = false
-                    preferences[BUBBLE_AI_USE_IMAGE] = false
-                }
-            }
-            bubbleAiBubbleColor?.let { preferences[BUBBLE_AI_BUBBLE_COLOR] = it }
-            bubbleUserTextColor?.let { preferences[BUBBLE_USER_TEXT_COLOR] = it }
-            bubbleAiTextColor?.let { preferences[BUBBLE_AI_TEXT_COLOR] = it }
-            bubbleUserUseCustomFont?.let { preferences[BUBBLE_USER_USE_CUSTOM_FONT] = it }
-            bubbleUserFontType?.let { preferences[BUBBLE_USER_FONT_TYPE] = it }
-            bubbleUserSystemFontName?.let { preferences[BUBBLE_USER_SYSTEM_FONT_NAME] = it }
-            bubbleUserCustomFontPath?.let { preferences[BUBBLE_USER_CUSTOM_FONT_PATH] = it }
-            bubbleAiUseCustomFont?.let { preferences[BUBBLE_AI_USE_CUSTOM_FONT] = it }
-            bubbleAiFontType?.let { preferences[BUBBLE_AI_FONT_TYPE] = it }
-            bubbleAiSystemFontName?.let { preferences[BUBBLE_AI_SYSTEM_FONT_NAME] = it }
-            bubbleAiCustomFontPath?.let { preferences[BUBBLE_AI_CUSTOM_FONT_PATH] = it }
-            bubbleUserUseImage?.let { preferences[BUBBLE_USER_USE_IMAGE] = it }
-            bubbleAiUseImage?.let { preferences[BUBBLE_AI_USE_IMAGE] = it }
-            bubbleUserImageUri?.let { preferences[BUBBLE_USER_IMAGE_URI] = it }
-            bubbleAiImageUri?.let { preferences[BUBBLE_AI_IMAGE_URI] = it }
-            bubbleUserImageCropLeft?.let { preferences[BUBBLE_USER_IMAGE_CROP_LEFT] = it }
-            bubbleUserImageCropTop?.let { preferences[BUBBLE_USER_IMAGE_CROP_TOP] = it }
-            bubbleUserImageCropRight?.let { preferences[BUBBLE_USER_IMAGE_CROP_RIGHT] = it }
-            bubbleUserImageCropBottom?.let { preferences[BUBBLE_USER_IMAGE_CROP_BOTTOM] = it }
-            bubbleUserImageRepeatStart?.let { preferences[BUBBLE_USER_IMAGE_REPEAT_START] = it }
-            bubbleUserImageRepeatEnd?.let { preferences[BUBBLE_USER_IMAGE_REPEAT_END] = it }
-            bubbleUserImageRepeatYStart?.let { preferences[BUBBLE_USER_IMAGE_REPEAT_Y_START] = it }
-            bubbleUserImageRepeatYEnd?.let { preferences[BUBBLE_USER_IMAGE_REPEAT_Y_END] = it }
-            bubbleUserImageScale?.let { preferences[BUBBLE_USER_IMAGE_SCALE] = it }
-            bubbleAiImageCropLeft?.let { preferences[BUBBLE_AI_IMAGE_CROP_LEFT] = it }
-            bubbleAiImageCropTop?.let { preferences[BUBBLE_AI_IMAGE_CROP_TOP] = it }
-            bubbleAiImageCropRight?.let { preferences[BUBBLE_AI_IMAGE_CROP_RIGHT] = it }
-            bubbleAiImageCropBottom?.let { preferences[BUBBLE_AI_IMAGE_CROP_BOTTOM] = it }
-            bubbleAiImageRepeatStart?.let { preferences[BUBBLE_AI_IMAGE_REPEAT_START] = it }
-            bubbleAiImageRepeatEnd?.let { preferences[BUBBLE_AI_IMAGE_REPEAT_END] = it }
-            bubbleAiImageRepeatYStart?.let { preferences[BUBBLE_AI_IMAGE_REPEAT_Y_START] = it }
-            bubbleAiImageRepeatYEnd?.let { preferences[BUBBLE_AI_IMAGE_REPEAT_Y_END] = it }
-            bubbleAiImageScale?.let { preferences[BUBBLE_AI_IMAGE_SCALE] = it }
-            bubbleImageRenderMode?.let { preferences[BUBBLE_IMAGE_RENDER_MODE] = it }
-            bubbleUserRoundedCornersEnabled?.let { preferences[BUBBLE_USER_ROUNDED_CORNERS_ENABLED] = it }
-            bubbleAiRoundedCornersEnabled?.let { preferences[BUBBLE_AI_ROUNDED_CORNERS_ENABLED] = it }
-            bubbleUserContentPaddingLeft?.let { preferences[BUBBLE_USER_CONTENT_PADDING_LEFT] = it }
-            bubbleUserContentPaddingRight?.let { preferences[BUBBLE_USER_CONTENT_PADDING_RIGHT] = it }
-            bubbleAiContentPaddingLeft?.let { preferences[BUBBLE_AI_CONTENT_PADDING_LEFT] = it }
-            bubbleAiContentPaddingRight?.let { preferences[BUBBLE_AI_CONTENT_PADDING_RIGHT] = it }
-            showThinkingProcess?.let { preferences[KEY_SHOW_THINKING_PROCESS] = it }
-            showStatusTags?.let { preferences[KEY_SHOW_STATUS_TAGS] = it }
-            showModelProvider?.let { preferences[KEY_SHOW_MODEL_PROVIDER] = it }
-            showModelName?.let { preferences[KEY_SHOW_MODEL_NAME] = it }
-            showRoleName?.let { preferences[KEY_SHOW_ROLE_NAME] = it }
-            showUserName?.let { preferences[KEY_SHOW_USER_NAME] = it }
-            showMessageTokenStats?.let { preferences[KEY_SHOW_MESSAGE_TOKEN_STATS] = it }
-            showMessageTimingStats?.let { preferences[KEY_SHOW_MESSAGE_TIMING_STATS] = it }
-            showMessageTimestamp?.let { preferences[KEY_SHOW_MESSAGE_TIMESTAMP] = it }
-            customUserAvatarUri?.let { preferences[KEY_CUSTOM_USER_AVATAR_URI] = it }
-            customAiAvatarUri?.let { preferences[KEY_CUSTOM_AI_AVATAR_URI] = it }
-            avatarShape?.let { preferences[KEY_AVATAR_SHAPE] = it }
-            avatarCornerRadius?.let { preferences[KEY_AVATAR_CORNER_RADIUS] = it }
-            onColorMode?.let { preferences[KEY_ON_COLOR_MODE] = it }
-            customChatTitle?.let { preferences[KEY_CUSTOM_CHAT_TITLE] = it }
-            showInputProcessingStatus?.let { preferences[KEY_SHOW_INPUT_PROCESSING_STATUS] = it }
-            showChatFloatingDotsAnimation?.let { preferences[KEY_SHOW_CHAT_FLOATING_DOTS_ANIMATION] = it }
-            inputStyle?.let { preferences[INPUT_STYLE] = it }
-            // 字体设置
-            useCustomFont?.let { preferences[USE_CUSTOM_FONT] = it }
-            fontType?.let { preferences[FONT_TYPE] = it }
-            systemFontName?.let { preferences[SYSTEM_FONT_NAME] = it }
-            customFontPath?.let { preferences[CUSTOM_FONT_PATH] = it }
-            fontScale?.let { preferences[FONT_SCALE] = it }
-        }
-    }
-
-    // 重置主题设置到默认值
-    suspend fun resetThemeSettings() {
-        context.userPreferencesDataStore.edit { preferences ->
-            preferences.remove(THEME_MODE)
-            preferences.remove(USE_SYSTEM_THEME)
-            preferences.remove(CUSTOM_PRIMARY_COLOR)
-            preferences.remove(CUSTOM_SECONDARY_COLOR)
-            preferences.remove(USE_CUSTOM_COLORS)
-            preferences.remove(USE_BACKGROUND_IMAGE)
-            preferences.remove(BACKGROUND_IMAGE_URI)
-            preferences.remove(BACKGROUND_IMAGE_OPACITY)
-            preferences.remove(BACKGROUND_MEDIA_TYPE)
-            preferences.remove(VIDEO_BACKGROUND_MUTED)
-            preferences.remove(VIDEO_BACKGROUND_LOOP)
-            preferences.remove(TOOLBAR_TRANSPARENT)
-            preferences.remove(NAVIGATION_DRAWER_WATER_GLASS)
-            preferences.remove(NAVIGATION_DRAWER_BUTTON_LIQUID_GLASS)
-            preferences.remove(USE_CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR)
-            preferences.remove(CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR)
-            preferences.remove(USE_CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR)
-            preferences.remove(CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR)
-            preferences.remove(USE_CUSTOM_APP_BAR_COLOR)
-            preferences.remove(CUSTOM_APP_BAR_COLOR)
-            preferences.remove(USE_CUSTOM_STATUS_BAR_COLOR)
-            preferences.remove(CUSTOM_STATUS_BAR_COLOR)
-            preferences.remove(STATUS_BAR_TRANSPARENT)
-            preferences.remove(STATUS_BAR_HIDDEN)
-            preferences.remove(CHAT_HEADER_TRANSPARENT)
-            preferences.remove(CHAT_INPUT_TRANSPARENT)
-            preferences.remove(CHAT_INPUT_FLOATING)
-            preferences.remove(CHAT_INPUT_LIQUID_GLASS)
-            preferences.remove(CHAT_INPUT_WATER_GLASS)
-            preferences.remove(FORCE_APP_BAR_CONTENT_COLOR_ENABLED)
-            preferences.remove(APP_BAR_CONTENT_COLOR_MODE)
-            preferences.remove(CHAT_HEADER_HISTORY_ICON_COLOR)
-            preferences.remove(CHAT_HEADER_PIP_ICON_COLOR)
-            preferences.remove(CHAT_HEADER_OVERLAY_MODE)
-            preferences.remove(USE_BACKGROUND_BLUR)
-            preferences.remove(BACKGROUND_BLUR_RADIUS)
-            preferences.remove(CHAT_STYLE)
-            preferences.remove(BUBBLE_SHOW_AVATAR)
-            preferences.remove(BUBBLE_WIDE_LAYOUT_ENABLED)
-            preferences.remove(CURSOR_USER_BUBBLE_FOLLOW_THEME)
-            preferences.remove(CURSOR_USER_BUBBLE_LIQUID_GLASS)
-            preferences.remove(CURSOR_USER_BUBBLE_WATER_GLASS)
-            preferences.remove(CURSOR_USER_BUBBLE_COLOR)
-            preferences.remove(BUBBLE_USER_BUBBLE_LIQUID_GLASS)
-            preferences.remove(BUBBLE_USER_BUBBLE_WATER_GLASS)
-            preferences.remove(BUBBLE_USER_BUBBLE_COLOR)
-            preferences.remove(BUBBLE_AI_BUBBLE_LIQUID_GLASS)
-            preferences.remove(BUBBLE_AI_BUBBLE_WATER_GLASS)
-            preferences.remove(BUBBLE_AI_BUBBLE_COLOR)
-            preferences.remove(BUBBLE_USER_TEXT_COLOR)
-            preferences.remove(BUBBLE_AI_TEXT_COLOR)
-            preferences.remove(BUBBLE_USER_USE_CUSTOM_FONT)
-            preferences.remove(BUBBLE_USER_FONT_TYPE)
-            preferences.remove(BUBBLE_USER_SYSTEM_FONT_NAME)
-            preferences.remove(BUBBLE_USER_CUSTOM_FONT_PATH)
-            preferences.remove(BUBBLE_AI_USE_CUSTOM_FONT)
-            preferences.remove(BUBBLE_AI_FONT_TYPE)
-            preferences.remove(BUBBLE_AI_SYSTEM_FONT_NAME)
-            preferences.remove(BUBBLE_AI_CUSTOM_FONT_PATH)
-            preferences.remove(BUBBLE_USER_USE_IMAGE)
-            preferences.remove(BUBBLE_AI_USE_IMAGE)
-            preferences.remove(BUBBLE_USER_IMAGE_URI)
-            preferences.remove(BUBBLE_AI_IMAGE_URI)
-            preferences.remove(BUBBLE_USER_IMAGE_CROP_LEFT)
-            preferences.remove(BUBBLE_USER_IMAGE_CROP_TOP)
-            preferences.remove(BUBBLE_USER_IMAGE_CROP_RIGHT)
-            preferences.remove(BUBBLE_USER_IMAGE_CROP_BOTTOM)
-            preferences.remove(BUBBLE_USER_IMAGE_REPEAT_START)
-            preferences.remove(BUBBLE_USER_IMAGE_REPEAT_END)
-            preferences.remove(BUBBLE_USER_IMAGE_REPEAT_Y_START)
-            preferences.remove(BUBBLE_USER_IMAGE_REPEAT_Y_END)
-            preferences.remove(BUBBLE_USER_IMAGE_SCALE)
-            preferences.remove(BUBBLE_AI_IMAGE_CROP_LEFT)
-            preferences.remove(BUBBLE_AI_IMAGE_CROP_TOP)
-            preferences.remove(BUBBLE_AI_IMAGE_CROP_RIGHT)
-            preferences.remove(BUBBLE_AI_IMAGE_CROP_BOTTOM)
-            preferences.remove(BUBBLE_AI_IMAGE_REPEAT_START)
-            preferences.remove(BUBBLE_AI_IMAGE_REPEAT_END)
-            preferences.remove(BUBBLE_AI_IMAGE_REPEAT_Y_START)
-            preferences.remove(BUBBLE_AI_IMAGE_REPEAT_Y_END)
-            preferences.remove(BUBBLE_AI_IMAGE_SCALE)
-            preferences.remove(BUBBLE_IMAGE_RENDER_MODE)
-            preferences.remove(BUBBLE_USER_ROUNDED_CORNERS_ENABLED)
-            preferences.remove(BUBBLE_AI_ROUNDED_CORNERS_ENABLED)
-            preferences.remove(BUBBLE_USER_CONTENT_PADDING_LEFT)
-            preferences.remove(BUBBLE_USER_CONTENT_PADDING_RIGHT)
-            preferences.remove(BUBBLE_AI_CONTENT_PADDING_LEFT)
-            preferences.remove(BUBBLE_AI_CONTENT_PADDING_RIGHT)
-            preferences.remove(KEY_SHOW_THINKING_PROCESS)
-            preferences.remove(KEY_SHOW_STATUS_TAGS)
-            preferences.remove(KEY_SHOW_MODEL_PROVIDER)
-            preferences.remove(KEY_SHOW_MODEL_NAME)
-            preferences.remove(KEY_SHOW_ROLE_NAME)
-            preferences.remove(KEY_SHOW_USER_NAME)
-            preferences.remove(KEY_SHOW_MESSAGE_TOKEN_STATS)
-            preferences.remove(KEY_SHOW_MESSAGE_TIMING_STATS)
-            preferences.remove(KEY_SHOW_MESSAGE_TIMESTAMP)
-            preferences.remove(KEY_CUSTOM_USER_AVATAR_URI)
-            preferences.remove(KEY_CUSTOM_AI_AVATAR_URI)
-            preferences.remove(KEY_AVATAR_SHAPE)
-            preferences.remove(KEY_AVATAR_CORNER_RADIUS)
-            preferences.remove(KEY_ON_COLOR_MODE)
-            preferences.remove(KEY_CUSTOM_CHAT_TITLE)
-            preferences.remove(KEY_SHOW_INPUT_PROCESSING_STATUS)
-            preferences.remove(KEY_SHOW_CHAT_FLOATING_DOTS_ANIMATION)
-            preferences.remove(INPUT_STYLE)
-            // 重置字体设置
-            preferences.remove(USE_CUSTOM_FONT)
-            preferences.remove(FONT_TYPE)
-            preferences.remove(SYSTEM_FONT_NAME)
-            preferences.remove(CUSTOM_FONT_PATH)
-            preferences.remove(FONT_SCALE)
         }
     }
 
@@ -1982,11 +1558,11 @@ class UserPreferencesManager private constructor(private val context: Context) {
 
     private fun writeThemeTargetMetadata(
         preferences: MutablePreferences,
-        prefix: String,
+        prefix: String?,
         values: ThemePreferenceValues,
     ) {
         listOf(KEY_CUSTOM_AI_AVATAR_URI, KEY_CUSTOM_CHAT_TITLE).forEach { key ->
-            val targetKey = stringPreferencesKey("${prefix}${key.name}")
+            val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
             val value = values.string(key.name)
             if (value == null) {
                 preferences.remove(targetKey)
@@ -2003,7 +1579,27 @@ class UserPreferencesManager private constructor(private val context: Context) {
     ) {
         context.userPreferencesDataStore.edit { preferences ->
             val prefix = themePrefixForPrompt(target)
-            clearVisualThemeValues(preferences, prefix)
+            writeVisualThemeValues(preferences, prefix, values)
+            writeThemeTargetMetadata(preferences, prefix, values)
+            if (updateCurrentProjection) {
+                copyThemeValues(
+                    preferences = preferences,
+                    sourcePrefix = prefix,
+                    targetPrefix = null,
+                    clearMissingTargetValues = true,
+                )
+            }
+        }
+    }
+
+    suspend fun mutateThemeForPrompt(
+        target: ActivePrompt,
+        updateCurrentProjection: Boolean,
+        transform: (ThemePreferenceValues) -> ThemePreferenceValues,
+    ) {
+        context.userPreferencesDataStore.edit { preferences ->
+            val prefix = themePrefixForPrompt(target)
+            val values = transform(readThemePreferenceValues(preferences, prefix))
             writeVisualThemeValues(preferences, prefix, values)
             writeThemeTargetMetadata(preferences, prefix, values)
             if (updateCurrentProjection) {
@@ -2019,24 +1615,17 @@ class UserPreferencesManager private constructor(private val context: Context) {
 
     suspend fun resetVisualThemeForPrompt(
         target: ActivePrompt,
+        values: ThemePreferenceValues,
         updateCurrentProjection: Boolean,
     ) {
         context.userPreferencesDataStore.edit { preferences ->
-            clearVisualThemeValues(preferences, themePrefixForPrompt(target))
+            val prefix = themePrefixForPrompt(target)
+            clearVisualThemeValues(preferences, prefix)
+            writeThemeTargetMetadata(preferences, prefix, values)
             if (updateCurrentProjection) {
                 clearVisualThemeValues(preferences, prefix = null)
+                writeThemeTargetMetadata(preferences, prefix = null, values)
             }
-        }
-    }
-
-    private suspend fun copyCurrentThemeToPrefix(prefix: String) {
-        context.userPreferencesDataStore.edit { preferences ->
-            copyThemeValues(
-                preferences,
-                sourcePrefix = null,
-                targetPrefix = prefix,
-                clearMissingTargetValues = false,
-            )
         }
     }
 
@@ -2142,10 +1731,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
-    suspend fun copyCurrentThemeToCharacterCard(characterCardId: String) {
-        copyCurrentThemeToPrefix(getCharacterCardThemePrefix(characterCardId))
-    }
-
     suspend fun cloneThemeBetweenCharacterCards(sourceCharacterCardId: String, targetCharacterCardId: String) {
         cloneThemeBetweenPrefixes(
             getCharacterCardThemePrefix(sourceCharacterCardId),
@@ -2157,20 +1742,12 @@ class UserPreferencesManager private constructor(private val context: Context) {
         switchToThemeByPrefix(getCharacterCardThemePrefix(characterCardId))
     }
 
-    suspend fun saveCurrentThemeToCharacterCard(characterCardId: String) {
-        copyCurrentThemeToCharacterCard(characterCardId)
-    }
-
     suspend fun deleteCharacterCardTheme(characterCardId: String) {
         deleteThemeByPrefix(getCharacterCardThemePrefix(characterCardId))
     }
 
     suspend fun hasCharacterCardTheme(characterCardId: String): Boolean {
         return hasThemeByPrefix(getCharacterCardThemePrefix(characterCardId))
-    }
-
-    suspend fun copyCurrentThemeToCharacterGroup(characterGroupId: String) {
-        copyCurrentThemeToPrefix(getCharacterGroupThemePrefix(characterGroupId))
     }
 
     suspend fun cloneThemeBetweenCharacterGroups(
@@ -2187,16 +1764,8 @@ class UserPreferencesManager private constructor(private val context: Context) {
         switchToThemeByPrefix(getCharacterGroupThemePrefix(characterGroupId))
     }
 
-    suspend fun saveCurrentThemeToCharacterGroup(characterGroupId: String) {
-        copyCurrentThemeToCharacterGroup(characterGroupId)
-    }
-
     suspend fun deleteCharacterGroupTheme(characterGroupId: String) {
         deleteThemeByPrefix(getCharacterGroupThemePrefix(characterGroupId))
-    }
-
-    suspend fun hasCharacterGroupTheme(characterGroupId: String): Boolean {
-        return hasThemeByPrefix(getCharacterGroupThemePrefix(characterGroupId))
     }
 
     suspend fun resolveThemePreferenceSnapshot(
@@ -2223,85 +1792,9 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
         val preferences = context.userPreferencesDataStore.data.first()
         val values = readThemePreferenceValues(preferences, prefix)
-
-        fun stringValue(key: Preferences.Key<String>): String =
-            requireNotNull(values.string(key.name))
-
-        fun optionalStringValue(key: Preferences.Key<String>): String? = values.string(key.name)
-
-        fun booleanValue(key: Preferences.Key<Boolean>): Boolean =
-            requireNotNull(values.boolean(key.name))
-
-        fun intValue(key: Preferences.Key<Int>): Int? = values.int(key.name)
-
-        fun floatValue(key: Preferences.Key<Float>): Float =
-            requireNotNull(values.float(key.name))
-
         return ThemePreferenceSnapshot(
             source = source,
             sourceId = sourceId,
-            themeMode = stringValue(THEME_MODE),
-            useSystemTheme = booleanValue(USE_SYSTEM_THEME),
-            useCustomColors = booleanValue(USE_CUSTOM_COLORS),
-            customPrimaryColor = intValue(CUSTOM_PRIMARY_COLOR),
-            customSecondaryColor = intValue(CUSTOM_SECONDARY_COLOR),
-            onColorMode = stringValue(KEY_ON_COLOR_MODE),
-            useBackgroundImage = booleanValue(USE_BACKGROUND_IMAGE),
-            backgroundImageUri = optionalStringValue(BACKGROUND_IMAGE_URI),
-            backgroundMediaType = stringValue(BACKGROUND_MEDIA_TYPE),
-            backgroundImageOpacity = floatValue(BACKGROUND_IMAGE_OPACITY),
-            chatHeaderTransparent = booleanValue(CHAT_HEADER_TRANSPARENT),
-            chatHeaderOverlayMode = booleanValue(CHAT_HEADER_OVERLAY_MODE),
-            chatInputTransparent = booleanValue(CHAT_INPUT_TRANSPARENT),
-            chatInputFloating = booleanValue(CHAT_INPUT_FLOATING),
-            chatInputLiquidGlass = booleanValue(CHAT_INPUT_LIQUID_GLASS),
-            chatInputWaterGlass = booleanValue(CHAT_INPUT_WATER_GLASS),
-            chatStyle = stringValue(CHAT_STYLE),
-            inputStyle = stringValue(INPUT_STYLE),
-            bubbleShowAvatar = booleanValue(BUBBLE_SHOW_AVATAR),
-            bubbleWideLayoutEnabled = booleanValue(BUBBLE_WIDE_LAYOUT_ENABLED),
-            cursorUserBubbleFollowTheme = booleanValue(CURSOR_USER_BUBBLE_FOLLOW_THEME),
-            cursorUserBubbleColor = intValue(CURSOR_USER_BUBBLE_COLOR),
-            bubbleUserBubbleColor = intValue(BUBBLE_USER_BUBBLE_COLOR),
-            bubbleAiBubbleColor = intValue(BUBBLE_AI_BUBBLE_COLOR),
-            bubbleUserTextColor = intValue(BUBBLE_USER_TEXT_COLOR),
-            bubbleAiTextColor = intValue(BUBBLE_AI_TEXT_COLOR),
-            bubbleUserUseImage = booleanValue(BUBBLE_USER_USE_IMAGE),
-            bubbleAiUseImage = booleanValue(BUBBLE_AI_USE_IMAGE),
-            bubbleUserImageUri = optionalStringValue(BUBBLE_USER_IMAGE_URI),
-            bubbleAiImageUri = optionalStringValue(BUBBLE_AI_IMAGE_URI),
-            bubbleImageRenderMode = stringValue(BUBBLE_IMAGE_RENDER_MODE),
-            bubbleUserRoundedCornersEnabled = booleanValue(BUBBLE_USER_ROUNDED_CORNERS_ENABLED),
-            bubbleAiRoundedCornersEnabled = booleanValue(BUBBLE_AI_ROUNDED_CORNERS_ENABLED),
-            bubbleUserContentPaddingLeft = floatValue(BUBBLE_USER_CONTENT_PADDING_LEFT),
-            bubbleUserContentPaddingRight = floatValue(BUBBLE_USER_CONTENT_PADDING_RIGHT),
-            bubbleAiContentPaddingLeft = floatValue(BUBBLE_AI_CONTENT_PADDING_LEFT),
-            bubbleAiContentPaddingRight = floatValue(BUBBLE_AI_CONTENT_PADDING_RIGHT),
-            customUserAvatarUri = optionalStringValue(KEY_CUSTOM_USER_AVATAR_URI),
-            customAiAvatarUri = optionalStringValue(KEY_CUSTOM_AI_AVATAR_URI),
-            avatarShape = stringValue(KEY_AVATAR_SHAPE),
-            avatarCornerRadius = floatValue(KEY_AVATAR_CORNER_RADIUS),
-            fontType = stringValue(FONT_TYPE),
-            systemFontName = optionalStringValue(SYSTEM_FONT_NAME),
-            customFontPath = optionalStringValue(CUSTOM_FONT_PATH),
-            fontScale = floatValue(FONT_SCALE),
-            showThinkingProcess = booleanValue(KEY_SHOW_THINKING_PROCESS),
-            showStatusTags = booleanValue(KEY_SHOW_STATUS_TAGS),
-            showModelProvider = booleanValue(KEY_SHOW_MODEL_PROVIDER),
-            showModelName = booleanValue(KEY_SHOW_MODEL_NAME),
-            showRoleName = booleanValue(KEY_SHOW_ROLE_NAME),
-            showUserName = booleanValue(KEY_SHOW_USER_NAME),
-            showMessageTokenStats = booleanValue(KEY_SHOW_MESSAGE_TOKEN_STATS),
-            showMessageTimingStats = booleanValue(KEY_SHOW_MESSAGE_TIMING_STATS),
-            showMessageTimestamp = booleanValue(KEY_SHOW_MESSAGE_TIMESTAMP),
-            showInputProcessingStatus = booleanValue(KEY_SHOW_INPUT_PROCESSING_STATUS),
-            useCustomFont = booleanValue(USE_CUSTOM_FONT),
-            cursorUserBubbleLiquidGlass = booleanValue(CURSOR_USER_BUBBLE_LIQUID_GLASS),
-            cursorUserBubbleWaterGlass = booleanValue(CURSOR_USER_BUBBLE_WATER_GLASS),
-            bubbleUserBubbleLiquidGlass = booleanValue(BUBBLE_USER_BUBBLE_LIQUID_GLASS),
-            bubbleUserBubbleWaterGlass = booleanValue(BUBBLE_USER_BUBBLE_WATER_GLASS),
-            bubbleAiBubbleLiquidGlass = booleanValue(BUBBLE_AI_BUBBLE_LIQUID_GLASS),
-            bubbleAiBubbleWaterGlass = booleanValue(BUBBLE_AI_BUBBLE_WATER_GLASS),
             values = values,
         )
     }

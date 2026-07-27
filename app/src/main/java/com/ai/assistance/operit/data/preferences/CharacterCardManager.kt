@@ -571,7 +571,11 @@ class CharacterCardManager private constructor(private val context: Context) {
         }
         val defaultTarget = ActivePrompt.CharacterCard(DEFAULT_CHARACTER_CARD_ID)
         val activePromptManager = ActivePromptManager.getInstance(context)
-        activePromptManager.resetThemeDraft(defaultTarget)
+        val currentTheme =
+            userPreferencesManager.resolveThemePreferenceSnapshot(
+                characterCardId = DEFAULT_CHARACTER_CARD_ID,
+            ).values
+        activePromptManager.resetThemeDraft(defaultTarget, currentTheme)
         activePromptManager.saveAiAvatarForPrompt(
             defaultTarget,
             "file:///android_asset/operit.png",
@@ -1344,49 +1348,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             AppLogger.d("CharacterCardManager", "已切换到角色卡 $characterCardId 的主题")
         } catch (e: Exception) {
             AppLogger.e("CharacterCardManager", "切换角色卡主题失败", e)
-        }
-    }
-
-    /**
-     * 为当前活跃角色卡保存主题配置
-     */
-    suspend fun saveThemeForActiveCharacterCard() {
-        try {
-            val activeCard = activeCharacterCardFlow.first()
-            if (activeCard != null) {
-                val saved = ActivePromptManager.getInstance(context).saveThemeForActivePrompt(
-                    ActivePrompt.CharacterCard(activeCard.id),
-                ) {}
-                if (saved) {
-                    AppLogger.d("CharacterCardManager", "已为角色卡 ${activeCard.id} 保存主题配置")
-                }
-            }
-        } catch (e: Exception) {
-            AppLogger.e("CharacterCardManager", "为活跃角色卡保存主题失败", e)
-        }
-    }
-
-    /**
-     * 删除指定角色卡的主题配置
-     */
-    suspend fun deleteThemeForCharacterCard(characterCardId: String) {
-        try {
-            userPreferencesManager.deleteCharacterCardTheme(characterCardId)
-            AppLogger.d("CharacterCardManager", "已删除角色卡 $characterCardId 的主题配置")
-        } catch (e: Exception) {
-            AppLogger.e("CharacterCardManager", "删除角色卡主题配置失败", e)
-        }
-    }
-
-    /**
-     * 检查指定角色卡是否有专属主题配置
-     */
-    suspend fun hasThemeForCharacterCard(characterCardId: String): Boolean {
-        return try {
-            userPreferencesManager.hasCharacterCardTheme(characterCardId)
-        } catch (e: Exception) {
-            AppLogger.e("CharacterCardManager", "检查角色卡主题配置失败", e)
-            false
         }
     }
 

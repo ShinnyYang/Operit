@@ -15,11 +15,11 @@ WebChat also reads the active prompt when it receives a theme request for any ch
 
 ## Intent
 
-Make the editor select a theme target independently from the active chat, retain target-scoped changes in memory, and persist the complete target state through one save action. Keep the released card and group prefix keys, preserve global display identity and recent colors, and make WebChat resolve the requested chat binding.
+Make the editor switch the active prompt and its saved theme without switching chat history, retain target-scoped changes in memory, and persist the complete target state through one save action. Keep the released card and group prefix keys, preserve global display identity and recent colors, and make WebChat resolve the requested chat binding.
 
 ## Expected Result
 
-- The editor can select the default role, any character card, or any group without changing the active chat
+- The editor can activate the default role, any character card, or any group and immediately apply its saved theme without changing chat history
 - Role-bound edits remain in a target draft until the user saves or discards them
 - A saved target replaces its complete visual theme scope in one DataStore transaction
 - Reset removes visual theme values without removing the target's AI avatar or chat title
@@ -27,7 +27,7 @@ Make the editor select a theme target independently from the active chat, retain
 
 ## Status
 
-Implementation and static source review are complete. `git diff --check` passes. Gradle, lint, unit tests, and builds were not run because no verification command was requested.
+The initial implementation passed the remote Nightly build. UI compaction, active-prompt switching, and removal of the internal compatibility layer are complete in source. The refinement itself has not been rebuilt. Local Gradle, lint, unit tests, and builds remain excluded unless explicitly requested.
 
 ## Scope
 
@@ -36,5 +36,6 @@ Implementation and static source review are complete. `git diff --check` passes.
 3. [WebChat theme binding](3_WebChatThemeBinding.md)
 4. [Route leave guard](4_RouteLeaveGuard.md)
 5. [Verification](5_Verification.md)
+6. [Compact target switch and cleanup](6_CompactTargetSwitchAndCleanup.md)
 
 [DONE]

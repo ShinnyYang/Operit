@@ -14,6 +14,12 @@ data class ThemePreferenceValues(
 
     fun float(name: String): Float? = floats[name]
 
+    fun requiredString(name: String): String = requireNotNull(string(name))
+
+    fun requiredBoolean(name: String): Boolean = requireNotNull(boolean(name))
+
+    fun requiredFloat(name: String): Float = requireNotNull(float(name))
+
     fun withString(name: String, value: String?): ThemePreferenceValues {
         val updated = strings.toMutableMap()
         if (value == null) {
@@ -147,67 +153,82 @@ data class ThemePreferenceValues(
 data class ThemePreferenceSnapshot(
     val source: String,
     val sourceId: String? = null,
-    val themeMode: String,
-    val useSystemTheme: Boolean,
-    val useCustomColors: Boolean,
-    val customPrimaryColor: Int? = null,
-    val customSecondaryColor: Int? = null,
-    val onColorMode: String,
-    val useBackgroundImage: Boolean,
-    val backgroundImageUri: String? = null,
-    val backgroundMediaType: String,
-    val backgroundImageOpacity: Float,
-    val chatHeaderTransparent: Boolean,
-    val chatHeaderOverlayMode: Boolean,
-    val chatInputTransparent: Boolean,
-    val chatInputFloating: Boolean,
-    val chatInputLiquidGlass: Boolean,
-    val chatInputWaterGlass: Boolean,
-    val chatStyle: String,
-    val inputStyle: String,
-    val bubbleShowAvatar: Boolean,
-    val bubbleWideLayoutEnabled: Boolean,
-    val cursorUserBubbleFollowTheme: Boolean,
-    val cursorUserBubbleColor: Int? = null,
-    val bubbleUserBubbleColor: Int? = null,
-    val bubbleAiBubbleColor: Int? = null,
-    val bubbleUserTextColor: Int? = null,
-    val bubbleAiTextColor: Int? = null,
-    val bubbleUserUseImage: Boolean,
-    val bubbleAiUseImage: Boolean,
-    val bubbleUserImageUri: String? = null,
-    val bubbleAiImageUri: String? = null,
-    val bubbleImageRenderMode: String,
-    val bubbleUserRoundedCornersEnabled: Boolean,
-    val bubbleAiRoundedCornersEnabled: Boolean,
-    val bubbleUserContentPaddingLeft: Float,
-    val bubbleUserContentPaddingRight: Float,
-    val bubbleAiContentPaddingLeft: Float,
-    val bubbleAiContentPaddingRight: Float,
-    val customUserAvatarUri: String? = null,
-    val customAiAvatarUri: String? = null,
-    val avatarShape: String,
-    val avatarCornerRadius: Float,
-    val fontType: String,
-    val systemFontName: String? = null,
-    val customFontPath: String? = null,
-    val fontScale: Float,
-    val showThinkingProcess: Boolean,
-    val showStatusTags: Boolean,
-    val showModelProvider: Boolean,
-    val showModelName: Boolean,
-    val showRoleName: Boolean,
-    val showUserName: Boolean,
-    val showMessageTokenStats: Boolean,
-    val showMessageTimingStats: Boolean,
-    val showMessageTimestamp: Boolean,
-    val showInputProcessingStatus: Boolean,
-    val useCustomFont: Boolean = false,
-    val cursorUserBubbleLiquidGlass: Boolean = false,
-    val cursorUserBubbleWaterGlass: Boolean = false,
-    val bubbleUserBubbleLiquidGlass: Boolean = false,
-    val bubbleUserBubbleWaterGlass: Boolean = false,
-    val bubbleAiBubbleLiquidGlass: Boolean = false,
-    val bubbleAiBubbleWaterGlass: Boolean = false,
-    val values: ThemePreferenceValues = ThemePreferenceValues.defaultVisual(),
-)
+    val values: ThemePreferenceValues,
+) {
+    val themeMode: String get() = values.requiredString("theme_mode")
+    val useSystemTheme: Boolean get() = values.requiredBoolean("use_system_theme")
+    val useCustomColors: Boolean get() = values.requiredBoolean("use_custom_colors")
+    val customPrimaryColor: Int? get() = values.int("custom_primary_color")
+    val customSecondaryColor: Int? get() = values.int("custom_secondary_color")
+    val onColorMode: String get() = values.requiredString("on_color_mode")
+    val useBackgroundImage: Boolean get() = values.requiredBoolean("use_background_image")
+    val backgroundImageUri: String? get() = values.string("background_image_uri")
+    val backgroundMediaType: String get() = values.requiredString("background_media_type")
+    val backgroundImageOpacity: Float get() = values.requiredFloat("background_image_opacity")
+    val chatHeaderTransparent: Boolean get() = values.requiredBoolean("chat_header_transparent")
+    val chatHeaderOverlayMode: Boolean get() = values.requiredBoolean("chat_header_overlay_mode")
+    val chatInputTransparent: Boolean get() = values.requiredBoolean("chat_input_transparent")
+    val chatInputFloating: Boolean get() = values.requiredBoolean("chat_input_floating")
+    val chatInputLiquidGlass: Boolean get() = values.requiredBoolean("chat_input_liquid_glass")
+    val chatInputWaterGlass: Boolean get() = values.requiredBoolean("chat_input_water_glass")
+    val chatStyle: String get() = values.requiredString("chat_style")
+    val inputStyle: String get() = values.requiredString("input_style")
+    val bubbleShowAvatar: Boolean get() = values.requiredBoolean("bubble_show_avatar")
+    val bubbleWideLayoutEnabled: Boolean get() = values.requiredBoolean("bubble_wide_layout_enabled")
+    val cursorUserBubbleFollowTheme: Boolean
+        get() = values.requiredBoolean("cursor_user_bubble_follow_theme")
+    val cursorUserBubbleColor: Int? get() = values.int("cursor_user_bubble_color")
+    val bubbleUserBubbleColor: Int? get() = values.int("bubble_user_bubble_color")
+    val bubbleAiBubbleColor: Int? get() = values.int("bubble_ai_bubble_color")
+    val bubbleUserTextColor: Int? get() = values.int("bubble_user_text_color")
+    val bubbleAiTextColor: Int? get() = values.int("bubble_ai_text_color")
+    val bubbleUserUseImage: Boolean get() = values.requiredBoolean("bubble_user_use_image")
+    val bubbleAiUseImage: Boolean get() = values.requiredBoolean("bubble_ai_use_image")
+    val bubbleUserImageUri: String? get() = values.string("bubble_user_image_uri")
+    val bubbleAiImageUri: String? get() = values.string("bubble_ai_image_uri")
+    val bubbleImageRenderMode: String get() = values.requiredString("bubble_image_render_mode")
+    val bubbleUserRoundedCornersEnabled: Boolean
+        get() = values.requiredBoolean("bubble_rounded_corners_enabled")
+    val bubbleAiRoundedCornersEnabled: Boolean
+        get() = values.requiredBoolean("bubble_ai_rounded_corners_enabled")
+    val bubbleUserContentPaddingLeft: Float
+        get() = values.requiredFloat("bubble_content_padding_left")
+    val bubbleUserContentPaddingRight: Float
+        get() = values.requiredFloat("bubble_content_padding_right")
+    val bubbleAiContentPaddingLeft: Float
+        get() = values.requiredFloat("bubble_ai_content_padding_left")
+    val bubbleAiContentPaddingRight: Float
+        get() = values.requiredFloat("bubble_ai_content_padding_right")
+    val customUserAvatarUri: String? get() = values.string("custom_user_avatar_uri")
+    val customAiAvatarUri: String? get() = values.string("custom_ai_avatar_uri")
+    val avatarShape: String get() = values.requiredString("avatar_shape")
+    val avatarCornerRadius: Float get() = values.requiredFloat("avatar_corner_radius")
+    val fontType: String get() = values.requiredString("font_type")
+    val systemFontName: String? get() = values.string("system_font_name")
+    val customFontPath: String? get() = values.string("custom_font_path")
+    val fontScale: Float get() = values.requiredFloat("font_scale")
+    val showThinkingProcess: Boolean get() = values.requiredBoolean("show_thinking_process")
+    val showStatusTags: Boolean get() = values.requiredBoolean("show_status_tags")
+    val showModelProvider: Boolean get() = values.requiredBoolean("show_model_provider")
+    val showModelName: Boolean get() = values.requiredBoolean("show_model_name")
+    val showRoleName: Boolean get() = values.requiredBoolean("show_role_name")
+    val showUserName: Boolean get() = values.requiredBoolean("show_user_name")
+    val showMessageTokenStats: Boolean get() = values.requiredBoolean("show_message_token_stats")
+    val showMessageTimingStats: Boolean get() = values.requiredBoolean("show_message_timing_stats")
+    val showMessageTimestamp: Boolean get() = values.requiredBoolean("show_message_timestamp")
+    val showInputProcessingStatus: Boolean
+        get() = values.requiredBoolean("show_input_processing_status")
+    val useCustomFont: Boolean get() = values.requiredBoolean("use_custom_font")
+    val cursorUserBubbleLiquidGlass: Boolean
+        get() = values.requiredBoolean("cursor_user_bubble_liquid_glass")
+    val cursorUserBubbleWaterGlass: Boolean
+        get() = values.requiredBoolean("cursor_user_bubble_water_glass")
+    val bubbleUserBubbleLiquidGlass: Boolean
+        get() = values.requiredBoolean("bubble_user_bubble_liquid_glass")
+    val bubbleUserBubbleWaterGlass: Boolean
+        get() = values.requiredBoolean("bubble_user_bubble_water_glass")
+    val bubbleAiBubbleLiquidGlass: Boolean
+        get() = values.requiredBoolean("bubble_ai_bubble_liquid_glass")
+    val bubbleAiBubbleWaterGlass: Boolean
+        get() = values.requiredBoolean("bubble_ai_bubble_water_glass")
+}

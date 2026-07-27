@@ -103,8 +103,8 @@ fun OperitTheme(content: @Composable () -> Unit) {
 
     fun disableBackgroundForTarget(target: ActivePrompt) {
         coroutineScope.launch {
-            activePromptManager.saveThemeForActivePrompt(target) {
-                preferencesManager.saveThemeSettings(useBackgroundImage = false)
+            activePromptManager.mutateActiveThemeForPrompt(target) { values ->
+                values.withBoolean("use_background_image", false)
             }
         }
     }

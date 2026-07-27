@@ -17,7 +17,6 @@ import androidx.compose.runtime.setValue
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.ui.features.settings.sections.ThemeSettingsBackgroundSection
-import com.ai.assistance.operit.ui.features.settings.sections.SaveThemeSettingsAction
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.FileUtils
 import com.canhub.cropper.CropImageContract
@@ -36,17 +35,16 @@ internal fun ThemeSettingsBackgroundTab(
     cardColors: androidx.compose.material3.CardColors,
     scrollState: androidx.compose.foundation.ScrollState,
 ) {
-    val preferencesManager = shared.preferencesManager
-    val useBackgroundImage by preferencesManager.useBackgroundImage.collectAsState(initial = false)
-    val backgroundImageUri by preferencesManager.backgroundImageUri.collectAsState(initial = null)
-    val backgroundImageOpacity by preferencesManager.backgroundImageOpacity.collectAsState(initial = 0.3f)
-    val backgroundMediaType by preferencesManager.backgroundMediaType.collectAsState(
-        initial = UserPreferencesManager.MEDIA_TYPE_IMAGE,
-    )
-    val videoBackgroundMuted by preferencesManager.videoBackgroundMuted.collectAsState(initial = true)
-    val videoBackgroundLoop by preferencesManager.videoBackgroundLoop.collectAsState(initial = true)
-    val useBackgroundBlur by preferencesManager.useBackgroundBlur.collectAsState(initial = false)
-    val backgroundBlurRadius by preferencesManager.backgroundBlurRadius.collectAsState(initial = 10f)
+    val editorSession = shared.editorSession
+    val values by editorSession.values.collectAsState()
+    val useBackgroundImage = values.requiredBoolean("use_background_image")
+    val backgroundImageUri = values.string("background_image_uri")
+    val backgroundImageOpacity = values.requiredFloat("background_image_opacity")
+    val backgroundMediaType = values.requiredString("background_media_type")
+    val videoBackgroundMuted = values.requiredBoolean("video_background_muted")
+    val videoBackgroundLoop = values.requiredBoolean("video_background_loop")
+    val useBackgroundBlur = values.requiredBoolean("use_background_blur")
+    val backgroundBlurRadius = values.requiredFloat("background_blur_radius")
     var useBackgroundImageInput by remember { mutableStateOf(useBackgroundImage) }
     var backgroundImageUriInput by remember { mutableStateOf(backgroundImageUri) }
     var backgroundImageOpacityInput by remember { mutableStateOf(backgroundImageOpacity) }
@@ -75,11 +73,11 @@ internal fun ThemeSettingsBackgroundTab(
         useBackgroundBlurInput = useBackgroundBlur
         backgroundBlurRadiusInput = backgroundBlurRadius
     }
+
     val runtime = rememberThemeSettingsBackgroundRuntime(
         context = shared.context,
         scope = shared.scope,
-        preferencesManager = preferencesManager,
-        saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
+        editorSession = editorSession,
         backgroundImageUriInput = backgroundImageUriInput,
         onBackgroundImageUriInputChange = { backgroundImageUriInput = it },
         backgroundMediaTypeInput = backgroundMediaTypeInput,
@@ -91,8 +89,7 @@ internal fun ThemeSettingsBackgroundTab(
     ThemeSettingsBackgroundSection(
         cardColors = cardColors,
         context = shared.context,
-        preferencesManager = preferencesManager,
-        saveThemeSettingsWithCharacterCard = shared.saveThemeSettingsWithCharacterCard,
+        editorSession = editorSession,
         exoPlayer = runtime.exoPlayer,
         launchImageCrop = runtime.launchImageCrop,
         mediaPickerLauncher = runtime.mediaPickerLauncher,
@@ -125,8 +122,7 @@ internal data class ThemeSettingsBackgroundRuntime(
 internal fun rememberThemeSettingsBackgroundRuntime(
     context: Context,
     scope: CoroutineScope,
-    preferencesManager: ThemeSettingsDraftPreferences,
-    saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
+    editorSession: ThemeEditorSession,
     backgroundImageUriInput: String?,
     onBackgroundImageUriInputChange: (String?) -> Unit,
     backgroundMediaTypeInput: String,
@@ -215,15 +211,17 @@ internal fun rememberThemeSettingsBackgroundRuntime(
                             FileUtils.copyFileToInternalStorage(context, croppedUri, "background")
                         if (internalUri != null) {
                             AppLogger.d("ThemeSettings", "Background image saved to: $internalUri")
-                            preferencesManager.registerStagedAsset(internalUri.toString())
+                            editorSession.registerStagedAsset(internalUri.toString())
                             onBackgroundImageUriInputChange(internalUri.toString())
                             onBackgroundMediaTypeInputChange(UserPreferencesManager.MEDIA_TYPE_IMAGE)
-                            saveThemeSettingsWithCharacterCard {
-                                preferencesManager.saveThemeSettings(
-                                    backgroundImageUri = internalUri.toString(),
-                                    backgroundMediaType = UserPreferencesManager.MEDIA_TYPE_IMAGE,
-                                )
-                            }
+                            editorSession.setOptionalString(
+                                "background_image_uri",
+                                internalUri.toString(),
+                            )
+                            editorSession.setString(
+                                "background_media_type",
+                                UserPreferencesManager.MEDIA_TYPE_IMAGE,
+                            )
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.theme_image_saved),
@@ -334,15 +332,17 @@ internal fun rememberThemeSettingsBackgroundRuntime(
 
                         if (internalUri != null) {
                             AppLogger.d("ThemeSettings", "Background video saved to: $internalUri")
-                            preferencesManager.registerStagedAsset(internalUri.toString())
+                            editorSession.registerStagedAsset(internalUri.toString())
                             onBackgroundImageUriInputChange(internalUri.toString())
                             onBackgroundMediaTypeInputChange(UserPreferencesManager.MEDIA_TYPE_VIDEO)
-                            saveThemeSettingsWithCharacterCard {
-                                preferencesManager.saveThemeSettings(
-                                    backgroundImageUri = internalUri.toString(),
-                                    backgroundMediaType = UserPreferencesManager.MEDIA_TYPE_VIDEO,
-                                )
-                            }
+                            editorSession.setOptionalString(
+                                "background_image_uri",
+                                internalUri.toString(),
+                            )
+                            editorSession.setString(
+                                "background_media_type",
+                                UserPreferencesManager.MEDIA_TYPE_VIDEO,
+                            )
                             Toast.makeText(
                                 context,
                                 context.getString(R.string.theme_video_saved),

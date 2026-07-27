@@ -2,7 +2,6 @@ package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
 import com.ai.assistance.operit.data.model.ActivePrompt
-import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -13,7 +12,7 @@ class ActivePromptManager private constructor(context: Context) {
     private val characterCardManager = CharacterCardManager.getInstance(context)
     private val characterGroupCardManager = CharacterGroupCardManager.getInstance(context)
     private val userPreferencesManager = UserPreferencesManager.getInstance(context)
-    private val themeOperations = ThemeTargetOperationCoordinator(::getActivePrompt)
+    private val themeOperations = ThemeTargetOperationCoordinator()
 
     val activePromptFlow: Flow<ActivePrompt> =
         combine(
@@ -48,37 +47,18 @@ class ActivePromptManager private constructor(context: Context) {
         return themeOperations.runTransition(action)
     }
 
-    suspend fun saveThemeForActivePrompt(
+    suspend fun mutateActiveThemeForPrompt(
         target: ActivePrompt,
-        saveAction: suspend () -> Unit,
-    ): Boolean {
-        val saved = themeOperations.runForTarget(target) {
-            saveAction()
-            when (target) {
-                is ActivePrompt.CharacterGroup ->
-                    userPreferencesManager.saveCurrentThemeToCharacterGroup(target.id)
-
-                is ActivePrompt.CharacterCard ->
-                    userPreferencesManager.saveCurrentThemeToCharacterCard(target.id)
-            }
-        }
-        if (!saved) {
-            AppLogger.w(TAG, "Ignoring theme save because the active prompt changed")
-        }
-        return saved
-    }
-
-    suspend fun resetThemeForActivePrompt(target: ActivePrompt): Boolean {
-        val reset = themeOperations.runForTarget(target) {
-            userPreferencesManager.resetVisualThemeForPrompt(
+        transform: (ThemePreferenceValues) -> ThemePreferenceValues,
+    ) {
+        themeOperations.runTransition {
+            if (getActivePrompt() != target) return@runTransition
+            userPreferencesManager.mutateThemeForPrompt(
                 target = target,
                 updateCurrentProjection = true,
+                transform = transform,
             )
         }
-        if (!reset) {
-            AppLogger.w(TAG, "Ignoring theme reset because the active prompt changed")
-        }
-        return reset
     }
 
     suspend fun commitThemeDraft(
@@ -94,10 +74,14 @@ class ActivePromptManager private constructor(context: Context) {
         }
     }
 
-    suspend fun resetThemeDraft(target: ActivePrompt) {
+    suspend fun resetThemeDraft(
+        target: ActivePrompt,
+        values: ThemePreferenceValues,
+    ) {
         themeOperations.runTransition {
             userPreferencesManager.resetVisualThemeForPrompt(
                 target = target,
+                values = values,
                 updateCurrentProjection = getActivePrompt() == target,
             )
         }
@@ -160,8 +144,6 @@ class ActivePromptManager private constructor(context: Context) {
     }
 
     companion object {
-        private const val TAG = "ActivePromptManager"
-
         @Volatile
         private var INSTANCE: ActivePromptManager? = null
 

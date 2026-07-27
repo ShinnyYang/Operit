@@ -2,8 +2,8 @@
 
 ## Automated Coverage
 
-- A target save finishes before a queued target transition
-- A stale target does not write a scoped snapshot
+- Prompt transitions and target writes share one serialized coordinator
+- Editor commits capture and write their explicit target snapshot
 - Legacy migration only copies global data when its default-card ownership is unambiguous
 
 ## Manual Acceptance

@@ -1,6 +1,10 @@
 package com.ai.assistance.operit.ui.features.settings.screens.theme
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,7 +12,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
@@ -21,7 +29,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,10 +44,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.model.ActivePrompt
 import com.ai.assistance.operit.data.model.CharacterCard
@@ -50,7 +60,6 @@ import com.ai.assistance.operit.data.preferences.CharacterCardManager
 import com.ai.assistance.operit.data.preferences.CharacterGroupCardManager
 import com.ai.assistance.operit.data.preferences.DisplayPreferencesManager
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
-import com.ai.assistance.operit.ui.features.settings.sections.SaveThemeSettingsAction
 import com.ai.assistance.operit.ui.main.navigation.RegisterRouteBackGuard
 import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.CancellationException
@@ -62,17 +71,20 @@ import kotlin.coroutines.resume
 
 internal data class ThemeSettingsShared(
     val context: android.content.Context,
-    val preferencesManager: ThemeSettingsDraftPreferences,
+    val editorSession: ThemeEditorSession,
     val displayPreferencesManager: DisplayPreferencesManager,
     val scope: CoroutineScope,
-    val activeThemeTargetName: String?,
-    val activeThemeTargetAvatarUri: String?,
-    val isGroupThemeTarget: Boolean,
-    val saveThemeSettingsWithCharacterCard: SaveThemeSettingsAction,
+)
+
+private data class ThemeEditorState(
+    val target: ActivePrompt,
+    val session: ThemeEditorSession,
 )
 
 private sealed interface ThemeEditorPendingAction {
     data class SelectTarget(val target: ActivePrompt) : ThemeEditorPendingAction
+
+    data object ActiveTargetChanged : ThemeEditorPendingAction
 
     data object LeaveScreen : ThemeEditorPendingAction
 }
@@ -113,7 +125,7 @@ internal fun ThemeSettingsContent() {
             displayPreferencesManager = displayPreferencesManager,
             scope = scope,
             activePromptManager = activePromptManager,
-            initialThemeTarget = initialThemeTarget,
+            activeThemeTarget = initialThemeTarget,
             characterCards = characterCards,
             characterGroups = characterGroups,
         )
@@ -126,7 +138,7 @@ internal fun ThemeSettingsContentEditor(
     displayPreferencesManager: DisplayPreferencesManager,
     scope: CoroutineScope,
     activePromptManager: ActivePromptManager,
-    initialThemeTarget: ActivePrompt,
+    activeThemeTarget: ActivePrompt,
     characterCards: List<CharacterCard>,
     characterGroups: List<CharacterGroupCard>,
 ) {
@@ -135,17 +147,31 @@ internal fun ThemeSettingsContentEditor(
         containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
     )
     var selectedThemeTab by remember { mutableStateOf(ThemeSettingsTab.BASIC) }
-    var selectedThemeTarget by remember { mutableStateOf(initialThemeTarget) }
-    var editorPreferences by remember { mutableStateOf<ThemeSettingsDraftPreferences?>(null) }
+    var editorState by remember { mutableStateOf<ThemeEditorState?>(null) }
+    var editorReloadToken by remember { mutableStateOf(0) }
     var showSaveSuccessMessage by remember { mutableStateOf(false) }
     var pendingAction by remember { mutableStateOf<ThemeEditorPendingAction?>(null) }
     var exitContinuation by remember { mutableStateOf<CancellableContinuation<Boolean>?>(null) }
     var isSaving by remember { mutableStateOf(false) }
+    var targetSwitchesInFlight by remember { mutableStateOf(0) }
     val scrollState = androidx.compose.foundation.rememberScrollState()
 
-    LaunchedEffect(selectedThemeTarget) {
-        val target = selectedThemeTarget
-        editorPreferences = null
+    LaunchedEffect(activeThemeTarget, editorReloadToken) {
+        val target = activeThemeTarget
+        val currentState = editorState
+        if (currentState?.target == target) {
+            if (pendingAction == ThemeEditorPendingAction.ActiveTargetChanged) {
+                pendingAction = null
+            }
+            return@LaunchedEffect
+        }
+        if (currentState != null && currentState.session.hasUnsavedChanges) {
+            if (pendingAction == null || pendingAction == ThemeEditorPendingAction.ActiveTargetChanged) {
+                pendingAction = ThemeEditorPendingAction.ActiveTargetChanged
+            }
+            return@LaunchedEffect
+        }
+        editorState = null
         val snapshot = when (target) {
             is ActivePrompt.CharacterCard ->
                 preferencesManager.resolveThemePreferenceSnapshot(characterCardId = target.id)
@@ -153,11 +179,14 @@ internal fun ThemeSettingsContentEditor(
             is ActivePrompt.CharacterGroup ->
                 preferencesManager.resolveThemePreferenceSnapshot(characterGroupId = target.id)
         }
-        if (selectedThemeTarget == target) {
-            editorPreferences = ThemeSettingsDraftPreferences(preferencesManager, snapshot)
+        if (activeThemeTarget == target) {
+            editorState = ThemeEditorState(
+                target = target,
+                session = ThemeEditorSession(preferencesManager, snapshot.values),
+            )
         }
     }
-    val draftForDirtyState = editorPreferences
+    val draftForDirtyState = editorState?.session
     val hasUnsavedChanges =
         if (draftForDirtyState == null) {
             false
@@ -168,20 +197,51 @@ internal fun ThemeSettingsContentEditor(
             dirty
         }
 
-    val selectedCharacterCard = (selectedThemeTarget as? ActivePrompt.CharacterCard)
+    val editorTarget = editorState?.target ?: activeThemeTarget
+    val selectedCharacterCard = (editorTarget as? ActivePrompt.CharacterCard)
         ?.let { target -> characterCards.firstOrNull { it.id == target.id } }
-    val selectedCharacterGroup = (selectedThemeTarget as? ActivePrompt.CharacterGroup)
+    val selectedCharacterGroup = (editorTarget as? ActivePrompt.CharacterGroup)
         ?.let { target -> characterGroups.firstOrNull { it.id == target.id } }
-    val selectedAvatarUri by remember(selectedThemeTarget) {
-        when (val target = selectedThemeTarget) {
-            is ActivePrompt.CharacterCard -> preferencesManager.getAiAvatarForCharacterCardFlow(target.id)
-            is ActivePrompt.CharacterGroup -> preferencesManager.getAiAvatarForCharacterGroupFlow(target.id)
-        }
-    }.collectAsState(initial = null)
+    val observedEditorSession = editorState?.session
+    val editorValues = if (observedEditorSession == null) {
+        null
+    } else {
+        val values by observedEditorSession.values.collectAsState()
+        values
+    }
+    val selectedAvatarUri = editorValues?.string("custom_ai_avatar_uri")
     val selectedThemeTargetName =
         selectedCharacterGroup?.name
             ?: selectedCharacterCard?.name
             ?: context.getString(R.string.theme_default_character_card)
+
+    fun activateTarget(target: ActivePrompt) {
+        if (target == activeThemeTarget && targetSwitchesInFlight == 0) {
+            if (editorState?.target != target) {
+                editorState = null
+                editorReloadToken += 1
+            }
+            return
+        }
+        targetSwitchesInFlight += 1
+        scope.launch {
+            try {
+                activePromptManager.setActivePrompt(target)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e("ThemeSettings", "Failed to activate theme target", e)
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.theme_target_switch_failed),
+                    Toast.LENGTH_LONG,
+                ).show()
+                editorReloadToken += 1
+            } finally {
+                targetSwitchesInFlight = (targetSwitchesInFlight - 1).coerceAtLeast(0)
+            }
+        }
+    }
 
     fun finishPendingAction(allowNavigation: Boolean) {
         val action = pendingAction
@@ -189,7 +249,18 @@ internal fun ThemeSettingsContentEditor(
         when (action) {
             is ThemeEditorPendingAction.SelectTarget -> {
                 if (allowNavigation) {
-                    selectedThemeTarget = action.target
+                    activateTarget(action.target)
+                } else if (editorState?.target != activeThemeTarget) {
+                    editorReloadToken += 1
+                }
+            }
+
+            ThemeEditorPendingAction.ActiveTargetChanged -> {
+                if (allowNavigation) {
+                    editorState = null
+                    editorReloadToken += 1
+                } else {
+                    editorState?.target?.let(::activateTarget)
                 }
             }
 
@@ -197,6 +268,9 @@ internal fun ThemeSettingsContentEditor(
                 val continuation = exitContinuation
                 exitContinuation = null
                 continuation?.resume(allowNavigation)
+                if (!allowNavigation && editorState?.target != activeThemeTarget) {
+                    editorReloadToken += 1
+                }
             }
 
             null -> Unit
@@ -204,17 +278,18 @@ internal fun ThemeSettingsContentEditor(
     }
 
     fun saveCurrentDraft() {
-        val draft = editorPreferences ?: return
+        val state = editorState ?: return
+        val draft = state.session
         if (isSaving) return
-        val target = selectedThemeTarget
-        val savedValues = draft.values
+        val target = state.target
+        val savedValues = draft.currentValues
         val resetRequested = draft.isResetRequested
         isSaving = true
         draft.beginSave(savedValues)
         scope.launch {
             try {
                 if (resetRequested) {
-                    activePromptManager.resetThemeDraft(target)
+                    activePromptManager.resetThemeDraft(target, savedValues)
                 } else {
                     activePromptManager.commitThemeDraft(target, savedValues)
                 }
@@ -239,7 +314,7 @@ internal fun ThemeSettingsContentEditor(
         if (pendingAction != null) {
             return@RegisterRouteBackGuard false
         }
-        val draft = editorPreferences
+        val draft = editorState?.session
         if (draft == null || !hasUnsavedChanges) {
             return@RegisterRouteBackGuard true
         }
@@ -257,23 +332,29 @@ internal fun ThemeSettingsContentEditor(
 
     Column(modifier = Modifier.fillMaxSize()) {
         ThemeSettingsTargetSelector(
-            selectedTarget = selectedThemeTarget,
+            selectedTarget = editorTarget,
+            selectedLabel = selectedThemeTargetName,
+            selectedAvatarUri = selectedAvatarUri,
             characterCards = characterCards,
             characterGroups = characterGroups,
-            enabled = pendingAction !is ThemeEditorPendingAction.LeaveScreen && !isSaving,
+            enabled =
+                editorState != null &&
+                    pendingAction == null &&
+                    !isSaving &&
+                    targetSwitchesInFlight == 0,
             onTargetSelected = { target ->
-                val draft = editorPreferences
-                if (pendingAction !is ThemeEditorPendingAction.LeaveScreen && target != selectedThemeTarget) {
+                val draft = editorState?.session
+                if (pendingAction == null && target != editorTarget) {
                     if (draft != null && hasUnsavedChanges) {
                         pendingAction = ThemeEditorPendingAction.SelectTarget(target)
                     } else {
-                        selectedThemeTarget = target
+                        activateTarget(target)
                     }
                 }
             },
         )
 
-        val draft = editorPreferences
+        val draft = editorState?.session
         if (draft == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().weight(1f),
@@ -287,15 +368,9 @@ internal fun ThemeSettingsContentEditor(
             }
             val shared = ThemeSettingsShared(
                 context = context,
-                preferencesManager = draft,
+                editorSession = draft,
                 displayPreferencesManager = displayPreferencesManager,
                 scope = scope,
-                activeThemeTargetName = selectedThemeTargetName,
-                activeThemeTargetAvatarUri = selectedAvatarUri,
-                isGroupThemeTarget = selectedThemeTarget is ActivePrompt.CharacterGroup,
-                saveThemeSettingsWithCharacterCard = { action ->
-                    scope.launch { action() }
-                },
             )
 
             // External picker callbacks retain this exact draft, even after another target is selected.
@@ -369,7 +444,7 @@ internal fun ThemeSettingsContentEditor(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
                         onClick = {
-                            editorPreferences?.discard()
+                            editorState?.session?.discard()
                             finishPendingAction(allowNavigation = true)
                         },
                         enabled = !isSaving,
@@ -391,90 +466,143 @@ internal fun ThemeSettingsContentEditor(
 @Composable
 private fun ThemeSettingsTargetSelector(
     selectedTarget: ActivePrompt,
+    selectedLabel: String,
+    selectedAvatarUri: String?,
     characterCards: List<CharacterCard>,
     characterGroups: List<CharacterGroupCard>,
     enabled: Boolean,
     onTargetSelected: (ActivePrompt) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = when (selectedTarget) {
-        is ActivePrompt.CharacterCard -> {
-            characterCards.firstOrNull { it.id == selectedTarget.id }?.name
-                ?: stringResource(R.string.theme_default_character_card)
-        }
-
-        is ActivePrompt.CharacterGroup -> {
-            characterGroups.firstOrNull { it.id == selectedTarget.id }?.name.orEmpty()
-        }
+    val targetTypeLabel = if (selectedTarget is ActivePrompt.CharacterGroup) {
+        stringResource(R.string.theme_edit_target_group)
+    } else {
+        stringResource(R.string.theme_edit_target_character)
+    }
+    val targetIcon = if (selectedTarget is ActivePrompt.CharacterGroup) {
+        Icons.Default.Groups
+    } else {
+        Icons.Default.Person
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
-    ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(
-                text = stringResource(R.string.theme_target_title),
-                style = MaterialTheme.typography.labelLarge,
-            )
-            Box(modifier = Modifier.fillMaxWidth()) {
-                OutlinedButton(
-                    onClick = { expanded = true },
-                    enabled = enabled,
-                    modifier = Modifier.fillMaxWidth(),
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
+        Card(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = enabled) { expanded = true },
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
+            ),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier =
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    val icon = if (selectedTarget is ActivePrompt.CharacterGroup) {
-                        Icons.Default.Groups
+                    if (selectedAvatarUri != null) {
+                        Image(
+                            painter = rememberAsyncImagePainter(Uri.parse(selectedAvatarUri)),
+                            contentDescription = stringResource(R.string.character_avatar),
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop,
+                        )
                     } else {
-                        Icons.Default.Person
+                        Icon(
+                            imageVector = targetIcon,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp),
+                        )
                     }
-                    Icon(imageVector = icon, contentDescription = null)
+                }
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = selectedLabel,
+                        style = MaterialTheme.typography.titleMedium,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(start = 8.dp).weight(1f),
+                    )
+                    Text(
+                        text = targetTypeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowDropDown,
+                    contentDescription = stringResource(R.string.theme_select_target),
+                    tint = if (enabled) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    },
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            val defaultTarget = ActivePrompt.CharacterCard(CharacterCardManager.DEFAULT_CHARACTER_CARD_ID)
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.theme_default_character_card)) },
+                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                trailingIcon = {
+                    if (selectedTarget == defaultTarget) {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                    }
+                },
+                onClick = {
+                    expanded = false
+                    onTargetSelected(defaultTarget)
+                },
+            )
+            characterCards
+                .filter { it.id != CharacterCardManager.DEFAULT_CHARACTER_CARD_ID }
+                .forEach { card ->
+                    val target = ActivePrompt.CharacterCard(card.id)
                     DropdownMenuItem(
-                        text = { Text(stringResource(R.string.theme_default_character_card)) },
+                        text = { Text(card.name) },
                         leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                        trailingIcon = {
+                            if (selectedTarget == target) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        },
                         onClick = {
                             expanded = false
-                            onTargetSelected(
-                                ActivePrompt.CharacterCard(CharacterCardManager.DEFAULT_CHARACTER_CARD_ID),
-                            )
+                            onTargetSelected(target)
                         },
                     )
-                    characterCards
-                        .filter { it.id != CharacterCardManager.DEFAULT_CHARACTER_CARD_ID }
-                        .forEach { card ->
-                            DropdownMenuItem(
-                                text = { Text(card.name) },
-                                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                                onClick = {
-                                    expanded = false
-                                    onTargetSelected(ActivePrompt.CharacterCard(card.id))
-                                },
-                            )
-                        }
-                    if (characterGroups.isNotEmpty()) {
-                        HorizontalDivider()
-                        characterGroups.forEach { group ->
-                            DropdownMenuItem(
-                                text = { Text(group.name) },
-                                leadingIcon = { Icon(Icons.Default.Groups, contentDescription = null) },
-                                onClick = {
-                                    expanded = false
-                                    onTargetSelected(ActivePrompt.CharacterGroup(group.id))
-                                },
-                            )
-                        }
-                    }
+                }
+            if (characterGroups.isNotEmpty()) {
+                HorizontalDivider()
+                characterGroups.forEach { group ->
+                    val target = ActivePrompt.CharacterGroup(group.id)
+                    DropdownMenuItem(
+                        text = { Text(group.name) },
+                        leadingIcon = { Icon(Icons.Default.Groups, contentDescription = null) },
+                        trailingIcon = {
+                            if (selectedTarget == target) {
+                                Icon(Icons.Default.Check, contentDescription = null)
+                            }
+                        },
+                        onClick = {
+                            expanded = false
+                            onTargetSelected(target)
+                        },
+                    )
                 }
             }
         }

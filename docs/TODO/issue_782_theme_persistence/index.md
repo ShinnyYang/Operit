@@ -2,7 +2,7 @@
 title: Issue 782 Character Theme Persistence
 fork: https://github.com/luojiaping/Operit
 branch: fix/issue-782-character-theme-persistence
-status: implemented
+status: superseded
 ---
 
 # Issue 782 Character Theme Persistence
@@ -10,6 +10,8 @@ status: implemented
 ## Current State
 
 Character and group theme snapshots are stored under target-specific preference prefixes. The active Android theme is still projected through shared preference keys. A theme edit writes the shared keys and later copies them to the captured target in a separate coroutine. A target switch between those operations can save one target's projection into another target's snapshot.
+
+This document records the first persistence pass. The editor-session implementation in `../issue_782_theme_editor_drafts/` supersedes its two-stage save path and verification contract.
 
 ## Intent
 
