@@ -11,6 +11,8 @@ class ActivePromptManager private constructor(context: Context) {
 
     private val characterCardManager = CharacterCardManager.getInstance(context)
     private val characterGroupCardManager = CharacterGroupCardManager.getInstance(context)
+    private val userPreferencesManager = UserPreferencesManager.getInstance(context)
+    private val themeOperations = ThemeTargetOperationCoordinator()
 
     val activePromptFlow: Flow<ActivePrompt> =
         combine(
@@ -27,14 +29,90 @@ class ActivePromptManager private constructor(context: Context) {
     suspend fun getActivePrompt(): ActivePrompt = activePromptFlow.first()
 
     suspend fun setActivePrompt(prompt: ActivePrompt) {
-        when (prompt) {
-            is ActivePrompt.CharacterGroup -> {
-                characterGroupCardManager.setActiveCharacterGroupCard(prompt.id)
-                characterCardManager.clearActiveCharacterCard()
+        themeOperations.runTransition {
+            when (prompt) {
+                is ActivePrompt.CharacterGroup -> {
+                    characterGroupCardManager.setActiveCharacterGroupCard(prompt.id)
+                    characterCardManager.clearActiveCharacterCard()
+                }
+                is ActivePrompt.CharacterCard -> {
+                    characterCardManager.setActiveCharacterCard(prompt.id)
+                    characterGroupCardManager.setActiveCharacterGroupCard(null)
+                }
             }
-            is ActivePrompt.CharacterCard -> {
-                characterCardManager.setActiveCharacterCard(prompt.id)
-                characterGroupCardManager.setActiveCharacterGroupCard(null)
+        }
+    }
+
+    internal suspend fun <T> runThemeTransition(action: suspend () -> T): T {
+        return themeOperations.runTransition(action)
+    }
+
+    suspend fun mutateActiveThemeForPrompt(
+        target: ActivePrompt,
+        transform: (ThemePreferenceValues) -> ThemePreferenceValues,
+    ) {
+        themeOperations.runTransition {
+            if (getActivePrompt() != target) return@runTransition
+            userPreferencesManager.mutateThemeForPrompt(
+                target = target,
+                updateCurrentProjection = true,
+                transform = transform,
+            )
+        }
+    }
+
+    suspend fun commitThemeDraft(
+        target: ActivePrompt,
+        values: ThemePreferenceValues,
+    ) {
+        themeOperations.runTransition {
+            userPreferencesManager.replaceThemeForPrompt(
+                target = target,
+                values = values,
+                updateCurrentProjection = getActivePrompt() == target,
+            )
+        }
+    }
+
+    suspend fun resetThemeDraft(
+        target: ActivePrompt,
+        values: ThemePreferenceValues,
+    ) {
+        themeOperations.runTransition {
+            userPreferencesManager.resetVisualThemeForPrompt(
+                target = target,
+                values = values,
+                updateCurrentProjection = getActivePrompt() == target,
+            )
+        }
+    }
+
+    suspend fun saveAiAvatarForPrompt(target: ActivePrompt, avatarUri: String?) {
+        themeOperations.runTransition {
+            when (target) {
+                is ActivePrompt.CharacterGroup ->
+                    userPreferencesManager.saveAiAvatarForCharacterGroup(target.id, avatarUri)
+
+                is ActivePrompt.CharacterCard ->
+                    userPreferencesManager.saveAiAvatarForCharacterCard(target.id, avatarUri)
+            }
+            if (getActivePrompt() == target) {
+                userPreferencesManager.saveCurrentThemeAiAvatar(avatarUri)
+            }
+        }
+    }
+
+    suspend fun saveCustomChatTitleForPrompt(target: ActivePrompt, title: String?) {
+        themeOperations.runTransition {
+            when (target) {
+                is ActivePrompt.CharacterGroup ->
+                    userPreferencesManager.saveCustomChatTitleForCharacterGroup(target.id, title)
+
+                is ActivePrompt.CharacterCard ->
+                    userPreferencesManager.saveCustomChatTitleForCharacterCard(target.id, title)
+            }
+            if (getActivePrompt() == target) {
+                userPreferencesManager.saveCurrentThemeChatTitle(title)
             }
         }
     }
