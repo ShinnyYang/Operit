@@ -125,7 +125,6 @@ class CharacterGroupCardManager private constructor(private val context: Context
 
         createDefaultBindingsForCharacterGroup(normalizedGroup, emojiSourcePrompt)
         if (activatedGroup) {
-            userPreferencesManager.switchToCharacterGroupTheme(id)
             waifuPreferences.switchToCharacterGroupWaifuSettings(id)
         }
         return id
@@ -193,7 +192,6 @@ class CharacterGroupCardManager private constructor(private val context: Context
         if (deletedActiveGroup) {
             val activeCardId = characterCardManager.observeActiveCharacterCardId().first()
                 ?: CharacterCardManager.DEFAULT_CHARACTER_CARD_ID
-            runCatching { userPreferencesManager.switchToCharacterCardTheme(activeCardId) }
             runCatching { waifuPreferences.switchToCharacterCardWaifuSettings(activeCardId) }
         }
     }
@@ -208,7 +206,6 @@ class CharacterGroupCardManager private constructor(private val context: Context
         }
 
         if (!groupId.isNullOrBlank()) {
-            runCatching { userPreferencesManager.switchToCharacterGroupTheme(groupId) }
             runCatching { waifuPreferences.switchToCharacterGroupWaifuSettings(groupId) }
         }
     }
@@ -234,7 +231,6 @@ class CharacterGroupCardManager private constructor(private val context: Context
         activePromptManager.runThemeTransition {
             cloneBindingsFromCharacterGroupLocked(sourceGroupId, targetGroupId)
             if (activePromptManager.getActivePrompt() == ActivePrompt.CharacterGroup(targetGroupId)) {
-                userPreferencesManager.switchToCharacterGroupTheme(targetGroupId)
                 waifuPreferences.switchToCharacterGroupWaifuSettings(targetGroupId)
             }
         }
@@ -271,7 +267,6 @@ class CharacterGroupCardManager private constructor(private val context: Context
             val newId = createCharacterGroupCardLocked(duplicated)
             cloneBindingsFromCharacterGroupLocked(sourceGroupId, newId)
             if (activePromptManager.getActivePrompt() == ActivePrompt.CharacterGroup(newId)) {
-                userPreferencesManager.switchToCharacterGroupTheme(newId)
                 waifuPreferences.switchToCharacterGroupWaifuSettings(newId)
             }
             newId

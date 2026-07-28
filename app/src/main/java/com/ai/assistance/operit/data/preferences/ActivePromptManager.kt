@@ -2,10 +2,12 @@ package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
 import com.ai.assistance.operit.data.model.ActivePrompt
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 
 class ActivePromptManager private constructor(context: Context) {
 
@@ -25,6 +27,24 @@ class ActivePromptManager private constructor(context: Context) {
                 else -> ActivePrompt.CharacterCard(CharacterCardManager.DEFAULT_CHARACTER_CARD_ID)
             }
         }.distinctUntilChanged()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val activeThemePreferenceSnapshotFlow: Flow<ThemePreferenceSnapshot> =
+        activePromptFlow
+            .flatMapLatest { prompt ->
+                when (prompt) {
+                    is ActivePrompt.CharacterGroup ->
+                        userPreferencesManager.observeThemePreferenceSnapshot(
+                            characterGroupId = prompt.id,
+                        )
+
+                    is ActivePrompt.CharacterCard ->
+                        userPreferencesManager.observeThemePreferenceSnapshot(
+                            characterCardId = prompt.id,
+                        )
+                }
+            }
+            .distinctUntilChanged()
 
     suspend fun getActivePrompt(): ActivePrompt = activePromptFlow.first()
 
@@ -55,7 +75,6 @@ class ActivePromptManager private constructor(context: Context) {
             if (getActivePrompt() != target) return@runTransition
             userPreferencesManager.mutateThemeForPrompt(
                 target = target,
-                updateCurrentProjection = true,
                 transform = transform,
             )
         }
@@ -69,7 +88,6 @@ class ActivePromptManager private constructor(context: Context) {
             userPreferencesManager.replaceThemeForPrompt(
                 target = target,
                 values = values,
-                updateCurrentProjection = getActivePrompt() == target,
             )
         }
     }
@@ -82,7 +100,6 @@ class ActivePromptManager private constructor(context: Context) {
             userPreferencesManager.resetVisualThemeForPrompt(
                 target = target,
                 values = values,
-                updateCurrentProjection = getActivePrompt() == target,
             )
         }
     }
@@ -96,9 +113,6 @@ class ActivePromptManager private constructor(context: Context) {
                 is ActivePrompt.CharacterCard ->
                     userPreferencesManager.saveAiAvatarForCharacterCard(target.id, avatarUri)
             }
-            if (getActivePrompt() == target) {
-                userPreferencesManager.saveCurrentThemeAiAvatar(avatarUri)
-            }
         }
     }
 
@@ -110,9 +124,6 @@ class ActivePromptManager private constructor(context: Context) {
 
                 is ActivePrompt.CharacterCard ->
                     userPreferencesManager.saveCustomChatTitleForCharacterCard(target.id, title)
-            }
-            if (getActivePrompt() == target) {
-                userPreferencesManager.saveCurrentThemeChatTitle(title)
             }
         }
     }

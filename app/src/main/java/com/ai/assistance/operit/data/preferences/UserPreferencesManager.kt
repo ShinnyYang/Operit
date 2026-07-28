@@ -16,6 +16,7 @@ import com.ai.assistance.operit.data.model.MemorySpace
 import com.ai.assistance.operit.data.model.CharacterCardMemoryProfileBindingMode
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -548,544 +549,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         )
     }
 
-    // 主题相关Flow
-    val themeMode: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[THEME_MODE] ?: THEME_MODE_LIGHT
-            }
-
-    val useSystemTheme: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_SYSTEM_THEME] ?: true
-            }
-
-    val customPrimaryColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_PRIMARY_COLOR]
-            }
-
-    val customSecondaryColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_SECONDARY_COLOR]
-            }
-
-    val useCustomColors: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_CUSTOM_COLORS] ?: false
-            }
-
-    // 背景图片相关Flow
-    val useBackgroundImage: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_BACKGROUND_IMAGE] ?: false
-            }
-
-    val backgroundImageUri: Flow<String?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[BACKGROUND_IMAGE_URI]
-            }
-
-    val backgroundImageOpacity: Flow<Float> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[BACKGROUND_IMAGE_OPACITY] ?: 0.3f
-            }
-
-    // 背景媒体类型相关Flow
-    val backgroundMediaType: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[BACKGROUND_MEDIA_TYPE] ?: MEDIA_TYPE_IMAGE
-            }
-
-    val videoBackgroundMuted: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[VIDEO_BACKGROUND_MUTED] ?: true
-            }
-
-    val videoBackgroundLoop: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[VIDEO_BACKGROUND_LOOP] ?: true
-            }
-
-    val toolbarTransparent: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[TOOLBAR_TRANSPARENT] ?: false
-            }
-
-    val navigationDrawerWaterGlass: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[NAVIGATION_DRAWER_WATER_GLASS] ?: false
-            }
-
-    val navigationDrawerButtonLiquidGlass: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[NAVIGATION_DRAWER_BUTTON_LIQUID_GLASS] ?: false
-            }
-
-    val useCustomNavigationDrawerBackgroundColor: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR] ?: false
-            }
-
-    val customNavigationDrawerBackgroundColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_NAVIGATION_DRAWER_BACKGROUND_COLOR]
-            }
-
-    val customNavigationDrawerAccentColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR]
-            }
-
-    val useCustomNavigationDrawerAccentColor: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_CUSTOM_NAVIGATION_DRAWER_ACCENT_COLOR] ?: false
-            }
-
-    val useCustomAppBarColor: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_CUSTOM_APP_BAR_COLOR] ?: false
-            }
-    
-    val customAppBarColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_APP_BAR_COLOR]
-            }
-
-    val useCustomStatusBarColor: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_CUSTOM_STATUS_BAR_COLOR] ?: false
-            }
-    
-    val customStatusBarColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CUSTOM_STATUS_BAR_COLOR]
-            }
-
-    val statusBarTransparent: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[STATUS_BAR_TRANSPARENT] ?: false
-            }
-
-    val statusBarHidden: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[STATUS_BAR_HIDDEN] ?: false
-            }
-
-    val chatHeaderTransparent: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_HEADER_TRANSPARENT] ?: false
-            }
-
-    val chatInputTransparent: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_INPUT_TRANSPARENT] ?: false
-            }
-
-    val chatInputFloating: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_INPUT_FLOATING] ?: false
-            }
-
-    val chatInputLiquidGlass: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_INPUT_LIQUID_GLASS] ?: false
-            }
-
-    val chatInputWaterGlass: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_INPUT_WATER_GLASS] ?: false
-            }
-
-    val forceAppBarContentColor: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[FORCE_APP_BAR_CONTENT_COLOR_ENABLED] ?: false
-            }
-
-    val appBarContentColorMode: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[APP_BAR_CONTENT_COLOR_MODE] ?: APP_BAR_CONTENT_COLOR_MODE_LIGHT
-            }
-
-    val chatHeaderHistoryIconColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_HEADER_HISTORY_ICON_COLOR]
-            }
-
-    val chatHeaderPipIconColor: Flow<Int?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_HEADER_PIP_ICON_COLOR]
-            }
-
-    val chatHeaderOverlayMode: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_HEADER_OVERLAY_MODE] ?: false
-            }
-
-    val useBackgroundBlur: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[USE_BACKGROUND_BLUR] ?: false
-            }
-
-    val backgroundBlurRadius: Flow<Float> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[BACKGROUND_BLUR_RADIUS] ?: 10f
-            }
-
-    // Chat style preference
-    val chatStyle: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[CHAT_STYLE] ?: CHAT_STYLE_CURSOR
-            }
-
-    val inputStyle: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[INPUT_STYLE] ?: INPUT_STYLE_AGENT
-            }
-
-    val bubbleShowAvatar: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[BUBBLE_SHOW_AVATAR] ?: true
-            }
-
-    val bubbleWideLayoutEnabled: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_WIDE_LAYOUT_ENABLED] ?: false
-        }
-
-    val cursorUserBubbleFollowTheme: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[CURSOR_USER_BUBBLE_FOLLOW_THEME] ?: true
-        }
-
-    val cursorUserBubbleLiquidGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[CURSOR_USER_BUBBLE_LIQUID_GLASS] ?: false
-        }
-
-    val cursorUserBubbleWaterGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[CURSOR_USER_BUBBLE_WATER_GLASS] ?: false
-        }
-
-    val cursorUserBubbleColor: Flow<Int?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[CURSOR_USER_BUBBLE_COLOR]
-        }
-
-    val bubbleUserBubbleLiquidGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_BUBBLE_LIQUID_GLASS] ?: false
-        }
-
-    val bubbleUserBubbleWaterGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_BUBBLE_WATER_GLASS] ?: false
-        }
-
-    val bubbleUserBubbleColor: Flow<Int?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_BUBBLE_COLOR]
-        }
-
-    val bubbleAiBubbleLiquidGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_BUBBLE_LIQUID_GLASS] ?: false
-        }
-
-    val bubbleAiBubbleWaterGlass: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_BUBBLE_WATER_GLASS] ?: false
-        }
-
-    val bubbleAiBubbleColor: Flow<Int?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_BUBBLE_COLOR]
-        }
-
-    val bubbleUserTextColor: Flow<Int?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_TEXT_COLOR]
-        }
-
-    val bubbleAiTextColor: Flow<Int?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_TEXT_COLOR]
-        }
-
-    val bubbleUserUseCustomFont: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_USE_CUSTOM_FONT] ?: false
-        }
-
-    val bubbleUserFontType: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_FONT_TYPE] ?: FONT_TYPE_SYSTEM
-        }
-
-    val bubbleUserSystemFontName: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_SYSTEM_FONT_NAME] ?: SYSTEM_FONT_DEFAULT
-        }
-
-    val bubbleUserCustomFontPath: Flow<String?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_CUSTOM_FONT_PATH]
-        }
-
-    val bubbleAiUseCustomFont: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_USE_CUSTOM_FONT] ?: false
-        }
-
-    val bubbleAiFontType: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_FONT_TYPE] ?: FONT_TYPE_SYSTEM
-        }
-
-    val bubbleAiSystemFontName: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_SYSTEM_FONT_NAME] ?: SYSTEM_FONT_DEFAULT
-        }
-
-    val bubbleAiCustomFontPath: Flow<String?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_CUSTOM_FONT_PATH]
-        }
-
-    val bubbleUserUseImage: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_USE_IMAGE] ?: false
-        }
-
-    val bubbleAiUseImage: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_USE_IMAGE] ?: false
-        }
-
-    val bubbleUserImageUri: Flow<String?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_URI]
-        }
-
-    val bubbleAiImageUri: Flow<String?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_URI]
-        }
-
-    val bubbleUserImageCropLeft: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_CROP_LEFT] ?: 0f
-        }
-
-    val bubbleUserImageCropTop: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_CROP_TOP] ?: 0f
-        }
-
-    val bubbleUserImageCropRight: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_CROP_RIGHT] ?: 0f
-        }
-
-    val bubbleUserImageCropBottom: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_CROP_BOTTOM] ?: 0f
-        }
-
-    val bubbleUserImageRepeatStart: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_REPEAT_START] ?: 0.35f
-        }
-
-    val bubbleUserImageRepeatEnd: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_REPEAT_END] ?: 0.65f
-        }
-
-    val bubbleUserImageRepeatYStart: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_REPEAT_Y_START]
-                ?: (preferences[BUBBLE_USER_IMAGE_REPEAT_START] ?: 0.35f)
-        }
-
-    val bubbleUserImageRepeatYEnd: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_REPEAT_Y_END]
-                ?: (preferences[BUBBLE_USER_IMAGE_REPEAT_END] ?: 0.65f)
-        }
-
-    val bubbleUserImageScale: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_IMAGE_SCALE] ?: 1f
-        }
-
-    val bubbleAiImageCropLeft: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_CROP_LEFT] ?: 0f
-        }
-
-    val bubbleAiImageCropTop: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_CROP_TOP] ?: 0f
-        }
-
-    val bubbleAiImageCropRight: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_CROP_RIGHT] ?: 0f
-        }
-
-    val bubbleAiImageCropBottom: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_CROP_BOTTOM] ?: 0f
-        }
-
-    val bubbleAiImageRepeatStart: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_REPEAT_START] ?: 0.35f
-        }
-
-    val bubbleAiImageRepeatEnd: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_REPEAT_END] ?: 0.65f
-        }
-
-    val bubbleAiImageRepeatYStart: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_REPEAT_Y_START]
-                ?: (preferences[BUBBLE_AI_IMAGE_REPEAT_START] ?: 0.35f)
-        }
-
-    val bubbleAiImageRepeatYEnd: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_REPEAT_Y_END]
-                ?: (preferences[BUBBLE_AI_IMAGE_REPEAT_END] ?: 0.65f)
-        }
-
-    val bubbleAiImageScale: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_IMAGE_SCALE] ?: 1f
-        }
-
-    val bubbleImageRenderMode: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_IMAGE_RENDER_MODE] ?: BUBBLE_IMAGE_RENDER_MODE_TILED_NINE_SLICE
-        }
-
-    val bubbleUserRoundedCornersEnabled: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_ROUNDED_CORNERS_ENABLED] ?: true
-        }
-
-    val bubbleAiRoundedCornersEnabled: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_ROUNDED_CORNERS_ENABLED] ?: true
-        }
-
-    val bubbleUserContentPaddingLeft: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_CONTENT_PADDING_LEFT] ?: 12f
-        }
-
-    val bubbleUserContentPaddingRight: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_USER_CONTENT_PADDING_RIGHT] ?: 12f
-        }
-
-    val bubbleAiContentPaddingLeft: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_CONTENT_PADDING_LEFT] ?: 12f
-        }
-
-    val bubbleAiContentPaddingRight: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[BUBBLE_AI_CONTENT_PADDING_RIGHT] ?: 12f
-        }
-
-    val showThinkingProcess: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_SHOW_THINKING_PROCESS] ?: true
-            }
-
-    val showStatusTags: Flow<Boolean> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_SHOW_STATUS_TAGS] ?: true
-            }
-
-    val showModelProvider: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_MODEL_PROVIDER] ?: false
-        }
-
-    val showModelName: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_MODEL_NAME] ?: false
-        }
-
-    val showRoleName: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_ROLE_NAME] ?: true
-        }
-
-    val showUserName: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_USER_NAME] ?: true
-        }
-
-    val showMessageTokenStats: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_MESSAGE_TOKEN_STATS] ?: false
-        }
-
-    val showMessageTimingStats: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_MESSAGE_TIMING_STATS] ?: false
-        }
-
-    val showMessageTimestamp: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_MESSAGE_TIMESTAMP] ?: false
-        }
-
-    val customUserAvatarUri: Flow<String?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_CUSTOM_USER_AVATAR_URI]
-            }
-
-    val customAiAvatarUri: Flow<String?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_CUSTOM_AI_AVATAR_URI]
-            }
-
-    val avatarShape: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_AVATAR_SHAPE] ?: AVATAR_SHAPE_CIRCLE
-            }
-
-    val avatarCornerRadius: Flow<Float> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_AVATAR_CORNER_RADIUS] ?: 8f
-            }
-
-    val onColorMode: Flow<String> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_ON_COLOR_MODE] ?: ON_COLOR_MODE_AUTO
-            }
-
-    val customChatTitle: Flow<String?> =
-            context.userPreferencesDataStore.data.map { preferences ->
-                preferences[KEY_CUSTOM_CHAT_TITLE]
-            }
-
-    val showInputProcessingStatus: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_INPUT_PROCESSING_STATUS] ?: true
-        }
-
-    val showChatFloatingDotsAnimation: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[KEY_SHOW_CHAT_FLOATING_DOTS_ANIMATION] ?: true
-        }
-
     val uiAccessibilityMode: Flow<Boolean> =
         context.userPreferencesDataStore.data.map { preferences ->
             preferences[KEY_UI_ACCESSIBILITY_MODE] ?: false
@@ -1099,32 +562,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
     val softwareIdentity: Flow<String> =
         context.userPreferencesDataStore.data.map { preferences ->
             preferences[KEY_SOFTWARE_IDENTITY] ?: SOFTWARE_IDENTITY_OPERIT
-        }
-
-    // 字体设置相关Flow
-    val useCustomFont: Flow<Boolean> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[USE_CUSTOM_FONT] ?: false
-        }
-
-    val fontType: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[FONT_TYPE] ?: FONT_TYPE_SYSTEM
-        }
-
-    val systemFontName: Flow<String> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[SYSTEM_FONT_NAME] ?: SYSTEM_FONT_DEFAULT
-        }
-
-    val customFontPath: Flow<String?> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[CUSTOM_FONT_PATH]
-        }
-
-    val fontScale: Flow<Float> =
-        context.userPreferencesDataStore.data.map { preferences ->
-            preferences[FONT_SCALE] ?: 1.0f
         }
 
     // 布局调整设置
@@ -1270,16 +707,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
     }
 
-    internal suspend fun saveCurrentThemeAiAvatar(avatarUri: String?) {
-        context.userPreferencesDataStore.edit { preferences ->
-            if (avatarUri.isNullOrEmpty()) {
-                preferences.remove(KEY_CUSTOM_AI_AVATAR_URI)
-            } else {
-                preferences[KEY_CUSTOM_AI_AVATAR_URI] = avatarUri
-            }
-        }
-    }
-
     suspend fun saveCustomChatTitleForCharacterCard(characterCardId: String, title: String?) {
         context.userPreferencesDataStore.edit { preferences ->
             val prefix = getCharacterCardThemePrefix(characterCardId)
@@ -1300,16 +727,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 preferences[key] = title
             } else {
                 preferences.remove(key)
-            }
-        }
-    }
-
-    internal suspend fun saveCurrentThemeChatTitle(title: String?) {
-        context.userPreferencesDataStore.edit { preferences ->
-            if (title.isNullOrEmpty()) {
-                preferences.remove(KEY_CUSTOM_CHAT_TITLE)
-            } else {
-                preferences[KEY_CUSTOM_CHAT_TITLE] = title
             }
         }
     }
@@ -1385,12 +802,12 @@ class UserPreferencesManager private constructor(private val context: Context) {
     private fun copyThemeValues(
         preferences: MutablePreferences,
         sourcePrefix: String?,
-        targetPrefix: String?,
+        targetPrefix: String,
         clearMissingTargetValues: Boolean,
     ) {
         getAllStringThemeKeys().forEach { key ->
             val sourceKey = sourcePrefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
-            val targetKey = targetPrefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = stringPreferencesKey("${targetPrefix}${key.name}")
             if (preferences.contains(sourceKey)) {
                 preferences[targetKey] = preferences[sourceKey]!!
             } else if (clearMissingTargetValues) {
@@ -1399,7 +816,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
         getAllBooleanThemeKeys().forEach { key ->
             val sourceKey = sourcePrefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
-            val targetKey = targetPrefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = booleanPreferencesKey("${targetPrefix}${key.name}")
             if (preferences.contains(sourceKey)) {
                 preferences[targetKey] = preferences[sourceKey]!!
             } else if (clearMissingTargetValues) {
@@ -1408,7 +825,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
         getAllIntThemeKeys().forEach { key ->
             val sourceKey = sourcePrefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
-            val targetKey = targetPrefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = intPreferencesKey("${targetPrefix}${key.name}")
             if (preferences.contains(sourceKey)) {
                 preferences[targetKey] = preferences[sourceKey]!!
             } else if (clearMissingTargetValues) {
@@ -1417,7 +834,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
         }
         getAllFloatThemeKeys().forEach { key ->
             val sourceKey = sourcePrefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
-            val targetKey = targetPrefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = floatPreferencesKey("${targetPrefix}${key.name}")
             if (preferences.contains(sourceKey)) {
                 preferences[targetKey] = preferences[sourceKey]!!
             } else if (clearMissingTargetValues) {
@@ -1437,30 +854,30 @@ class UserPreferencesManager private constructor(private val context: Context) {
         return key != KEY_CUSTOM_AI_AVATAR_URI && key != KEY_CUSTOM_CHAT_TITLE
     }
 
-    private fun clearVisualThemeValues(preferences: MutablePreferences, prefix: String?) {
+    private fun clearVisualThemeValues(preferences: MutablePreferences, prefix: String) {
         getAllStringThemeKeys()
             .filter(::isVisualThemeStringKey)
             .forEach { key ->
-                val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+                val targetKey = stringPreferencesKey("${prefix}${key.name}")
                 preferences.remove(targetKey)
             }
         getAllBooleanThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = booleanPreferencesKey("${prefix}${key.name}")
             preferences.remove(targetKey)
         }
         getAllIntThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = intPreferencesKey("${prefix}${key.name}")
             preferences.remove(targetKey)
         }
         getAllFloatThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = floatPreferencesKey("${prefix}${key.name}")
             preferences.remove(targetKey)
         }
     }
 
     private fun readThemePreferenceValues(
         preferences: Preferences,
-        prefix: String?,
+        prefix: String,
     ): ThemePreferenceValues {
         val defaults = ThemePreferenceValues.defaultVisual()
         val strings = defaults.strings.toMutableMap()
@@ -1469,19 +886,19 @@ class UserPreferencesManager private constructor(private val context: Context) {
         val floats = defaults.floats.toMutableMap()
 
         getAllStringThemeKeys().forEach { key ->
-            val sourceKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            val sourceKey = stringPreferencesKey("${prefix}${key.name}")
             preferences[sourceKey]?.let { strings[key.name] = it }
         }
         getAllBooleanThemeKeys().forEach { key ->
-            val sourceKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val sourceKey = booleanPreferencesKey("${prefix}${key.name}")
             preferences[sourceKey]?.let { booleans[key.name] = it }
         }
         getAllIntThemeKeys().forEach { key ->
-            val sourceKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val sourceKey = intPreferencesKey("${prefix}${key.name}")
             preferences[sourceKey]?.let { ints[key.name] = it }
         }
         getAllFloatThemeKeys().forEach { key ->
-            val sourceKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val sourceKey = floatPreferencesKey("${prefix}${key.name}")
             preferences[sourceKey]?.let { floats[key.name] = it }
         }
 
@@ -1489,11 +906,9 @@ class UserPreferencesManager private constructor(private val context: Context) {
             verticalKey: Preferences.Key<Float>,
             horizontalKey: Preferences.Key<Float>,
         ) {
-            val verticalSourceKey = prefix?.let { floatPreferencesKey("${it}${verticalKey.name}") }
-                ?: verticalKey
+            val verticalSourceKey = floatPreferencesKey("${prefix}${verticalKey.name}")
             if (!preferences.contains(verticalSourceKey)) {
-                val horizontalSourceKey = prefix?.let { floatPreferencesKey("${it}${horizontalKey.name}") }
-                    ?: horizontalKey
+                val horizontalSourceKey = floatPreferencesKey("${prefix}${horizontalKey.name}")
                 preferences[horizontalSourceKey]?.let { floats[verticalKey.name] = it }
             }
         }
@@ -1513,13 +928,13 @@ class UserPreferencesManager private constructor(private val context: Context) {
 
     private fun writeVisualThemeValues(
         preferences: MutablePreferences,
-        prefix: String?,
+        prefix: String,
         values: ThemePreferenceValues,
     ) {
         getAllStringThemeKeys()
             .filter(::isVisualThemeStringKey)
             .forEach { key ->
-                val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+                val targetKey = stringPreferencesKey("${prefix}${key.name}")
                 val value = values.string(key.name)
                 if (value == null) {
                     preferences.remove(targetKey)
@@ -1528,7 +943,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 }
             }
         getAllBooleanThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { booleanPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = booleanPreferencesKey("${prefix}${key.name}")
             val value = values.boolean(key.name)
             if (value == null) {
                 preferences.remove(targetKey)
@@ -1537,7 +952,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
             }
         }
         getAllIntThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { intPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = intPreferencesKey("${prefix}${key.name}")
             val value = values.int(key.name)
             if (value == null) {
                 preferences.remove(targetKey)
@@ -1546,7 +961,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
             }
         }
         getAllFloatThemeKeys().forEach { key ->
-            val targetKey = prefix?.let { floatPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = floatPreferencesKey("${prefix}${key.name}")
             val value = values.float(key.name)
             if (value == null) {
                 preferences.remove(targetKey)
@@ -1558,11 +973,11 @@ class UserPreferencesManager private constructor(private val context: Context) {
 
     private fun writeThemeTargetMetadata(
         preferences: MutablePreferences,
-        prefix: String?,
+        prefix: String,
         values: ThemePreferenceValues,
     ) {
         listOf(KEY_CUSTOM_AI_AVATAR_URI, KEY_CUSTOM_CHAT_TITLE).forEach { key ->
-            val targetKey = prefix?.let { stringPreferencesKey("${it}${key.name}") } ?: key
+            val targetKey = stringPreferencesKey("${prefix}${key.name}")
             val value = values.string(key.name)
             if (value == null) {
                 preferences.remove(targetKey)
@@ -1575,26 +990,16 @@ class UserPreferencesManager private constructor(private val context: Context) {
     suspend fun replaceThemeForPrompt(
         target: ActivePrompt,
         values: ThemePreferenceValues,
-        updateCurrentProjection: Boolean,
     ) {
         context.userPreferencesDataStore.edit { preferences ->
             val prefix = themePrefixForPrompt(target)
             writeVisualThemeValues(preferences, prefix, values)
             writeThemeTargetMetadata(preferences, prefix, values)
-            if (updateCurrentProjection) {
-                copyThemeValues(
-                    preferences = preferences,
-                    sourcePrefix = prefix,
-                    targetPrefix = null,
-                    clearMissingTargetValues = true,
-                )
-            }
         }
     }
 
     suspend fun mutateThemeForPrompt(
         target: ActivePrompt,
-        updateCurrentProjection: Boolean,
         transform: (ThemePreferenceValues) -> ThemePreferenceValues,
     ) {
         context.userPreferencesDataStore.edit { preferences ->
@@ -1602,30 +1007,17 @@ class UserPreferencesManager private constructor(private val context: Context) {
             val values = transform(readThemePreferenceValues(preferences, prefix))
             writeVisualThemeValues(preferences, prefix, values)
             writeThemeTargetMetadata(preferences, prefix, values)
-            if (updateCurrentProjection) {
-                copyThemeValues(
-                    preferences = preferences,
-                    sourcePrefix = prefix,
-                    targetPrefix = null,
-                    clearMissingTargetValues = true,
-                )
-            }
         }
     }
 
     suspend fun resetVisualThemeForPrompt(
         target: ActivePrompt,
         values: ThemePreferenceValues,
-        updateCurrentProjection: Boolean,
     ) {
         context.userPreferencesDataStore.edit { preferences ->
             val prefix = themePrefixForPrompt(target)
             clearVisualThemeValues(preferences, prefix)
             writeThemeTargetMetadata(preferences, prefix, values)
-            if (updateCurrentProjection) {
-                clearVisualThemeValues(preferences, prefix = null)
-                writeThemeTargetMetadata(preferences, prefix = null, values)
-            }
         }
     }
 
@@ -1636,17 +1028,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 sourcePrefix,
                 targetPrefix,
                 clearMissingTargetValues = false,
-            )
-        }
-    }
-
-    private suspend fun switchToThemeByPrefix(prefix: String) {
-        context.userPreferencesDataStore.edit { preferences ->
-            copyThemeValues(
-                preferences,
-                sourcePrefix = prefix,
-                targetPrefix = null,
-                clearMissingTargetValues = true,
             )
         }
     }
@@ -1738,10 +1119,6 @@ class UserPreferencesManager private constructor(private val context: Context) {
         )
     }
 
-    suspend fun switchToCharacterCardTheme(characterCardId: String) {
-        switchToThemeByPrefix(getCharacterCardThemePrefix(characterCardId))
-    }
-
     suspend fun deleteCharacterCardTheme(characterCardId: String) {
         deleteThemeByPrefix(getCharacterCardThemePrefix(characterCardId))
     }
@@ -1760,18 +1137,14 @@ class UserPreferencesManager private constructor(private val context: Context) {
         )
     }
 
-    suspend fun switchToCharacterGroupTheme(characterGroupId: String) {
-        switchToThemeByPrefix(getCharacterGroupThemePrefix(characterGroupId))
-    }
-
     suspend fun deleteCharacterGroupTheme(characterGroupId: String) {
         deleteThemeByPrefix(getCharacterGroupThemePrefix(characterGroupId))
     }
 
-    suspend fun resolveThemePreferenceSnapshot(
+    fun observeThemePreferenceSnapshot(
         characterCardId: String? = null,
         characterGroupId: String? = null
-    ): ThemePreferenceSnapshot {
+    ): Flow<ThemePreferenceSnapshot> {
         val normalizedGroupId = characterGroupId?.trim()?.takeIf { it.isNotBlank() }
         val normalizedCardId = characterCardId?.trim()?.takeIf { it.isNotBlank() }
 
@@ -1788,14 +1161,26 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 getCharacterCardThemePrefix(normalizedCardId),
             )
 
-            else -> Triple("global", null, null)
+            else -> error("ThemePreferenceSnapshot requires a character card or group target.")
         }
-        val preferences = context.userPreferencesDataStore.data.first()
-        val values = readThemePreferenceValues(preferences, prefix)
-        return ThemePreferenceSnapshot(
-            source = source,
-            sourceId = sourceId,
-            values = values,
-        )
+        return context.userPreferencesDataStore.data
+            .map { preferences ->
+                ThemePreferenceSnapshot(
+                    source = source,
+                    sourceId = sourceId,
+                    values = readThemePreferenceValues(preferences, prefix),
+                )
+            }
+            .distinctUntilChanged()
+    }
+
+    suspend fun resolveThemePreferenceSnapshot(
+        characterCardId: String? = null,
+        characterGroupId: String? = null
+    ): ThemePreferenceSnapshot {
+        return observeThemePreferenceSnapshot(
+            characterCardId = characterCardId,
+            characterGroupId = characterGroupId,
+        ).first()
     }
 }

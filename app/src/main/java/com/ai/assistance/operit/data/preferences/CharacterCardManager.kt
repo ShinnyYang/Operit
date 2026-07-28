@@ -214,7 +214,6 @@ class CharacterCardManager private constructor(private val context: Context) {
         activePromptManager.runThemeTransition {
             cloneBindingsFromCharacterCardLocked(sourceCharacterCardId, targetCharacterCardId)
             if (activePromptManager.getActivePrompt() == ActivePrompt.CharacterCard(targetCharacterCardId)) {
-                switchToCharacterCardTheme(targetCharacterCardId)
                 switchToCharacterCardWaifuSettings(targetCharacterCardId)
             }
         }
@@ -313,7 +312,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             .observeActiveCharacterGroupId()
             .first()
         if (activatedCard && activeGroupId.isNullOrBlank()) {
-            switchToCharacterCardTheme(id)
             switchToCharacterCardWaifuSettings(id)
         }
         
@@ -434,7 +432,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             .observeActiveCharacterGroupId()
             .first()
         if (deletedActiveCard && activeGroupId.isNullOrBlank()) {
-            switchToCharacterCardTheme(DEFAULT_CHARACTER_CARD_ID)
             switchToCharacterCardWaifuSettings(DEFAULT_CHARACTER_CARD_ID)
         }
     }
@@ -445,8 +442,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             preferences[ACTIVE_CHARACTER_CARD_ID] = id
         }
 
-        // 切换到对应角色卡的主题
-        switchToCharacterCardTheme(id)
         // 切换到对应角色卡的Waifu模式配置
         switchToCharacterCardWaifuSettings(id)
     }
@@ -549,13 +544,6 @@ class CharacterCardManager private constructor(private val context: Context) {
                 }
             }
 
-            when (activePrompt) {
-                is ActivePrompt.CharacterGroup ->
-                    userPreferencesManager.switchToCharacterGroupTheme(activePrompt.id)
-
-                is ActivePrompt.CharacterCard ->
-                    userPreferencesManager.switchToCharacterCardTheme(activePrompt.id)
-            }
         }
 
         // 清理历史内置功能标签（chat/voice/desktop pet）
@@ -871,7 +859,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             .observeActiveCharacterGroupId()
             .first()
         if (activatedCardId != null && activeGroupId.isNullOrBlank()) {
-            switchToCharacterCardTheme(activatedCardId!!)
             switchToCharacterCardWaifuSettings(activatedCardId!!)
         }
     }
@@ -1335,20 +1322,6 @@ class CharacterCardManager private constructor(private val context: Context) {
             createdAt = System.currentTimeMillis(),
             updatedAt = System.currentTimeMillis()
         )
-    }
-
-    // ========== 角色卡主题相关方法 ==========
-
-    /**
-     * 切换到指定角色卡的主题配置
-     */
-    private suspend fun switchToCharacterCardTheme(characterCardId: String) {
-        try {
-            userPreferencesManager.switchToCharacterCardTheme(characterCardId)
-            AppLogger.d("CharacterCardManager", "已切换到角色卡 $characterCardId 的主题")
-        } catch (e: Exception) {
-            AppLogger.e("CharacterCardManager", "切换角色卡主题失败", e)
-        }
     }
 
     private suspend fun removeDeletedTagReferencesFromCharacterCards() {

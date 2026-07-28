@@ -165,12 +165,41 @@ data class ThemePreferenceSnapshot(
     val backgroundImageUri: String? get() = values.string("background_image_uri")
     val backgroundMediaType: String get() = values.requiredString("background_media_type")
     val backgroundImageOpacity: Float get() = values.requiredFloat("background_image_opacity")
+    val videoBackgroundMuted: Boolean get() = values.requiredBoolean("video_background_muted")
+    val videoBackgroundLoop: Boolean get() = values.requiredBoolean("video_background_loop")
+    val toolbarTransparent: Boolean get() = values.requiredBoolean("toolbar_transparent")
+    val navigationDrawerWaterGlass: Boolean
+        get() = values.requiredBoolean("navigation_drawer_water_glass")
+    val navigationDrawerButtonLiquidGlass: Boolean
+        get() = values.requiredBoolean("navigation_drawer_button_liquid_glass")
+    val useCustomNavigationDrawerBackgroundColor: Boolean
+        get() = values.requiredBoolean("use_custom_navigation_drawer_background_color")
+    val customNavigationDrawerBackgroundColor: Int?
+        get() = values.int("custom_navigation_drawer_background_color")
+    val useCustomNavigationDrawerAccentColor: Boolean
+        get() = values.requiredBoolean("use_custom_navigation_drawer_accent_color")
+    val customNavigationDrawerAccentColor: Int?
+        get() = values.int("custom_navigation_drawer_accent_color")
+    val useCustomAppBarColor: Boolean get() = values.requiredBoolean("use_custom_app_bar_color")
+    val customAppBarColor: Int? get() = values.int("custom_app_bar_color")
+    val useCustomStatusBarColor: Boolean
+        get() = values.requiredBoolean("use_custom_status_bar_color")
+    val customStatusBarColor: Int? get() = values.int("custom_status_bar_color")
+    val statusBarTransparent: Boolean get() = values.requiredBoolean("status_bar_transparent")
+    val statusBarHidden: Boolean get() = values.requiredBoolean("status_bar_hidden")
     val chatHeaderTransparent: Boolean get() = values.requiredBoolean("chat_header_transparent")
     val chatHeaderOverlayMode: Boolean get() = values.requiredBoolean("chat_header_overlay_mode")
+    val chatHeaderHistoryIconColor: Int? get() = values.int("chat_header_history_icon_color")
+    val chatHeaderPipIconColor: Int? get() = values.int("chat_header_pip_icon_color")
     val chatInputTransparent: Boolean get() = values.requiredBoolean("chat_input_transparent")
     val chatInputFloating: Boolean get() = values.requiredBoolean("chat_input_floating")
     val chatInputLiquidGlass: Boolean get() = values.requiredBoolean("chat_input_liquid_glass")
     val chatInputWaterGlass: Boolean get() = values.requiredBoolean("chat_input_water_glass")
+    val forceAppBarContentColor: Boolean
+        get() = values.requiredBoolean("force_app_bar_content_color_enabled")
+    val appBarContentColorMode: String get() = values.requiredString("app_bar_content_color_mode")
+    val useBackgroundBlur: Boolean get() = values.requiredBoolean("use_background_blur")
+    val backgroundBlurRadius: Float get() = values.requiredFloat("background_blur_radius")
     val chatStyle: String get() = values.requiredString("chat_style")
     val inputStyle: String get() = values.requiredString("input_style")
     val bubbleShowAvatar: Boolean get() = values.requiredBoolean("bubble_show_avatar")
@@ -186,6 +215,28 @@ data class ThemePreferenceSnapshot(
     val bubbleAiUseImage: Boolean get() = values.requiredBoolean("bubble_ai_use_image")
     val bubbleUserImageUri: String? get() = values.string("bubble_user_image_uri")
     val bubbleAiImageUri: String? get() = values.string("bubble_ai_image_uri")
+    val bubbleUserImageCropLeft: Float get() = values.requiredFloat("bubble_user_image_crop_left")
+    val bubbleUserImageCropTop: Float get() = values.requiredFloat("bubble_user_image_crop_top")
+    val bubbleUserImageCropRight: Float get() = values.requiredFloat("bubble_user_image_crop_right")
+    val bubbleUserImageCropBottom: Float get() = values.requiredFloat("bubble_user_image_crop_bottom")
+    val bubbleUserImageRepeatStart: Float
+        get() = values.requiredFloat("bubble_user_image_repeat_start")
+    val bubbleUserImageRepeatEnd: Float get() = values.requiredFloat("bubble_user_image_repeat_end")
+    val bubbleUserImageRepeatYStart: Float
+        get() = values.requiredFloat("bubble_user_image_repeat_y_start")
+    val bubbleUserImageRepeatYEnd: Float
+        get() = values.requiredFloat("bubble_user_image_repeat_y_end")
+    val bubbleUserImageScale: Float get() = values.requiredFloat("bubble_user_image_scale")
+    val bubbleAiImageCropLeft: Float get() = values.requiredFloat("bubble_ai_image_crop_left")
+    val bubbleAiImageCropTop: Float get() = values.requiredFloat("bubble_ai_image_crop_top")
+    val bubbleAiImageCropRight: Float get() = values.requiredFloat("bubble_ai_image_crop_right")
+    val bubbleAiImageCropBottom: Float get() = values.requiredFloat("bubble_ai_image_crop_bottom")
+    val bubbleAiImageRepeatStart: Float get() = values.requiredFloat("bubble_ai_image_repeat_start")
+    val bubbleAiImageRepeatEnd: Float get() = values.requiredFloat("bubble_ai_image_repeat_end")
+    val bubbleAiImageRepeatYStart: Float
+        get() = values.requiredFloat("bubble_ai_image_repeat_y_start")
+    val bubbleAiImageRepeatYEnd: Float get() = values.requiredFloat("bubble_ai_image_repeat_y_end")
+    val bubbleAiImageScale: Float get() = values.requiredFloat("bubble_ai_image_scale")
     val bubbleImageRenderMode: String get() = values.requiredString("bubble_image_render_mode")
     val bubbleUserRoundedCornersEnabled: Boolean
         get() = values.requiredBoolean("bubble_rounded_corners_enabled")
@@ -204,7 +255,7 @@ data class ThemePreferenceSnapshot(
     val avatarShape: String get() = values.requiredString("avatar_shape")
     val avatarCornerRadius: Float get() = values.requiredFloat("avatar_corner_radius")
     val fontType: String get() = values.requiredString("font_type")
-    val systemFontName: String? get() = values.string("system_font_name")
+    val systemFontName: String get() = values.requiredString("system_font_name")
     val customFontPath: String? get() = values.string("custom_font_path")
     val fontScale: Float get() = values.requiredFloat("font_scale")
     val showThinkingProcess: Boolean get() = values.requiredBoolean("show_thinking_process")
@@ -219,6 +270,18 @@ data class ThemePreferenceSnapshot(
     val showInputProcessingStatus: Boolean
         get() = values.requiredBoolean("show_input_processing_status")
     val useCustomFont: Boolean get() = values.requiredBoolean("use_custom_font")
+    val bubbleUserUseCustomFont: Boolean
+        get() = values.requiredBoolean("bubble_user_use_custom_font")
+    val bubbleUserFontType: String get() = values.requiredString("bubble_user_font_type")
+    val bubbleUserSystemFontName: String
+        get() = values.requiredString("bubble_user_system_font_name")
+    val bubbleUserCustomFontPath: String? get() = values.string("bubble_user_custom_font_path")
+    val bubbleAiUseCustomFont: Boolean
+        get() = values.requiredBoolean("bubble_ai_use_custom_font")
+    val bubbleAiFontType: String get() = values.requiredString("bubble_ai_font_type")
+    val bubbleAiSystemFontName: String
+        get() = values.requiredString("bubble_ai_system_font_name")
+    val bubbleAiCustomFontPath: String? get() = values.string("bubble_ai_custom_font_path")
     val cursorUserBubbleLiquidGlass: Boolean
         get() = values.requiredBoolean("cursor_user_bubble_liquid_glass")
     val cursorUserBubbleWaterGlass: Boolean
@@ -231,4 +294,7 @@ data class ThemePreferenceSnapshot(
         get() = values.requiredBoolean("bubble_ai_bubble_liquid_glass")
     val bubbleAiBubbleWaterGlass: Boolean
         get() = values.requiredBoolean("bubble_ai_bubble_water_glass")
+    val customChatTitle: String? get() = values.string("custom_chat_title")
+    val showChatFloatingDotsAnimation: Boolean
+        get() = values.requiredBoolean("show_chat_floating_dots_animation")
 }
