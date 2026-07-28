@@ -904,6 +904,8 @@ fun StreamMarkdownRenderer(
 
                     // 移除UI更新时间相关日志
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 AppLogger.e(TAG, "【静态渲染】解析Markdown内容出错: ${e.message}", e)
             }
