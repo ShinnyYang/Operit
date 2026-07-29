@@ -432,6 +432,7 @@ fun StreamMarkdownRenderer(
         // 重置状态
         nodes.clear()
         renderNodes.clear()
+        conversionCache.clear()
         rendererState.collectedContent.clear()
         xmlNodeStreams.clear()
         rendererState.streamParsingCompletedSuccessfully = false
@@ -548,7 +549,7 @@ fun StreamMarkdownRenderer(
                             val childIndex = newNode.children.lastIndexOf(childNode)
                             if (childIndex != -1) {
                                 newNode.children[childIndex] = latexChildNode
-                                batchUpdater.requestUpdate()
+                                batchUpdater.requestStructuralUpdate(nodeIndex)
                             }
                         }
 
@@ -559,7 +560,7 @@ fun StreamMarkdownRenderer(
                             val lastIndex = newNode.children.lastIndex
                             if (lastIndex >= 0 && newNode.children[lastIndex] == childNode) {
                                 newNode.children.removeAt(lastIndex)
-                                batchUpdater.requestUpdate()
+                                batchUpdater.requestStructuralUpdate(nodeIndex)
                             }
                         }
                     }
@@ -574,7 +575,7 @@ fun StreamMarkdownRenderer(
                     val latexNode =
                         MarkdownNode(type = MarkdownProcessorType.BLOCK_LATEX, initialContent = latexContent)
                     nodes[nodeIndex] = latexNode
-                    batchUpdater.requestUpdate()
+                    batchUpdater.requestStructuralUpdate(nodeIndex)
                 }
 
                 pendingHtmlBreakCount = 0
@@ -1112,6 +1113,12 @@ internal class BatchNodeUpdater(
         )
 
     fun requestUpdate() = coordinator.requestUpdate()
+
+    fun requestStructuralUpdate(nodeIndex: Int) {
+        // Type and child-list mutations can preserve the parent content length.
+        conversionCache.remove(nodeIndex)
+        requestUpdate()
+    }
 
     fun appendBlockChunk(node: MarkdownNode, contentChunk: String) {
         node.content + contentChunk

@@ -157,27 +157,20 @@ class GitHubForgePublishService(
                             }
 
                         onProgress(PublishProgressStage.UPLOADING_ASSET)
-                        val fileBytes =
-                            if (source.minifyArtifact) {
-                                ToolPkgArtifactMinifier.minifyArtifactFile(
-                                    context = context,
-                                    sourceFile = sourceFile,
-                                    isToolPkg = descriptor.type == PublishArtifactType.PACKAGE,
-                                    marketOrigin =
-                                        if (descriptor.type == PublishArtifactType.SCRIPT) {
-                                            ToolPkgMarketOrigin(
-                                                market = "Operit",
-                                                toolpkgId = descriptor.runtimePackageId,
-                                                version = descriptor.version,
-                                                author = request.localArtifact.author
-                                            )
-                                        } else {
-                                            null
-                                        }
-                                )
-                            } else {
-                                sourceFile.readBytes()
-                            }
+                        val marketOrigin =
+                            ToolPkgMarketOrigin(
+                                market = "Operit",
+                                toolpkgId = descriptor.runtimePackageId,
+                                version = descriptor.version,
+                                author = listOf(currentUser.login)
+                            )
+                        val fileBytes = ToolPkgArtifactMinifier.processArtifactFile(
+                            context = context,
+                            sourceFile = sourceFile,
+                            isToolPkg = descriptor.type == PublishArtifactType.PACKAGE,
+                            marketOrigin = marketOrigin,
+                            minify = source.minifyArtifact
+                        )
                         val uploadedAsset =
                             uploadAssetReplacingExisting(
                                 owner = currentUser.login,

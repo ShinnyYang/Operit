@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -503,35 +505,51 @@ fun ArtifactPublishScreen(
                 )
                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                     SegmentedButton(
-                        modifier = Modifier.weight(1f),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 0.dp)
+                                .heightIn(min = 56.dp),
                         selected = !useGitHubReleaseAsset,
                         onClick = {
                             viewModel.clearPendingMarketRegistrationRetry()
                             useGitHubReleaseAsset = false
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                        icon = {},
                         label = {
                             Text(
                                 text = stringResource(R.string.artifact_publish_asset_source_upload),
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                minLines = 2,
                                 maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center
                             )
                         }
                     )
                     SegmentedButton(
-                        modifier = Modifier.weight(1f),
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .defaultMinSize(minWidth = 0.dp)
+                                .heightIn(min = 56.dp),
                         selected = useGitHubReleaseAsset,
                         onClick = {
                             viewModel.clearPendingMarketRegistrationRetry()
                             useGitHubReleaseAsset = true
                         },
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                        icon = {},
                         label = {
                             Text(
                                 text = stringResource(R.string.artifact_publish_asset_source_github_release),
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                minLines = 2,
                                 maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
                                 textAlign = TextAlign.Center
                             )
                         }
@@ -876,9 +894,7 @@ fun ArtifactPublishScreen(
                     Text(
                         text = error,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        maxLines = 4,
-                        overflow = TextOverflow.Ellipsis
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                 }
             }

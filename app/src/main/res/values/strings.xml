@@ -1076,6 +1076,8 @@
     <string name="automation_json_only">仅支持JSON文件</string>
     <string name="no_filename">无法获取文件名</string>
     <string name="external_package_imported">外部包已导入</string>
+    <string name="package_market_origin_title">外部包来源提示</string>
+    <string name="package_market_origin_message">该包来自 Operit 市场。\n包名：%1$s\n版本：%2$s\n作者：%3$s\n请支持原作者，并警惕二次转售。</string>
     <string name="current_tab_not_support_import">当前标签页不支持导入</string>
     <string name="import_failed">导入失败: %1$s</string>
     <string name="package_import_failed">包导入失败</string>

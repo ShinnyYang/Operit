@@ -60,6 +60,11 @@ import org.hjson.JsonValue
  */
 class PackageManager
 private constructor(private val context: Context, private val aiToolHandler: AIToolHandler) {
+    internal data class ExternalPackageImportResult(
+        val message: String,
+        val marketOrigin: ToolPkgMarketOrigin? = null
+    )
+
     companion object {
         private const val TAG = "PackageManager"
         private const val TOOLPKG_TAG = "ToolPkg"
@@ -2310,17 +2315,17 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
      * Imports a package from external storage path.
      * Supports legacy JS/TS/HJSON files and .toolpkg containers.
      */
-    fun addPackageFileFromExternalStorage(filePath: String): String {
+    internal fun addPackageFileFromExternalStorage(filePath: String): ExternalPackageImportResult {
         return importPackageFileFromExternalStorage(filePath)
     }
 
-    private fun importPackageFileFromExternalStorage(filePath: String): String {
+    private fun importPackageFileFromExternalStorage(filePath: String): ExternalPackageImportResult {
         try {
             ensureInitialized()
 
             val file = File(filePath)
             if (!file.exists() || !file.canRead()) {
-                return "Cannot access file at path: $filePath"
+                return ExternalPackageImportResult("Cannot access file at path: $filePath")
             }
 
             val lowerPath = filePath.lowercase()
@@ -2329,16 +2334,22 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
             val isHjson = lowerPath.endsWith(".hjson")
 
             if (!isToolPkg && !isJsLike && !isHjson) {
-                return "Only .toolpkg, HJSON, JavaScript (.js) and TypeScript (.ts) package files are supported"
+                return ExternalPackageImportResult(
+                    "Only .toolpkg, HJSON, JavaScript (.js) and TypeScript (.ts) package files are supported"
+                )
             }
-            pluginDenylistRejection(file)?.let { return it }
+            pluginDenylistRejection(file)?.let { rejection ->
+                return ExternalPackageImportResult(rejection)
+            }
 
             if (isToolPkg) {
                 val preview = loadToolPkgFromExternalFile(file)
-                    ?: return "Failed to parse toolpkg file"
+                    ?: return ExternalPackageImportResult("Failed to parse toolpkg file")
                 val containerName = preview.containerPackage.name
                 if (availablePackages.containsKey(containerName)) {
-                    return "A package with name '$containerName' already exists in available packages"
+                    return ExternalPackageImportResult(
+                        "A package with name '$containerName' already exists in available packages"
+                    )
                 }
 
                 val conflictSubpackages =
@@ -2346,7 +2357,9 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
                         .map { it.name }
                         .filter { availablePackages.containsKey(it) }
                 if (conflictSubpackages.isNotEmpty()) {
-                    return "Subpackage name conflict: ${conflictSubpackages.joinToString(", ")}"
+                    return ExternalPackageImportResult(
+                        "Subpackage name conflict: ${conflictSubpackages.joinToString(", ")}"
+                    )
                 }
 
                 val destinationFile = File(externalPackagesDir, file.name)
@@ -2357,14 +2370,20 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
                 }
 
                 val loadedFromDestination = loadToolPkgFromExternalFile(destinationFile)
-                    ?: return "Failed to parse copied toolpkg file"
+                    ?: return ExternalPackageImportResult("Failed to parse copied toolpkg file")
                 if (!registerToolPkg(loadedFromDestination)) {
-                    return "Failed to register toolpkg '$containerName' due to naming conflict"
+                    return ExternalPackageImportResult(
+                        "Failed to register toolpkg '$containerName' due to naming conflict"
+                    )
                 }
-                return buildToolPkgImportSuccessMessage(
-                    containerName = containerName,
-                    destinationFile = destinationFile,
-                    marketOrigin = loadedFromDestination.containerRuntime.marketOrigin
+                val marketOrigin = loadedFromDestination.containerRuntime.marketOrigin
+                return ExternalPackageImportResult(
+                    message = buildToolPkgImportSuccessMessage(
+                        containerName = containerName,
+                        destinationFile = destinationFile,
+                        marketOrigin = marketOrigin
+                    ),
+                    marketOrigin = marketOrigin
                 )
             }
 
@@ -2378,11 +2397,15 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
                     jsonConfig.decodeFromString<ToolPackage>(jsonString)
                 } else {
                     loadPackageFromJsFile(file)
-                        ?: return "Failed to parse ${if (lowerPath.endsWith(".ts")) "TypeScript" else "JavaScript"} package file"
+                        ?: return ExternalPackageImportResult(
+                            "Failed to parse ${if (lowerPath.endsWith(".ts")) "TypeScript" else "JavaScript"} package file"
+                        )
                 }
 
             if (availablePackages.containsKey(packageMetadata.name)) {
-                return "A package with name '${packageMetadata.name}' already exists in available packages"
+                return ExternalPackageImportResult(
+                    "A package with name '${packageMetadata.name}' already exists in available packages"
+                )
             }
 
             val destinationFile = File(externalPackagesDir, file.name)
@@ -2400,14 +2423,17 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
                     script = destinationFile.readText(),
                     packageName = packageMetadata.name
                 )
-            return buildScriptImportSuccessMessage(
-                packageName = packageMetadata.name,
-                destinationFile = destinationFile,
+            return ExternalPackageImportResult(
+                message = buildScriptImportSuccessMessage(
+                    packageName = packageMetadata.name,
+                    destinationFile = destinationFile,
+                    marketOrigin = marketOrigin
+                ),
                 marketOrigin = marketOrigin
             )
         } catch (e: Exception) {
             AppLogger.e(TAG, "Error importing package from external storage", e)
-            return "Error importing package: ${e.message}"
+            return ExternalPackageImportResult("Error importing package: ${e.message}")
         }
     }
 

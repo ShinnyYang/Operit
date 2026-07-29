@@ -28,5 +28,8 @@ The primary ToolPkg entry receives an encoded Operit marketplace origin marker d
 - [2-import-origin.md](2-import-origin.md): capture, validate, and retain origin during registration
 - [3-import-notice-and-tests.md](3-import-notice-and-tests.md): report the origin after import and verify behavior
 - [4-script-origin.md](4-script-origin.md): embed and report provenance for standalone scripts
+- [5-script-metadata-placement.md](5-script-metadata-placement.md): accept valid script metadata outside the file header during publishing
+- [6-publisher-author.md](6-publisher-author.md): use the authenticated publisher identity for market-origin authors
+- [7-import-notice-dialog.md](7-import-notice-dialog.md): display validated marketplace provenance after external import
 
 [DONE]

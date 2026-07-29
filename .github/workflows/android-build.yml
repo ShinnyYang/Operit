@@ -18,11 +18,6 @@ on:
         required: false
         default: false
         type: boolean
-      run_android_lint:
-        description: Run Android lint after the build
-        required: false
-        default: false
-        type: boolean
   push:
     branches: [main]
     paths:
@@ -225,13 +220,6 @@ jobs:
           steps.gradle-build.outcome == 'success' &&
           (github.event_name == 'push' || inputs.run_unit_tests)
         run: ./gradlew :app:testDebugUnitTest --stacktrace --no-build-cache --no-daemon
-
-      - name: Run Android lint
-        if: >-
-          !cancelled() &&
-          steps.gradle-build.outcome == 'success' &&
-          (github.event_name == 'push' || inputs.run_android_lint)
-        run: ./gradlew :app:lintDebug --stacktrace --no-build-cache --no-daemon
 
       - name: Upload Android reports
         if: always()

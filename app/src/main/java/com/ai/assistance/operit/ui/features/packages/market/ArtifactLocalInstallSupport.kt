@@ -185,8 +185,8 @@ suspend fun installArtifactProjectVersion(
             withContext(Dispatchers.IO) {
                 packageManager.addPackageFileFromExternalStorage(tempFile.absolutePath)
             }
-        if (!importResult.startsWith("Successfully imported", ignoreCase = true)) {
-            throw IllegalStateException(importResult)
+        if (!importResult.message.startsWith("Successfully imported", ignoreCase = true)) {
+            throw IllegalStateException(importResult.message)
         }
     } finally {
         if (tempFile.exists()) {

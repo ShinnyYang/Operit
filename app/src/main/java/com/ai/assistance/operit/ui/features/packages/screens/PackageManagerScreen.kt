@@ -50,6 +50,7 @@ import com.ai.assistance.operit.core.tools.PackageTool
 import com.ai.assistance.operit.core.tools.ToolPackage
 import com.ai.assistance.operit.core.tools.EnvVar
 import com.ai.assistance.operit.core.tools.packTool.PackageManager
+import com.ai.assistance.operit.core.tools.packTool.ToolPkgMarketOrigin
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.preferences.EnvPreferences
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -73,6 +74,7 @@ import kotlinx.coroutines.withContext
 import com.ai.assistance.operit.R
 private data class ExternalPackageImportResult(
     val message: String,
+    val marketOrigin: ToolPkgMarketOrigin?,
     val availablePackages: Map<String, ToolPackage>,
     val allAvailablePackages: Map<String, ToolPackage>,
     val pluginContainers: Map<String, PackageManager.ToolPkgContainerDetails>,
@@ -168,10 +170,23 @@ fun PackageManagerScreen(
     var selectedTab by rememberSaveable { mutableStateOf(PackageTab.PLUGINS) }
     var pluginSearchInput by rememberSaveable { mutableStateOf("") }
     var pluginSearchQuery by rememberSaveable { mutableStateOf("") }
-    var filteredPluginContainers by remember {
-        mutableStateOf<Map<String, PackageManager.ToolPkgContainerDetails>>(emptyMap())
+    val filteredPluginContainers by remember(pluginContainers.value, pluginSearchQuery) {
+        derivedStateOf {
+            val pluginsMap = pluginContainers.value
+            val searchText = pluginSearchQuery.trim()
+            if (searchText.isEmpty()) {
+                pluginsMap
+            } else {
+                pluginsMap.filter { (packageName, details) ->
+                    pluginMatchesSearch(
+                        packageName = packageName,
+                        details = details,
+                        searchText = searchText
+                    )
+                }
+            }
+        }
     }
-    var isPluginSearchFiltering by remember { mutableStateOf(false) }
     var packageSearchInput by rememberSaveable { mutableStateOf("") }
     var packageSearchQuery by rememberSaveable { mutableStateOf("") }
     var filteredAvailablePackages by remember { mutableStateOf<Map<String, ToolPackage>>(emptyMap()) }
@@ -190,6 +205,7 @@ fun PackageManagerScreen(
         remember { mutableStateOf<List<PackageManager.PackageLoadErrorInfo>>(emptyList()) }
     var showPackageLoadErrorsDialog by remember { mutableStateOf(false) }
     var importErrorMessage by remember { mutableStateOf<String?>(null) }
+    var marketOriginImportNotice by remember { mutableStateOf<ToolPkgMarketOrigin?>(null) }
     var pluginOrder by remember { mutableStateOf<List<String>>(emptyList()) }
     var skillOrder by remember { mutableStateOf<List<String>>(emptyList()) }
     var showQuickPluginCreatorDialog by remember { mutableStateOf(false) }
@@ -243,29 +259,6 @@ fun PackageManagerScreen(
     LaunchedEffect(mcpSearchInput) {
         delay(320)
         mcpSearchQuery = mcpSearchInput.trim()
-    }
-
-    LaunchedEffect(pluginContainers.value, pluginSearchQuery) {
-        val pluginsMap = pluginContainers.value
-        val searchText = pluginSearchQuery.trim()
-        if (searchText.isEmpty()) {
-            filteredPluginContainers = pluginsMap
-            isPluginSearchFiltering = false
-            return@LaunchedEffect
-        }
-
-        isPluginSearchFiltering = true
-        filteredPluginContainers =
-            withContext(Dispatchers.Default) {
-                pluginsMap.filter { (packageName, details) ->
-                    pluginMatchesSearch(
-                        packageName = packageName,
-                        details = details,
-                        searchText = searchText
-                    )
-                }
-            }
-        isPluginSearchFiltering = false
     }
 
     LaunchedEffect(availablePackages.value, packageSearchQuery) {
@@ -356,7 +349,8 @@ fun PackageManagerScreen(
                                             }
 
                                             val errorsBeforeImport = packageManager.getPackageLoadErrors()
-                                            val importMessage = packageManager.addPackageFileFromExternalStorage(tempFile.absolutePath)
+                                            val importResult =
+                                                packageManager.addPackageFileFromExternalStorage(tempFile.absolutePath)
 
                                             val available = packageManager.getExecutableAvailablePackages(forceRefresh = true)
                                             val allAvailable = packageManager.getAvailablePackages()
@@ -371,7 +365,8 @@ fun PackageManagerScreen(
                                                 errors.filter { (key, value) -> errorsBeforeImport[key] != value }
 
                                             ExternalPackageImportResult(
-                                                message = importMessage,
+                                                message = importResult.message,
+                                                marketOrigin = importResult.marketOrigin,
                                                 availablePackages = available,
                                                 allAvailablePackages = allAvailable,
                                                 pluginContainers = plugins,
@@ -403,7 +398,14 @@ fun PackageManagerScreen(
                                     )
 
                                 if (importSucceeded) {
-                                    snackbarHostState.showSnackbar(message = context.getString(R.string.external_package_imported))
+                                    val marketOrigin = loadResult.marketOrigin
+                                    if (marketOrigin != null) {
+                                        marketOriginImportNotice = marketOrigin
+                                    } else {
+                                        snackbarHostState.showSnackbar(
+                                            message = context.getString(R.string.external_package_imported)
+                                        )
+                                    }
                                 } else {
                                     importErrorMessage =
                                         buildString {
@@ -500,8 +502,7 @@ fun PackageManagerScreen(
         }
     val activeSearchApplying =
         when (selectedTab) {
-            PackageTab.PLUGINS ->
-                pluginSearchInput.trim() != pluginSearchQuery || isPluginSearchFiltering
+            PackageTab.PLUGINS -> pluginSearchInput.trim() != pluginSearchQuery
             PackageTab.PACKAGES ->
                 packageSearchInput.trim() != packageSearchQuery || isPackageSearchFiltering
             PackageTab.SKILLS -> skillSearchInput.trim() != skillSearchQuery
@@ -1091,6 +1092,28 @@ fun PackageManagerScreen(
                 ErrorDialog(
                     errorMessage = errorMessage,
                     onDismiss = { importErrorMessage = null }
+                )
+            }
+
+            marketOriginImportNotice?.let { origin ->
+                AlertDialog(
+                    onDismissRequest = { marketOriginImportNotice = null },
+                    title = { Text(stringResource(R.string.package_market_origin_title)) },
+                    text = {
+                        Text(
+                            stringResource(
+                                R.string.package_market_origin_message,
+                                origin.toolpkgId,
+                                origin.version,
+                                origin.author.joinToString(", ")
+                            )
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { marketOriginImportNotice = null }) {
+                            Text(stringResource(R.string.confirm))
+                        }
+                    }
                 )
             }
 
