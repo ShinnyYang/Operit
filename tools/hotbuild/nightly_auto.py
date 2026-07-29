@@ -254,7 +254,12 @@ def main() -> int:
         gradlew = root_dir / "gradlew.bat"
         if not gradlew.exists():
             raise RuntimeError(f"gradlew.bat not found: {gradlew}")
-        rc = _run([str(gradlew), gradle_task], cwd=root_dir)
+        # AGP wires lintVitalReport into assemble; hotbuild only needs the APK artifact.
+        lint_task = f"lintVitalReport{build_variant.capitalize()}"
+        rc = _run(
+            [str(gradlew), gradle_task, "-x", lint_task, "--no-daemon"],
+            cwd=root_dir,
+        )
         if rc != 0:
             return rc
 
