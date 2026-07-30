@@ -725,8 +725,8 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             }
     )
 
-    // Register the document-level profile update. The normal tool confirmation UI is the safety
-    // boundary; unlike the released analyzer, no background process may rewrite user.md.
+    // Register the document-level profile update. The normal tool confirmation UI protects
+    // explicit writes; automatic writes separately honor the active memory space policy.
     handler.registerTool(
             name = "update_user_profile",
             descriptionGenerator = { tool ->

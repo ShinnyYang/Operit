@@ -9,6 +9,11 @@ exports.updateWorldBookEntry = updateWorldBookEntry;
 exports.deleteWorldBookEntry = deleteWorldBookEntry;
 exports.toggleWorldBookEntry = toggleWorldBookEntry;
 exports.listWorldBookCharacterCards = listWorldBookCharacterCards;
+exports.listWorldBookGroups = listWorldBookGroups;
+exports.createWorldBookGroup = createWorldBookGroup;
+exports.deleteWorldBookGroup = deleteWorldBookGroup;
+exports.copyEntryToGroup = copyEntryToGroup;
+exports.updateWorldBookGroup = updateWorldBookGroup;
 const worldbook_storage_js_1 = require("./worldbook_storage.js");
 function generateId() {
     return `wb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -617,6 +622,19 @@ async function deleteWorldBookEntry(id) {
     const index = findEntryIndex(entries, id);
     const [removed] = entries.splice(index, 1);
     await saveEntries(entries);
+    // Clean up group references
+    const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+    let groupsDirty = false;
+    for (const group of groups) {
+        const idx = group.entry_ids.indexOf(id);
+        if (idx !== -1) {
+            group.entry_ids.splice(idx, 1);
+            groupsDirty = true;
+        }
+    }
+    if (groupsDirty) {
+        await (0, worldbook_storage_js_1.writeWorldBookGroups)(groups);
+    }
     return removed;
 }
 async function toggleWorldBookEntry(id) {
@@ -642,5 +660,101 @@ async function listWorldBookCharacterCards() {
         isDefault: card?.isDefault === true
     }))
         .filter((card) => !!card.id);
+}
+function generateGroupId() {
+    return `wg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+function normalizeWorldBookGroupName(name) {
+    const normalized = name.trim();
+    if (normalized.length === 0) {
+        throw worldBookError("GROUP_NAME_REQUIRED", "分组名称不能为空");
+    }
+    return normalized;
+}
+async function listWorldBookGroups() {
+    const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+    return groups.sort((a, b) => a.name.localeCompare(b.name));
+}
+async function createWorldBookGroup(params) {
+    const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+    const now = new Date().toISOString();
+    const group = {
+        id: generateGroupId(),
+        name: normalizeWorldBookGroupName(params.name),
+        entry_ids: params.entry_ids,
+        character_card_ids: params.character_card_ids,
+        created_at: now,
+        updated_at: now
+    };
+    groups.push(group);
+    await (0, worldbook_storage_js_1.writeWorldBookGroups)(groups);
+    return group;
+}
+async function deleteWorldBookGroup(id, deleteEntries) {
+    const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+    const index = groups.findIndex((g) => g.id === id);
+    if (index === -1)
+        throw worldBookError("GROUP_NOT_FOUND", "分组不存在");
+    const [removedGroup] = groups.splice(index, 1);
+    await (0, worldbook_storage_js_1.writeWorldBookGroups)(groups);
+    let removedEntries = [];
+    if (deleteEntries) {
+        const entries = await loadEntries();
+        const remaining = [];
+        for (const entry of entries) {
+            if (removedGroup.entry_ids.includes(entry.id)) {
+                removedEntries.push(entry);
+            }
+            else {
+                remaining.push(entry);
+            }
+        }
+        await saveEntries(remaining);
+    }
+    return { removedGroup, removedEntries };
+}
+async function copyEntryToGroup(entryId, targetGroupId) {
+    const entries = await loadEntries();
+    const sourceIndex = findEntryIndex(entries, entryId);
+    const originalEntry = entries[sourceIndex];
+    const now = new Date().toISOString();
+    const newEntry = {
+        ...originalEntry,
+        id: `wb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+        name: `${originalEntry.name}(副本)`,
+        created_at: now,
+        updated_at: now
+    };
+    entries.push(newEntry);
+    await saveEntries(entries);
+    if (targetGroupId) {
+        const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+        const targetIndex = groups.findIndex((g) => g.id === targetGroupId);
+        if (targetIndex !== -1) {
+            groups[targetIndex].entry_ids.push(newEntry.id);
+            groups[targetIndex].updated_at = now;
+            await (0, worldbook_storage_js_1.writeWorldBookGroups)(groups);
+        }
+    }
+    return { newEntry };
+}
+async function updateWorldBookGroup(params) {
+    const groups = await (0, worldbook_storage_js_1.readWorldBookGroups)();
+    const index = groups.findIndex((g) => g.id === params.id);
+    if (index === -1)
+        throw worldBookError("GROUP_NOT_FOUND", "分组不存在");
+    const now = new Date().toISOString();
+    if (params.name != null) {
+        groups[index].name = normalizeWorldBookGroupName(params.name);
+    }
+    if (params.entry_ids != null) {
+        groups[index].entry_ids = params.entry_ids;
+    }
+    if (params.character_card_ids != null) {
+        groups[index].character_card_ids = params.character_card_ids;
+    }
+    groups[index].updated_at = now;
+    await (0, worldbook_storage_js_1.writeWorldBookGroups)(groups);
+    return groups[index];
 }
 void (0, worldbook_storage_js_1.ensureWorldBookStorage)();

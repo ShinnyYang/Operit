@@ -974,13 +974,10 @@
     <string name="user_md_description">Singurul fișier cu datele utilizatorului. Aici, Markdown Va fi trimis ca context al utilizatorului atunci când este activat către AI.</string>
     <string name="user_md_edit_tab">Editare</string>
     <string name="user_md_preview_tab">Previzualizare</string>
-    <string name="user_md_reset">Șterge documentul</string>
     <string name="user_md_legacy_archive">Arhive vechi</string>
     <string name="user_md_unsaved_title">Doriți să renunțați la modificările nesalvate?</string>
     <string name="user_md_unsaved_message">La întoarcere, de data aceasta față de user.md Modificările vor fi pierdute.</string>
     <string name="user_md_discard">Renunțare la modificare</string>
-    <string name="user_md_reset_title">Golește user.md?</string>
-    <string name="user_md_reset_message">Schița curentă va fi înlocuită cu un document gol; modificările vor intra în vigoare după salvare.</string>
     <string name="user_md_editor_placeholder">Prezintă-ți trecutul, obiceiurile și aspirațiile AI Cum să comunic cu tine…</string>
     <string name="user_md_preview_empty">user.md În prezent este gol; după ce introduceți conținutul, îl puteți previzualiza aici.</string>
     <string name="custom_description">Prezentare personalizată</string>
@@ -5618,10 +5615,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="backup_raw_snapshot_restore_confirm_message">Datele actuale ale aplicației vor fi înlocuite cu următoarele fișiere de rezervă:\n%1$s\n\nAceastă operațiune este ireversibilă. Se recomandă efectuarea unei copii de rezervă înainte de a continua cu restaurarea.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Confirmare restabilire</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Anulare</string>
-    <string name="backup_raw_snapshot_restart_title">Este necesar să reporniți aplicația</string>
-    <string name="backup_raw_snapshot_restart_message">Instantaneul fișierului a fost restaurat. Pentru a evita cache-ul vechi/S-a produs o eroare la conectare; se recomandă repornirea imediată a aplicației.</string>
-    <string name="backup_raw_snapshot_restart_now">Repornire imediată</string>
-    <string name="backup_raw_snapshot_restart_later">Mai târziu</string>
 
     <string name="backup_chat_history">Istoric de conversații</string>
     <string name="backup_chat_history_subtitle">Copiere de rezervă, export și recuperare între formate</string>

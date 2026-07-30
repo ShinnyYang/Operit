@@ -7,7 +7,6 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.automirrored.filled.Help
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -30,12 +29,6 @@ sealed class NavItem(val route: String, val titleResId: Int, val icon: ImageVect
         object Settings : NavItem("settings", R.string.nav_settings, Icons.Default.Settings)
         object ToolPermissions :
                 NavItem("tool_permissions", R.string.tool_permissions, Icons.Default.Security)
-        object UserPreferencesSettings :
-                NavItem(
-                        "user_preferences_settings",
-                        R.string.user_preferences_settings,
-                        Icons.Default.Face
-                )
         object ChatHistorySettings :
                 NavItem(
                         "chat_history_settings",

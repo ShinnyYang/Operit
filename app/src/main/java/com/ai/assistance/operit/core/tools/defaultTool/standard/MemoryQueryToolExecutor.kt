@@ -15,7 +15,7 @@ import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.data.model.ToolValidationResult
 import com.ai.assistance.operit.data.preferences.CharacterCardManager
 import com.ai.assistance.operit.data.preferences.MemorySearchSettingsPreferences
-import com.ai.assistance.operit.data.preferences.UserProfileDocumentRepository
+import com.ai.assistance.operit.data.preferences.MemorySpaceProfileDocumentRepository
 import com.ai.assistance.operit.data.repository.MemoryRepository
 import kotlinx.coroutines.flow.first
 import java.text.ParsePosition
@@ -50,7 +50,7 @@ class MemoryQueryToolExecutor(private val context: Context) : ToolExecutor {
     private val memoryRepositories = ConcurrentHashMap<String, MemoryRepository>()
     private val settingsRepositories = ConcurrentHashMap<String, MemorySearchSettingsPreferences>()
 
-    private fun resolveGlobalActiveProfileId(): String {
+    private fun resolveActiveMemorySpaceId(): String {
         return kotlinx.coroutines.runBlocking { preferencesManager.activeMemorySpaceIdFlow.first() }
     }
 
@@ -88,7 +88,7 @@ class MemoryQueryToolExecutor(private val context: Context) : ToolExecutor {
 
     private suspend fun resolveActiveProfileId(tool: AITool): String {
         return resolveRoleCardProfileId(resolveCallerCardId(tool))
-            ?: resolveGlobalActiveProfileId()
+            ?: resolveActiveMemorySpaceId()
     }
 
     private fun getMemoryRepository(profileId: String): MemoryRepository =
@@ -722,7 +722,10 @@ class MemoryQueryToolExecutor(private val context: Context) : ToolExecutor {
             }
 
             withContext(Dispatchers.IO) {
-                UserProfileDocumentRepository.getInstance(context).save(markdown)
+                MemorySpaceProfileDocumentRepository.getInstance(context).save(
+                    resolveActiveProfileId(tool),
+                    markdown
+                )
             }
 
             val message = "Successfully updated user.md"
@@ -773,16 +776,17 @@ class MemoryQueryToolExecutor(private val context: Context) : ToolExecutor {
         }
 
         return try {
-            val repository = UserProfileDocumentRepository.getInstance(context)
+            val repository = MemorySpaceProfileDocumentRepository.getInstance(context)
+            val memorySpaceId = resolveActiveProfileId(tool)
             withContext(Dispatchers.IO) {
-                val current = repository.load().trimEnd()
+                val current = repository.load(memorySpaceId).trimEnd()
                 val importedSection =
                     buildString {
                         appendLine("## Imported profile update")
                         appendLine()
                         updates.forEach { (label, value) -> appendLine("- $label: $value") }
                     }.trimEnd()
-                repository.save("$current\n\n$importedSection\n")
+                repository.save(memorySpaceId, "$current\n\n$importedSection\n")
             }
             ToolResult(
                 toolName = tool.name,

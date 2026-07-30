@@ -292,6 +292,7 @@ npx asc src/wasm/core.as.ts --outFile modules/core.wasm --optimize
 - 发布时可选择对包内可执行 JavaScript 进行 AST 压缩；`.wasm` 与其他资源保持标准 ToolPkg ZIP 内容。
 - JS 运行时仍以 `main.js` 和已有 `exports` 为插件对外接口；`main.js` 可以由 TS 构建生成。
 - `ToolPkg.wasm.call(moduleId, exportName, args)` 已接入 native WAMR runtime，当前 ABI 支持 `i32`、`i64`、`f32`、`f64` 数值参数和返回值。
+- `ToolPkg.wasm.call(...)` 不可在 `registerToolPkg()` 执行期间调用，调用会立即抛出异常。
 - `i64` 结果以字符串返回；JS 传入 `i64` 时推荐使用字符串，避免超过 JS safe integer 后丢精度。
 
 TS facade 示例 `src/wasm/core.ts`：
@@ -319,6 +320,8 @@ export async function run(params: { n: number }) {
 #### 3.2.5 Main 脚本注册
 
 ToolPkg 的 UI 模块和生命周期钩子不再写在 `manifest` 里，而是由 `main` 脚本通过注册函数声明。
+
+`registerToolPkg()` 只用于声明注册项。`ToolPkg.readResource(...)` 和 `ToolPkg.wasm.call(...)` 在此阶段会立即抛出异常。
 
 `main.js` 示例：
 
@@ -634,6 +637,7 @@ await ToolPkg.ipc.call(
 **访问资源**：
 - 在子包脚本中：通过 PackageManager API 访问
 - 在 UI 模块中：通过 `ToolPkg.readResource(key)` 访问
+- `ToolPkg.readResource(...)` 不可在 `registerToolPkg()` 执行期间调用，调用会立即抛出异常。
 
 目录资源说明：
 - 当 `mime` 是目录类型（如 `inode/directory`、`vnd.android.document/directory`）时，`ToolPkg.readResource(key)` 会先将该目录压缩成 zip，再返回这个 zip 的临时文件路径。

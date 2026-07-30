@@ -48,7 +48,7 @@ private val SettingsScreenScrollPosition = mutableStateOf(0)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-        onNavigateToUserPreferences: () -> Unit,
+        navigateToUserPreferences: () -> Unit,
         navigateToGitHubAccount: () -> Unit,
         navigateToToolPermissions: () -> Unit,
         navigateToModelConfig: () -> Unit,
@@ -151,9 +151,9 @@ fun SettingsScreen(
                                 title = stringResource(id = R.string.settings_user_preferences),
                                 subtitle = stringResource(id = R.string.settings_user_preferences_subtitle),
                                 icon = Icons.Default.Face,
-                                onClick = onNavigateToUserPreferences
+                                onClick = navigateToUserPreferences
                         )
-                        
+
                         CompactSettingsItem(
                                 title = stringResource(R.string.language_settings),
                                 subtitle = stringResource(id = R.string.settings_language_subtitle),

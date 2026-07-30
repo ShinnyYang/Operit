@@ -124,7 +124,7 @@ fun AIChatScreen(
         hasBackgroundImage: Boolean = false,
         onNavigateToTokenConfig: () -> Unit = {},
         onNavigateToSettings: () -> Unit = {},
-        onNavigateToUserPreferences: () -> Unit = {},
+        onNavigateToMemoryBase: () -> Unit = {},
         onNavigateToModelConfig: () -> Unit = {},
         onNavigateToOnboardingModelConfig: () -> Unit = {},
         onNavigateToModelPrompts: () -> Unit = {},
@@ -1033,7 +1033,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
                                     onSummaryTokenThresholdChange = {
                                         actualViewModel.updateSummaryTokenThreshold(it)
                                     },
-                                    onNavigateToUserPreferences = onNavigateToUserPreferences,
+                                    onNavigateToMemoryBase = onNavigateToMemoryBase,
                                     onNavigateToModelConfig = onNavigateToModelConfig,
                                     onNavigateToModelPrompts = onNavigateToModelPrompts,
                                     onNavigateToPackageManager = onNavigateToPackageManager,
@@ -1102,7 +1102,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
                                 disableStreamOutput = disableStreamOutput,
                                 disableUserPreferenceDescription =
                                         disableUserPreferenceDescription,
-                                onNavigateToUserPreferences = onNavigateToUserPreferences,
+                                onNavigateToMemoryBase = onNavigateToMemoryBase,
                                 onNavigateToPackageManager = onNavigateToPackageManager,
                                 toolPromptVisibility = toolPromptVisibility,
                                 toolPromptOrder = toolPromptOrder,
@@ -1496,7 +1496,7 @@ private fun ChatInputBottomBar(
     isAutoReadEnabled: Boolean,
     disableStreamOutput: Boolean,
     disableUserPreferenceDescription: Boolean,
-    onNavigateToUserPreferences: () -> Unit,
+    onNavigateToMemoryBase: () -> Unit,
     onNavigateToPackageManager: () -> Unit,
     toolPromptVisibility: Map<String, Boolean>,
     toolPromptOrder: List<String> = emptyList(),
@@ -1885,7 +1885,7 @@ private fun ChatInputBottomBar(
                 disableUserPreferenceDescription = disableUserPreferenceDescription,
                 onToggleDisableUserPreferenceDescription =
                     actualViewModel::toggleDisableUserPreferenceDescription,
-                onNavigateToUserPreferences = onNavigateToUserPreferences,
+                onNavigateToMemoryBase = onNavigateToMemoryBase,
                 onNavigateToPackageManager = onNavigateToPackageManager,
                 toolPromptVisibility = toolPromptVisibility,
                 onSaveToolPromptVisibilityMap = actualViewModel::saveToolPromptVisibilityMap,

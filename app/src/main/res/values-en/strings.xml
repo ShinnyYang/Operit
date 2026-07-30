@@ -909,8 +909,8 @@
     
     <!-- Settings Screen Sections -->
     <string name="settings_section_personalization">Personalization</string>
-    <string name="settings_user_preferences">User Preferences</string>
-    <string name="settings_user_preferences_desc">Edit the user.md document sent to the AI as user context</string>
+    <string name="settings_user_preferences">User Profile and Memory</string>
+    <string name="settings_user_preferences_desc">Manage user profiles and associated memory spaces</string>
     <string name="settings_configure_preferences">Configure Preferences</string>
     <string name="settings_model_prompts">Model Prompt Settings</string>
     <string name="settings_model_prompts_desc">Customize AI assistant\'s system prompts, including self-introduction and tone style, to better meet your expectations</string>
@@ -1024,19 +1024,29 @@
     <!-- User Preferences -->
     <string name="user_preferences_guide">Personalization</string>
     <string name="user_preferences">User Preferences</string>
-    <string name="user_preferences_settings">User Profile (user.md)</string>
-    <string name="user_md_description">The single user profile file. When enabled, this Markdown is sent to the AI as user context.</string>
+    <string name="user_preferences_settings">User Profile and Memory</string>
+    <string name="user_md_description">The user.md for the selected user configuration is sent to the AI as user context.</string>
     <string name="user_md_edit_tab">Edit</string>
     <string name="user_md_preview_tab">Preview</string>
-    <string name="user_md_reset">Clear document</string>
     <string name="user_md_legacy_archive">Legacy profiles</string>
     <string name="user_md_unsaved_title">Discard unsaved changes?</string>
     <string name="user_md_unsaved_message">Your changes to user.md will be lost.</string>
     <string name="user_md_discard">Discard</string>
-    <string name="user_md_reset_title">Clear user.md?</string>
-    <string name="user_md_reset_message">The current draft will be replaced with an empty document and takes effect after saving.</string>
     <string name="user_md_editor_placeholder">Describe your background, habits, and how you want the AI to communicate…</string>
     <string name="user_md_preview_empty">user.md is empty. Add some content to preview it here.</string>
+    <string name="user_configuration_select">Select user configuration</string>
+    <string name="user_configuration_active">Active configuration</string>
+    <string name="user_configuration_policy">Automatic updates and locking</string>
+    <string name="user_configuration_open_memory">Open associated memory space</string>
+    <string name="user_configuration_create">Create user configuration</string>
+    <string name="user_configuration_rename">Rename user configuration</string>
+    <string name="user_configuration_delete">Delete user configuration</string>
+    <string name="user_configuration_name">User configuration name</string>
+    <string name="user_configuration_delete_warning">Delete user configuration “%1$s” and all associated memories? This action cannot be undone.</string>
+    <string name="user_configuration_auto_update">Automatically update profile</string>
+    <string name="user_configuration_lock">Lock automatic profile updates</string>
+    <string name="user_configuration_auto_update_desc">When enabled, long-term memory analysis updates user.md from conversations in the associated space. Locking blocks automatic updates only; manual editing remains available.</string>
+    <string name="user_configuration_unlock_notice">This configuration was locked during migration from older settings. Saving removes the document-wide lock.</string>
     <string name="custom_description">Custom Introduction</string>
     <string name="preferences_hint">Enter your personal introduction (max 100 characters)</string>
     <string name="enter_preferences">Enter your personal introduction here...</string>
@@ -3202,11 +3212,6 @@
     <string name="memory">Memory</string>
     <string name="memory_desc">Select the isolated memory space used by the current conversation</string>
     <string name="memory_space_select">Select memory space</string>
-    <string name="memory_space_create">Create memory space</string>
-    <string name="memory_space_rename">Rename memory space</string>
-    <string name="memory_space_delete">Delete memory space</string>
-    <string name="memory_space_name">Memory space name</string>
-    <string name="memory_space_delete_warning">Delete “%1$s” and all memories in it? This cannot be undone.</string>
     <string name="memory_auto_update">Auto Save Memory</string>
     <string name="memory_auto_update_desc">When enabled, candidate content from the current conversation is queued after the reply is finalized, then written into the memory library by periodic background processing while the app process remains alive.</string>
     <string name="memory_auto_update_runtime_status">Pending memory extraction items: %1$d, next save in %2$d minute(s)</string>
@@ -3479,7 +3484,7 @@
     <string name="long_press_manage">Long press to manage</string>
     
     <!-- Settings Screen Subtitles -->
-    <string name="settings_user_preferences_subtitle">Edit and preview user.md</string>
+    <string name="settings_user_preferences_subtitle">Manage user profiles and associated memory spaces</string>
     <string name="settings_language_subtitle">Interface language switching</string>
     <string name="settings_theme_subtitle">Theme and appearance customization</string>
     <string name="layout_adjustment">Layout Adjustment</string>
@@ -4060,7 +4065,7 @@
     <string name="screen_title_memory_base">Memory Base</string>
     <string name="screen_title_tool_permissions">Tool Permissions</string>
     <string name="screen_title_user_preferences_guide">User Preferences Guide</string>
-    <string name="screen_title_user_preferences_settings">User Profile (user.md)</string>
+    <string name="screen_title_user_preferences_settings">User Profile and Memory</string>
     <string name="screen_title_model_config">Model &amp; Parameters Configuration</string>
     <string name="screen_title_speech_services_settings">Speech Services Settings</string>
     <string name="screen_title_persona_card_generation">Persona Card Generation</string>
@@ -5192,10 +5197,6 @@
     <string name="backup_raw_snapshot_restore_confirm_message">This will overwrite current app data with the following backup:\n%1$s\n\nThis action cannot be undone. It is recommended to perform a backup before restoring.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Confirm restore</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Cancel</string>
-    <string name="backup_raw_snapshot_restart_title">App restart required</string>
-    <string name="backup_raw_snapshot_restart_message">File snapshot restored. To avoid issues caused by old caches/connections, please restart the app now.</string>
-    <string name="backup_raw_snapshot_restart_now">Restart now</string>
-    <string name="backup_raw_snapshot_restart_later">Later</string>
 
     <string name="backup_chat_history">Chat History</string>
     <string name="backup_chat_history_subtitle">Cross-format backup, export and recovery</string>

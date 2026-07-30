@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.AtomicFile
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.db.ObjectBoxManager
 import com.ai.assistance.operit.util.AppLogger
@@ -578,10 +579,17 @@ object RawSnapshotBackupManager {
             toDir.mkdirs()
         }
 
-        if (!fromDir.exists() || !fromDir.isDirectory) return
+        // A raw snapshot is a complete restore point. Keeping entries that are absent from the
+        // snapshot leaves newer migration markers behind and changes how restored data is read.
+        toDir.listFiles()?.forEach { existing ->
+            if (!preservedTopLevelDirNames.contains(existing.name)) {
+                check(existing.deleteRecursively()) {
+                    "Failed to remove stale snapshot entry: ${existing.absolutePath}"
+                }
+            }
+        }
 
-        // Non-destructive restore: only overwrite files present in the backup.
-        // Files not present in the backup are preserved.
+        if (!fromDir.exists() || !fromDir.isDirectory) return
         copyDir(fromDir, toDir, preservedTopLevelDirNames)
     }
 
@@ -613,10 +621,17 @@ object RawSnapshotBackupManager {
                 target.mkdirs()
             } else if (canonical.isFile) {
                 target.parentFile?.mkdirs()
-                canonical.inputStream().use { input ->
-                    target.outputStream().use { output ->
-                        input.copyTo(output)
-                    }
+                // DataStore observes this directory. Replacing an active preferences file by
+                // truncating it exposes a transient empty payload that can be persisted again.
+                val atomicFile = AtomicFile(target)
+                var output: FileOutputStream? = null
+                try {
+                    output = atomicFile.startWrite()
+                    canonical.inputStream().use { input -> input.copyTo(output) }
+                    atomicFile.finishWrite(output)
+                } catch (error: Throwable) {
+                    output?.let(atomicFile::failWrite)
+                    throw error
                 }
             }
         }

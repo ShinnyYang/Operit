@@ -46,16 +46,9 @@ private fun ProfileSelector(
     profileList: List<String>,
     profileNameMap: Map<String, String>,
     selectedProfileId: String,
-    onProfileSelected: (String) -> Unit,
-    onMemorySpaceCreate: (String) -> Unit,
-    onMemorySpaceRename: (String, String) -> Unit,
-    onMemorySpaceDelete: (String) -> Unit
+    onProfileSelected: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    var showCreateDialog by remember { mutableStateOf(false) }
-    var showRenameDialog by remember { mutableStateOf(false) }
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var editedName by remember { mutableStateOf("") }
     val selectedProfileName = profileNameMap[selectedProfileId] ?: selectedProfileId
 
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
@@ -85,88 +78,6 @@ private fun ProfileSelector(
                 }
             }
         }
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            IconButton(onClick = { showCreateDialog = true }, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.memory_space_create))
-            }
-            IconButton(
-                onClick = {
-                    editedName = selectedProfileName
-                    showRenameDialog = true
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.memory_space_rename))
-            }
-            if (selectedProfileId != "default") {
-                IconButton(onClick = { showDeleteDialog = true }, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.memory_space_delete))
-                }
-            }
-        }
-    }
-
-    if (showCreateDialog || showRenameDialog) {
-        val creating = showCreateDialog
-        AlertDialog(
-            onDismissRequest = {
-                showCreateDialog = false
-                showRenameDialog = false
-                editedName = ""
-            },
-            title = {
-                Text(stringResource(if (creating) R.string.memory_space_create else R.string.memory_space_rename))
-            },
-            text = {
-                OutlinedTextField(
-                    value = editedName,
-                    onValueChange = { editedName = it },
-                    label = { Text(stringResource(R.string.memory_space_name)) },
-                    singleLine = true
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val name = editedName.trim()
-                        if (creating) onMemorySpaceCreate(name)
-                        else onMemorySpaceRename(selectedProfileId, name)
-                        showCreateDialog = false
-                        showRenameDialog = false
-                        editedName = ""
-                    },
-                    enabled = editedName.isNotBlank()
-                ) { Text(stringResource(R.string.confirm)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    showCreateDialog = false
-                    showRenameDialog = false
-                    editedName = ""
-                }) { Text(stringResource(R.string.cancel_action)) }
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.memory_space_delete)) },
-            text = { Text(stringResource(R.string.memory_space_delete_warning, selectedProfileName)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onMemorySpaceDelete(selectedProfileId)
-                        showDeleteDialog = false
-                    }
-                ) { Text(stringResource(R.string.confirm_delete), color = MaterialTheme.colorScheme.error) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel_action))
-                }
-            }
-        )
     }
 }
 
@@ -203,9 +114,6 @@ fun FolderNavigator(
     profileNameMap: Map<String, String>,
     selectedProfileId: String,
     onProfileSelected: (String) -> Unit,
-    onMemorySpaceCreate: (String) -> Unit,
-    onMemorySpaceRename: (String, String) -> Unit,
-    onMemorySpaceDelete: (String) -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -277,10 +185,7 @@ fun FolderNavigator(
                     profileList = profileList,
                     profileNameMap = profileNameMap,
                     selectedProfileId = selectedProfileId,
-                    onProfileSelected = onProfileSelected,
-                    onMemorySpaceCreate = onMemorySpaceCreate,
-                    onMemorySpaceRename = onMemorySpaceRename,
-                    onMemorySpaceDelete = onMemorySpaceDelete
+                    onProfileSelected = onProfileSelected
                 )
                 
                 // 新建文件夹按钮和刷新按钮

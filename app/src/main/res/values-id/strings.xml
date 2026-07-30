@@ -690,13 +690,10 @@
     <string name="user_md_description">Satu-satunya berkas profil pengguna. Saat diaktifkan, Markdown ini dikirim ke AI sebagai konteks pengguna.</string>
     <string name="user_md_edit_tab">Edit</string>
     <string name="user_md_preview_tab">Pratinjau</string>
-    <string name="user_md_reset">Kosongkan dokumen</string>
     <string name="user_md_legacy_archive">Profil lama</string>
     <string name="user_md_unsaved_title">Buang perubahan yang belum disimpan?</string>
     <string name="user_md_unsaved_message">Perubahan pada user.md akan hilang.</string>
     <string name="user_md_discard">Buang</string>
-    <string name="user_md_reset_title">Kosongkan user.md?</string>
-    <string name="user_md_reset_message">Draf saat ini akan diganti dengan dokumen kosong dan berlaku setelah disimpan.</string>
     <string name="user_md_editor_placeholder">Jelaskan latar belakang, kebiasaan, dan cara AI berkomunikasi dengan Anda…</string>
     <string name="user_md_preview_empty">user.md masih kosong. Tambahkan konten untuk melihat pratinjau.</string>
     <string name="custom_description">Deskripsi kustom</string>
@@ -4809,10 +4806,6 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="backup_raw_snapshot_restore_confirm_message">Data aplikasi saat ini akan ditimpa dengan file cadangan berikut:\n%1$s\n\nTindakan ini tidak dapat dibatalkan. Disarankan untuk membuat cadangan terlebih dahulu sebelum memulihkan.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Konfirmasi Pemulihan</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Batal</string>
-    <string name="backup_raw_snapshot_restart_title">Aplikasi Perlu Dimulai Ulang</string>
-    <string name="backup_raw_snapshot_restart_message">Snapshot file telah dipulihkan. Untuk menghindari masalah karena cache/koneksi lama, disarankan untuk segera memulai ulang aplikasi.</string>
-    <string name="backup_raw_snapshot_restart_now">Mulai Ulang Sekarang</string>
-    <string name="backup_raw_snapshot_restart_later">Nanti</string>
     <string name="backup_chat_history">Riwayat Obrolan</string>
     <string name="backup_chat_history_subtitle">Cadangan, ekspor, dan pemulihan lintas format</string>
     <string name="backup_chat_current_count">Saat ini ada %1$d riwayat obrolan.</string>

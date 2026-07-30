@@ -522,6 +522,7 @@ const jarPath = await ToolPkg.readResource('apktool_lib_jar', 'apktool-lib.jar')
 - `key` 对应 `manifest.json` 里的 `resources[].key`。
 - `outputFileName` 可选；不传时会使用清单资源原始文件名。
 - 如果资源 `mime` 是目录类型（例如 `inode/directory`、`vnd.android.document/directory`），运行时会先把该目录压成 zip，再返回这个 zip 文件的绝对路径；默认文件名会自动补 `.zip`。
+- `registerToolPkg()` 执行期间不可调用；调用会立即抛出异常。
 
 ## AssemblyScript WASM 模块
 
@@ -576,7 +577,7 @@ export function isPrime(n: i32): i32 {
 npx asc src/wasm/core.as.ts --outFile modules/core.wasm --optimize
 ```
 
-当前宿主会解析和校验 `wasm_modules`。插件的对外入口仍然是 JS `exports` 和 `ToolPkg.register...` 系列 API；作者入口建议写 `src/main.ts`，构建时生成宿主执行用的 `main.js`。
+当前宿主会解析和校验 `wasm_modules`。插件的对外入口仍然是 JS `exports` 和 `ToolPkg.register...` 系列 API；作者入口建议写 `src/main.ts`，构建时生成宿主执行用的 `main.js`。`ToolPkg.wasm.call(...)` 不可在 `registerToolPkg()` 执行期间调用，调用会立即抛出异常。
 
 TS facade 示例 `src/wasm/core.ts`：
 
@@ -803,7 +804,7 @@ ToolPkg.registerSummaryGenerateHook({
 
 这是一种**从仓库示例总结出的约定**；它不是 `toolpkg.d.ts` 本身直接声明的函数签名。
 
-包管理器会在独立的临时 QuickJS 引擎中执行每个工具包的 `registerToolPkg()`，单包最长执行 12 秒。该入口只应用于声明注册项，不应启动常驻定时器、无限循环或等待长期任务。注册结束后临时引擎会被销毁，工具调用与 UI hook 在各自的运行时 context 中执行，因此不要依赖注册阶段留下的 JavaScript 全局状态。
+包管理器会在独立的临时 QuickJS 引擎中执行每个工具包的 `registerToolPkg()`，单包最长执行 12 秒。该入口只应用于声明注册项，不应启动常驻定时器、无限循环或等待长期任务。`ToolPkg.readResource(...)` 与 `ToolPkg.wasm.call(...)` 在此阶段会立即抛出异常。注册结束后临时引擎会被销毁，工具调用与 UI hook 在各自的运行时 context 中执行，因此不要依赖注册阶段留下的 JavaScript 全局状态。
 
 ## 开发调试安装
 

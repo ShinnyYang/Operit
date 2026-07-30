@@ -1,10 +1,10 @@
 {
   "schema_version": 1,
   "toolpkg_id": "com.operit.worldbook",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "main": "dist/main.js",
   "author": [
-    "黑羽 燕",
+    "黒羽 燕",
     "冰蓝天影"
   ],
   "display_name": {

@@ -883,13 +883,10 @@
     <string name="user_md_description">유일한 사용자 프로필 파일입니다. 활성화하면 이 Markdown이 사용자 컨텍스트로 AI에 전달됩니다.</string>
     <string name="user_md_edit_tab">편집</string>
     <string name="user_md_preview_tab">미리보기</string>
-    <string name="user_md_reset">문서 비우기</string>
     <string name="user_md_legacy_archive">이전 프로필</string>
     <string name="user_md_unsaved_title">저장하지 않은 변경 사항을 버릴까요?</string>
     <string name="user_md_unsaved_message">user.md의 변경 사항이 사라집니다.</string>
     <string name="user_md_discard">버리기</string>
-    <string name="user_md_reset_title">user.md를 비울까요?</string>
-    <string name="user_md_reset_message">현재 초안이 빈 문서로 바뀌며 저장 후 적용됩니다.</string>
     <string name="user_md_editor_placeholder">배경, 습관, AI가 어떤 방식으로 대화하기를 원하는지 작성하세요…</string>
     <string name="user_md_preview_empty">user.md가 비어 있습니다. 내용을 추가하면 여기에서 미리 볼 수 있습니다.</string>
     <string name="custom_description">맞춤형 소개</string>
@@ -4922,10 +4919,6 @@
     <string name="backup_raw_snapshot_restore_confirm_message">현재 앱 데이터를 다음 백업으로 덮어쓰게 됩니다.\n%1$s\n\n이 작업은 취소할 수 없습니다. 복원하기 전에 백업을 수행하는 것이 좋습니다.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">복원 확인</string>
     <string name="backup_raw_snapshot_restore_cancel_action">취소</string>
-    <string name="backup_raw_snapshot_restart_title">앱을 다시 시작해야 함</string>
-    <string name="backup_raw_snapshot_restart_message">파일 스냅샷이 복원되었습니다. 오래된 캐시/연결로 인해 발생하는 문제를 방지하려면 지금 앱을 다시 시작하세요.</string>
-    <string name="backup_raw_snapshot_restart_now">지금 다시 시작</string>
-    <string name="backup_raw_snapshot_restart_later">나중에</string>
     <string name="backup_chat_history">채팅 기록</string>
     <string name="backup_chat_history_subtitle">교차 형식 백업, 내보내기 및 복구</string>
     <string name="backup_chat_current_count">현재 채팅 기록 %1$d개입니다.</string>

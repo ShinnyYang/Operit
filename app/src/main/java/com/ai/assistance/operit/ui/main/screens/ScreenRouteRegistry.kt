@@ -358,8 +358,7 @@ object ScreenRouteRegistry {
             ),
             hostEntryDefinition(
                 entryId = "hidden.user_preferences_settings",
-                screen = Screen.UserPreferencesSettings,
-                launchNavItem = NavItem.UserPreferencesSettings
+                screen = Screen.UserPreferencesSettings
             ),
             hostEntryDefinition(
                 entryId = "hidden.chat_history_settings",

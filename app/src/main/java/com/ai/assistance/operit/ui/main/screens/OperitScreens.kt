@@ -63,9 +63,9 @@ import com.ai.assistance.operit.ui.features.settings.screens.SettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.SpeechServicesSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ThemeSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.ToolPermissionSettingsScreen
-import com.ai.assistance.operit.ui.features.settings.screens.UserPreferencesSettingsScreen
 import com.ai.assistance.operit.ui.features.settings.screens.MnnModelDownloadScreen
 import com.ai.assistance.operit.ui.features.settings.screens.TokenUsageStatisticsScreen
+import com.ai.assistance.operit.ui.features.settings.screens.UserPreferencesSettingsScreen
 import com.ai.assistance.operit.ui.features.token.TokenConfigWebViewScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.AppPermissionsToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.FileManagerToolScreen
@@ -143,7 +143,7 @@ sealed class Screen(
                     hasBackgroundImage = hasBackgroundImage,
                     onNavigateToTokenConfig = { navigateTo(TokenConfig) },
                     onNavigateToSettings = { navigateTo(Settings) },
-                    onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
+                    onNavigateToMemoryBase = { navigateTo(MemoryBase) },
                     onNavigateToModelConfig = { navigateTo(ModelConfig) },
                     onNavigateToOnboardingModelConfig = { navigateTo(ModelConfigOnboarding) },
                     onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) },
@@ -582,8 +582,8 @@ sealed class Screen(
                 onGestureConsumed: (Boolean) -> Unit
         ) {
             SettingsScreen(
+                    navigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
                     navigateToToolPermissions = { navigateTo(ToolPermission) },
-                    onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
                     navigateToGitHubAccount = { navigateTo(GitHubAccount) },
                     navigateToModelConfig = { navigateTo(ModelConfig) },
                     navigateToThemeSettings = { navigateTo(ThemeSettings) },
@@ -761,6 +761,25 @@ sealed class Screen(
     }
 
     // Secondary screens - Settings
+    data object UserPreferencesSettings :
+            Screen(navItem = NavItem.Settings, titleRes = R.string.settings_user_preferences) {
+        @Composable
+        override fun Content(
+                navController: NavController,
+                navigateTo: ScreenNavigationHandler,
+                onGoBack: () -> Unit,
+                hasBackgroundImage: Boolean,
+                onLoading: (Boolean) -> Unit,
+                onError: (String) -> Unit,
+                onGestureConsumed: (Boolean) -> Unit
+        ) {
+            UserPreferencesSettingsScreen(
+                onNavigateBack = onGoBack,
+                onNavigateToMemory = { navigateTo(MemoryBase) }
+            )
+        }
+    }
+
     data object ToolPermission :
             Screen(navItem = NavItem.Settings, titleRes = R.string.screen_title_tool_permissions) {
         @Composable
@@ -774,22 +793,6 @@ sealed class Screen(
                 onGestureConsumed: (Boolean) -> Unit
         ) {
             ToolPermissionSettingsScreen(navigateBack = onGoBack)
-        }
-    }
-
-    data object UserPreferencesSettings :
-            Screen(navItem = NavItem.Settings, titleRes = R.string.screen_title_user_preferences_settings) {
-        @Composable
-        override fun Content(
-                navController: NavController,
-                navigateTo: ScreenNavigationHandler,
-                onGoBack: () -> Unit,
-                hasBackgroundImage: Boolean,
-                onLoading: (Boolean) -> Unit,
-                onError: (String) -> Unit,
-                onGestureConsumed: (Boolean) -> Unit
-        ) {
-            UserPreferencesSettingsScreen(onNavigateBack = onGoBack)
         }
     }
 
@@ -897,7 +900,6 @@ sealed class Screen(
         ) {
             com.ai.assistance.operit.ui.features.settings.screens.PersonaCardGenerationScreen(
                 onNavigateToSettings = { navigateTo(Settings) },
-                onNavigateToUserPreferences = { navigateTo(UserPreferencesSettings) },
                 onNavigateToModelConfig = { navigateTo(ModelConfig) },
                 onNavigateToModelPrompts = { navigateTo(ModelPromptsSettings) }
             )

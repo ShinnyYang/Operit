@@ -863,8 +863,8 @@
     
     <!-- Settings Screen Sections -->
     <string name="settings_section_personalization">个性化</string>
-    <string name="settings_user_preferences">用户偏好设置</string>
-    <string name="settings_user_preferences_desc">编辑会作为用户上下文发送给 AI 的 user.md</string>
+    <string name="settings_user_preferences">用户资料和记忆</string>
+    <string name="settings_user_preferences_desc">管理用户资料和关联记忆库</string>
     <string name="settings_configure_preferences">配置用户偏好</string>
     <string name="settings_model_prompts">模型提示词设置</string>
     <string name="settings_model_prompts_desc">自定义AI助手的系统提示词，包括自我介绍和语气风格，使AI更符合您的预期</string>
@@ -978,19 +978,29 @@
     <!-- 用户偏好 -->
     <string name="user_preferences_guide">个性化设置</string>
     <string name="user_preferences">用户偏好设置</string>
-    <string name="user_preferences_settings">用户资料（user.md）</string>
-    <string name="user_md_description">唯一的用户资料文件。这里的 Markdown 会在启用时作为用户上下文发送给 AI。</string>
+    <string name="user_preferences_settings">用户资料和记忆</string>
+    <string name="user_md_description">当前用户配置的 user.md 会作为用户上下文发送给 AI。</string>
     <string name="user_md_edit_tab">编辑</string>
     <string name="user_md_preview_tab">预览</string>
-    <string name="user_md_reset">清空文档</string>
     <string name="user_md_legacy_archive">旧档案</string>
     <string name="user_md_unsaved_title">放弃未保存的修改？</string>
     <string name="user_md_unsaved_message">返回后，本次对 user.md 的修改将丢失。</string>
     <string name="user_md_discard">放弃修改</string>
-    <string name="user_md_reset_title">清空 user.md？</string>
-    <string name="user_md_reset_message">当前草稿会被替换为空白文档，保存后生效。</string>
     <string name="user_md_editor_placeholder">介绍你的背景、习惯，以及希望 AI 如何与你交流…</string>
     <string name="user_md_preview_empty">user.md 目前为空，填写内容后可在这里预览。</string>
+    <string name="user_configuration_select">选择用户配置</string>
+    <string name="user_configuration_active">当前活动配置</string>
+    <string name="user_configuration_policy">自动更新与锁定</string>
+    <string name="user_configuration_open_memory">打开关联记忆库</string>
+    <string name="user_configuration_create">新建用户配置</string>
+    <string name="user_configuration_rename">重命名用户配置</string>
+    <string name="user_configuration_delete">删除用户配置</string>
+    <string name="user_configuration_name">用户配置名称</string>
+    <string name="user_configuration_delete_warning">确定删除用户配置“%1$s”及其关联的全部记忆吗？此操作无法撤销。</string>
+    <string name="user_configuration_auto_update">自动更新资料</string>
+    <string name="user_configuration_lock">锁定资料自动更新</string>
+    <string name="user_configuration_auto_update_desc">启用后，长期记忆分析会根据该配置关联空间的对话更新 user.md。锁定只阻止自动更新，手动编辑仍然可用。</string>
+    <string name="user_configuration_unlock_notice">该配置由旧版锁定设置迁移而来，保存后会解除整份资料锁定。</string>
     <string name="custom_description">自定义介绍</string>
     <string name="preferences_hint">请输入您的个人介绍（最多100字）</string>
     <string name="enter_preferences">在此输入您的个人介绍...</string>
@@ -3115,11 +3125,6 @@
     <string name="memory">记忆</string>
     <string name="memory_desc">选择当前对话使用的独立记忆空间</string>
     <string name="memory_space_select">选择记忆空间</string>
-    <string name="memory_space_create">新建记忆空间</string>
-    <string name="memory_space_rename">重命名记忆空间</string>
-    <string name="memory_space_delete">删除记忆空间</string>
-    <string name="memory_space_name">记忆空间名称</string>
-    <string name="memory_space_delete_warning">确定删除“%1$s”及其中的全部记忆吗？此操作无法撤销。</string>
     <string name="memory_auto_update">自动保存记忆</string>
     <string name="memory_auto_update_desc">开启后，当前轮回复结束时会先把候选内容加入长期记忆队列，并在应用存活期间由后台定时整理写入记忆库。</string>
     <string name="memory_auto_update_runtime_status">待提取记忆的条数%1$d，距离下次保存%2$d分钟</string>
@@ -3396,7 +3401,7 @@
     <string name="history_scroll_to_bottom">滚动到底部</string>
     
     <!-- Settings Screen Subtitles -->
-    <string name="settings_user_preferences_subtitle">编辑和预览 user.md</string>
+    <string name="settings_user_preferences_subtitle">管理用户资料和关联记忆库</string>
     <string name="settings_language_subtitle">界面语言切换</string>
     <string name="settings_theme_subtitle">主题和外观定制</string>
     <string name="layout_adjustment">布局调整</string>
@@ -3995,7 +4000,7 @@
     <string name="screen_title_memory_base">记忆库</string>
     <string name="screen_title_tool_permissions">工具权限</string>
     <string name="screen_title_user_preferences_guide">用户偏好引导</string>
-    <string name="screen_title_user_preferences_settings">用户资料（user.md）</string>
+    <string name="screen_title_user_preferences_settings">用户资料和记忆</string>
     <string name="screen_title_model_config">模型与参数配置</string>
     <string name="screen_title_speech_services_settings">语音服务设置</string>
     <string name="screen_title_persona_card_generation">人设卡生成</string>
@@ -5628,10 +5633,6 @@
     <string name="backup_raw_snapshot_restore_confirm_message">将使用以下备份文件覆盖当前应用数据：\n%1$s\n\n此操作不可撤销。建议先执行一次备份再恢复。</string>
     <string name="backup_raw_snapshot_restore_confirm_action">确认恢复</string>
     <string name="backup_raw_snapshot_restore_cancel_action">取消</string>
-    <string name="backup_raw_snapshot_restart_title">需要重启应用</string>
-    <string name="backup_raw_snapshot_restart_message">文件快照已恢复。为避免旧的缓存/连接导致异常，建议立即重启应用。</string>
-    <string name="backup_raw_snapshot_restart_now">立即重启</string>
-    <string name="backup_raw_snapshot_restart_later">稍后</string>
 
     <string name="backup_chat_history">聊天记录</string>
     <string name="backup_chat_history_subtitle">跨格式备份、导出与恢复</string>

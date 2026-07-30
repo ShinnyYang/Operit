@@ -11,5 +11,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class MemorySpace(
     val id: String,
-    val name: String
+    val name: String,
+    val profileAutoUpdateEnabled: Boolean = true,
+    val profileAutoUpdateLocked: Boolean = false
 )

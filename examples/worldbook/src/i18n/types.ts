@@ -102,4 +102,39 @@ export interface WorldBookI18n {
   emptyTitle: string;
   emptyDesc: string;
   emptyAction: string;
+  // Group
+  groupUngrouped: string;
+  groupCreateTitle: string;
+  groupEditTitle: string;
+  groupNameLabel: string;
+  groupNamePlaceholder: string;
+  groupSelectEntries: string;
+  groupSelectEntriesHint: string;
+  groupBindCards: string;
+  groupBindCardsHint: string;
+  groupSaveButton: string;
+  groupCreateButton: string;
+  groupDeleteTitle: string;
+  groupDeleteOnlyGroup: string;
+  groupDeleteWithEntries: string;
+  groupDeleteConfirm: string;
+  groupDeleteCancel: string;
+  groupRenameTitle: string;
+  groupRenamePlaceholder: string;
+  groupRenameButton: string;
+  groupToastCreated: string;
+  groupToastUpdated: string;
+  groupToastDeleted: string;
+  groupToastRenamed: string;
+  groupNewButton: string;
+  // Copy
+  buttonCopy: string;
+  copyToGroupTitle: string;
+  copyToGroupHint: string;
+  copyToUngrouped: string;
+  copyToastDone: string;
+  // Multi card
+  multiCardTitle: string;
+  multiCardHint: string;
+  multiCardSelected: (count: number) => string;
 }

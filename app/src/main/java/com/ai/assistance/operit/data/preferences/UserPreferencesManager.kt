@@ -40,16 +40,17 @@ fun initUserPreferencesManager(context: Context, defaultProfileName: String = "D
     val manager = UserPreferencesManager.getInstance(context)
 
     // Migration must finish before the default memory space is created. Otherwise a fresh default
-    // entry could hide the released profile metadata that still owns existing ObjectBox databases.
+    // entry could hide released profile metadata that still owns existing ObjectBox databases.
     GlobalScope.launch {
-        UserProfileDocumentRepository.getInstance(context).initialize()
+        MemorySpaceProfileDocumentRepository.getInstance(context).initialize()
         manager.ensureDefaultMemorySpace(defaultProfileName)
     }
 }
 
 data class LegacyUserProfileSnapshot(
     val activeProfileId: String,
-    val profiles: List<LegacyUserProfile>
+    val profiles: List<LegacyUserProfile>,
+    val hasLegacyCategoryLocks: Boolean = false
 )
 
 class UserPreferencesManager private constructor(private val context: Context) {
@@ -395,6 +396,18 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 .orEmpty()
         }
 
+    suspend fun hasMemorySpaceMetadata(): Boolean {
+        return context.userPreferencesDataStore.data.first().contains(MEMORY_SPACE_LIST)
+    }
+
+    /**
+     * A raw +4 snapshot can be restored while a newer process has already created a default
+     * memory space. The legacy list is still authoritative until its records are consumed.
+     */
+    suspend fun hasLegacyUserProfileMetadata(): Boolean {
+        return context.userPreferencesDataStore.data.first().contains(PROFILE_LIST)
+    }
+
     fun getMemorySpaceFlow(memorySpaceId: String = ""): Flow<MemorySpace> {
         return context.userPreferencesDataStore.data.map { preferences ->
             val targetId =
@@ -430,6 +443,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 preferences[ACTIVE_MEMORY_SPACE_ID] = id
             }
         }
+        MemorySpaceProfileDocumentRepository.getInstance(context).load(id)
         return id
     }
 
@@ -469,6 +483,7 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 preferences[ACTIVE_MEMORY_SPACE_ID] = DEFAULT_PROFILE_ID
             }
         }
+        MemorySpaceProfileDocumentRepository.getInstance(context).delete(memorySpaceId)
         ObjectBoxManager.delete(context, memorySpaceId)
     }
 
@@ -507,7 +522,16 @@ class UserPreferencesManager private constructor(private val context: Context) {
                 Json.decodeFromString<LegacyUserProfile>(encoded)
             }
         }
-        return LegacyUserProfileSnapshot(activeId, profiles)
+        val hasLegacyCategoryLocks =
+            listOf(
+                BIRTH_DATE_LOCKED,
+                GENDER_LOCKED,
+                PERSONALITY_LOCKED,
+                IDENTITY_LOCKED,
+                OCCUPATION_LOCKED,
+                AI_STYLE_LOCKED
+            ).any { preferences[it] == true }
+        return LegacyUserProfileSnapshot(activeId, profiles, hasLegacyCategoryLocks)
     }
 
     suspend fun migrateLegacyProfilesToMemorySpaces(snapshot: LegacyUserProfileSnapshot) {
@@ -522,7 +546,14 @@ class UserPreferencesManager private constructor(private val context: Context) {
             val activeId = snapshot.activeProfileId.takeIf(ids::contains) ?: DEFAULT_PROFILE_ID
             preferences[ACTIVE_MEMORY_SPACE_ID] = activeId
             profiles.forEach { profile ->
-                val space = MemorySpace(profile.id, profile.name)
+                // A released partial category lock cannot be represented as a document-wide
+                // lock. Locking the document avoids rewriting a field the user previously
+                // protected; the new memory-space UI lets the user choose the new policy.
+                val space = MemorySpace(
+                    id = profile.id,
+                    name = profile.name,
+                    profileAutoUpdateLocked = snapshot.hasLegacyCategoryLocks
+                )
                 preferences[stringPreferencesKey("memory_space_${profile.id}")] =
                     Json.encodeToString(space)
                 preferences.remove(stringPreferencesKey("profile_${profile.id}"))

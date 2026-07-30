@@ -134,7 +134,6 @@ enum class RawSnapshotOperation {
     BACKING_UP,
     BACKUP_SUCCESS,
     RESTORING,
-    RESTORE_SUCCESS,
     FAILED
 }
 
@@ -172,7 +171,6 @@ fun ChatBackupSettingsScreen() {
     var rawSnapshotOperationMessage by remember { mutableStateOf("") }
     var pendingRawSnapshotRestoreUri by remember { mutableStateOf<Uri?>(null) }
     var showRawSnapshotRestoreConfirmDialog by remember { mutableStateOf(false) }
-    var showRawSnapshotRestoreRestartDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showMemoryImportStrategyDialog by remember { mutableStateOf(false) }
     var pendingMemoryImportUri by remember { mutableStateOf<Uri?>(null) }
@@ -1054,12 +1052,6 @@ fun ChatBackupSettingsScreen() {
                                         message = rawSnapshotOperationMessage,
                                         icon = Icons.Default.CloudDownload
                                     )
-                                RawSnapshotOperation.RESTORE_SUCCESS ->
-                                    OperationResultCard(
-                                        title = stringResource(R.string.backup_import_success),
-                                        message = rawSnapshotOperationMessage,
-                                        icon = Icons.Default.Restore
-                                    )
                                 RawSnapshotOperation.FAILED ->
                                     OperationResultCard(
                                         title = stringResource(R.string.backup_operation_failed),
@@ -1479,9 +1471,13 @@ fun ChatBackupSettingsScreen() {
                                             }
                                         }
                                     )
-                                    rawSnapshotOperationState = RawSnapshotOperation.RESTORE_SUCCESS
-                                    rawSnapshotOperationMessage = targetName
-                                    showRawSnapshotRestoreRestartDialog = true
+                                    // The open process may retain stale DataStore state. Do not
+                                    // allow it to keep running after raw files have been replaced.
+                                    val intent = Intent(context, MainActivity::class.java).apply {
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                    }
+                                    context.startActivity(intent)
+                                    exitProcess(0)
                                 } catch (e: Exception) {
                                     rawSnapshotOperationState = RawSnapshotOperation.FAILED
                                     rawSnapshotOperationMessage = e.localizedMessage ?: e.toString()
@@ -1533,32 +1529,6 @@ fun ChatBackupSettingsScreen() {
         )
     }
 
-    if (showRawSnapshotRestoreRestartDialog) {
-        AlertDialog(
-            onDismissRequest = { showRawSnapshotRestoreRestartDialog = false },
-            title = { Text(stringResource(R.string.backup_raw_snapshot_restart_title)) },
-            text = { Text(stringResource(R.string.backup_raw_snapshot_restart_message)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showRawSnapshotRestoreRestartDialog = false
-                        val intent = Intent(context, MainActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                        }
-                        context.startActivity(intent)
-                        exitProcess(0)
-                    }
-                ) {
-                    Text(stringResource(R.string.backup_raw_snapshot_restart_now))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showRawSnapshotRestoreRestartDialog = false }) {
-                    Text(stringResource(R.string.backup_raw_snapshot_restart_later))
-                }
-            }
-        )
-    }
 }
 
 private data class DeleteAllChatsResult(

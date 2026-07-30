@@ -214,7 +214,7 @@ fun AgentChatInputSection(
     onToggleDisableStreamOutput: () -> Unit = {},
     disableUserPreferenceDescription: Boolean = false,
     onToggleDisableUserPreferenceDescription: () -> Unit = {},
-    onNavigateToUserPreferences: () -> Unit = {},
+    onNavigateToMemoryBase: () -> Unit = {},
     onNavigateToPackageManager: () -> Unit = {},
     toolPromptVisibility: Map<String, Boolean> = emptyMap(),
     onSaveToolPromptVisibilityMap: (Map<String, Boolean>) -> Unit = {},
@@ -1427,7 +1427,7 @@ fun AgentChatInputSection(
                 onSelectMemory = onSelectMemory,
                 onManageMemory = {
                     showExtraSettingsPopup.value = false
-                    onNavigateToUserPreferences()
+                    onNavigateToMemoryBase()
                 },
                 enableMemoryAutoUpdate = enableMemoryAutoUpdate,
                 onToggleMemoryAutoUpdate = onToggleMemoryAutoUpdate,

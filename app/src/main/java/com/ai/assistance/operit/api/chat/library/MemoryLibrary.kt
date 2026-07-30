@@ -9,6 +9,7 @@ import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.data.model.Memory
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.MemorySearchSettingsPreferences
+import com.ai.assistance.operit.data.preferences.MemorySpaceProfileDocumentRepository
 import com.ai.assistance.operit.data.preferences.preferencesManager
 import com.ai.assistance.operit.data.repository.MemoryRepository
 import com.ai.assistance.operit.util.ChatUtils
@@ -49,7 +50,8 @@ object MemoryLibrary {
         val extractedEntities: List<ParsedEntity> = emptyList(),
         val links: List<ParsedLink> = emptyList(),
         val updatedEntities: List<ParsedUpdate> = emptyList(),
-        val mergedEntities: List<ParsedMerge> = emptyList()
+        val mergedEntities: List<ParsedMerge> = emptyList(),
+        val profileMarkdown: String? = null
     )
 
 
@@ -319,8 +321,21 @@ object MemoryLibrary {
                 profileId = profileId
             )
 
+            analysis.profileMarkdown?.let { markdown ->
+                try {
+                    val saved = MemorySpaceProfileDocumentRepository.getInstance(context)
+                        .saveAutomatic(profileId, markdown)
+                    if (saved) AppLogger.d(TAG, "记忆空间资料已自动更新: profileId=$profileId")
+                } catch (error: Exception) {
+                    AppLogger.e(TAG, "自动更新记忆空间资料失败: profileId=$profileId", error)
+                }
+            }
+
             // If analysis is empty (trivial conversation), abort early.
-            if (analysis.mainProblem == null && analysis.extractedEntities.isEmpty() && analysis.updatedEntities.isEmpty() && analysis.mergedEntities.isEmpty()) {
+            if (analysis.mainProblem == null && analysis.extractedEntities.isEmpty() &&
+                analysis.updatedEntities.isEmpty() && analysis.mergedEntities.isEmpty() &&
+                analysis.profileMarkdown == null
+            ) {
                 AppLogger.d(TAG, "分析结果为空，判断为无需记忆的对话，跳过保存。")
                 return@withLock
             }
@@ -491,6 +506,14 @@ object MemoryLibrary {
     ): ParsedAnalysis {
         try {
             val useEnglish = LocaleUtils.getCurrentLanguage(context).lowercase().startsWith("en")
+            val profileDocumentRepository =
+                MemorySpaceProfileDocumentRepository.getInstance(context)
+            profileDocumentRepository.initialize()
+            val memorySpace = preferencesManager.getMemorySpaceFlow(profileId).first()
+            val profileUpdateEnabled =
+                memorySpace.profileAutoUpdateEnabled && !memorySpace.profileAutoUpdateLocked
+            val profileDocument =
+                if (profileUpdateEnabled) profileDocumentRepository.load(profileId) else ""
             // --- Hybrid Strategy: Local rough search + LLM final decision ---
             // 1. Use a compact search query (question-focused) for rough candidate selection.
             val contextQuery = buildCandidateSearchQuery(query, solution)
@@ -552,7 +575,9 @@ object MemoryLibrary {
                 duplicatesPromptPart = duplicatesPromptPart,
                 existingMemoriesPrompt = existingMemoriesPrompt,
                 existingFoldersPrompt = existingFoldersPrompt,
-                useEnglish = useEnglish
+                useEnglish = useEnglish,
+                profileDocument = profileDocument,
+                profileUpdateEnabled = profileUpdateEnabled
             )
 
             val analysisMessage = buildAnalysisMessage(context, query, solution, conversationHistory, useEnglish)
@@ -807,12 +832,20 @@ object MemoryLibrary {
                 }
             } ?: emptyList()
 
+            val profileMarkdown =
+                if (json.has("profile_markdown") && !json.isNull("profile_markdown")) {
+                    json.optString("profile_markdown").takeIf { it.isNotBlank() }
+                } else {
+                    null
+                }
+
             ParsedAnalysis(
                 mainProblem = mainProblem,
                 extractedEntities = extractedEntities,
                 links = links,
                 updatedEntities = updatedEntities,
-                mergedEntities = mergedEntities
+                mergedEntities = mergedEntities,
+                profileMarkdown = profileMarkdown
             )
         } catch (e: Exception) {
             AppLogger.e(TAG, "解析分析结果失败: $jsonString", e)

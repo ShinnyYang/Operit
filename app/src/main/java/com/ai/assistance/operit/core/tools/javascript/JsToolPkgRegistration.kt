@@ -66,6 +66,12 @@ internal class JsToolPkgRegistrationSession {
         }
     }
 
+    fun isActive(): Boolean {
+        synchronized(lock) {
+            return capture != null
+        }
+    }
+
     fun appendToolboxUiModule(specJson: String) = append(RegistrationBucket.TOOLBOX_UI, specJson)
     fun appendUiRoute(specJson: String) = append(RegistrationBucket.UI_ROUTE, specJson)
     fun appendNavigationEntry(specJson: String) = append(RegistrationBucket.NAVIGATION_ENTRY, specJson)

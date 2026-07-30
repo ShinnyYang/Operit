@@ -112,7 +112,7 @@ fun ClassicChatSettingsBar(
     onToggleEnableMaxContextMode: () -> Unit,
     summaryTokenThreshold: Float,
     onSummaryTokenThresholdChange: (Float) -> Unit,
-    onNavigateToUserPreferences: () -> Unit,
+    onNavigateToMemoryBase: () -> Unit,
     onNavigateToModelConfig: () -> Unit,
     onNavigateToModelPrompts: () -> Unit,
     onNavigateToPackageManager: () -> Unit,
@@ -455,7 +455,7 @@ fun ClassicChatSettingsBar(
                                         showMenu = false
                                     },
                                     onManageClick = {
-                                        onNavigateToUserPreferences()
+                                        onNavigateToMemoryBase()
                                     showMenu = false
                                     }
                             )

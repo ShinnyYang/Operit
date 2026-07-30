@@ -1,7 +1,9 @@
 import {
   ensureWorldBookStorage,
   readWorldBookEntries,
-  writeWorldBookEntries
+  readWorldBookGroups,
+  writeWorldBookEntries,
+  writeWorldBookGroups
 } from "./worldbook_storage.js";
 
 export interface WorldBookEntry {
@@ -844,6 +846,21 @@ export async function deleteWorldBookEntry(id: string): Promise<WorldBookEntry> 
   const index = findEntryIndex(entries, id);
   const [removed] = entries.splice(index, 1);
   await saveEntries(entries);
+
+  // Clean up group references
+  const groups = await readWorldBookGroups<WorldBookGroup>();
+  let groupsDirty = false;
+  for (const group of groups) {
+    const idx = group.entry_ids.indexOf(id);
+    if (idx !== -1) {
+      group.entry_ids.splice(idx, 1);
+      groupsDirty = true;
+    }
+  }
+  if (groupsDirty) {
+    await writeWorldBookGroups(groups);
+  }
+
   return removed;
 }
 
@@ -871,6 +888,132 @@ export async function listWorldBookCharacterCards(): Promise<CharacterCardOption
       isDefault: card?.isDefault === true
     }))
     .filter((card) => !!card.id);
+}
+
+// --- 分组类型与 CRUD ---
+
+export interface WorldBookGroup {
+  id: string;
+  name: string;
+  entry_ids: string[];
+  character_card_ids: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WorldBookGroupMutationParams {
+  id: string;
+  name?: string;
+  entry_ids?: string[];
+  character_card_ids?: string[];
+}
+
+export interface WorldBookGroupCreateParams {
+  name: string;
+  entry_ids: string[];
+  character_card_ids: string[];
+}
+
+function generateGroupId(): string {
+  return `wg_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function normalizeWorldBookGroupName(name: string): string {
+  const normalized = name.trim();
+  if (normalized.length === 0) {
+    throw worldBookError("GROUP_NAME_REQUIRED", "分组名称不能为空");
+  }
+  return normalized;
+}
+
+export async function listWorldBookGroups(): Promise<WorldBookGroup[]> {
+  const groups = await readWorldBookGroups<WorldBookGroup>();
+  return groups.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function createWorldBookGroup(params: WorldBookGroupCreateParams): Promise<WorldBookGroup> {
+  const groups = await readWorldBookGroups<WorldBookGroup>();
+  const now = new Date().toISOString();
+  const group: WorldBookGroup = {
+    id: generateGroupId(),
+    name: normalizeWorldBookGroupName(params.name),
+    entry_ids: params.entry_ids,
+    character_card_ids: params.character_card_ids,
+    created_at: now,
+    updated_at: now
+  };
+  groups.push(group);
+  await writeWorldBookGroups(groups);
+  return group;
+}
+
+export async function deleteWorldBookGroup(id: string, deleteEntries: boolean): Promise<{ removedGroup: WorldBookGroup; removedEntries: WorldBookEntry[] }> {
+  const groups = await readWorldBookGroups<WorldBookGroup>();
+  const index = groups.findIndex((g) => g.id === id);
+  if (index === -1) throw worldBookError("GROUP_NOT_FOUND", "分组不存在");
+  const [removedGroup] = groups.splice(index, 1);
+  await writeWorldBookGroups(groups);
+
+  let removedEntries: WorldBookEntry[] = [];
+  if (deleteEntries) {
+    const entries = await loadEntries();
+    const remaining: WorldBookEntry[] = [];
+    for (const entry of entries) {
+      if (removedGroup.entry_ids.includes(entry.id)) {
+        removedEntries.push(entry);
+      } else {
+        remaining.push(entry);
+      }
+    }
+    await saveEntries(remaining);
+  }
+  return { removedGroup, removedEntries };
+}
+
+export async function copyEntryToGroup(entryId: string, targetGroupId: string): Promise<{ newEntry: WorldBookEntry }> {
+  const entries = await loadEntries();
+  const sourceIndex = findEntryIndex(entries, entryId);
+  const originalEntry = entries[sourceIndex];
+  const now = new Date().toISOString();
+  const newEntry: WorldBookEntry = {
+    ...originalEntry,
+    id: `wb_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+    name: `${originalEntry.name}(副本)`,
+    created_at: now,
+    updated_at: now
+  };
+  entries.push(newEntry);
+  await saveEntries(entries);
+
+  if (targetGroupId) {
+    const groups = await readWorldBookGroups<WorldBookGroup>();
+    const targetIndex = groups.findIndex((g) => g.id === targetGroupId);
+    if (targetIndex !== -1) {
+      groups[targetIndex].entry_ids.push(newEntry.id);
+      groups[targetIndex].updated_at = now;
+      await writeWorldBookGroups(groups);
+    }
+  }
+  return { newEntry };
+}
+
+export async function updateWorldBookGroup(params: WorldBookGroupMutationParams): Promise<WorldBookGroup> {
+  const groups = await readWorldBookGroups<WorldBookGroup>();
+  const index = groups.findIndex((g) => g.id === params.id);
+  if (index === -1) throw worldBookError("GROUP_NOT_FOUND", "分组不存在");
+  const now = new Date().toISOString();
+  if (params.name != null) {
+    groups[index].name = normalizeWorldBookGroupName(params.name);
+  }
+  if (params.entry_ids != null) {
+    groups[index].entry_ids = params.entry_ids;
+  }
+  if (params.character_card_ids != null) {
+    groups[index].character_card_ids = params.character_card_ids;
+  }
+  groups[index].updated_at = now;
+  await writeWorldBookGroups(groups);
+  return groups[index];
 }
 
 void ensureWorldBookStorage();

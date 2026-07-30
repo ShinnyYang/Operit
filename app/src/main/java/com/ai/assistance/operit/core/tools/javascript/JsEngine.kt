@@ -1438,6 +1438,12 @@ class JsEngine(private val context: Context) {
             JsJavaBridgeDelegates.unregisterJsInterfaceReleaseInvoker(jsBridgeCallbackInvoker)
         }
 
+        private fun requireToolPkgRegistrationOperationAllowed(operation: String) {
+            check(!toolPkgRegistrationSession.isActive()) {
+                "$operation is not allowed while registerToolPkg() is running"
+            }
+        }
+
         @JavascriptInterface
         fun decompress(data: String, algorithm: String): String {
             return JsNativeInterfaceDelegates.decompress(
@@ -1530,6 +1536,7 @@ class JsEngine(private val context: Context) {
                 outputFileName: String,
                 internal: String
         ): String {
+            requireToolPkgRegistrationOperationAllowed("ToolPkg.readResource()")
             return JsNativeInterfaceDelegates.readToolPkgResource(
                     context = context,
                     packageManager = packageManager,
@@ -1569,6 +1576,7 @@ class JsEngine(private val context: Context) {
             exportName: String,
             argsJson: String
         ): String {
+            requireToolPkgRegistrationOperationAllowed("ToolPkg.wasm.call()")
             return JsNativeInterfaceDelegates.callToolPkgWasm(
                 packageManager = packageManager,
                 packageNameOrSubpackageId = packageNameOrSubpackageId,

@@ -1,15 +1,21 @@
 import { resolveWorldBookI18n, type WorldBookI18n } from "../../i18n";
 import {
   createWorldBookEntry,
+  createWorldBookGroup,
+  copyEntryToGroup,
   deleteWorldBookEntry,
+  deleteWorldBookGroup,
   getWorldBookEntry,
   importWorldBookEntries,
   listWorldBookCharacterCards,
   listWorldBookEntries,
+  listWorldBookGroups,
   toggleWorldBookEntry,
   updateWorldBookEntry,
+  updateWorldBookGroup,
   type CharacterCardOption,
   type WorldBookError,
+  type WorldBookGroup,
   type WorldBookImportParams,
   type WorldBookEntry,
   type WorldBookListEntry,
@@ -176,10 +182,12 @@ function appendSnippetContent(currentContent: string, snippetContent: string): s
 
 export default function Screen(ctx: ComposeDslContext): ComposeNode {
   const [entries, setEntries] = ctx.useState<WorldBookListEntry[]>("entries", []);
+  const [groups, setGroups] = ctx.useState<WorldBookGroup[]>("groups", []);
+  const [expandedGroupIds, setExpandedGroupIds] = ctx.useState<string[]>("expandedGroupIds", []);
   const [loading, setLoading] = ctx.useState("loading", false);
   const [hasLoadedOnce, setHasLoadedOnce] = ctx.useState("hasLoadedOnce", false);
   const [initialLoadInFlight, setInitialLoadInFlight] = ctx.useState("initialLoadInFlight", false);
-  const [view, setView] = ctx.useState<"list" | "create" | "edit" | "import">("view", "list");
+  const [view, setView] = ctx.useState<"list" | "create" | "edit" | "import" | "group_create" | "group_edit" | "group_delete" | "copy_to_group">("view", "list");
   const [deletingEntryId, setDeletingEntryId] = ctx.useState("deletingEntryId", "");
   const [togglingEntryId, setTogglingEntryId] = ctx.useState("togglingEntryId", "");
   const [importing, setImporting] = ctx.useState("importing", false);
@@ -213,6 +221,15 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
   const [hasLoadedCards, setHasLoadedCards] = ctx.useState("hasLoadedCards", false);
   const formContentRef = ctx.useRef("formContentRef", "");
   formContentRef.current = formContent;
+
+  // Group form state
+  const [groupFormName, setGroupFormName] = ctx.useState("groupFormName", "");
+  const [groupFormEntryIds, setGroupFormEntryIds] = ctx.useState<string[]>("groupFormEntryIds", []);
+  const [groupFormCardIds, setGroupFormCardIds] = ctx.useState<string[]>("groupFormCardIds", []);
+  const [editingGroupId, setEditingGroupId] = ctx.useState("editingGroupId", "");
+  const [deletingGroupId, setDeletingGroupId] = ctx.useState("deletingGroupId", "");
+  const [copyingEntryId, setCopyingEntryId] = ctx.useState("copyingEntryId", "");
+  const [confirmDeleteEntryId, setConfirmDeleteEntryId] = ctx.useState("confirmDeleteEntryId", "");
 
   const t = resolveText();
   const colors = ctx.MaterialTheme.colorScheme;
@@ -259,7 +276,12 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
     }
     setLoading(true);
     try {
-      setEntries(await listWorldBookEntries());
+      const [fetchedEntries, fetchedGroups] = await Promise.all([
+        listWorldBookEntries(),
+        listWorldBookGroups()
+      ]);
+      setEntries(fetchedEntries);
+      setGroups(fetchedGroups);
     } catch (error) {
       ctx.showToast(`${t.toastLoadFailedPrefix}${(error as WorldBookError).message}`);
     } finally {
@@ -405,6 +427,7 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
   }
 
   async function doEdit(id: string) {
+    setConfirmDeleteEntryId("");
     try {
       const entry = await getWorldBookEntry(id);
       setEditId(entry.id);
@@ -868,7 +891,7 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
                 ),
                 UI.OutlinedButton(
                   {
-                    onClick: () => doDelete(entry.id, entry.name),
+                    onClick: () => doCopyEntry(entry.id),
                     enabled: !isEntryBusy,
                     weight: 1,
                     height: 32,
@@ -876,15 +899,569 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
                   },
                   [
                     UI.Text({
-                      text: t.buttonDelete,
+                      text: t.buttonCopy,
                       style: "labelMedium",
                       fontSize: 12
+                    })
+                  ]
+                ),
+                UI.OutlinedButton(
+                  {
+                    onClick: () => {
+                      if (confirmDeleteEntryId === entry.id) {
+                        setConfirmDeleteEntryId("");
+                        return doDelete(entry.id, entry.name);
+                      }
+                      setConfirmDeleteEntryId(entry.id);
+                      return undefined;
+                    },
+                    enabled: !isEntryBusy,
+                    weight: 1,
+                    height: 32,
+                    contentPadding: { horizontal: 12 }
+                  },
+                  [
+                    UI.Text({
+                      text: confirmDeleteEntryId === entry.id ? t.groupDeleteConfirm : t.buttonDelete,
+                      style: "labelMedium",
+                      fontSize: 12,
+                      color: confirmDeleteEntryId === entry.id ? colors.error : undefined
                     })
                   ]
                 )
               ]
             )
           ].filter(Boolean) as ComposeNode[]
+        )
+      ]
+    );
+  }
+
+  // === Group helper functions ===
+
+  function toggleGroupExpand(groupId: string) {
+    const current = expandedGroupIds;
+    if (current.includes(groupId)) {
+      setExpandedGroupIds(current.filter((id) => id !== groupId));
+    } else {
+      setExpandedGroupIds([...current, groupId]);
+    }
+  }
+
+  function getEntriesByGroup(entryIds: string[]): WorldBookListEntry[] {
+    return entries.filter((e) => entryIds.includes(e.id));
+  }
+
+  function getUngroupedEntries(): WorldBookListEntry[] {
+    const allGroupedIds = new Set<string>();
+    for (const g of groups) {
+      for (const eid of g.entry_ids) {
+        allGroupedIds.add(eid);
+      }
+    }
+    return entries.filter((e) => !allGroupedIds.has(e.id));
+  }
+
+  function getGroupEntryCount(group: WorldBookGroup): number {
+    return entries.filter((e) => group.entry_ids.includes(e.id)).length;
+  }
+
+  // === Group actions ===
+
+  function doOpenGroupCreate() {
+    setGroupFormName("");
+    setGroupFormEntryIds([]);
+    setGroupFormCardIds([]);
+    setEditingGroupId("");
+    setView("group_create");
+  }
+
+  function doOpenGroupEdit(group: WorldBookGroup) {
+    setGroupFormName(group.name);
+    setGroupFormEntryIds([...group.entry_ids]);
+    setGroupFormCardIds([...group.character_card_ids]);
+    setEditingGroupId(group.id);
+    setView("group_edit");
+  }
+
+  function doOpenGroupDelete(groupId: string) {
+    setDeletingGroupId(groupId);
+    setView("group_delete");
+  }
+
+  async function doSaveGroup() {
+    if (!groupFormName.trim()) {
+      ctx.showToast(t.groupNamePlaceholder);
+      return;
+    }
+    try {
+      if (editingGroupId) {
+        await updateWorldBookGroup({
+          id: editingGroupId,
+          name: groupFormName.trim(),
+          entry_ids: groupFormEntryIds,
+          character_card_ids: groupFormCardIds
+        });
+        ctx.showToast(t.groupToastUpdated);
+      } else {
+        await createWorldBookGroup({
+          name: groupFormName.trim(),
+          entry_ids: groupFormEntryIds,
+          character_card_ids: groupFormCardIds
+        });
+        ctx.showToast(t.groupToastCreated);
+      }
+      setView("list");
+      await loadEntries(true);
+    } catch (error) {
+      ctx.showToast(`${t.toastActionFailedPrefix}${(error as WorldBookError).message}`);
+    }
+  }
+
+  async function doDeleteGroup(deleteEntries: boolean) {
+    try {
+      await deleteWorldBookGroup(deletingGroupId, deleteEntries);
+      ctx.showToast(t.groupToastDeleted);
+      setView("list");
+      await loadEntries(true);
+    } catch (error) {
+      ctx.showToast(`${t.toastActionFailedPrefix}${(error as WorldBookError).message}`);
+    }
+  }
+
+  function doCopyEntry(entryId: string) {
+    setConfirmDeleteEntryId("");
+    setCopyingEntryId(entryId);
+    setView("copy_to_group");
+  }
+
+  async function doCopyToGroup(targetGroupId: string) {
+    try {
+      await copyEntryToGroup(copyingEntryId, targetGroupId);
+      ctx.showToast(t.copyToastDone);
+      setView("list");
+      await loadEntries(true);
+    } catch (error) {
+      ctx.showToast(`${t.toastActionFailedPrefix}${(error as WorldBookError).message}`);
+    }
+  }
+
+  function toggleGroupFormEntry(entryId: string) {
+    if (groupFormEntryIds.includes(entryId)) {
+      setGroupFormEntryIds(groupFormEntryIds.filter((id) => id !== entryId));
+    } else {
+      setGroupFormEntryIds([...groupFormEntryIds, entryId]);
+    }
+  }
+
+  function toggleGroupFormCard(cardId: string) {
+    if (groupFormCardIds.includes(cardId)) {
+      setGroupFormCardIds(groupFormCardIds.filter((id) => id !== cardId));
+    } else {
+      setGroupFormCardIds([...groupFormCardIds, cardId]);
+    }
+  }
+
+  // === Group rendering ===
+
+  function renderGroupHeader(group: WorldBookGroup): ComposeNode {
+    const isExpanded = expandedGroupIds.includes(group.id);
+    const entryCount = getGroupEntryCount(group);
+    const cardNames = group.character_card_ids
+      .map((cid) => resolveCharacterCardName(cid))
+      .filter((n) => n.length > 0);
+
+    return UI.Column(
+      {
+        key: `group_${group.id}`,
+        fillMaxWidth: true,
+        spacing: 0
+      },
+      [
+        UI.Box(
+          {
+            fillMaxWidth: true,
+            modifier: ctx.Modifier
+              .clip({ cornerRadius: 12 })
+              .background(colors.secondaryContainer.copy({ alpha: 0.25 }))
+              .clickable(() => toggleGroupExpand(group.id))
+              .padding({ horizontal: 14, vertical: 10 })
+          },
+          [
+            UI.Row(
+              {
+                fillMaxWidth: true,
+                verticalAlignment: "center"
+              },
+              [
+                UI.Icon({
+                  name: isExpanded ? "expandLess" : "expandMore",
+                  size: 20,
+                  tint: colors.onSecondaryContainer
+                }),
+                UI.Spacer({ width: 8 }),
+                UI.Column(
+                  { weight: 1 },
+                  [
+                    UI.Text({
+                      text: `${group.name}（${entryCount}）`,
+                      style: "bodyLarge",
+                      fontWeight: "bold",
+                      color: colors.onSurface
+                    }),
+                    cardNames.length > 0
+                      ? UI.Text({
+                          text: cardNames.join(", "),
+                          style: "bodySmall",
+                          color: colors.onSurfaceVariant,
+                          maxLines: 1,
+                          overflow: "ellipsis"
+                        })
+                      : null
+                  ].filter(Boolean) as ComposeNode[]
+                ),
+                UI.Box(
+                  {
+                    modifier: ctx.Modifier.clickable(() => doOpenGroupEdit(group))
+                  },
+                  [UI.Icon({ name: "settings", size: 18, tint: colors.onSurfaceVariant })]
+                ),
+                UI.Spacer({ width: 8 }),
+                UI.Box(
+                  {
+                    modifier: ctx.Modifier.clickable(() => doOpenGroupDelete(group.id))
+                  },
+                  [UI.Icon({ name: "delete", size: 18, tint: colors.error })]
+                )
+              ]
+            )
+          ]
+        ),
+        isExpanded
+          ? UI.Column(
+              { fillMaxWidth: true, spacing: 10, paddingTop: 8 },
+              getEntriesByGroup(group.entry_ids).map((entry) => renderCard(entry))
+            )
+          : null
+      ].filter(Boolean) as ComposeNode[]
+    );
+  }
+
+  function renderUngroupedSection(): ComposeNode | null {
+    const ungrouped = getUngroupedEntries();
+    if (ungrouped.length === 0) return null;
+    const isExpanded = expandedGroupIds.includes("__ungrouped__");
+
+    return UI.Column(
+      {
+        key: "group_ungrouped",
+        fillMaxWidth: true,
+        spacing: 0
+      },
+      [
+        UI.Box(
+          {
+            fillMaxWidth: true,
+            modifier: ctx.Modifier
+              .clip({ cornerRadius: 12 })
+              .background(colors.surfaceVariant.copy({ alpha: 0.15 }))
+              .clickable(() => toggleGroupExpand("__ungrouped__"))
+              .padding({ horizontal: 14, vertical: 10 })
+          },
+          [
+            UI.Row(
+              {
+                fillMaxWidth: true,
+                verticalAlignment: "center"
+              },
+              [
+                UI.Icon({
+                  name: isExpanded ? "expandLess" : "expandMore",
+                  size: 20,
+                  tint: colors.onSurfaceVariant
+                }),
+                UI.Spacer({ width: 8 }),
+                UI.Text({
+                  text: `${t.groupUngrouped}（${ungrouped.length}）`,
+                  style: "bodyLarge",
+                  fontWeight: "bold",
+                  color: colors.onSurfaceVariant
+                })
+              ]
+            )
+          ]
+        ),
+        isExpanded
+          ? UI.Column(
+              { fillMaxWidth: true, spacing: 10, paddingTop: 8 },
+              ungrouped.map((entry) => renderCard(entry))
+            )
+          : null
+      ].filter(Boolean) as ComposeNode[]
+    );
+  }
+
+  // === Group form views ===
+
+  function renderGroupForm(): ComposeNode {
+    const isEdit = view === "group_edit";
+    return UI.Column(
+      { padding: 12, spacing: 12, fillMaxWidth: true },
+      [
+        UI.Row(
+          { fillMaxWidth: true },
+          [
+            UI.OutlinedButton(
+              { onClick: () => setView("list"), shape: { cornerRadius: 12 } },
+              [
+                UI.Row({ spacing: 6, verticalAlignment: "center" }, [
+                  UI.Icon({ name: "arrowBack", size: 16, tint: colors.onSurface }),
+                  UI.Text({ text: t.buttonBack, color: colors.onSurface, fontWeight: "bold" })
+                ])
+              ]
+            )
+          ]
+        ),
+        UI.Text({
+          text: isEdit ? t.groupEditTitle : t.groupCreateTitle,
+          style: "titleMedium",
+          fontWeight: "bold",
+          color: colors.onSurface
+        }),
+        UI.TextField({
+          label: t.groupNameLabel,
+          placeholder: t.groupNamePlaceholder,
+          value: groupFormName,
+          onValueChange: setGroupFormName,
+          singleLine: true,
+          fillMaxWidth: true
+        }),
+        // Entry selection
+        UI.Text({
+          text: t.groupSelectEntries,
+          style: "labelLarge",
+          fontWeight: "bold",
+          color: colors.onSurface
+        }),
+        UI.Text({
+          text: t.groupSelectEntriesHint,
+          style: "bodySmall",
+          color: colors.onSurfaceVariant
+        }),
+        UI.Column(
+          { fillMaxWidth: true, spacing: 4 },
+          entries.filter((entry) => {
+            // Show: entries already in this group's form selection, or ungrouped entries
+            if (groupFormEntryIds.includes(entry.id)) return true;
+            // Check if this entry belongs to another group
+            for (const g of groups) {
+              if (g.id === editingGroupId) continue; // skip current group being edited
+              if (g.entry_ids.includes(entry.id)) return false;
+            }
+            return true;
+          }).map((entry) =>
+            UI.Row(
+              {
+                key: `gf_entry_${entry.id}`,
+                fillMaxWidth: true,
+                verticalAlignment: "center",
+                modifier: ctx.Modifier
+                  .clip({ cornerRadius: 8 })
+                  .clickable(() => toggleGroupFormEntry(entry.id))
+                  .padding({ horizontal: 8, vertical: 6 })
+              },
+              [
+                UI.Switch({
+                  checked: groupFormEntryIds.includes(entry.id),
+                  onCheckedChange: () => toggleGroupFormEntry(entry.id),
+                  modifier: ctx.Modifier.scale(0.7)
+                }),
+                UI.Spacer({ width: 8 }),
+                UI.Text({
+                  text: entry.name,
+                  style: "bodyMedium",
+                  color: colors.onSurface,
+                  maxLines: 1,
+                  overflow: "ellipsis",
+                  weight: 1
+                })
+              ]
+            )
+          )
+        ),
+        // Character card multi-binding
+        UI.Text({
+          text: t.groupBindCards,
+          style: "labelLarge",
+          fontWeight: "bold",
+          color: colors.onSurface
+        }),
+        UI.Text({
+          text: t.groupBindCardsHint,
+          style: "bodySmall",
+          color: colors.onSurfaceVariant
+        }),
+        UI.Column(
+          { fillMaxWidth: true, spacing: 4 },
+          availableCards.map((card) =>
+            UI.Row(
+              {
+                key: `gf_card_${card.id}`,
+                fillMaxWidth: true,
+                verticalAlignment: "center",
+                modifier: ctx.Modifier
+                  .clip({ cornerRadius: 8 })
+                  .clickable(() => toggleGroupFormCard(card.id))
+                  .padding({ horizontal: 8, vertical: 6 })
+              },
+              [
+                UI.Switch({
+                  checked: groupFormCardIds.includes(card.id),
+                  onCheckedChange: () => toggleGroupFormCard(card.id),
+                  modifier: ctx.Modifier.scale(0.7)
+                }),
+                UI.Spacer({ width: 8 }),
+                UI.Text({
+                  text: card.name || card.id,
+                  style: "bodyMedium",
+                  color: colors.onSurface,
+                  maxLines: 1,
+                  overflow: "ellipsis",
+                  weight: 1
+                })
+              ]
+            )
+          )
+        ),
+        groupFormCardIds.length > 0
+          ? UI.Text({
+              text: t.multiCardSelected(groupFormCardIds.length),
+              style: "bodySmall",
+              color: colors.primary
+            })
+          : null,
+        UI.Button({
+          text: isEdit ? t.groupSaveButton : t.groupCreateButton,
+          onClick: () => doSaveGroup(),
+          fillMaxWidth: true,
+          shape: { cornerRadius: 14 }
+        })
+      ].filter(Boolean) as ComposeNode[]
+    );
+  }
+
+  function renderGroupDeleteView(): ComposeNode {
+    return UI.Column(
+      { padding: 16, spacing: 16, fillMaxWidth: true },
+      [
+        UI.Text({
+          text: t.groupDeleteTitle,
+          style: "titleMedium",
+          fontWeight: "bold",
+          color: colors.onSurface
+        }),
+        UI.Button({
+          text: t.groupDeleteOnlyGroup,
+          onClick: () => doDeleteGroup(false),
+          fillMaxWidth: true,
+          shape: { cornerRadius: 14 }
+        }),
+        UI.OutlinedButton(
+          {
+            onClick: () => doDeleteGroup(true),
+            fillMaxWidth: true,
+            shape: { cornerRadius: 14 }
+          },
+          [
+            UI.Text({
+              text: t.groupDeleteWithEntries,
+              color: colors.error,
+              fontWeight: "bold"
+            })
+          ]
+        ),
+        UI.OutlinedButton(
+          {
+            onClick: () => setView("list"),
+            fillMaxWidth: true,
+            shape: { cornerRadius: 14 }
+          },
+          [
+            UI.Text({
+              text: t.groupDeleteCancel,
+              color: colors.onSurface
+            })
+          ]
+        )
+      ]
+    );
+  }
+
+  function renderCopyToGroupView(): ComposeNode {
+    return UI.Column(
+      { padding: 16, spacing: 12, fillMaxWidth: true },
+      [
+        UI.Row(
+          { fillMaxWidth: true },
+          [
+            UI.OutlinedButton(
+              { onClick: () => setView("list"), shape: { cornerRadius: 12 } },
+              [
+                UI.Row({ spacing: 6, verticalAlignment: "center" }, [
+                  UI.Icon({ name: "arrowBack", size: 16, tint: colors.onSurface }),
+                  UI.Text({ text: t.buttonBack, color: colors.onSurface, fontWeight: "bold" })
+                ])
+              ]
+            )
+          ]
+        ),
+        UI.Text({
+          text: t.copyToGroupTitle,
+          style: "titleMedium",
+          fontWeight: "bold",
+          color: colors.onSurface
+        }),
+        UI.Text({
+          text: t.copyToGroupHint,
+          style: "bodySmall",
+          color: colors.onSurfaceVariant
+        }),
+        // Ungrouped option
+        UI.Box(
+          {
+            fillMaxWidth: true,
+            modifier: ctx.Modifier
+              .clip({ cornerRadius: 10 })
+              .background(colors.surfaceVariant.copy({ alpha: 0.3 }))
+              .clickable(() => doCopyToGroup(""))
+              .padding({ horizontal: 14, vertical: 12 })
+          },
+          [
+            UI.Text({
+              text: t.copyToUngrouped,
+              color: colors.onSurface
+            })
+          ]
+        ),
+        // Group options
+        ...groups.map((g) =>
+          UI.Box(
+            {
+              key: `copy_g_${g.id}`,
+              fillMaxWidth: true,
+              modifier: ctx.Modifier
+                .clip({ cornerRadius: 10 })
+                .background(colors.secondaryContainer.copy({ alpha: 0.2 }))
+                .clickable(() => doCopyToGroup(g.id))
+                .padding({ horizontal: 14, vertical: 12 })
+            },
+            [
+              UI.Text({
+                text: `${g.name}（${getGroupEntryCount(g)}）`,
+                color: colors.onSurface
+              })
+            ]
+          )
         )
       ]
     );
@@ -1772,6 +2349,7 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
           [
             renderToolbarAction("search", t.actionSearch, toggleSearchBar, showSearchBar),
             renderToolbarAction("refresh", t.actionRefresh, () => doRefresh()),
+            renderToolbarAction("createNewFolder", t.groupNewButton, doOpenGroupCreate),
             renderToolbarAction("uploadFile", t.buttonImport, doOpenImport),
             renderToolbarAction("add", t.newEntryButton, doCreate)
           ]
@@ -1800,6 +2378,27 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
       ].filter(Boolean) as ComposeNode[]
     )
   ];
+
+  if (view === "group_create" || view === "group_edit") {
+    return UI.LazyColumn(
+      { fillMaxSize: true, spacing: 12, padding: { horizontal: 12, vertical: 8 } },
+      [renderGroupForm()]
+    );
+  }
+
+  if (view === "group_delete") {
+    return UI.LazyColumn(
+      { fillMaxSize: true, spacing: 12, padding: { horizontal: 12, vertical: 8 } },
+      [renderGroupDeleteView()]
+    );
+  }
+
+  if (view === "copy_to_group") {
+    return UI.LazyColumn(
+      { fillMaxSize: true, spacing: 12, padding: { horizontal: 12, vertical: 8 } },
+      [renderCopyToGroupView()]
+    );
+  }
 
   if (view === "edit" || view === "create") {
     return UI.Box(
@@ -1930,8 +2529,19 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
       )
     );
   } else {
-    for (const entry of visibleEntries) {
-      items.push(renderCard(entry));
+    if (hasSearchQuery) {
+      for (const entry of visibleEntries) {
+        items.push(renderCard(entry));
+      }
+    } else {
+      // Show grouped view
+      for (const group of groups) {
+        items.push(renderGroupHeader(group));
+      }
+      const ungroupedNode = renderUngroupedSection();
+      if (ungroupedNode) {
+        items.push(ungroupedNode);
+      }
     }
   }
 

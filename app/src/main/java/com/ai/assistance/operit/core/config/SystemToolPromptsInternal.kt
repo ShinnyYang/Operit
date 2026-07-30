@@ -693,9 +693,9 @@ object SystemToolPromptsInternal {
                         ),
                         ToolPrompt(
                             name = "update_user_profile",
-                            description = "Replaces the private user.md profile after the user approves the tool call. Preserve useful existing content and write the complete Markdown document.",
+                            description = "Replaces the active memory-space user.md profile after the user approves the tool call. Preserve useful existing content and write the complete Markdown document.",
                             parametersStructured = listOf(
-                                ToolParameterSchema(name = "markdown", type = "string", description = "required, complete contents of user.md, maximum 12000 characters", required = true)
+                                ToolParameterSchema(name = "markdown", type = "string", description = "required, complete contents of the active memory-space user.md, maximum 12000 characters", required = true)
                             )
                         )
                     )
@@ -3685,9 +3685,9 @@ object SystemToolPromptsInternal {
                         ),
                         ToolPrompt(
                             name = "update_user_profile",
-                            description = "在用户批准工具调用后替换私有 user.md。保留仍然有用的现有内容，并写入完整的 Markdown 文档。",
+                            description = "在用户批准工具调用后替换当前记忆空间的 user.md。保留仍然有用的现有内容，并写入完整的 Markdown 文档。",
                             parametersStructured = listOf(
-                                ToolParameterSchema(name = "markdown", type = "string", description = "必需，user.md 的完整内容，最多 12000 个字符", required = true)
+                                ToolParameterSchema(name = "markdown", type = "string", description = "必需，当前记忆空间 user.md 的完整内容，最多 12000 个字符", required = true)
                             )
                         )
                     )
