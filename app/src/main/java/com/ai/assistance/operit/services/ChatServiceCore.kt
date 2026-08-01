@@ -60,9 +60,7 @@ class ChatServiceCore(
     private var onEnhancedAiServiceReady: ((EnhancedAIService) -> Unit)? = null
     
     // 额外的 onTurnComplete 回调（用于悬浮窗通知应用等场景）
-    private var additionalOnTurnComplete: ((String?, Int, Int, Int) -> Unit)? = null
-
-    private fun Long.toTokenCountCallbackInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+    private var additionalOnTurnComplete: ((String?, Long, Long, Long) -> Unit)? = null
     private var uiBridge: ChatServiceUiBridge = EmptyChatServiceUiBridge
     private val workspaceChangeTracker = WorkspaceChangeTracker.getInstance(context)
     private val workspaceTrackerOwnerId = "${selectionMode.name}@${System.identityHashCode(this)}"
@@ -188,7 +186,7 @@ class ChatServiceCore(
             onTurnComplete = { chatId, service, nextWindowSize, turnOptions ->
                 tokenStatisticsDelegate.updateCumulativeStatistics(chatId, service)
                 val (inputTokens, outputTokens) = tokenStatisticsDelegate.getCumulativeTokenCounts(chatId)
-                val windowSize = nextWindowSize?.toLong() ?: tokenStatisticsDelegate.getLastCurrentWindowSize(chatId)
+                val windowSize = nextWindowSize ?: tokenStatisticsDelegate.getLastCurrentWindowSize(chatId)
                 tokenStatisticsDelegate.setTokenCounts(chatId, inputTokens, outputTokens, windowSize)
                 if (turnOptions.persistTurn) {
                     chatHistoryDelegate.saveCurrentChat(
@@ -200,9 +198,9 @@ class ChatServiceCore(
                 }
                 additionalOnTurnComplete?.invoke(
                     chatId,
-                    inputTokens.toTokenCountCallbackInt(),
-                    outputTokens.toTokenCountCallbackInt(),
-                    windowSize.toTokenCountCallbackInt()
+                    inputTokens,
+                    outputTokens,
+                    windowSize
                 )
             },
             getIsAutoReadEnabled = {
@@ -476,7 +474,7 @@ class ChatServiceCore(
     val currentWindowSizeFlow: StateFlow<Long>
         get() = tokenStatisticsDelegate.currentWindowSizeFlow
 
-    val perRequestTokenCountFlow: StateFlow<Pair<Int, Int>?>
+    val perRequestTokenCountFlow: StateFlow<Pair<Long, Long>?>
         get() = tokenStatisticsDelegate.perRequestTokenCountFlow
 
     // 附件相关
@@ -515,7 +513,7 @@ class ChatServiceCore(
     }
     
     /** 设置额外的 onTurnComplete 回调（用于悬浮窗通知应用等场景） */
-    fun setAdditionalOnTurnComplete(callback: ((chatId: String?, inputTokens: Int, outputTokens: Int, windowSize: Int) -> Unit)?) {
+    fun setAdditionalOnTurnComplete(callback: ((chatId: String?, inputTokens: Long, outputTokens: Long, windowSize: Long) -> Unit)?) {
         additionalOnTurnComplete = callback
     }
 

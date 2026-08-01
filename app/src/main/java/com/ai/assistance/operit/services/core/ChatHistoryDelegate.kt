@@ -33,7 +33,7 @@ class ChatHistoryDelegate(
         private val context: Context,
         private val coroutineScope: CoroutineScope,
         private val selectionMode: ChatSelectionMode = ChatSelectionMode.FOLLOW_GLOBAL,
-        private val onTokenStatisticsLoaded: (chatId: String, inputTokens: Int, outputTokens: Int, windowSize: Int) -> Unit,
+        private val onTokenStatisticsLoaded: (chatId: String, inputTokens: Long, outputTokens: Long, windowSize: Long) -> Unit,
         private val getEnhancedAiService: () -> EnhancedAIService?,
         private val ensureAiServiceAvailable: () -> Unit = {}, // 确保AI服务可用的回调
         private val getChatStatistics: () -> Triple<Long, Long, Long> = { Triple(0L, 0L, 0L) }, // 获取（输入token, 输出token, 窗口大小）
@@ -45,7 +45,6 @@ class ChatHistoryDelegate(
         // This constant is now in AIMessageManager
         // private const val SUMMARY_CHUNK_SIZE = 8
 
-        private fun Long.toPersistedTokenCount(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
     }
 
     private val chatHistoryManager = ChatHistoryManager.getInstance(context)
@@ -1241,9 +1240,9 @@ class ChatHistoryDelegate(
             ) {
                 chatHistoryManager.updateChatTokenCounts(
                     it,
-                    inputTokens.toPersistedTokenCount(),
-                    outputTokens.toPersistedTokenCount(),
-                    actualContextWindowSize.toPersistedTokenCount()
+                    inputTokens,
+                    outputTokens,
+                    actualContextWindowSize
                 )
             }
         }

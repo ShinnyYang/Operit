@@ -626,29 +626,6 @@ class MCPBridge private constructor(private val context: Context) {
         )
     }
 
-    // Overload for remote services
-    suspend fun registerMcpService(
-        name: String,
-        type: String,
-        endpoint: String,
-        connectionType: String? = null,
-        description: String? = null,
-        bearerToken: String? = null,
-        headers: Map<String, String>? = null
-    ): JSONObject? {
-        return sendCommand(
-            MCPBridgeClient.buildRegisterRemoteCommand(
-                name = name,
-                type = type,
-                endpoint = endpoint,
-                connectionType = connectionType,
-                description = description,
-                bearerToken = bearerToken,
-                headers = headers
-            )
-        )
-    }
-
     // 取消注册MCP服务
     suspend fun unregisterMcpService(name: String): JSONObject? {
         return sendCommand(MCPBridgeClient.buildUnregisterCommand(name))
@@ -689,12 +666,6 @@ class MCPBridge private constructor(private val context: Context) {
     suspend fun listTools(serviceName: String? = null): JSONObject? {
         AppLogger.d(TAG, "获取工具列表${if (serviceName != null) " 服务: $serviceName" else " (默认服务)"}")
         return sendCommand(MCPBridgeClient.buildListToolsCommand(serviceName))
-    }
-
-    // 缓存工具列表到bridge（用于已有缓存的插件）
-    suspend fun cacheTools(serviceName: String, tools: List<JSONObject>): JSONObject? {
-        AppLogger.d(TAG, "缓存工具列表到bridge 服务: $serviceName 工具数: ${tools.size}")
-        return sendCommand(MCPBridgeClient.buildCacheToolsCommand(serviceName, tools))
     }
 
     // 调用工具

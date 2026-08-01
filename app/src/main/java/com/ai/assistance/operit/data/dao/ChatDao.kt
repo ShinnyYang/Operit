@@ -43,9 +43,9 @@ interface ChatDao {
             chatId: String,
             title: String,
             timestamp: Long,
-            inputTokens: Int,
-            outputTokens: Int,
-            currentWindowSize: Int
+            inputTokens: Long,
+            outputTokens: Long,
+            currentWindowSize: Long
     )
 
     /** 更新聊天标题 */

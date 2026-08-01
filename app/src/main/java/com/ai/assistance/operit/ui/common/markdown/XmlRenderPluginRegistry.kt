@@ -232,7 +232,7 @@ object XmlRenderPluginRegistry {
             )
         }
         val jsEngine = remember(packageManager, executionContextKey) {
-            packageManager.getToolPkgExecutionEngine(
+            packageManager.acquireToolPkgExecutionEngine(
                 contextKey = executionContextKey,
                 containerPackageName = result.containerPackageName
             )

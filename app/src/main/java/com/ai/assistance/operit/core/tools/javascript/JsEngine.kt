@@ -72,6 +72,8 @@ class JsEngine(private val context: Context) {
     private val quickJsDispatcher = quickJsExecutor.asCoroutineDispatcher()
     private val engineScope = CoroutineScope(SupervisorJob() + quickJsDispatcher)
     private val quickJsInitLock = Any()
+    // A disposed Compose host can otherwise close QuickJS between setup and task dispatch.
+    private val executionStartLock = Any()
     private val destroyed = AtomicBoolean(false)
 
     @Volatile
@@ -86,6 +88,11 @@ class JsEngine(private val context: Context) {
         val packageChatId: String?,
         val toolPkgLogSnapshot: JsToolPkgExecutionContext.LogSnapshot,
         val executionListener: JsExecutionListener?
+    )
+
+    private data class ExecutionDispatch(
+        val session: ExecutionSession,
+        val timeoutSec: Long?
     )
 
     private data class PendingJsBridgeCallback(
@@ -732,97 +739,110 @@ class JsEngine(private val context: Context) {
         val totalStartTime = if (shouldLogTiming) messageTimingNow() else 0L
 
         val initQuickJsStartTime = if (shouldLogTiming) messageTimingNow() else 0L
-        ensureQuickJs()
-        if (shouldLogTiming) {
-            logMessageTiming(
-                stage = "toolpkg.jsEngine.initQuickJs",
-                startTimeMs = initQuickJsStartTime,
-                details = "function=$functionName, plugin=$timingPluginId"
-            )
-        }
-
-        if (!jsEnvironmentInitialized) {
-            val initJavaScriptEnvironmentStartTime = if (shouldLogTiming) messageTimingNow() else 0L
-            initJavaScriptEnvironment()
+        val dispatch = synchronized(executionStartLock) {
+            if (destroyed.get()) {
+                return buildJsExecutionErrorPayload("JsEngine already destroyed")
+            }
+            ensureQuickJs()
             if (shouldLogTiming) {
                 logMessageTiming(
-                    stage = "toolpkg.jsEngine.initJavaScriptEnvironment",
-                    startTimeMs = initJavaScriptEnvironmentStartTime,
+                    stage = "toolpkg.jsEngine.initQuickJs",
+                    startTimeMs = initQuickJsStartTime,
                     details = "function=$functionName, plugin=$timingPluginId"
                 )
             }
+
             if (!jsEnvironmentInitialized) {
-                val failureReason = "QuickJS runtime initialization failed"
+                val initJavaScriptEnvironmentStartTime = if (shouldLogTiming) messageTimingNow() else 0L
+                initJavaScriptEnvironment()
                 if (shouldLogTiming) {
                     logMessageTiming(
-                        stage = "toolpkg.jsEngine.total",
-                        startTimeMs = totalStartTime,
-                        details = "function=$functionName, plugin=$timingPluginId, success=false, reason=$failureReason"
+                        stage = "toolpkg.jsEngine.initJavaScriptEnvironment",
+                        startTimeMs = initJavaScriptEnvironmentStartTime,
+                        details = "function=$functionName, plugin=$timingPluginId"
                     )
                 }
-                return buildJsExecutionErrorPayload(failureReason)
-            }
-        }
-
-        val callId = nextExecutionCallId()
-        val session =
-            createExecutionSession(
-                callId = callId,
-                script = script,
-                functionName = functionName,
-                params = effectiveParams,
-                envOverrides = envOverrides,
-                onIntermediateResult = onIntermediateResult,
-                dispatchIntermediateOnMain = dispatchIntermediateOnMain,
-                executionListener = executionListener
-            )
-        activeExecutionSessions[callId] = session
-
-        val buildExecutionScriptStartTime = if (shouldLogTiming) messageTimingNow() else 0L
-        val paramsObject = JSONObject(effectiveParams)
-        val paramsJson = paramsObject.toString()
-        val safeTimeoutSec = timeoutSec?.let { if (it <= 0L) 1L else it }
-        val preTimeoutMs =
-            if (safeTimeoutSec == null) {
-                null
-            } else {
-                (safeTimeoutSec - JsTimeoutConfig.PRE_TIMEOUT_LEAD_SECONDS)
-                    .coerceAtLeast(1L) * 1000L
-            }
-        val executionArgsJson =
-            JSONArray()
-                .put(callId)
-                .put(paramsObject)
-                .put(script)
-                .put(functionName)
-                .put(safeTimeoutSec ?: JSONObject.NULL)
-                .put(preTimeoutMs ?: JSONObject.NULL)
-                .toString()
-        if (shouldLogTiming) {
-            logMessageTiming(
-                stage = "toolpkg.jsEngine.buildExecutionScript",
-                startTimeMs = buildExecutionScriptStartTime,
-                details = "function=$functionName, plugin=$timingPluginId, scriptLength=${script.length}, paramsLength=${paramsJson.length}, argsLength=${executionArgsJson.length}, directInvoke=true"
-            )
-        }
-
-        launchQuickJsFunctionCall(
-            functionName = TOOLPKG_EXECUTION_ENTRY_FUNCTION,
-            argsJson = executionArgsJson,
-            callSite = "quickjs/runtime/execute-script.call",
-            onError = { e ->
-                AppLogger.e(
-                    TAG,
-                    "Failed to dispatch script execution: callId=$callId, function=$functionName, reason=${e.message}",
-                    e
-                )
-                removeExecutionSession(callId)
-                session.executionListener?.onFailed(callId, e.message ?: "dispatch failed")
-                if (!session.future.isDone) {
-                    session.future.complete(buildJsExecutionErrorPayload(e.message ?: "dispatch failed"))
+                if (!jsEnvironmentInitialized) {
+                    val failureReason = "QuickJS runtime initialization failed"
+                    if (shouldLogTiming) {
+                        logMessageTiming(
+                            stage = "toolpkg.jsEngine.total",
+                            startTimeMs = totalStartTime,
+                            details = "function=$functionName, plugin=$timingPluginId, success=false, reason=$failureReason"
+                        )
+                    }
+                    return buildJsExecutionErrorPayload(failureReason)
                 }
             }
-        )
+
+            val callId = nextExecutionCallId()
+            val session =
+                createExecutionSession(
+                    callId = callId,
+                    script = script,
+                    functionName = functionName,
+                    params = effectiveParams,
+                    envOverrides = envOverrides,
+                    onIntermediateResult = onIntermediateResult,
+                    dispatchIntermediateOnMain = dispatchIntermediateOnMain,
+                    executionListener = executionListener
+                )
+            activeExecutionSessions[callId] = session
+
+            val buildExecutionScriptStartTime = if (shouldLogTiming) messageTimingNow() else 0L
+            val paramsObject = JSONObject(effectiveParams)
+            val paramsJson = paramsObject.toString()
+            val safeTimeoutSec = timeoutSec?.let { if (it <= 0L) 1L else it }
+            val preTimeoutMs =
+                if (safeTimeoutSec == null) {
+                    null
+                } else {
+                    (safeTimeoutSec - JsTimeoutConfig.PRE_TIMEOUT_LEAD_SECONDS)
+                        .coerceAtLeast(1L) * 1000L
+                }
+            val executionArgsJson =
+                JSONArray()
+                    .put(callId)
+                    .put(paramsObject)
+                    .put(script)
+                    .put(functionName)
+                    .put(safeTimeoutSec ?: JSONObject.NULL)
+                    .put(preTimeoutMs ?: JSONObject.NULL)
+                    .toString()
+            if (shouldLogTiming) {
+                logMessageTiming(
+                    stage = "toolpkg.jsEngine.buildExecutionScript",
+                    startTimeMs = buildExecutionScriptStartTime,
+                    details = "function=$functionName, plugin=$timingPluginId, scriptLength=${script.length}, paramsLength=${paramsJson.length}, argsLength=${executionArgsJson.length}, directInvoke=true"
+                )
+            }
+
+            launchQuickJsFunctionCall(
+                functionName = TOOLPKG_EXECUTION_ENTRY_FUNCTION,
+                argsJson = executionArgsJson,
+                callSite = "quickjs/runtime/execute-script.call",
+                onError = { e ->
+                    AppLogger.e(
+                        TAG,
+                        "Failed to dispatch script execution: callId=$callId, function=$functionName, reason=${e.message}",
+                        e
+                    )
+                    removeExecutionSession(callId)
+                    session.executionListener?.onFailed(callId, e.message ?: "dispatch failed")
+                    if (!session.future.isDone) {
+                        session.future.complete(buildJsExecutionErrorPayload(e.message ?: "dispatch failed"))
+                    }
+                }
+            )
+            ExecutionDispatch(
+                session = session,
+                timeoutSec = safeTimeoutSec
+            )
+        }
+
+        val session = dispatch.session
+        val safeTimeoutSec = dispatch.timeoutSec
+        val callId = session.callId
 
         val waitResultStartTime = if (shouldLogTiming) messageTimingNow() else 0L
         return try {
@@ -2521,14 +2541,16 @@ class JsEngine(private val context: Context) {
 
     /** 销毁引擎资源 */
     fun destroy() {
-        if (!destroyed.compareAndSet(false, true)) {
-            return
-        }
         val engine =
-            synchronized(quickJsInitLock) {
-                quickJs.also {
-                    quickJs = null
-                    jsEnvironmentInitialized = false
+            synchronized(executionStartLock) {
+                if (!destroyed.compareAndSet(false, true)) {
+                    return
+                }
+                synchronized(quickJsInitLock) {
+                    quickJs.also {
+                        quickJs = null
+                        jsEnvironmentInitialized = false
+                    }
                 }
             }
 

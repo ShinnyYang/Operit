@@ -1,6 +1,8 @@
 # MCP TCP 桥接器
 
-这个工具充当基于STDIO的MCP服务器与TCP客户端之间的桥梁，让无法直接访问命名管道(FIFO)的客户端(如Android应用)能够与MCP服务器通信。
+这个工具只负责基于 STDIO 的本地 MCP 服务器与 TCP 客户端之间的桥接，让无法直接访问命名管道(FIFO)的客户端，例如 Android 应用，能够与本地进程通信。
+
+远程 HTTP Stream 和 SSE MCP 服务由 Android 端的 Kotlin MCP SDK 直接连接，不经过 bridge。
 
 ## 功能特点
 
@@ -13,15 +15,15 @@
 ## 安装
 
 ```bash
-# 进入bridge目录
-cd bridge
+# 在项目根目录安装工作区依赖
+pnpm install
 
-# 安装依赖
-npm install
-
-# 编译TypeScript
-npm run build
+# 编译 bridge 并同步 Android assets
+pnpm --dir tools/mcp_bridge run build
 ```
+
+`tools/mcp_bridge` 的依赖由根目录 `pnpm-lock.yaml` 统一锁定。构建会更新
+`app/src/main/assets/bridge/index.js` 和 `app/src/main/assets/bridge/spawn-helper.js`。
 
 ## 使用方法
 
@@ -29,7 +31,7 @@ npm run build
 
 ```bash
 # 使用默认配置启动
-npm start
+pnpm --dir tools/mcp_bridge start
 ```
 
 这将在默认端口8752上启动桥接器，连接到`../your-mcp-server.js`。
@@ -40,13 +42,13 @@ npm start
 
 ```bash
 # 格式
-npm start -- [端口] [命令] [参数...]
+pnpm --dir tools/mcp_bridge start -- [端口] [命令] [参数...]
 
 # 示例：在端口9000上启动，连接到Python MCP服务器
-npm start -- 9000 python ../python_mcp_server.py
+pnpm --dir tools/mcp_bridge start -- 9000 python ../python_mcp_server.py
 
 # 示例：连接到Java MCP服务器
-npm start -- 8752 java -jar ../java_mcp_server.jar
+pnpm --dir tools/mcp_bridge start -- 8752 java -jar ../java_mcp_server.jar
 ```
 
 ### 在代码中使用
@@ -77,16 +79,16 @@ pkg install nodejs
 
 # 克隆或下载此项目
 git clone <项目URL>
-cd <项目目录>/bridge
+cd <项目目录>
 
-# 安装依赖
-npm install
+# 安装根工作区依赖
+pnpm install
 
-# 编译
-npm run build
+# 编译并同步 Android assets
+pnpm --dir tools/mcp_bridge run build
 
 # 启动桥接器
-npm start -- 8752 node ../your-mcp-server.js
+pnpm --dir tools/mcp_bridge start -- 8752 node ../your-mcp-server.js
 ```
 
 ## Android客户端示例
@@ -136,4 +138,4 @@ class McpClient {
 - 确保MCP服务器程序已正确安装并可执行
 - 桥接器应当与内部网络一起使用，不要暴露到公共互联网
 - 对于生产环境，考虑添加认证和加密层
-- 在Android环境中，确保应用有INTERNET权限 
+- 在Android环境中，确保应用有INTERNET权限

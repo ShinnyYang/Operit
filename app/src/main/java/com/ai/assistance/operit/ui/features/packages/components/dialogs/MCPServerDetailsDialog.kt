@@ -55,6 +55,7 @@ fun MCPServerDetailsDialog(
         mdFontSize: Float = 14f
 ) {
     val isInstalled = server.isInstalled
+    val supportsLocalConfigEditing = server.type != "remote"
     val configuration = LocalConfiguration.current
     val screenHeight = configuration.screenHeightDp.dp
 
@@ -89,7 +90,7 @@ fun MCPServerDetailsDialog(
                     MCPServerDetailsHeader(server = server, onDismiss = onDismiss)
 
                     // Tabs if installed
-                    if (isInstalled) {
+                    if (isInstalled && supportsLocalConfigEditing) {
                         MCPServerDetailsTabs(
                                 selectedTabIndex = selectedTabIndex,
                                 onTabSelected = { selectedTabIndex = it }
@@ -104,7 +105,7 @@ fun MCPServerDetailsDialog(
                                             .weight(1f)
                                             .padding(bottom = 56.dp) // Make space for actions
                     ) {
-                        if (!isInstalled || selectedTabIndex == 0) {
+                        if (!isInstalled || !supportsLocalConfigEditing || selectedTabIndex == 0) {
                             // Details tab
                             MCPServerDetailsContent(
                                     server = server,

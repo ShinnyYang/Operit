@@ -5,7 +5,6 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.StringResultData
 import com.ai.assistance.operit.core.tools.ToolExecutionLimits
 import com.ai.assistance.operit.core.tools.ToolExecutor
-import com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.ToolResult
 import com.ai.assistance.operit.data.model.ToolValidationResult
@@ -251,8 +250,7 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
         val serverName = toolNameParts[0]
         val actualToolName = toolNameParts.subList(1, toolNameParts.size).joinToString(":")
 
-        // 获取MCP桥接客户端
-        val mcpClient = mcpManager.getOrCreateClient(serverName)
+        val mcpClient = mcpManager.getOrCreateSession(serverName)
         if (mcpClient == null) {
             val detailedReason = mcpManager.getLastConnectionFailureReason(serverName)
             return ToolResult(
@@ -290,60 +288,37 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
         // 自动类型转换处理
         val convertedParameters = convertParameterTypes(parameters, toolInfo)
 
-        // 调用MCP工具 - 使用同步版本
+        // The synchronous ToolExecutor boundary delegates the actual transport call to a coroutine.
         val result =
                 try {
-                    // 直接调用工具，返回完整的响应（包括 success, result, error）
-                    val response = mcpClient.callToolSync(actualToolName, convertedParameters)
+                    val response = kotlinx.coroutines.runBlocking {
+                        mcpClient.callTool(actualToolName, convertedParameters)
+                    }
 
-                    if (response == null) {
-                        // 如果响应为空（不应该发生，但做个保护）
-                        AppLogger.e(TAG, "MCP工具调用返回空响应: $serverName:$actualToolName")
+                    if (response.success) {
+                        val extractedContent = extractContentFromResult(response.result)
+                        val displayResult =
+                                persistLongResultIfNeeded(
+                                        result = extractedContent,
+                                        serverName = serverName,
+                                        toolName = actualToolName
+                                )
+                        AppLogger.d(TAG, "MCP工具调用成功: $serverName:$actualToolName")
+                        ToolResult(
+                                toolName = tool.name,
+                                success = true,
+                                result = StringResultData(displayResult),
+                                error = null
+                        )
+                    } else {
+                        val errorMessage = response.errorMessage ?: "Tool call failed"
+                        AppLogger.w(TAG, "MCP工具调用失败: $serverName:$actualToolName - $errorMessage")
                         ToolResult(
                                 toolName = tool.name,
                                 success = false,
                                 result = StringResultData(""),
-                                error = "Tool call returned empty response"
+                                error = errorMessage
                         )
-                    } else {
-                        val success = response.optBoolean("success", false)
-                        
-                        if (success) {
-                            // 成功：提取 result 字段并解析 content 数组
-                            val resultData = response.optJSONObject("result")
-                            val extractedContent = extractContentFromResult(resultData)
-                            val displayResult =
-                                    persistLongResultIfNeeded(
-                                            result = extractedContent,
-                                            serverName = serverName,
-                                            toolName = actualToolName
-                                    )
-                            AppLogger.d(TAG, "MCP工具调用成功: $serverName:$actualToolName")
-                            ToolResult(
-                                    toolName = tool.name,
-                                    success = true,
-                                    result = StringResultData(displayResult),
-                                    error = null
-                            )
-                        } else {
-                            // 失败：提取 error 字段
-                            val errorObj = response.optJSONObject("error")
-                            val errorMessage = if (errorObj != null) {
-                                val code = errorObj.optInt("code", -1)
-                                val message = errorObj.optString("message", "Unknown error")
-                                "[$code] $message"
-                            } else {
-                                "Tool call failed but no error message returned"
-                            }
-                            
-                            AppLogger.w(TAG, "MCP工具调用失败: $serverName:$actualToolName - $errorMessage")
-                            ToolResult(
-                                    toolName = tool.name,
-                                    success = false,
-                                    result = StringResultData(""),
-                                    error = errorMessage
-                            )
-                        }
                     }
                 } catch (e: Exception) {
                     val errorMessage = "Exception occurred while calling tool: ${e.message}"
@@ -360,12 +335,12 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
     }
 
     /** 尝试获取工具的参数类型信息 */
-    private fun getToolInfo(serverName: String, toolName: String): JSONObject? {
+    private fun getToolInfo(serverName: String, toolName: String): McpRuntimeTool? {
         try {
-            val client = mcpManager.getOrCreateClient(serverName) ?: return null
-            val tools = kotlinx.coroutines.runBlocking { client.getTools() }
+            val client = mcpManager.getOrCreateSession(serverName) ?: return null
+            val tools = kotlinx.coroutines.runBlocking { client.listTools() }
 
-            return tools.find { it.optString("name") == toolName }
+            return tools.find { it.name == toolName }
         } catch (e: Exception) {
             AppLogger.w(TAG, "获取工具信息失败: ${e.message}")
             return null
@@ -380,14 +355,14 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
      */
     private fun convertParameterTypes(
             parameters: Map<String, Any>,
-            toolInfo: JSONObject?
+            toolInfo: McpRuntimeTool?
     ): Map<String, Any> {
         val result = mutableMapOf<String, Any>()
 
         parameters.forEach { (name, value) ->
             // 尝试从工具定义中获取参数类型（从 inputSchema.properties 中获取）
             val expectedType =
-                    toolInfo?.optJSONObject("inputSchema")?.optJSONObject("properties")?.let {
+                    toolInfo?.inputSchemaObject()?.optJSONObject("properties")?.let {
                                 properties ->
                         properties.optJSONObject(name)?.optString("type")
                     }
@@ -423,11 +398,7 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
     }
 }
 
-/**
- * MCP管理器
- *
- * 管理MCP客户端的创建和缓存 注意：此版本使用MCPBridgeClient作为底层客户端，替代了原有的MCPClient
- */
+/** Manages transport-neutral MCP runtime sessions and their presentation metadata. */
 class MCPManager(private val context: Context) {
     companion object {
         private const val TAG = "MCPManager"
@@ -442,9 +413,8 @@ class MCPManager(private val context: Context) {
         }
     }
 
-    // 缓存已创建的MCP桥接客户端，避免重复创建
-    private val clientCache =
-            ConcurrentHashMap<String, com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient>()
+    private val sessionCache = ConcurrentHashMap<String, McpRuntimeSession>()
+    private val runtimeDescriptorCache = ConcurrentHashMap<String, McpRuntimeDescriptor>()
 
     // 缓存服务器配置
     private val serverConfigCache = ConcurrentHashMap<String, MCPServerConfig>()
@@ -473,77 +443,67 @@ class MCPManager(private val context: Context) {
         return connectionFailureReasons[serverName]
     }
 
-    /**
-     * 获取或创建MCP桥接客户端
-     *
-     * @param serverName 服务器名称
-     * @return MCP桥接客户端，如果服务器不存在或无法连接则返回null
-     */
-    fun getOrCreateClient(
-            serverName: String
-    ): com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient? {
-        // 检查缓存中是否已有客户端
-        val cachedClient = clientCache[serverName]
-        if (cachedClient != null) {
-            // 检查客户端连接状态 - 只做轻量检查，不要过早断开
-            if (cachedClient.isConnected()) {
-                AppLogger.d(TAG, "使用已缓存的客户端: $serverName")
-                return cachedClient
-            } else {
-                // 尝试重新连接现有客户端
-                AppLogger.d(TAG, "尝试重新连接缓存的客户端: $serverName")
-                val reconnected = kotlinx.coroutines.runBlocking { cachedClient.connect() }
-                if (reconnected) {
-                    AppLogger.d(TAG, "成功重新连接到服务: $serverName")
-                    connectionFailureReasons.remove(serverName)
-                    return cachedClient
-                }
-                // 客户端不再可用，从缓存移除
-                connectionFailureReasons[serverName] =
-                        cachedClient.getLastConnectionFailureDetail()
-                                ?: "Reconnect attempt failed, but the client did not report a detailed reason."
-                AppLogger.w(TAG, "无法重新连接到服务: $serverName，将创建新的连接")
-                clientCache.remove(serverName)
+    fun registerRuntime(pluginId: String, descriptor: McpRuntimeDescriptor) {
+        val previous = runtimeDescriptorCache.put(pluginId, descriptor)
+        connectionFailureReasons.remove(pluginId)
+        if (previous != null && previous != descriptor) {
+            sessionCache.remove(pluginId)?.let { oldSession ->
+                kotlinx.coroutines.runBlocking { oldSession.close() }
             }
         }
+    }
 
-        // 获取服务器配置
-        val serverConfig =
-                serverConfigCache[serverName]
-                        ?: run {
-                            connectionFailureReasons[serverName] =
-                                    "Server is not registered in MCPManager. This usually means the runtime registration never happened, was cleared, or the requested server name does not match the registered service name."
-                            return null
-                        }
+    fun getOrCreateSession(pluginId: String): McpRuntimeSession? {
+        val cachedSession = sessionCache[pluginId]
+        if (cachedSession != null) {
+            if (cachedSession.isConnected()) return cachedSession
 
-        try {
-            // 创建新的桥接客户端
-            val client =
-                    com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient(context, serverName)
+            try {
+                if (kotlinx.coroutines.runBlocking { cachedSession.connect() }) {
+                    connectionFailureReasons.remove(pluginId)
+                    return cachedSession
+                }
+            } catch (e: Exception) {
+                connectionFailureReasons[pluginId] =
+                        "Exception while reconnecting MCP runtime: ${e.message ?: e.javaClass.simpleName}"
+                AppLogger.e(TAG, "重连 MCP runtime 失败: $pluginId", e)
+            }
+            sessionCache.remove(pluginId)
+            kotlinx.coroutines.runBlocking { cachedSession.close() }
+        }
 
-            // 尝试连接 - 带详细日志
-            AppLogger.d(TAG, "正在创建新的连接到服务: $serverName")
-            val connectResult = kotlinx.coroutines.runBlocking { client.connect() }
+        val descriptor = runtimeDescriptorCache[pluginId]
+                ?: run {
+                    connectionFailureReasons[pluginId] =
+                            "MCP runtime is not registered for plugin $pluginId"
+                    return null
+                }
 
-            if (connectResult) {
-                // 连接成功，在会话期间保持此连接
-                AppLogger.d(TAG, "成功连接到服务: $serverName，将在会话期间保持连接")
-                clientCache[serverName] = client
-                connectionFailureReasons.remove(serverName)
-                return client
+        val session = when (descriptor) {
+            is McpRuntimeDescriptor.Local ->
+                com.ai.assistance.operit.data.mcp.plugins.BridgeMcpRuntimeSession(context, descriptor.serviceName)
+            is McpRuntimeDescriptor.Remote ->
+                com.ai.assistance.operit.data.mcp.plugins.RemoteMcpRuntimeSession(pluginId, descriptor)
+        }
+
+        return try {
+            AppLogger.d(TAG, "连接 MCP runtime: $pluginId")
+            if (!kotlinx.coroutines.runBlocking { session.connect() }) {
+                connectionFailureReasons[pluginId] = "MCP runtime connection failed"
+                kotlinx.coroutines.runBlocking { session.close() }
+                null
             } else {
-                connectionFailureReasons[serverName] =
-                        client.getLastConnectionFailureDetail()
-                                ?: "Connection attempt failed, but no detailed reason was reported by the bridge client."
-                AppLogger.w(TAG, "无法连接到服务: $serverName")
+                sessionCache[pluginId] = session
+                connectionFailureReasons.remove(pluginId)
+                session
             }
         } catch (e: Exception) {
-            connectionFailureReasons[serverName] =
-                    "Exception while creating bridge client: ${e.message ?: e.javaClass.simpleName}"
-            AppLogger.e(TAG, "创建桥接客户端时出错: ${e.message}", e)
+            connectionFailureReasons[pluginId] =
+                    "Exception while creating MCP runtime: ${e.message ?: e.javaClass.simpleName}"
+            AppLogger.e(TAG, "创建 MCP runtime 失败: $pluginId", e)
+            kotlinx.coroutines.runBlocking { session.close() }
+            null
         }
-
-        return null
     }
 
     /**
@@ -552,16 +512,13 @@ class MCPManager(private val context: Context) {
      * @param serverName 服务器名称
      * @param serverConfig 服务器配置
      */
-    fun registerServer(serverName: String, serverConfig: MCPServerConfig) {
-        serverConfigCache[serverName] = serverConfig
-        connectionFailureReasons.remove(serverName)
-
-        // 如果已有缓存的客户端，需要更新或移除
-        if (clientCache.containsKey(serverName)) {
-            // 移除旧客户端，下次需要时会重新创建
-            val oldClient = clientCache.remove(serverName)
-            oldClient?.disconnect()
-        }
+    fun registerServer(
+            pluginId: String,
+            serverConfig: MCPServerConfig,
+            descriptor: McpRuntimeDescriptor
+    ) {
+        serverConfigCache[pluginId] = serverConfig
+        registerRuntime(pluginId, descriptor)
     }
 
     /**
@@ -571,35 +528,20 @@ class MCPManager(private val context: Context) {
      */
     fun unregisterServer(serverName: String) {
         serverConfigCache.remove(serverName)
+        runtimeDescriptorCache.remove(serverName)
         connectionFailureReasons.remove(serverName)
-
-        // 关闭并移除对应客户端缓存
-        val oldClient = clientCache.remove(serverName)
-        oldClient?.disconnect()
-    }
-
-    /**
-     * 注册MCP服务器（简化版）
-     *
-     * @param serverName 服务器名称
-     * @param endpoint 服务器端点URL
-     * @param description 服务器描述
-     */
-    fun registerServer(serverName: String, endpoint: String, description: String = "") {
-        val serverConfig =
-                MCPServerConfig(
-                        name = serverName,
-                        endpoint = endpoint,
-                        description = description,
-                        capabilities = listOf("tools"),
-                        extraData = emptyMap()
-                )
-        registerServer(serverName, serverConfig)
+        sessionCache.remove(serverName)?.let { session ->
+            kotlinx.coroutines.runBlocking { session.close() }
+        }
     }
 
     /** 关闭所有MCP客户端连接 */
     fun shutdown() {
-        clientCache.values.forEach { it.disconnect() }
-        clientCache.clear()
+        sessionCache.values.forEach { session ->
+            kotlinx.coroutines.runBlocking { session.close() }
+        }
+        sessionCache.clear()
+        runtimeDescriptorCache.clear()
+        serverConfigCache.clear()
     }
 }

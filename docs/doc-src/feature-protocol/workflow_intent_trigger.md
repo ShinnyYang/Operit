@@ -167,3 +167,4 @@ TriggerNode 输出（示意）：
 
 - 该 Receiver 为 `exported=true`：任何 App 都可以发送广播到该入口。
 - 如果你担心滥用，建议后续增加 permission 或者在 Receiver 里做校验/白名单。
+- Receiver 和定时 Worker 都可以在没有 Activity 的情况下冷启动应用进程。工作流运行时所需的全局偏好会在 `Application.onCreate()` 阶段就绪，因此无需先打开主界面。

@@ -16,9 +16,9 @@ data class ChatMessage(
         val variantCount: Int = 1, // 当前消息可切换的回答版本数量
         val provider: String = "", // 供应商
         val modelName: String = "", // 模型名称
-        val inputTokens: Int = 0, // 本轮输入 token
-        val outputTokens: Int = 0, // 本轮输出 token
-        val cachedInputTokens: Int = 0, // 本轮缓存命中的输入 token
+        val inputTokens: Long = 0L, // 本轮输入 token
+        val outputTokens: Long = 0L, // 本轮输出 token
+        val cachedInputTokens: Long = 0L, // 本轮缓存命中的输入 token
         val sentAt: Long = 0L, // 本轮请求发送时间（时间戳）
         val outputDurationMs: Long = 0L, // 本轮输出耗时
         val waitDurationMs: Long = 0L, // 本轮等待首包耗时
@@ -46,9 +46,9 @@ data class ChatMessage(
         variantCount = parcel.readInt(),
         provider = parcel.readString() ?: "",
         modelName = parcel.readString() ?: "",
-        inputTokens = parcel.readInt(),
-        outputTokens = parcel.readInt(),
-        cachedInputTokens = parcel.readInt(),
+        inputTokens = parcel.readLong(),
+        outputTokens = parcel.readLong(),
+        cachedInputTokens = parcel.readLong(),
         sentAt = parcel.readLong(),
         outputDurationMs = parcel.readLong(),
         waitDurationMs = parcel.readLong(),
@@ -66,9 +66,9 @@ data class ChatMessage(
         parcel.writeInt(variantCount)
         parcel.writeString(provider)
         parcel.writeString(modelName)
-        parcel.writeInt(inputTokens)
-        parcel.writeInt(outputTokens)
-        parcel.writeInt(cachedInputTokens)
+        parcel.writeLong(inputTokens)
+        parcel.writeLong(outputTokens)
+        parcel.writeLong(cachedInputTokens)
         parcel.writeLong(sentAt)
         parcel.writeLong(outputDurationMs)
         parcel.writeLong(waitDurationMs)

@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.AIToolHandler
+import com.ai.assistance.operit.core.tools.mcp.MCPManager
 import com.ai.assistance.operit.core.tools.DirectoryListingData
 import com.ai.assistance.operit.core.tools.FileExistsData
 import com.ai.assistance.operit.data.mcp.plugins.MCPStarter
@@ -294,11 +295,7 @@ class MCPLocalServer private constructor(private val context: Context) {
         config.mcpServers.forEach { (serverId, serverConfig) ->
             if (!newMetadata.containsKey(serverId)) {
                 // 从 serverId 生成友好的显示名称
-                val displayName = serverId
-                    .replace("_", " ")
-                    .replace("-", " ")
-                    .split(" ")
-                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercase() } }
+                val displayName = displayNameForServerId(serverId)
                 
                 // 创建默认元数据
                 val metadata = PluginMetadata(
@@ -328,6 +325,40 @@ class MCPLocalServer private constructor(private val context: Context) {
         } else {
             config
         }
+    }
+
+    private fun displayNameForServerId(serverId: String): String {
+        return serverId
+            .replace("_", " ")
+            .replace("-", " ")
+            .split(" ")
+            .joinToString(" ") { it.replaceFirstChar { character -> character.uppercase() } }
+    }
+
+    private fun createRemoteMetadata(
+        server: RemoteMcpImportedServer,
+        existingMetadata: PluginMetadata?
+    ): PluginMetadata {
+        val baseMetadata = existingMetadata?.takeIf { it.type == "remote" }
+            ?: PluginMetadata(
+                id = server.id,
+                name = displayNameForServerId(server.id),
+                description = "",
+                isInstalled = true,
+                version = "1.0.0",
+                type = "remote"
+            )
+
+        return baseMetadata.copy(
+            type = "remote",
+            isInstalled = true,
+            endpoint = server.endpoint,
+            connectionType = server.connectionType,
+            disabled = server.disabled,
+            bearerToken = null,
+            headers = server.headers,
+            installedTime = System.currentTimeMillis()
+        )
     }
 
     private data class SanitizedConfigResult(
@@ -362,6 +393,35 @@ class MCPLocalServer private constructor(private val context: Context) {
             autoApprove = autoApprove,
             env = env
         )
+    }
+
+    private suspend fun resetRuntimeState(serverId: String) = withContext(Dispatchers.IO) {
+        val toolHandler = AIToolHandler.getInstance(context)
+        toolHandler.getAllToolNames()
+            .filter { it.startsWith("$serverId:") }
+            .forEach(toolHandler::unregisterTool)
+        MCPManager.getInstance(context).unregisterServer(serverId)
+        removeServerStatus(serverId)
+    }
+
+    private fun hasLocalRuntimeConfigurationChanged(
+        existing: MCPConfig.ServerConfig,
+        replacement: MCPConfig.ServerConfig
+    ): Boolean {
+        return existing.command != replacement.command ||
+            existing.args.orEmpty() != replacement.args.orEmpty() ||
+            existing.env.orEmpty() != replacement.env.orEmpty()
+    }
+
+    private fun hasRemoteRuntimeConfigurationChanged(
+        existing: PluginMetadata,
+        replacement: PluginMetadata
+    ): Boolean {
+        return existing.type != "remote" ||
+            existing.endpoint != replacement.endpoint ||
+            existing.connectionType != replacement.connectionType ||
+            existing.bearerToken != replacement.bearerToken ||
+            existing.headers.orEmpty() != replacement.headers.orEmpty()
     }
 
     private fun sanitizeMCPConfig(config: MCPConfig, source: String): SanitizedConfigResult {
@@ -414,7 +474,8 @@ class MCPLocalServer private constructor(private val context: Context) {
         val currentStatus = _serverStatus.value.toMutableMap()
         var hasNewStatus = false
         
-        _mcpConfig.value.mcpServers.forEach { (serverId, _) ->
+        val configuredServerIds = _mcpConfig.value.mcpServers.keys + _mcpConfig.value.pluginMetadata.keys
+        configuredServerIds.forEach { serverId ->
             if (!currentStatus.containsKey(serverId)) {
                 currentStatus[serverId] = ServerStatus(
                     serverId = serverId,
@@ -477,22 +538,39 @@ class MCPLocalServer private constructor(private val context: Context) {
         val normalizedCommand = command?.trim()
         require(!normalizedCommand.isNullOrEmpty()) { "MCP服务器 $serverId 的 command 不能为空" }
 
+        val updatedServerConfig = MCPConfig.ServerConfig(
+            command = normalizedCommand,
+            args = args?.mapNotNull { it } ?: emptyList(),
+            disabled = disabled,
+            autoApprove = autoApprove?.mapNotNull { it } ?: emptyList(),
+            env = env?.entries?.mapNotNull { entry ->
+                val key = entry.key?.takeIf { it.isNotBlank() }
+                val value = entry.value
+                if (key == null || value == null) null else key to value
+            }?.toMap() ?: emptyMap()
+        )
+        var shouldResetRuntime = false
         _mcpConfig.update { currentConfig ->
             val newServers = currentConfig.mcpServers.toMutableMap()
-            newServers[serverId] = MCPConfig.ServerConfig(
-                command = normalizedCommand,
-                args = args?.mapNotNull { it } ?: emptyList(),
-                disabled = disabled,
-                autoApprove = autoApprove?.mapNotNull { it } ?: emptyList(),
-                env = env?.entries?.mapNotNull { entry ->
-                    val key = entry.key?.takeIf { it.isNotBlank() }
-                    val value = entry.value
-                    if (key == null || value == null) null else key to value
-                }?.toMap() ?: emptyMap()
+            val newMetadata = currentConfig.pluginMetadata.toMutableMap()
+            val previousServerConfig = newServers[serverId]
+            val previousMetadata = newMetadata[serverId]
+            shouldResetRuntime =
+                (previousServerConfig != null &&
+                    hasLocalRuntimeConfigurationChanged(previousServerConfig, updatedServerConfig)) ||
+                    previousMetadata?.type == "remote"
+            newServers[serverId] = updatedServerConfig
+            if (newMetadata[serverId]?.type == "remote") {
+                newMetadata.remove(serverId)
+            }
+            autoFillMissingMetadata(
+                currentConfig.copy(mcpServers = newServers, pluginMetadata = newMetadata)
             )
-            currentConfig.copy(mcpServers = newServers)
         }
         saveMCPConfig()
+        if (shouldResetRuntime) {
+            resetRuntimeState(serverId)
+        }
         AppLogger.d(TAG, "MCP服务器配置已更新: $serverId")
     }
 
@@ -521,62 +599,89 @@ class MCPLocalServer private constructor(private val context: Context) {
         return withContext(Dispatchers.IO) {
             try {
                 AppLogger.d(TAG, "开始合并配置，输入长度: ${jsonConfig.length}")
-                AppLogger.d(TAG, "配置内容预览: ${jsonConfig.take(200)}")
-                
                 val parsedConfig = try {
-                    gson.fromJson(jsonConfig, MCPConfig::class.java)
+                    McpConfigImportParser.parse(jsonConfig)
                 } catch (e: Exception) {
-                    AppLogger.e(TAG, "JSON 解析失败", e)
-                    return@withContext Result.failure(Exception(context.getString(R.string.mcp_local_json_format_error, e.message)))
-                }
-                
-                if (parsedConfig?.mcpServers == null) {
-                    AppLogger.e(TAG, "配置解析结果为 null 或 mcpServers 字段为 null")
-                    return@withContext Result.failure(Exception(context.getString(R.string.mcp_local_no_mcp_servers_field)))
-                }
-                
-                if (parsedConfig.mcpServers.isEmpty()) {
-                    AppLogger.e(TAG, "mcpServers 为空")
-                    return@withContext Result.failure(Exception(context.getString(R.string.mcp_local_mcp_servers_empty)))
+                    AppLogger.e(TAG, "标准 MCP 配置解析失败", e)
+                    return@withContext Result.failure(
+                        Exception(
+                            context.getString(
+                                R.string.mcp_local_json_format_error,
+                                e.message ?: "配置字段无效"
+                            )
+                        )
+                    )
                 }
 
-                val sanitizedConfig = sanitizeMCPConfig(parsedConfig, "mergeConfigFromJson")
-                if (sanitizedConfig.config.mcpServers.isEmpty()) {
-                    AppLogger.e(TAG, "mcpServers 全部无效或 command 缺失")
-                    return@withContext Result.failure(Exception(context.getString(R.string.mcp_local_mcp_servers_empty)))
-                }
-                
-                AppLogger.d(TAG, "解析到 ${sanitizedConfig.config.mcpServers.size} 个服务器配置")
-                sanitizedConfig.config.mcpServers.forEach { (serverId, serverConfig) ->
-                    AppLogger.d(TAG, "服务器: $serverId, command: ${serverConfig.command}, args: ${serverConfig.args}")
-                }
-                
-                var addedCount = 0
+                val runtimeResetIds = mutableSetOf<String>()
                 _mcpConfig.update { currentConfig ->
                     val newServers = currentConfig.mcpServers.toMutableMap()
-                    sanitizedConfig.config.mcpServers.forEach { (serverId, serverConfig) ->
-                        newServers[serverId] = serverConfig
-                        addedCount++
-                        AppLogger.d(TAG, "添加服务器配置: $serverId")
+                    val newMetadata = currentConfig.pluginMetadata.toMutableMap()
+
+                    parsedConfig.servers.forEach { importedServer ->
+                        when (importedServer) {
+                            is StdioMcpImportedServer -> {
+                                val replacement = MCPConfig.ServerConfig(
+                                    command = importedServer.command,
+                                    args = importedServer.args,
+                                    disabled = importedServer.disabled,
+                                    autoApprove = importedServer.autoApprove,
+                                    env = importedServer.env
+                                )
+                                val existingServer = newServers[importedServer.id]
+                                val existingMetadata = newMetadata[importedServer.id]
+                                if ((existingServer != null &&
+                                        hasLocalRuntimeConfigurationChanged(existingServer, replacement)) ||
+                                    existingMetadata?.type == "remote") {
+                                    runtimeResetIds.add(importedServer.id)
+                                }
+                                newServers[importedServer.id] = replacement
+                                if (newMetadata[importedServer.id]?.type == "remote") {
+                                    newMetadata.remove(importedServer.id)
+                                }
+                            }
+
+                            is RemoteMcpImportedServer -> {
+                                val replacement = createRemoteMetadata(
+                                    importedServer,
+                                    newMetadata[importedServer.id]
+                                )
+                                val existingServer = newServers[importedServer.id]
+                                val existingMetadata = newMetadata[importedServer.id]
+                                if (existingServer != null ||
+                                    (existingMetadata != null &&
+                                        hasRemoteRuntimeConfigurationChanged(
+                                            existingMetadata,
+                                            replacement
+                                        ))) {
+                                    runtimeResetIds.add(importedServer.id)
+                                }
+                                newServers.remove(importedServer.id)
+                                newMetadata[importedServer.id] = replacement
+                            }
+                        }
                     }
-                    currentConfig.copy(mcpServers = newServers)
+
+                    autoFillMissingMetadata(
+                        currentConfig.copy(
+                            mcpServers = newServers,
+                            pluginMetadata = newMetadata
+                        )
+                    )
                 }
-                
-                AppLogger.d(TAG, "自动填充缺失的元数据")
-                val updatedConfig = autoFillMissingMetadata(_mcpConfig.value)
-                _mcpConfig.value = updatedConfig
-                
-                AppLogger.d(TAG, "保存配置文件")
+
+                runtimeResetIds.forEach { serverId -> resetRuntimeState(serverId) }
                 saveMCPConfig()
-                
-                AppLogger.d(TAG, "初始化服务器状态")
-                initializeMissingServerStatus()
-                
-                AppLogger.i(TAG, "成功合并 $addedCount 个服务器配置")
-                Result.success(addedCount)
+
+                val localCount = parsedConfig.servers.count { it is StdioMcpImportedServer }
+                val remoteCount = parsedConfig.servers.size - localCount
+                AppLogger.i(
+                    TAG,
+                    "成功合并 ${parsedConfig.servers.size} 个服务器配置（stdio=$localCount, remote=$remoteCount）"
+                )
+                Result.success(parsedConfig.servers.size)
             } catch (e: Exception) {
                 AppLogger.e(TAG, "合并配置失败: ${e.message}", e)
-                e.printStackTrace()
                 Result.failure(Exception(context.getString(R.string.mcp_local_merge_config_failed, e.message)))
             }
         }
@@ -607,12 +712,25 @@ class MCPLocalServer private constructor(private val context: Context) {
      * 添加或更新插件元数据
      */
     suspend fun addOrUpdatePluginMetadata(metadata: PluginMetadata) {
+        var shouldResetRuntime = false
         _mcpConfig.update { currentConfig ->
+            val newServers = currentConfig.mcpServers.toMutableMap()
             val newMetadata = currentConfig.pluginMetadata.toMutableMap()
+            if (metadata.type == "remote") {
+                val existingMetadata = newMetadata[metadata.id]
+                shouldResetRuntime =
+                    newServers.containsKey(metadata.id) ||
+                        (existingMetadata != null &&
+                            hasRemoteRuntimeConfigurationChanged(existingMetadata, metadata))
+                newServers.remove(metadata.id)
+            }
             newMetadata[metadata.id] = metadata
-            currentConfig.copy(pluginMetadata = newMetadata)
+            currentConfig.copy(mcpServers = newServers, pluginMetadata = newMetadata)
         }
         saveMCPConfig()
+        if (metadata.type == "remote" && shouldResetRuntime) {
+            resetRuntimeState(metadata.id)
+        }
         AppLogger.d(TAG, "插件元数据已更新: ${metadata.id} - ${metadata.name}")
     }
 

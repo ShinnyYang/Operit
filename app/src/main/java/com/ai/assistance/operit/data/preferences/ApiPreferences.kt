@@ -529,9 +529,9 @@ class ApiPreferences private constructor(private val context: Context) {
      */
     suspend fun updateTokensForProviderModel(
             providerModel: String,
-            inputTokens: Int,
-            outputTokens: Int,
-            cachedInputTokens: Int = 0
+            inputTokens: Long,
+            outputTokens: Long,
+            cachedInputTokens: Long = 0L
     ) {
         context.apiDataStore.edit { preferences ->
             val inputKey = getTokenInputKey(providerModel)
@@ -548,9 +548,9 @@ class ApiPreferences private constructor(private val context: Context) {
                     cachedInputKey.name,
                     outputKey.name
             )
-            preferences[inputKey] = currentInputTokens + inputTokens.toLong()
-            preferences[cachedInputKey] = currentCachedInputTokens + cachedInputTokens.toLong()
-            preferences[outputKey] = currentOutputTokens + outputTokens.toLong()
+            preferences[inputKey] = currentInputTokens + inputTokens
+            preferences[cachedInputKey] = currentCachedInputTokens + cachedInputTokens
+            preferences[outputKey] = currentOutputTokens + outputTokens
         }
     }
 

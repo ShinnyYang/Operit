@@ -180,9 +180,9 @@ private fun MessageInfoTwoColumnRow(
 
 @Composable
 private fun MessageInfoTokenRow(
-    inputTokens: Int,
-    outputTokens: Int,
-    cachedInputTokens: Int
+    inputTokens: Long,
+    outputTokens: Long,
+    cachedInputTokens: Long
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(

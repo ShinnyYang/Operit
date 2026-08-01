@@ -2019,8 +2019,8 @@ data class ChatListResultData(
         val createdAt: String,
         val updatedAt: String,
         val isCurrent: Boolean,
-        val inputTokens: Int,
-        val outputTokens: Int,
+        val inputTokens: Long,
+        val outputTokens: Long,
         val characterCardName: String? = null
     )
     

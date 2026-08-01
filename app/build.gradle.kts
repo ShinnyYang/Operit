@@ -221,8 +221,8 @@ android {
         applicationId = "com.ai.assistance.operit"
         minSdk = 26
         targetSdk = 34
-        versionCode = 44
-        versionName = "1.12.0+5"
+        versionCode = 45
+        versionName = "1.12.0+6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -560,11 +560,6 @@ dependencies {
     implementation(libs.poi.ooxml)
     implementation(libs.poi.scratchpad)
 
-    // Kotlin logging
-    implementation(libs.kotlin.logging)
-    implementation(libs.slf4j.api)
-    implementation(libs.slf4j.simple)
-
     // Color picker for theme customization
     implementation(libs.colorpicker)
     implementation(libs.backdrop)
@@ -608,7 +603,8 @@ dependencies {
     implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
 
-    implementation("io.modelcontextprotocol.sdk:mcp:1.1.0")
+    implementation(libs.mcp.sdk.client)
+    implementation(libs.ktor.client.okhttp)
     
     // Exclude bcprov-jdk15to18 from all configurations to avoid duplicate classes
     configurations.all {
@@ -625,7 +621,7 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-moshi:2.9.0")
     implementation("com.squareup.moshi:moshi-kotlin:1.15.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+    implementation(libs.okhttp.logging.interceptor)
 
 
     // Accompanist

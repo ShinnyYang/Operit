@@ -29,16 +29,13 @@ on:
       - ci/script/download_android_dependencies.sh
       - ci/script/prepare_android_dependencies.py
       - cmake/**
-      - dragonbones/**
+      - avator/**
       - examples/**
-      - fbx/**
       - gradle/**
       - gradle.properties
       - gradlew
       - gradlew.bat
-      - llama/**
-      - mmd/**
-      - mnn/**
+      - llm/**
       - package.json
       - package-lock.json
       - npm-shrinkwrap.json

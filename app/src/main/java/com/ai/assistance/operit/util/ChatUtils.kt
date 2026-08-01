@@ -84,11 +84,11 @@ object ChatUtils {
      * @param text 要估算token的文本
      * @return 估算的token数量
      */
-    fun estimateTokenCount(text: String): Int {
+    fun estimateTokenCount(text: String): Long {
         // 简单估算：中文每个字约1.5个token，英文每4个字符约1个token
         val chineseCharCount = text.count { it.code in 0x4E00..0x9FFF }
         val otherCharCount = text.length - chineseCharCount
-        return (chineseCharCount * 1.5 + otherCharCount * 0.25).toInt()
+        return (chineseCharCount * 1.5 + otherCharCount * 0.25).toLong()
     }
 
     /**

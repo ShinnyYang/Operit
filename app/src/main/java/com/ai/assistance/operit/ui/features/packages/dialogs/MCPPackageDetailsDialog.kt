@@ -62,8 +62,9 @@ import com.ai.assistance.operit.core.tools.LocalizedText
 import com.ai.assistance.operit.core.tools.PackageTool
 import com.ai.assistance.operit.core.tools.PackageToolParameter
 import com.ai.assistance.operit.core.tools.StringResultData
+import com.ai.assistance.operit.core.tools.mcp.MCPManager
+import com.ai.assistance.operit.core.tools.mcp.McpRuntimeTool
 import com.ai.assistance.operit.data.mcp.MCPLocalServer
-import com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.ToolParameter
 import com.ai.assistance.operit.data.model.ToolResult
@@ -691,10 +692,11 @@ private suspend fun loadMcpPackageTools(
     context: Context,
     serverId: String
 ): List<PackageTool> {
-    val client = MCPBridgeClient(context, serverId)
-    return client.getTools()
-        .mapNotNull { jsonTool ->
-            runCatching { jsonTool.toPackageTool() }
+    val session = MCPManager.getInstance(context).getOrCreateSession(serverId)
+        ?: return emptyList()
+    return session.listTools()
+        .mapNotNull { tool ->
+            runCatching { tool.toPackageTool() }
                 .onFailure { throwable ->
                     AppLogger.e("MCPPackageDetailsDialog", "Failed to parse MCP tool for $serverId", throwable)
                 }
@@ -703,15 +705,16 @@ private suspend fun loadMcpPackageTools(
         .sortedBy { tool -> tool.name }
 }
 
-private fun JSONObject.toPackageTool(): PackageTool? {
-    val toolName = optString("name").trim()
+private fun McpRuntimeTool.toPackageTool(): PackageTool? {
+    val toolName = name.trim()
     if (toolName.isEmpty()) {
         return null
     }
 
+    val schema = JSONObject(inputSchema)
+
     val requiredParams =
-        optJSONObject("inputSchema")
-            ?.optJSONArray("required")
+        schema.optJSONArray("required")
             ?.let { requiredArray ->
                 buildSet {
                     for (index in 0 until requiredArray.length()) {
@@ -726,7 +729,7 @@ private fun JSONObject.toPackageTool(): PackageTool? {
 
     val parameters =
         buildList {
-            val properties = optJSONObject("inputSchema")?.optJSONObject("properties") ?: return@buildList
+            val properties = schema.optJSONObject("properties") ?: return@buildList
             val names = properties.keys().asSequence().toList().sorted()
             names.forEach { paramName ->
                 val paramObject = properties.optJSONObject(paramName) ?: JSONObject()
@@ -743,7 +746,7 @@ private fun JSONObject.toPackageTool(): PackageTool? {
 
     return PackageTool(
         name = toolName,
-        description = LocalizedText.of(optString("description", "")),
+        description = LocalizedText.of(description),
         parameters = parameters,
         script = ""
     )

@@ -32,9 +32,22 @@ enum class RootCommandExecutionMode {
 lateinit var androidPermissionPreferences: AndroidPermissionPreferences
     private set
 
-/** 初始化Android权限偏好管理器 */
+private val androidPermissionPreferencesInitLock = Any()
+@Volatile
+private var androidPermissionPreferencesInitialized = false
+
+/** 初始化Android权限偏好管理器。该入口可被多个进程组件重复调用。 */
 fun initAndroidPermissionPreferences(context: Context) {
-    androidPermissionPreferences = AndroidPermissionPreferences(context)
+    if (androidPermissionPreferencesInitialized) {
+        return
+    }
+    synchronized(androidPermissionPreferencesInitLock) {
+        if (androidPermissionPreferencesInitialized) {
+            return
+        }
+        androidPermissionPreferences = AndroidPermissionPreferences(context)
+        androidPermissionPreferencesInitialized = true
+    }
 }
 
 /** Android权限偏好管理器 负责管理应用全局的权限级别偏好设置 */

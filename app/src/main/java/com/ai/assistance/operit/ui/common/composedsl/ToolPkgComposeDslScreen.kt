@@ -592,7 +592,7 @@ fun ToolPkgComposeDslToolScreen(
             null
         }
     val jsEngine = remember(packageManager, executionContextKey) {
-        packageManager.getToolPkgExecutionEngine(
+        packageManager.acquireToolPkgExecutionEngine(
             contextKey = executionContextKey,
             containerPackageName = containerPackageName
         )

@@ -1,34 +1,10 @@
-import { MCPClient } from 'mcp-client';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import * as path from 'path';
 import * as os from 'os';
-import { McpServiceInfo } from './index'; // Assuming McpServiceInfo is exported from index.ts
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { McpServiceInfo } from './index';
 
-
-// 扩展 MCPClient 以支持自定义 headers
-class MCPClientWithHeaders extends MCPClient {
-    async connectWithHeaders(options: {
-        url: string;
-        headers?: Record<string, string>;
-        connectionType?: 'httpStream' | 'sse';
-    }): Promise<void> {
-        const requestInit = options.headers ? { headers: options.headers } : undefined;
-        const transport = options.connectionType === 'sse'
-            ? new SSEClientTransport(new URL(options.url), { requestInit })
-            : new StreamableHTTPClientTransport(new URL(options.url), { requestInit });
-
-        // 访问私有的 client 和 transports (使用 any 绕过类型检查)
-        const clientInstance = (this as any).client as Client;
-        const transportsArray = (this as any).transports as any[];
-
-        transportsArray.push(transport);
-        await clientInstance.connect(transport);
-    }
-}
-
-let client: MCPClientWithHeaders | null = null;
+let client: Client | null = null;
 let serviceName: string;
 let serviceInfo: McpServiceInfo;
 
@@ -48,67 +24,44 @@ const handlers = {
         serviceName = params.serviceName;
         serviceInfo = params.serviceInfo;
 
-        client = new MCPClientWithHeaders({
+        const mcpClient = new Client({
             name: `helper-for-${serviceName}`,
             version: '1.0.0',
         });
+        client = mcpClient;
 
         try {
-            if (serviceInfo.type === 'local') {
-                let workingDir = serviceInfo.cwd || path.join(os.homedir(), 'mcp_plugins', serviceName);
-                workingDir = expandPath(workingDir);
+            let workingDir = serviceInfo.cwd || path.join(os.homedir(), 'mcp_plugins', serviceName);
+            workingDir = expandPath(workingDir);
 
-                let actualCommand = expandPath(serviceInfo.command!);
-                let actualArgs = serviceInfo.args || [];
-                if (actualCommand === 'npx') {
-                    actualCommand = 'pnpm';
-                    const filteredArgs = actualArgs.filter((arg: string) => arg !== '-y' && arg !== '--yes');
-                    actualArgs = ['dlx', ...filteredArgs];
-                }
-
-                const mergedEnv = {
-                    ...process.env,
-                    ...serviceInfo.env,
-                    ...(serviceInfo.env?.npm_config_cache ? {} : { npm_config_cache: path.join(workingDir, '.npm-cache') }),
-                    ...(serviceInfo.env?.npm_config_prefer_offline ? {} : { npm_config_prefer_offline: 'true' }),
-                    ...(serviceInfo.env?.UV_LINK_MODE ? {} : { UV_LINK_MODE: 'copy' }),
-                    ...(os.platform() === 'linux' ? { NODE_OPTIONS: '--openssl-legacy-provider' } : {}),
-                };
-
-                await client.connect({
-                    type: 'stdio',
-                    command: actualCommand,
-                    args: actualArgs,
-                    cwd: workingDir,
-                    env: mergedEnv,
-                });
-
-            } else if (serviceInfo.type === 'remote') {
-                // Build headers for authentication
-                const headers: Record<string, string> = {};
-
-                // Add bearer token if provided
-                if (serviceInfo.bearerToken) {
-                    headers['Authorization'] = `Bearer ${serviceInfo.bearerToken}`;
-                }
-
-                // Merge custom headers if provided
-                if (serviceInfo.headers) {
-                    Object.assign(headers, serviceInfo.headers);
-                }
-
-                // 使用扩展的 connectWithHeaders 方法传递 headers
-                await client.connectWithHeaders({
-                    url: serviceInfo.endpoint!,
-                    headers: Object.keys(headers).length > 0 ? headers : undefined,
-                    connectionType: serviceInfo.connectionType
-                });
+            let actualCommand = expandPath(serviceInfo.command);
+            let actualArgs = serviceInfo.args;
+            if (actualCommand === 'npx') {
+                actualCommand = 'pnpm';
+                const filteredArgs = actualArgs.filter((arg: string) => arg !== '-y' && arg !== '--yes');
+                actualArgs = ['dlx', ...filteredArgs];
             }
+
+            const mergedEnv = {
+                ...process.env,
+                ...serviceInfo.env,
+                ...(serviceInfo.env?.npm_config_cache ? {} : { npm_config_cache: path.join(workingDir, '.npm-cache') }),
+                ...(serviceInfo.env?.npm_config_prefer_offline ? {} : { npm_config_prefer_offline: 'true' }),
+                ...(serviceInfo.env?.UV_LINK_MODE ? {} : { UV_LINK_MODE: 'copy' }),
+                ...(os.platform() === 'linux' ? { NODE_OPTIONS: '--openssl-legacy-provider' } : {}),
+            };
+
+            const transport = new StdioClientTransport({
+                command: actualCommand,
+                args: actualArgs,
+                cwd: workingDir,
+                env: mergedEnv,
+            });
+            await mcpClient.connect(transport);
 
             console.log(`[${serviceName}] Helper connected successfully.`);
 
-            // Fetch tools and notify parent
-            const tools = await client.getAllTools();
+            const tools = await listAllTools(mcpClient);
             process.send!({
                 event: 'ready',
                 params: { serviceName, tools }
@@ -142,7 +95,20 @@ const handlers = {
             });
 
             const toolCallResult = { content: result.content };
-            const toolCallError = result.isError ? { code: -32000, message: result.content[0]?.text || "Remote tool error" } : undefined;
+            const toolErrorMessage = ("content" in result && Array.isArray(result.content)
+                ? result.content
+                    .filter((content): content is { type: 'text'; text: string } =>
+                        typeof content === 'object' &&
+                        content !== null &&
+                        'type' in content &&
+                        content.type === 'text' &&
+                        'text' in content &&
+                        typeof content.text === 'string'
+                    )
+                    .map((content) => content.text)
+                : [])
+                .join('\n');
+            const toolCallError = result.isError ? { code: -32000, message: toolErrorMessage } : undefined;
 
             process.send!({
                 event: 'tool_result',
@@ -174,6 +140,18 @@ const handlers = {
         process.exit(0);
     }
 };
+
+async function listAllTools(mcpClient: Client) {
+    let response = await mcpClient.listTools();
+    const tools = [...response.tools];
+
+    while (response.nextCursor) {
+        response = await mcpClient.listTools({ cursor: response.nextCursor });
+        tools.push(...response.tools);
+    }
+
+    return tools;
+}
 
 process.on('message', async (message: { command: string, id?: string, params: any }) => {
     const handler = handlers[message.command as keyof typeof handlers];
@@ -213,4 +191,4 @@ process.on('unhandledRejection', (reason, promise) => {
     process.exit(1);
 });
 
-console.log('Spawn helper process started.'); 
+console.log('Spawn helper process started.');

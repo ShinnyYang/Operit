@@ -11,39 +11,39 @@ class TokenCacheManager {
     // 上一次的聊天历史
     private var previousChatHistory: List<Pair<String, String>> = emptyList()
     // 对应于previousChatHistory的token数量
-    private var previousHistoryTokenCount = 0
+    private var previousHistoryTokenCount = 0L
     
     // 缓存的输入token数量（对应于previousChatHistory的公共前缀）
-    private var _cachedInputTokenCount = 0
+    private var _cachedInputTokenCount = 0L
     
     // 当前请求的新增token数量
-    private var _currentInputTokenCount = 0
+    private var _currentInputTokenCount = 0L
     
     // 当前输出token数量
-    private var _outputTokenCount = 0
+    private var _outputTokenCount = 0L
     
     /**
      * 获取缓存的输入token数量
      */
-    val cachedInputTokenCount: Int
+    val cachedInputTokenCount: Long
         get() = _cachedInputTokenCount
     
     /**
      * 获取当前请求的输入token数量（不包括缓存）
      */
-    val currentInputTokenCount: Int
+    val currentInputTokenCount: Long
         get() = _currentInputTokenCount
     
     /**
      * 获取总输入token数量（缓存 + 当前）
      */
-    val totalInputTokenCount: Int
-        get() = saturatedTokenSum(_cachedInputTokenCount, _currentInputTokenCount)
+    val totalInputTokenCount: Long
+        get() = _cachedInputTokenCount + _currentInputTokenCount
     
     /**
      * 获取输出token数量
      */
-    val outputTokenCount: Int
+    val outputTokenCount: Long
         get() = _outputTokenCount
     
     /**
@@ -51,24 +51,24 @@ class TokenCacheManager {
      */
     fun resetTokenCounts() {
         previousChatHistory = emptyList()
-        previousHistoryTokenCount = 0
-        _cachedInputTokenCount = 0
-        _currentInputTokenCount = 0
-        _outputTokenCount = 0
+        previousHistoryTokenCount = 0L
+        _cachedInputTokenCount = 0L
+        _currentInputTokenCount = 0L
+        _outputTokenCount = 0L
     }
     
     /**
      * 增加输出token数量
      */
-    fun addOutputTokens(tokens: Int) {
-        _outputTokenCount = saturatedTokenDelta(_outputTokenCount, tokens)
+    fun addOutputTokens(tokens: Long) {
+        _outputTokenCount += tokens
     }
 
     /**
      * 使用API返回的实际输出token数量覆盖当前估算值
      */
-    fun setOutputTokens(tokens: Int) {
-        _outputTokenCount = tokens.coerceAtLeast(0)
+    fun setOutputTokens(tokens: Long) {
+        _outputTokenCount = tokens.coerceAtLeast(0L)
     }
     
     /**
@@ -78,9 +78,9 @@ class TokenCacheManager {
      * @param actualInput 实际的输入token数量（不包括缓存）
      * @param cachedInput 缓存命中的token数量
      */
-    fun updateActualTokens(actualInput: Int, cachedInput: Int) {
-        _currentInputTokenCount = actualInput.coerceAtLeast(0)
-        _cachedInputTokenCount = cachedInput.coerceAtLeast(0)
+    fun updateActualTokens(actualInput: Long, cachedInput: Long) {
+        _currentInputTokenCount = actualInput.coerceAtLeast(0L)
+        _cachedInputTokenCount = cachedInput.coerceAtLeast(0L)
     }
     
     /**
@@ -94,7 +94,7 @@ class TokenCacheManager {
         chatHistory: List<Pair<String, String>>,
         toolsJson: String? = null,
         updateState: Boolean = true
-    ): Int {
+    ): Long {
         // 构建包含工具定义的历史记录列表
         // 策略：将toolsJson拼接到System Prompt前面，或者作为第一条System消息
         // 这样可以利用前缀匹配机制缓存工具定义
@@ -121,8 +121,8 @@ class TokenCacheManager {
         
         AppLogger.d("TokenCacheManager", "聊天历史比较: 当前=${historyWithTools.size}, 之前=${previousChatHistory.size}, 公共前缀=${commonPrefixLength}")
         
-        val cachedTokens: Int
-        val newTokens: Int
+        val cachedTokens: Long
+        val newTokens: Long
 
         if (commonPrefixLength > 0) {
             // 有公共前缀，可以使用缓存
@@ -141,7 +141,7 @@ class TokenCacheManager {
         } else {
             // 没有公共前缀，重新计算所有token
             val historyTokens = calculateTokensForHistory(historyWithTools)
-            cachedTokens = 0
+            cachedTokens = 0L
             newTokens = historyTokens
         }
 
@@ -150,7 +150,7 @@ class TokenCacheManager {
             _currentInputTokenCount = newTokens
 
             // 更新缓存的历史记录 token 数量
-            previousHistoryTokenCount = saturatedTokenSum(cachedTokens, newTokens)
+            previousHistoryTokenCount = cachedTokens + newTokens
 
             // 更新缓存的历史记录列表（包含工具定义）
             if (chatHistory.isNotEmpty()) {
@@ -170,16 +170,7 @@ class TokenCacheManager {
             }
         }
 
-        return saturatedTokenSum(cachedTokens, newTokens)
-    }
-
-    private fun saturatedTokenSum(vararg values: Int): Int {
-        val total = values.fold(0L) { acc, value -> acc + value.toLong().coerceAtLeast(0L) }
-        return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-    }
-
-    private fun saturatedTokenDelta(current: Int, delta: Int): Int {
-        return (current.toLong() + delta.toLong()).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+        return cachedTokens + newTokens
     }
     
     /**
@@ -206,10 +197,10 @@ class TokenCacheManager {
     /**
      * 计算聊天历史的token数量
      */
-    private fun calculateTokensForHistory(history: List<Pair<String, String>>): Int {
+    private fun calculateTokensForHistory(history: List<Pair<String, String>>): Long {
         val total = history.fold(0L) { acc, (_, content) ->
-            acc + ChatUtils.estimateTokenCount(content).toLong().coerceAtLeast(0L)
+            acc + ChatUtils.estimateTokenCount(content)
         }
-        return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        return total
     }
 }

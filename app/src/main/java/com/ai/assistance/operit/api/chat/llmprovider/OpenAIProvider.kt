@@ -128,11 +128,11 @@ open class OpenAIProvider(
     protected open val useResponsesApi: Boolean = false
 
     // 公开token计数
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = tokenCacheManager.totalInputTokenCount
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = tokenCacheManager.outputTokenCount
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = tokenCacheManager.cachedInputTokenCount
 
     // 供应商:模型标识符
@@ -141,7 +141,7 @@ open class OpenAIProvider(
 
     private suspend fun applyUsageToCounters(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
         tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
@@ -790,7 +790,7 @@ open class OpenAIProvider(
         providerReadyHistory: List<PromptTurn>,
         toolsJson: String? = null,
         preserveThinkInHistory: Boolean = false
-    ): Int {
+    ): Long {
         val comparableHistory = buildComparableHistory(providerReadyHistory, preserveThinkInHistory)
         return tokenCacheManager.calculateInputTokens(comparableHistory, toolsJson)
     }
@@ -920,7 +920,7 @@ open class OpenAIProvider(
         useToolCall: Boolean = false,
         toolsJson: String? = null,
         preserveThinkInHistory: Boolean = false
-    ): Pair<JSONArray, Int> {
+    ): Pair<JSONArray, Long> {
         val messagesArray = JSONArray()
         val providerReadyHistory = prepareHistoryForProvider(chatHistory, useToolCall)
 
@@ -1171,7 +1171,7 @@ open class OpenAIProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         // 构建工具定义的JSON字符串
         val toolsJson =
             if (enableToolCall && availableTools != null && availableTools.isNotEmpty()) {
@@ -1396,7 +1396,7 @@ open class OpenAIProvider(
         private val receivedContent: StringBuilder,
         private val emit: suspend (String) -> Unit,
         private val eventChannel: com.ai.assistance.operit.util.stream.MutableSharedStream<TextStreamEvent>,
-        private val onTokensUpdated: suspend (Int, Int, Int) -> Unit
+        private val onTokensUpdated: suspend (Long, Long, Long) -> Unit
     ) {
         private val savepointLengths = mutableMapOf<String, Int>()
 
@@ -2007,7 +2007,7 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
     ) {
         val eventType = jsonResponse.optString("type", "")
 
@@ -2158,8 +2158,8 @@ open class OpenAIProvider(
                 val reasoningTokens =
                     usage
                         ?.optJSONObject("output_tokens_details")
-                        ?.optInt("reasoning_tokens", 0)
-                        ?: 0
+                        ?.optLong("reasoning_tokens", 0L)
+                        ?: 0L
                 if (reasoningTokens > 0 || hasResponsesReasoningItem(responseObj)) {
                     state.reasoningObserved = true
                 }
@@ -2206,7 +2206,7 @@ open class OpenAIProvider(
         finishReason: String,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
     ) {
         val normalizedFinishReason = finishReason.trim()
         if (normalizedFinishReason.isEmpty() ||
@@ -2298,7 +2298,7 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
     ) {
         val usage = jsonResponse.optJSONObject("usage")
         val choices = jsonResponse.optJSONArray("choices")
@@ -2367,7 +2367,7 @@ open class OpenAIProvider(
     private suspend fun processStreamingResponse(
         reader: java.io.BufferedReader,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         context: Context
     ) {
         val state = StreamingState()
@@ -2463,7 +2463,7 @@ open class OpenAIProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> {

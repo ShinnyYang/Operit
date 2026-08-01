@@ -269,10 +269,10 @@ class OpenAIResponsesProvider(
 object OpenAIResponsesPayloadAdapter {
 
     data class UsageCounts(
-        val totalInputTokens: Int,
-        val actualInputTokens: Int,
-        val cachedInputTokens: Int,
-        val outputTokens: Int
+        val totalInputTokens: Long,
+        val actualInputTokens: Long,
+        val cachedInputTokens: Long,
+        val outputTokens: Long
     )
 
     data class ParsedResponseOutput(
@@ -294,15 +294,15 @@ object OpenAIResponsesPayloadAdapter {
     fun parseUsageCounts(usage: JSONObject?): UsageCounts? {
         usage ?: return null
 
-        val totalInputTokens = usage.optInt("prompt_tokens", usage.optInt("input_tokens", 0))
-        val outputTokens = usage.optInt("completion_tokens", usage.optInt("output_tokens", 0))
+        val totalInputTokens = usage.optLong("prompt_tokens", usage.optLong("input_tokens", 0L))
+        val outputTokens = usage.optLong("completion_tokens", usage.optLong("output_tokens", 0L))
         val cachedDetails =
             usage.optJSONObject("prompt_tokens_details")
                 ?: usage.optJSONObject("input_tokens_details")
         val cachedInputTokens =
-            cachedDetails?.optInt("cached_tokens", usage.optInt("cached_tokens", 0))
-                ?: usage.optInt("cached_tokens", 0)
-        val actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0)
+            cachedDetails?.optLong("cached_tokens", usage.optLong("cached_tokens", 0L))
+                ?: usage.optLong("cached_tokens", 0L)
+        val actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0L)
 
         return if (totalInputTokens > 0 || outputTokens > 0 || cachedInputTokens > 0) {
             UsageCounts(totalInputTokens, actualInputTokens, cachedInputTokens, outputTokens)

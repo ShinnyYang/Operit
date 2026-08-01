@@ -5,7 +5,6 @@ import com.ai.assistance.operit.core.tools.LocalizedText
 import com.ai.assistance.operit.core.tools.PackageTool
 import com.ai.assistance.operit.core.tools.PackageToolParameter
 import com.ai.assistance.operit.core.tools.ToolPackage
-import com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 
@@ -39,28 +38,31 @@ data class MCPPackage(
         }
 
         fun loadFromServer(context: Context, serverConfig: MCPServerConfig): LoadResult {
-            // 创建桥接客户端
-            val bridgeClient = MCPBridgeClient(context, serverConfig.name)
+            val mcpManager = MCPManager.getInstance(context)
+            val session = mcpManager.getOrCreateSession(serverConfig.name)
+                ?: return LoadResult(
+                    mcpPackage = null,
+                    errorMessage = mcpManager.getLastConnectionFailureReason(serverConfig.name)
+                        ?: "Connection failed"
+                )
             com.ai.assistance.operit.util.AppLogger.d(TAG, "正在连接到MCP服务器: ${serverConfig.name}")
 
             try {
-                // 尝试连接
-                val connected = runBlocking { bridgeClient.connect() }
+                val connected = runBlocking { session.connect() }
                 if (!connected) {
                     com.ai.assistance.operit.util.AppLogger.w(TAG, "无法连接到MCP服务器: ${serverConfig.name}")
                     return LoadResult(
                         mcpPackage = null,
-                        errorMessage =
-                            bridgeClient.getLastConnectionFailureDetail()
-                                ?: "Connection failed, but no detailed reason was reported."
+                        errorMessage = mcpManager.getLastConnectionFailureReason(serverConfig.name)
+                            ?: "Connection failed"
                     )
                 }
 
                 com.ai.assistance.operit.util.AppLogger.d(TAG, "成功连接到MCP服务器: ${serverConfig.name}，开始获取工具列表")
 
                 // 获取工具列表
-                val jsonTools = runBlocking { bridgeClient.getTools() }
-                if (jsonTools.isEmpty()) {
+                val runtimeTools = runBlocking { session.listTools() }
+                if (runtimeTools.isEmpty()) {
                     com.ai.assistance.operit.util.AppLogger.w(TAG, "MCP服务器 ${serverConfig.name} 没有提供任何工具")
                     // 不要因为没有工具就返回null
                     // 返回一个包含空工具列表的有效包
@@ -68,24 +70,19 @@ data class MCPPackage(
                     return LoadResult(mcpPackage = MCPPackage(serverConfig, emptyList()))
                 }
 
-                com.ai.assistance.operit.util.AppLogger.d(TAG, "成功从MCP服务器获取 ${jsonTools.size} 个工具")
+                com.ai.assistance.operit.util.AppLogger.d(TAG, "成功从MCP服务器获取 ${runtimeTools.size} 个工具")
 
-                // 将JSONObject工具转换为MCPTool
+                // 将运行时工具转换为MCPTool
                 val mcpTools =
-                        jsonTools.mapNotNull { jsonTool ->
+                        runtimeTools.mapNotNull { runtimeTool ->
                             try {
-                                // 提取工具信息
-                                val name = jsonTool.optString("name", "")
-
-                                // 直接获取描述，如果没有则使用空字符串
-                                val description = jsonTool.optString("description", "")
+                                val name = runtimeTool.name
+                                val description = runtimeTool.description
 
                                 if (name.isEmpty()) return@mapNotNull null
 
-                                // 提取参数信息
                                 val params = mutableListOf<MCPToolParameter>()
-                                // 改为从inputSchema中获取参数信息
-                                val inputSchema = jsonTool.optJSONObject("inputSchema")
+                                val inputSchema = runtimeTool.inputSchemaObject()
                                 val propertiesObj = inputSchema?.optJSONObject("properties")
                                 val requiredArray = inputSchema?.optJSONArray("required")
 
@@ -120,14 +117,10 @@ data class MCPPackage(
                             }
                         }
 
-                // 注意：不要断开连接！让客户端保持活跃状态
-                // 客户端会被缓存在MCPManager中以供后续使用
                 com.ai.assistance.operit.util.AppLogger.d(TAG, "成功创建MCP包，包含 ${mcpTools.size} 个工具，保持连接活跃")
                 return LoadResult(mcpPackage = MCPPackage(serverConfig, mcpTools))
             } catch (e: Exception) {
                 com.ai.assistance.operit.util.AppLogger.e(TAG, "创建MCP包时出错: ${e.message}", e)
-                // 只有在发生异常时才断开连接
-                bridgeClient.disconnect()
                 return LoadResult(
                     mcpPackage = null,
                     errorMessage = e.message ?: "Unexpected exception while creating MCP package"

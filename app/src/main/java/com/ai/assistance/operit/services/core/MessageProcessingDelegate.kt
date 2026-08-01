@@ -64,7 +64,7 @@ class MessageProcessingDelegate(
         private val updateChatTitle: (chatId: String, title: String) -> Unit,
         private val getChatTitle: (chatId: String) -> String?,
         private val onTurnComplete:
-            suspend (chatId: String?, service: EnhancedAIService, nextWindowSize: Int?, turnOptions: ChatTurnOptions) -> Unit,
+            suspend (chatId: String?, service: EnhancedAIService, nextWindowSize: Long?, turnOptions: ChatTurnOptions) -> Unit,
         private val onTokenLimitExceeded: suspend (
             chatId: String?,
             roleCardId: String?,
@@ -346,9 +346,9 @@ class MessageProcessingDelegate(
     }
 
     private fun ChatMessage.withTurnMetrics(
-        inputTokens: Int,
-        outputTokens: Int,
-        cachedInputTokens: Int,
+        inputTokens: Long,
+        outputTokens: Long,
+        cachedInputTokens: Long,
         sentAt: Long,
         outputDurationMs: Long,
         waitDurationMs: Long
@@ -364,9 +364,9 @@ class MessageProcessingDelegate(
     }
 
     internal data class TurnCancellationSnapshot(
-        val inputTokens: Int,
-        val outputTokens: Int,
-        val cachedInputTokens: Int,
+        val inputTokens: Long,
+        val outputTokens: Long,
+        val cachedInputTokens: Long,
         val sentAt: Long,
         val outputDurationMs: Long,
         val waitDurationMs: Long,
@@ -853,10 +853,10 @@ class MessageProcessingDelegate(
             var requestSentAt = 0L
             var requestStartElapsed = 0L
             var firstResponseElapsed: Long? = null
-            var turnInputTokens = 0
-            var turnOutputTokens = 0
-            var turnCachedInputTokens = 0
-            var calculateNextWindowSize: (suspend () -> Int?)? = null
+            var turnInputTokens = 0L
+            var turnOutputTokens = 0L
+            var turnCachedInputTokens = 0L
+            var calculateNextWindowSize: (suspend () -> Long?)? = null
             var cancellationToPropagate: kotlinx.coroutines.CancellationException? = null
             try {
                 // if (!NetworkUtils.isNetworkAvailable(context)) {
@@ -1713,9 +1713,9 @@ class MessageProcessingDelegate(
             }
 
             val finalContent = resolveFinalContent(aiMessage)
-            var turnInputTokens = 0
-            var turnOutputTokens = 0
-            var turnCachedInputTokens = 0
+            var turnInputTokens = 0L
+            var turnOutputTokens = 0L
+            var turnCachedInputTokens = 0L
             runCatching {
                 turnInputTokens = service.getCurrentInputTokenCount()
                 turnOutputTokens = service.getCurrentOutputTokenCount()
@@ -1797,7 +1797,7 @@ class MessageProcessingDelegate(
         chatId: String?,
         activeChatId: String?,
         service: EnhancedAIService,
-        calculateNextWindowSize: (suspend () -> Int?)? = null,
+        calculateNextWindowSize: (suspend () -> Long?)? = null,
         turnOptions: ChatTurnOptions = ChatTurnOptions()
     ) {
         if (!chatId.isNullOrBlank()) {
@@ -1820,7 +1820,7 @@ class MessageProcessingDelegate(
         isWaifuModeEnabled: Boolean,
         skipFinalAutoRead: Boolean,
         syncWaifuMessageMetrics: suspend (ChatMessage) -> Unit,
-        calculateNextWindowSize: (suspend () -> Int?)? = null,
+        calculateNextWindowSize: (suspend () -> Long?)? = null,
         turnOptions: ChatTurnOptions = ChatTurnOptions()
     ): Boolean {
         try {

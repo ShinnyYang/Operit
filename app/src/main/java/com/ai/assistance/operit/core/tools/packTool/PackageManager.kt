@@ -422,6 +422,13 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         return toolPkgManager.getToolPkgExecutionEngine(contextKey, containerPackageName)
     }
 
+    internal fun acquireToolPkgExecutionEngine(
+        contextKey: String,
+        containerPackageName: String
+    ): JsEngine {
+        return toolPkgManager.acquireToolPkgExecutionEngine(contextKey, containerPackageName)
+    }
+
     internal fun findToolPkgExecutionEngine(contextKey: String): JsEngine? {
         return toolPkgManager.findToolPkgExecutionEngine(contextKey)
     }

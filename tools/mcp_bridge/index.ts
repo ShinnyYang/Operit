@@ -8,7 +8,7 @@ console.log('Bridge process started. Loading modules...');
 
 import * as net from 'net';
 import { fork } from 'child_process';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import * as path from 'path';
 import * as os from 'os';
 
@@ -26,28 +26,18 @@ interface BridgeConfig {
 export interface McpServiceInfo {
     name: string;
     description: string;
-    type: 'local' | 'remote';
-
-    // For local services
-    command?: string;
-    args?: string[];
+    type: 'local';
+    command: string;
+    args: string[];
     cwd?: string;
     env?: Record<string, string>;
-
-    // For remote services
-    endpoint?: string;
-    connectionType?: 'httpStream' | 'sse';
-
-    // Authentication for remote services
-    bearerToken?: string;
-    headers?: Record<string, string>;
 
     created: number;
     lastUsed?: number;
 }
 
 // Command types
-type McpCommandType = 'spawn' | 'shutdown' | 'listtools' | 'toolcall' | 'list' | 'register' | 'unregister' | 'reset' | 'unspawn' | 'cachetools' | 'logs';
+type McpCommandType = 'spawn' | 'shutdown' | 'listtools' | 'toolcall' | 'list' | 'register' | 'unregister' | 'reset' | 'unspawn' | 'logs';
 
 // Command interface
 interface McpCommand {
@@ -85,7 +75,7 @@ class McpBridge {
     private config: BridgeConfig;
     private server: net.Server | null = null;
 
-    // 统一的服务客户端映射 (本地和远程都使用 MCPClient)
+    // 本地 stdio 服务的 helper 进程映射
     private serviceHelpers: Map<string, import('child_process').ChildProcess> = new Map();
     private mcpToolsMap: Map<string, any[]> = new Map();
     private serviceReadyMap: Map<string, boolean> = new Map();
@@ -259,30 +249,16 @@ class McpBridge {
      * 注册新的MCP服务
      */
     private registerService(name: string, info: Partial<McpServiceInfo>): boolean {
-        if (!name || !info.type) {
+        if (!name || !info.command) {
             return false;
-        }
-
-        if (info.type === 'local' && !info.command) {
-            return false;
-        }
-
-        if (info.type === 'remote') {
-            if (!info.endpoint) {
-                return false;
-            }
         }
 
         const serviceInfo: McpServiceInfo = {
             name,
-            type: info.type,
+            type: 'local',
             command: info.command,
             args: info.args || [],
             cwd: info.cwd,
-            endpoint: info.endpoint,
-            connectionType: info.connectionType || 'httpStream', // Default to httpStream
-            bearerToken: info.bearerToken,
-            headers: info.headers,
             description: info.description || `MCP Service: ${name}`,
             env: info.env || {},
             created: Date.now(),
@@ -320,22 +296,7 @@ class McpBridge {
         return this.serviceHelpers.has(serviceName);
     }
 
-    /**
-     * 连接到远程MCP服务 (HTTP/SSE)
-     */
-    private async connectToRemoteService(serviceName: string, endpoint: string, connectionType: 'httpStream' | 'sse' = 'httpStream'): Promise<void> {
-        if (this.isServiceActive(serviceName)) {
-            console.log(`Service ${serviceName} is already connected`);
-            return;
-        }
-
-        console.log(`Connecting to remote MCP service ${serviceName} at ${endpoint}`);
-        this.spawnServiceHelper(serviceName);
-    }
-
-    /**
-     * 处理服务连接关闭和重连 (本地和远程服务统一处理)
-     */
+    /** Handles a local stdio service closure and restart. */
     private handleServiceClosure(serviceName: string, signal: NodeJS.Signals | null = null): void {
         console.log(`Service ${serviceName} connection closed or failed.`);
         this.serviceHelpers.delete(serviceName);
@@ -807,17 +768,13 @@ class McpBridge {
 
                     // 如果未提供命令，但服务已注册，则使用注册表信息
                     if (serviceInfo) {
-                        if (serviceInfo.type === 'local') {
-                            this.startLocalService(
-                                spawnServiceName,
-                                serviceInfo.command!,
-                                serviceInfo.args!,
-                                serviceInfo.env,
-                                serviceInfo.cwd
-                            );
-                        } else if (serviceInfo.type === 'remote') {
-                            this.connectToRemoteService(spawnServiceName, serviceInfo.endpoint!, serviceInfo.connectionType);
-                        }
+                        this.startLocalService(
+                            spawnServiceName,
+                            serviceInfo.command,
+                            serviceInfo.args,
+                            serviceInfo.env,
+                            serviceInfo.cwd
+                        );
                     } else if (serviceCommand) {
 
                         // 如果服务未注册，但提供了command，则假定为本地服务并自动注册
@@ -943,7 +900,17 @@ class McpBridge {
                         break;
                     }
 
-                    if (params.type === 'local' && !params.command) {
+                    if (params.type !== 'local') {
+                        response = {
+                            id,
+                            success: false,
+                            error: { code: -32602, message: "Bridge accepts only local stdio services" }
+                        };
+                        socket.write(JSON.stringify(response) + '\n');
+                        break;
+                    }
+
+                    if (!params.command) {
                         response = {
                             id,
                             success: false,
@@ -953,27 +920,13 @@ class McpBridge {
                         break;
                     }
 
-                    if (params.type === 'remote' && !params.endpoint) {
-                        response = {
-                            id,
-                            success: false,
-                            error: { code: -32602, message: "Missing 'endpoint' for remote service" }
-                        };
-                        socket.write(JSON.stringify(response) + '\n');
-                        break;
-                    }
-
                     const registered = this.registerService(params.name, {
-                        type: params.type,
+                        type: 'local',
                         command: params.command,
                         args: params.args || [],
                         cwd: params.cwd,
                         description: params.description,
                         env: params.env,
-                        endpoint: params.endpoint,
-                        connectionType: params.connectionType,
-                        bearerToken: params.bearerToken,
-                        headers: params.headers,
                     });
 
                     response = {
@@ -1041,54 +994,6 @@ class McpBridge {
                 case 'toolcall':
                     // 调用工具
                     this.handleToolCall(command, socket);
-                    break;
-
-                case 'cachetools':
-                    // 缓存工具列表到bridge，用于已有缓存的插件
-                    if (!params || !params.name || !params.tools) {
-                        response = {
-                            id,
-                            success: false,
-                            error: {
-                                code: -32602,
-                                message: "Missing required parameters: name, tools"
-                            }
-                        };
-                        socket.write(JSON.stringify(response) + '\n');
-                        break;
-                    }
-
-                    const cacheServiceName = params.name;
-                    const tools = params.tools;
-
-                    // 验证服务是否已注册
-                    if (!this.serviceRegistry.has(cacheServiceName)) {
-                        response = {
-                            id,
-                            success: false,
-                            error: {
-                                code: -32602,
-                                message: `Service '${cacheServiceName}' is not registered. Please register it first.`
-                            }
-                        };
-                        socket.write(JSON.stringify(response) + '\n');
-                        break;
-                    }
-
-                    // 缓存工具列表
-                    this.mcpToolsMap.set(cacheServiceName, tools);
-                    console.log(`[${cacheServiceName}] Cached ${tools.length} tools from client cache`);
-
-                    response = {
-                        id,
-                        success: true,
-                        result: {
-                            status: 'cached',
-                            name: cacheServiceName,
-                            toolCount: tools.length
-                        }
-                    };
-                    socket.write(JSON.stringify(response) + '\n');
                     break;
 
                 case 'reset':
@@ -1312,7 +1217,7 @@ class McpBridge {
 
                             // 确保命令有ID
                             if (!command.id) {
-                                command.id = uuidv4();
+                                command.id = randomUUID();
                             }
 
                             // 处理命令
@@ -1465,4 +1370,4 @@ if (require.main === module) {
 }
 
 // Export bridge class for use by other modules
-export default McpBridge; 
+export default McpBridge;

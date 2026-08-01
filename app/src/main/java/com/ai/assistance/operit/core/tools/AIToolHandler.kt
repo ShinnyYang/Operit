@@ -289,9 +289,8 @@ class AIToolHandler private constructor(private val context: Context) {
     }
 
     private fun isMcpServiceActive(packageName: String): Boolean {
-        val client = MCPManager.getInstance(context).getOrCreateClient(packageName) ?: return false
-        val serviceInfo = runBlocking { client.getServiceInfo() } ?: return false
-        return serviceInfo.active && serviceInfo.ready
+        val session = MCPManager.getInstance(context).getOrCreateSession(packageName) ?: return false
+        return runBlocking { session.isActive() }
     }
 
 

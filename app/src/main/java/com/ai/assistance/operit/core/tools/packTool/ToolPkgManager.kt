@@ -19,7 +19,8 @@ internal class ToolPkgManager(
         CopyOnWriteArrayList<PackageManager.ToolPkgRuntimeChangeListener>()
     private data class ExecutionEngineEntry(
         val containerPackageName: String,
-        val engine: JsEngine
+        val engine: JsEngine,
+        val activeLeases: Int = 0
     )
 
     private val executionEngineLock = Any()
@@ -139,6 +140,36 @@ internal class ToolPkgManager(
         }
     }
 
+    fun acquireToolPkgExecutionEngine(
+        contextKey: String,
+        containerPackageName: String
+    ): JsEngine {
+        val normalizedKey = contextKey.trim()
+        val normalizedContainer = containerPackageName.trim()
+        require(normalizedKey.isNotBlank()) { "ToolPkg execution context key is required" }
+        require(normalizedContainer.isNotBlank()) { "ToolPkg execution container is required" }
+
+        return synchronized(executionEngineLock) {
+            check(!destroyed.get()) { "ToolPkg manager already destroyed" }
+            val entry = executionEngines[normalizedKey]
+            if (entry == null) {
+                val createdEntry =
+                    ExecutionEngineEntry(
+                        containerPackageName = normalizedContainer,
+                        engine = createExecutionEngine(),
+                        activeLeases = 1
+                    )
+                executionEngines[normalizedKey] = createdEntry
+                return@synchronized createdEntry.engine
+            }
+            check(entry.containerPackageName == normalizedContainer) {
+                "ToolPkg execution context belongs to another container"
+            }
+            executionEngines[normalizedKey] = entry.copy(activeLeases = entry.activeLeases + 1)
+            entry.engine
+        }
+    }
+
     fun findToolPkgExecutionEngine(contextKey: String): JsEngine? {
         val normalizedKey = contextKey.trim()
         if (normalizedKey.isBlank()) {
@@ -161,6 +192,13 @@ internal class ToolPkgManager(
                 if (
                     entry != null &&
                         entry.engine === executionEngine &&
+                        entry.activeLeases > 1
+                ) {
+                    executionEngines[normalizedKey] = entry.copy(activeLeases = entry.activeLeases - 1)
+                    null
+                } else if (
+                    entry != null &&
+                        entry.engine === executionEngine &&
                         executionEngines.remove(normalizedKey, entry)
                 ) {
                     entry
@@ -181,7 +219,13 @@ internal class ToolPkgManager(
         }
         val removedEntry =
             synchronized(executionEngineLock) {
-                executionEngines.remove(normalizedKey)
+                val entry = executionEngines[normalizedKey]
+                if (entry != null && entry.activeLeases > 1) {
+                    executionEngines[normalizedKey] = entry.copy(activeLeases = entry.activeLeases - 1)
+                    null
+                } else {
+                    executionEngines.remove(normalizedKey)
+                }
             }
         removedEntry?.engine?.destroy()
     }

@@ -19,9 +19,9 @@ class MessageProcessingDelegateTest {
             )
         val snapshot =
             MessageProcessingDelegate.TurnCancellationSnapshot(
-                inputTokens = 120,
-                outputTokens = 34,
-                cachedInputTokens = 56,
+                inputTokens = 120L,
+                outputTokens = 34L,
+                cachedInputTokens = 56L,
                 sentAt = 30L,
                 outputDurationMs = 4_000L,
                 waitDurationMs = 500L,
@@ -37,9 +37,9 @@ class MessageProcessingDelegateTest {
 
         assertEquals("partial response", result.content)
         assertNull(result.contentStream)
-        assertEquals(120, result.inputTokens)
-        assertEquals(34, result.outputTokens)
-        assertEquals(56, result.cachedInputTokens)
+        assertEquals(120L, result.inputTokens)
+        assertEquals(34L, result.outputTokens)
+        assertEquals(56L, result.cachedInputTokens)
         assertEquals(30L, result.sentAt)
         assertEquals(4_000L, result.outputDurationMs)
         assertEquals(500L, result.waitDurationMs)

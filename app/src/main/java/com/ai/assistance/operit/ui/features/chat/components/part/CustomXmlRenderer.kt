@@ -767,7 +767,7 @@ class CustomXmlRenderer(
     }
 
     @Composable
-    private fun rememberToolParamTokenEstimate(content: String, xmlStream: Stream<String>?): Int {
+    private fun rememberToolParamTokenEstimate(content: String, xmlStream: Stream<String>?): Long {
         val fallbackEstimate = remember(content) {
             val paramText = extractContentFromXml(content, "tool").trim()
             ChatUtils.estimateTokenCount(paramText)
@@ -805,8 +805,8 @@ class CustomXmlRenderer(
             }
         }
 
-        fun estimate(): Int {
-            return (chineseCharCount * 1.5 + otherCharCount * 0.25).toInt()
+        fun estimate(): Long {
+            return (chineseCharCount * 1.5 + otherCharCount * 0.25).toLong()
         }
     }
 
@@ -819,7 +819,7 @@ class CustomXmlRenderer(
         private var isInsideOuterContent = false
         private var isClosed = false
 
-        fun append(chunk: String): Int {
+        fun append(chunk: String): Long {
             if (isClosed || chunk.isEmpty()) {
                 return estimator.estimate()
             }

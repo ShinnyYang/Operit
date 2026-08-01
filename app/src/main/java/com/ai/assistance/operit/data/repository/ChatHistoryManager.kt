@@ -1332,9 +1332,9 @@ class ChatHistoryManager private constructor(private val context: Context) {
     // 更新聊天的token计数
     suspend fun updateChatTokenCounts(
         chatId: String,
-        inputTokens: Int,
-        outputTokens: Int,
-        currentWindowSize: Int
+        inputTokens: Long,
+        outputTokens: Long,
+        currentWindowSize: Long
     ) {
         chatMutex(chatId).withLock {
             try {

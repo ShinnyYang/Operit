@@ -909,7 +909,7 @@
     
     <!-- Settings Screen Sections -->
     <string name="settings_section_personalization">Personalization</string>
-    <string name="settings_user_preferences">User Profile and Memory</string>
+    <string name="settings_user_preferences">User Profile Settings</string>
     <string name="settings_user_preferences_desc">Manage user profiles and associated memory spaces</string>
     <string name="settings_configure_preferences">Configure Preferences</string>
     <string name="settings_model_prompts">Model Prompt Settings</string>
@@ -1024,7 +1024,7 @@
     <!-- User Preferences -->
     <string name="user_preferences_guide">Personalization</string>
     <string name="user_preferences">User Preferences</string>
-    <string name="user_preferences_settings">User Profile and Memory</string>
+    <string name="user_preferences_settings">User Profile Settings</string>
     <string name="user_md_description">The user.md for the selected user configuration is sent to the AI as user context.</string>
     <string name="user_md_edit_tab">Edit</string>
     <string name="user_md_preview_tab">Preview</string>
@@ -4065,7 +4065,7 @@
     <string name="screen_title_memory_base">Memory Base</string>
     <string name="screen_title_tool_permissions">Tool Permissions</string>
     <string name="screen_title_user_preferences_guide">User Preferences Guide</string>
-    <string name="screen_title_user_preferences_settings">User Profile and Memory</string>
+    <string name="screen_title_user_preferences_settings">User Profile Settings</string>
     <string name="screen_title_model_config">Model &amp; Parameters Configuration</string>
     <string name="screen_title_speech_services_settings">Speech Services Settings</string>
     <string name="screen_title_persona_card_generation">Persona Card Generation</string>
@@ -4378,6 +4378,10 @@
 
     <string name="github_account">GitHub Account</string>
     <string name="login_github">Login to GitHub</string>
+    <string name="github_login_method_description">Choose how to sign in to GitHub. Embedded page completes authorization in the app; external browser opens your system browser and returns after authorization.</string>
+    <string name="github_login_method_embedded">Login with Embedded Page</string>
+    <string name="github_login_method_external">Login with External Browser</string>
+    <string name="github_login_starting">Preparing GitHub authorization…</string>
     <string name="publish_mcp_plugins_to_market">• Publish your MCP plugins to the market</string>
     <string name="manage_published_plugins">• Manage your published plugins</string>
     <string name="better_installation_experience">• Get better installation experience</string>

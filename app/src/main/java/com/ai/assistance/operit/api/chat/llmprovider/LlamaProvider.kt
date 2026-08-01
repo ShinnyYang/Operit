@@ -42,9 +42,9 @@ class LlamaProvider(
         }
     }
 
-    private var _inputTokenCount: Int = 0
-    private var _outputTokenCount: Int = 0
-    private var _cachedInputTokenCount: Int = 0
+    private var _inputTokenCount: Long = 0L
+    private var _outputTokenCount: Long = 0L
+    private var _cachedInputTokenCount: Long = 0L
 
     @Volatile
     private var isCancelled = false
@@ -52,22 +52,22 @@ class LlamaProvider(
     private val sessionLock = Any()
     private var session: LlamaSession? = null
 
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = _inputTokenCount
 
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = _cachedInputTokenCount
 
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = _outputTokenCount
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
 
     override fun resetTokenCounts() {
-        _inputTokenCount = 0
-        _outputTokenCount = 0
-        _cachedInputTokenCount = 0
+        _inputTokenCount = 0L
+        _outputTokenCount = 0L
+        _cachedInputTokenCount = 0L
     }
 
     private fun logLargeString(prefix: String, message: String) {
@@ -135,7 +135,7 @@ class LlamaProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         return withContext(Dispatchers.IO) {
             kotlin.runCatching {
                 val s = ensureSessionLocked()
@@ -156,8 +156,8 @@ class LlamaProvider(
                     s.applyChatTemplate(roles, contents, true)
                 } ?: return@runCatching null
 
-                s.countTokens(prompt)
-            }.getOrNull() ?: 0
+                s.countTokens(prompt).toLong()
+            }.getOrNull() ?: 0L
         }
     }
 
@@ -169,7 +169,7 @@ class LlamaProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = stream {
@@ -271,9 +271,9 @@ class LlamaProvider(
             }
         }
 
-        _inputTokenCount = kotlin.runCatching { s.countTokens(prompt) }.getOrElse { 0 }
-        _outputTokenCount = 0
-        onTokensUpdated(_inputTokenCount, 0, 0)
+        _inputTokenCount = kotlin.runCatching { s.countTokens(prompt).toLong() }.getOrElse { 0L }
+        _outputTokenCount = 0L
+        onTokensUpdated(_inputTokenCount, 0L, 0L)
 
         val requestedMaxNewTokens = modelParameters
             .find { it.name == "max_tokens" }
@@ -285,7 +285,7 @@ class LlamaProvider(
             "开始llama.cpp推理，history=${chatHistory.size}, threads=${sessionConfig.nThreads}, n_ctx=${sessionConfig.nCtx}, n_batch=${sessionConfig.nBatch}, n_ubatch=${sessionConfig.nUBatch}, gpu_layers=${sessionConfig.nGpuLayers}, mmap=${sessionConfig.useMmap}"
         )
 
-        var outputTokenCount = 0
+        var outputTokenCount = 0L
         val toolCallOutputBuffer = StringBuilder()
         val finalOutputBuffer = StringBuilder()
 
@@ -294,7 +294,7 @@ class LlamaProvider(
                 if (isCancelled) {
                     false
                 } else {
-                    outputTokenCount += 1
+                    outputTokenCount += 1L
                     _outputTokenCount = outputTokenCount
 
                     if (effectiveEnableToolCall) {
@@ -306,7 +306,7 @@ class LlamaProvider(
 
                     kotlin.runCatching {
                         kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            onTokensUpdated(_inputTokenCount, 0L, _outputTokenCount)
                         }
                     }
 

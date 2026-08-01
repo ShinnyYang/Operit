@@ -21,11 +21,11 @@ For_Agent: native dependency FetchContent migration notes
 ## 作用域
 
 - `.gitmodules`
-- `fbx/CMakeLists.txt`
-- `mmd/CMakeLists.txt`
-- `llama/CMakeLists.txt`
+- `avator/fbx/CMakeLists.txt`
+- `avator/mmd/CMakeLists.txt`
+- `llm/llama/CMakeLists.txt`
 - `quickjs/src/main/cpp/CMakeLists.txt`
-- `mnn/CMakeLists.txt`
+- `llm/mnn/CMakeLists.txt`
 - `cmake/operit_git_source.cmake`
 - `app/src/main/cpp/cmake/ncnn.cmake`
 - `app/src/main/cpp/CMakeLists.txt`

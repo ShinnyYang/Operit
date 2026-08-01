@@ -521,7 +521,7 @@ object AIMessageManager {
         chatModelIndexOverride: Int? = null,
         memorySpaceIdOverride: String? = null,
         publishEstimate: Boolean = true
-    ): Int {
+    ): Long {
         val memory =
             getMemoryFromMessages(
                 messages = chatHistory,
@@ -1240,7 +1240,7 @@ object AIMessageManager {
      */
     fun shouldGenerateSummary(
         messages: List<ChatMessage>,
-        currentTokens: Int,
+        currentTokens: Long,
         maxTokens: Int,
         tokenUsageThreshold: Double,
         enableSummary: Boolean,

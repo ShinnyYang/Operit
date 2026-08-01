@@ -81,7 +81,7 @@ internal fun loadToolPkgDesktopWidgetRenderData(
     val executionContextKey =
         "toolpkg_widget:${appWidgetId}:${renderRoute.containerPackageName}:${renderRoute.uiModuleId}"
     val jsEngine =
-        packageManager.getToolPkgExecutionEngine(
+        packageManager.acquireToolPkgExecutionEngine(
             contextKey = executionContextKey,
             containerPackageName = renderRoute.containerPackageName
         )

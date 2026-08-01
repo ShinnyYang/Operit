@@ -12,9 +12,12 @@ class GitHubOAuthCoordinator(context: Context) {
     private val githubAuth = GitHubAuthPreferences.getInstance(context.applicationContext)
     private val oauthBrokerService = GitHubOAuthBrokerService()
 
-    suspend fun startLogin(): Result<GitHubOAuthBrokerStartResponse> {
+    suspend fun startEmbeddedLogin(): Result<GitHubOAuthBrokerStartResponse> =
+        startLogin(EMBEDDED_COMPLETION_REDIRECT_URI)
+
+    suspend fun startLogin(completionRedirectUri: String): Result<GitHubOAuthBrokerStartResponse> {
         return try {
-            val transaction = oauthBrokerService.startLogin(COMPLETION_REDIRECT_URI).getOrElse { error ->
+            val transaction = oauthBrokerService.startLogin(completionRedirectUri).getOrElse { error ->
                 throw error
             }
             githubAuth.saveActiveOAuthTransaction(
@@ -69,6 +72,7 @@ class GitHubOAuthCoordinator(context: Context) {
                 userInfo = result.user,
                 grantedScope = result.scope
             )
+            githubAuth.clearActiveOAuthTransaction()
             Result.success(result.user)
         } catch (e: Exception) {
             githubAuth.clearActiveOAuthTransaction()
@@ -83,6 +87,6 @@ class GitHubOAuthCoordinator(context: Context) {
 
     companion object {
         private const val TAG = "GitHubOAuthCoordinator"
-        private const val COMPLETION_REDIRECT_URI = "https://api.operit.app/oauth/github/complete"
+        private const val EMBEDDED_COMPLETION_REDIRECT_URI = "https://api.operit.app/oauth/github/complete"
     }
 }

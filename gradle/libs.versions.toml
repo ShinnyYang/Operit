@@ -1,7 +1,7 @@
  [versions]
 agp = "8.13.2"
-kotlin = "2.2.0"
-kotlin-serialization = "2.2.0"
+kotlin = "2.2.21"
+kotlin-serialization = "2.2.21"
 coreKtx = "1.12.0"
 junit = "4.13.2"
 junitVersion = "1.1.5"
@@ -39,7 +39,7 @@ zip4j = "2.11.5"
 coil = "2.5.0"
 jlatexmath = "0.2.0"
 renderx = "1.0.0"
-kotlinx-serialization = "1.6.0"
+kotlinx-serialization = "1.9.0"
 uuid = "0.8.2"
 gson = "2.10.1"
 hjson = "3.0.0"
@@ -52,18 +52,18 @@ junrar = "7.5.5"
 navigation-compose = "2.7.7"
 shizuku = "13.1.5"
 okhttp = "4.12.0"
+mcp-sdk = "0.10.0"
+ktor = "3.2.3"
 jsoup = "1.16.2"
 datastore = "1.0.0"
 poi = "5.2.3"
-kotlin-logging = "5.1.0"
-slf4j = "2.0.9"
 colorpicker = "1.0.6"
 backdrop = "1.0.6"
 liquid = "1.1.1"
 nanohttpd = "2.3.1"
 test-runner = "1.5.2"
 test-rules = "1.5.0"
-coroutines = "1.8.0"
+coroutines = "1.10.2"
 coroutines-test = "1.7.3"
 mockito = "5.2.0"
 mockito-kotlin = "5.1.0"
@@ -200,6 +200,9 @@ shizuku-provider = { group = "dev.rikka.shizuku", name = "provider", version.ref
 # Network
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-sse = { group = "com.squareup.okhttp3", name = "okhttp-sse", version.ref = "okhttp" }
+okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+mcp-sdk-client = { group = "io.modelcontextprotocol", name = "kotlin-sdk-client", version.ref = "mcp-sdk" }
+ktor-client-okhttp = { group = "io.ktor", name = "ktor-client-okhttp", version.ref = "ktor" }
 jsoup = { group = "org.jsoup", name = "jsoup", version.ref = "jsoup" }
 
 # DataStore
@@ -210,11 +213,6 @@ datastore-preferences-core = { group = "androidx.datastore", name = "datastore-p
 poi = { group = "org.apache.poi", name = "poi", version.ref = "poi" }
 poi-ooxml = { group = "org.apache.poi", name = "poi-ooxml", version.ref = "poi" }
 poi-scratchpad = { group = "org.apache.poi", name = "poi-scratchpad", version.ref = "poi" }
-
-# Logging
-kotlin-logging = { group = "io.github.oshai", name = "kotlin-logging-jvm", version.ref = "kotlin-logging" }
-slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4j" }
-slf4j-simple = { group = "org.slf4j", name = "slf4j-simple", version.ref = "slf4j" }
 
 # UI components
 colorpicker = { group = "com.github.skydoves", name = "colorpicker-compose", version.ref = "colorpicker" }

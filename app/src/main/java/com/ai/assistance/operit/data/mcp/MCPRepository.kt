@@ -10,9 +10,9 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.core.tools.AIToolHandler
 import com.ai.assistance.operit.core.tools.mcp.MCPManager
 import com.ai.assistance.operit.core.tools.mcp.MCPPackage
+import com.ai.assistance.operit.core.tools.mcp.McpRuntimeDescriptor
 import com.ai.assistance.operit.core.tools.mcp.MCPServerConfig
 import com.ai.assistance.operit.core.tools.mcp.MCPToolExecutor
-import com.ai.assistance.operit.data.mcp.plugins.MCPBridgeClient
 import com.ai.assistance.operit.data.mcp.plugins.MCPConfigGenerator
 import com.ai.assistance.operit.data.model.AITool
 import com.ai.assistance.operit.data.model.ToolParameter
@@ -31,8 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonObject
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
@@ -224,38 +222,20 @@ class MCPRepository(private val context: Context) {
     }
     
     /**
-     * 检查 JSON 配置中的所有服务器是否需要物理安装
-     * @param jsonConfig JSON 配置字符串
-     * @return true 如果至少有一个服务器需要物理安装，false 如果所有服务器都不需要物理安装
+     * 检查标准 MCP 配置中的 stdio 服务器是否需要物理安装。
+     * 远程 HTTP/SSE 服务器只写入远程元数据，不需要仓库目录。
      */
     fun checkConfigNeedsPhysicalInstallation(jsonConfig: String): Boolean {
-        try {
-            val jsonElement = Json.parseToJsonElement(jsonConfig)
-            val mcpServersObject = jsonElement.jsonObject["mcpServers"]?.jsonObject
-            
-            if (mcpServersObject == null) {
-                AppLogger.w(TAG, "No mcpServers found in config, assuming needs installation")
-                return true
+        val parsedConfig = McpConfigImportParser.parse(jsonConfig)
+        return parsedConfig.servers
+            .filterIsInstance<StdioMcpImportedServer>()
+            .any { server ->
+                val command = server.command
+                    .substringAfterLast('/')
+                    .substringAfterLast('\\')
+                    .lowercase()
+                commandNeedsPhysicalInstallation(command)
             }
-            
-            // 检查每个服务器的 command
-            for ((serverId, serverConfigElement) in mcpServersObject) {
-                val serverConfig = serverConfigElement.jsonObject
-                val command = serverConfig["command"]?.toString()?.trim('"')?.lowercase() ?: return true
-                
-                if (commandNeedsPhysicalInstallation(command)) {
-                    AppLogger.d(TAG, "Server $serverId with command '$command' requires physical installation")
-                    return true
-                }
-            }
-            
-            // 所有命令都是 npx/uvx/uv，不需要物理安装
-            AppLogger.d(TAG, "All commands in config are npx/uvx/uv, no physical installation needed")
-            return false
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "Error checking if config needs physical installation", e)
-            return true
-        }
     }
 
     /**
@@ -881,17 +861,12 @@ class MCPRepository(private val context: Context) {
                 return@withContext
             }
 
-            // For remote servers, we no longer create a local process.
-            // We just store the metadata. The bridge will handle the connection.
-
-            // 保存远程服务器元数据
             val metadata = server.copy(
                 type = "remote",
                 installedTime = System.currentTimeMillis()
             )
-            
-            AppLogger.d(TAG, "添加远程服务器: ${server.id}, bearerToken: ${server.bearerToken?.take(10)}..., headers: ${server.headers?.keys}")
-            
+
+            // Remote servers do not create a local process. The Kotlin MCP runtime reads this metadata.
             mcpLocalServer.addOrUpdatePluginMetadata(metadata)
 
             // 重新加载插件状态
@@ -910,7 +885,6 @@ class MCPRepository(private val context: Context) {
                 return@withContext
             }
 
-            // 更新元数据
             val updatedMetadata = metadata.copy(
                 name = server.name,
                 description = server.description,
@@ -922,10 +896,6 @@ class MCPRepository(private val context: Context) {
                 headers = if (server.type == "remote") server.headers else metadata.headers
             )
             mcpLocalServer.addOrUpdatePluginMetadata(updatedMetadata)
-
-            // For remote servers, we don't need to update MCPServer config in the same way,
-            // as the bridge handles connection details directly from metadata.
-            // If any specific server config were needed, it would be updated here.
 
             // 重新加载插件状态以更新UI
             loadPluginsFromMCPLocalServer()
@@ -952,41 +922,51 @@ class MCPRepository(private val context: Context) {
 
     // ==================== 状态同步和管理 ====================
 
-    /**
-     * 同步桥接器中服务的实时运行状态
-     */
+    /** Synchronizes local stdio plugin status from the bridge. */
     suspend fun syncBridgeStatus() {
         withContext(Dispatchers.IO) {
-            AppLogger.d(TAG, "开始从桥接器同步服务状态...")
+            AppLogger.d(TAG, "开始同步本地 bridge 服务状态...")
             try {
+                val localPluginServiceNames = _installedPluginIds.value
+                    .mapNotNull { pluginId ->
+                        val metadata = mcpLocalServer.getPluginMetadata(pluginId)
+                        if (metadata?.type != "local") return@mapNotNull null
+
+                        val serviceName = MCPConfigGenerator().extractServerNameFromConfig(
+                            mcpLocalServer.getPluginConfig(pluginId)
+                        ) ?: pluginId.split("/").last().lowercase()
+                        serviceName to pluginId
+                    }
+                    .toMap()
                 val bridge = com.ai.assistance.operit.data.mcp.plugins.MCPBridge.getInstance(context)
                 val listResponse = bridge.listMcpServices()
 
                 if (listResponse?.optBoolean("success", false) == true) {
                     val services = listResponse.optJSONObject("result")?.optJSONArray("services")
-                    val activeServices = mutableSetOf<String>()
+                    val activePluginIds = mutableSetOf<String>()
                     
                     if (services != null) {
                         for (i in 0 until services.length()) {
                             val service = services.optJSONObject(i)
                             val serviceName = service?.optString("name")
                             val isActive = service?.optBoolean("active", false) ?: false
+                            val pluginId = serviceName?.let(localPluginServiceNames::get)
 
-                            if (!serviceName.isNullOrEmpty()) {
+                            if (pluginId != null) {
                                 val now = System.currentTimeMillis()
-                                val wasRunning = mcpLocalServer.isServerLikelyRunning(serviceName)
+                                val wasRunning = mcpLocalServer.isServerLikelyRunning(pluginId)
                                 if (isActive) {
-                                    activeServices.add(serviceName)
+                                    activePluginIds.add(pluginId)
                                 }
                                 if (isActive && !wasRunning) {
                                     mcpLocalServer.updateServerStatus(
-                                        serverId = serviceName,
+                                        serverId = pluginId,
                                         lastStartTime = now,
                                         errorMessage = ""
                                     )
                                 } else if (!isActive && wasRunning) {
                                     mcpLocalServer.updateServerStatus(
-                                        serverId = serviceName,
+                                        serverId = pluginId,
                                         lastStopTime = now
                                     )
                                 }
@@ -994,16 +974,15 @@ class MCPRepository(private val context: Context) {
                         }
                     }
                     
-                    // 对于已安装但不在活跃列表中的插件，更新停止时间
-                    _installedPluginIds.value.forEach { pluginId ->
-                        if (!activeServices.contains(pluginId) && mcpLocalServer.isServerLikelyRunning(pluginId)) {
+                    localPluginServiceNames.values.forEach { pluginId ->
+                        if (!activePluginIds.contains(pluginId) && mcpLocalServer.isServerLikelyRunning(pluginId)) {
                             mcpLocalServer.updateServerStatus(
                                 serverId = pluginId,
                                 lastStopTime = System.currentTimeMillis()
                             )
                         }
                     }
-                    AppLogger.d(TAG, "桥接器状态同步完成。活跃服务: ${activeServices.joinToString()}")
+                    AppLogger.d(TAG, "本地 bridge 状态同步完成。活跃插件: ${activePluginIds.joinToString()}")
                 } else {
                     AppLogger.w(TAG, "从桥接器获取服务列表失败")
                 }
@@ -1106,24 +1085,9 @@ class MCPRepository(private val context: Context) {
             return cachedToolDescriptions
         }
 
-        val serviceName =
-            when (metadata.type) {
-                "remote" -> metadata.name.toServiceName(metadata.id)
-                else -> {
-                    val pluginConfig = mcpLocalServer.getPluginConfig(metadata.id)
-                    MCPConfigGenerator().extractServerNameFromConfig(pluginConfig)
-                        ?: metadata.id.substringAfterLast('/').lowercase()
-                }
-            }
-
-        return MCPBridgeClient(context, serviceName).getToolDescriptions()
-    }
-
-    private fun String.toServiceName(pluginId: String): String {
-        return trim()
-            .replace(" ", "_")
-            .lowercase()
-            .ifBlank { pluginId.substringAfterLast('/').lowercase() }
+        val session = MCPManager.getInstance(context).getOrCreateSession(metadata.id)
+            ?: return emptyList()
+        return session.getToolDescriptions()
     }
 
     /**
@@ -1168,15 +1132,18 @@ class MCPRepository(private val context: Context) {
                     return@forEach
                 }
 
-                // 统一注册服务器，无论是缓存还是动态
+                val runtimeDescriptor = createRuntimeDescriptor(pluginMetadata)
                 val serverConfig = MCPServerConfig(
                     name = pluginId,
-                    endpoint = if (pluginMetadata.type == "remote") pluginMetadata.endpoint ?: "" else "mcp://plugin/$pluginId",
+                    endpoint = when (runtimeDescriptor) {
+                        is McpRuntimeDescriptor.Local -> "mcp://plugin/${runtimeDescriptor.serviceName}"
+                        is McpRuntimeDescriptor.Remote -> runtimeDescriptor.endpoint
+                    },
                     description = pluginMetadata.description,
                     capabilities = listOf("tools"),
                     extraData = emptyMap()
                 )
-                mcpManager.registerServer(pluginId, serverConfig)
+                mcpManager.registerServer(pluginId, serverConfig, runtimeDescriptor)
                 AppLogger.d(TAG, "已在MCPManager中注册服务器: $pluginId (类型: ${pluginMetadata.type})")
 
                 // 获取工具信息
@@ -1237,26 +1204,11 @@ class MCPRepository(private val context: Context) {
                     toolHandler.unregisterTool(toolName)
                 }
 
-                val serverNamesToRemove = mutableSetOf(pluginId)
-                val pluginConfig = mcpLocalServer.getPluginConfig(pluginId)
-                if (pluginConfig.isNotBlank()) {
-                    runCatching {
-                        val root = JsonParser.parseString(pluginConfig).asJsonObject
-                        root.getAsJsonObject("mcpServers")?.keySet()?.forEach { serverName ->
-                            serverNamesToRemove.add(serverName)
-                        }
-                    }.onFailure { e ->
-                        AppLogger.w(TAG, "Failed to parse plugin config for $pluginId: ${e.message}")
-                    }
-                }
-
-                serverNamesToRemove.forEach { serverName ->
-                    mcpManager.unregisterServer(serverName)
-                }
+                mcpManager.unregisterServer(pluginId)
 
                 AppLogger.d(
                     TAG,
-                    "Runtime MCP entries removed for $pluginId, tools=${toolNamesToRemove.size}, servers=${serverNamesToRemove.size}"
+                    "Runtime MCP entries removed for $pluginId, tools=${toolNamesToRemove.size}"
                 )
             } catch (e: Exception) {
                 AppLogger.e(TAG, "Failed to unregister runtime MCP entries for $pluginId", e)
@@ -1309,6 +1261,29 @@ class MCPRepository(private val context: Context) {
                 inputSchema = Gson().toJson(schemaParams) // 假设 MCPToolExecutor 可以处理
             )
         }
+    }
+
+    private fun createRuntimeDescriptor(
+        metadata: MCPLocalServer.PluginMetadata
+    ): McpRuntimeDescriptor = when (metadata.type) {
+        "local" -> {
+            val pluginConfig = mcpLocalServer.getPluginConfig(metadata.id)
+            val serviceName = requireNotNull(
+                MCPConfigGenerator().extractServerNameFromConfig(pluginConfig)
+            ) { "Missing MCP service name for local plugin ${metadata.id}" }
+            McpRuntimeDescriptor.Local(serviceName)
+        }
+        "remote" -> McpRuntimeDescriptor.Remote(
+            endpoint = requireNotNull(metadata.endpoint) {
+                "Missing endpoint for remote plugin ${metadata.id}"
+            },
+            connectionType = requireNotNull(metadata.connectionType) {
+                "Missing connection type for remote plugin ${metadata.id}"
+            },
+            bearerToken = metadata.bearerToken,
+            headers = metadata.headers.orEmpty()
+        )
+        else -> error("Unsupported MCP plugin type: ${metadata.type}")
     }
 }
 

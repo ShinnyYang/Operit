@@ -14,9 +14,9 @@ data class ChatHistory(
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Serializable(with = LocalDateTimeSerializer::class)
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-    val inputTokens: Int = 0,
-    val outputTokens: Int = 0,
-    val currentWindowSize: Int = 0,
+    val inputTokens: Long = 0L,
+    val outputTokens: Long = 0L,
+    val currentWindowSize: Long = 0L,
     val group: String? = null,
     val displayOrder: Long = 0L,
     val workspace: String? = null,

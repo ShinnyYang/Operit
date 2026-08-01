@@ -863,7 +863,7 @@
     
     <!-- Settings Screen Sections -->
     <string name="settings_section_personalization">个性化</string>
-    <string name="settings_user_preferences">用户资料和记忆</string>
+    <string name="settings_user_preferences">用户资料设置</string>
     <string name="settings_user_preferences_desc">管理用户资料和关联记忆库</string>
     <string name="settings_configure_preferences">配置用户偏好</string>
     <string name="settings_model_prompts">模型提示词设置</string>
@@ -978,7 +978,7 @@
     <!-- 用户偏好 -->
     <string name="user_preferences_guide">个性化设置</string>
     <string name="user_preferences">用户偏好设置</string>
-    <string name="user_preferences_settings">用户资料和记忆</string>
+    <string name="user_preferences_settings">用户资料设置</string>
     <string name="user_md_description">当前用户配置的 user.md 会作为用户上下文发送给 AI。</string>
     <string name="user_md_edit_tab">编辑</string>
     <string name="user_md_preview_tab">预览</string>
@@ -4000,7 +4000,7 @@
     <string name="screen_title_memory_base">记忆库</string>
     <string name="screen_title_tool_permissions">工具权限</string>
     <string name="screen_title_user_preferences_guide">用户偏好引导</string>
-    <string name="screen_title_user_preferences_settings">用户资料和记忆</string>
+    <string name="screen_title_user_preferences_settings">用户资料设置</string>
     <string name="screen_title_model_config">模型与参数配置</string>
     <string name="screen_title_speech_services_settings">语音服务设置</string>
     <string name="screen_title_persona_card_generation">人设卡生成</string>
@@ -4391,6 +4391,10 @@
 
     <string name="github_account">GitHub 账户</string>
     <string name="login_github">登录 GitHub</string>
+    <string name="github_login_method_description">请选择 GitHub 登录方式。内嵌页面会在应用内完成授权；外部浏览器会调起系统浏览器并在授权后回到应用。</string>
+    <string name="github_login_method_embedded">使用内嵌页面登录</string>
+    <string name="github_login_method_external">使用外部浏览器登录</string>
+    <string name="github_login_starting">正在准备 GitHub 授权…</string>
     <string name="github_login_external_waiting">已打开浏览器，请在完成授权后返回应用。</string>
     <string name="publish_mcp_plugins_to_market">• 发布您的 MCP 插件到市场</string>
     <string name="manage_published_plugins">• 管理您已发布的插件</string>

@@ -65,29 +65,29 @@ class MNNProvider(
     private var cachedModelIsAudio: Boolean? = null
 
     // Token计数
-    private var _inputTokenCount = 0
-    private var _outputTokenCount = 0
-    private var _cachedInputTokenCount = 0
+    private var _inputTokenCount = 0L
+    private var _outputTokenCount = 0L
+    private var _cachedInputTokenCount = 0L
 
     @Volatile
     private var isCancelled = false
 
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = _inputTokenCount
 
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = _outputTokenCount
 
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = _cachedInputTokenCount
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
 
     override fun resetTokenCounts() {
-        _inputTokenCount = 0
-        _outputTokenCount = 0
-        _cachedInputTokenCount = 0
+        _inputTokenCount = 0L
+        _outputTokenCount = 0L
+        _cachedInputTokenCount = 0L
     }
 
     override fun cancelStreaming() {
@@ -600,7 +600,7 @@ class MNNProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = stream {
@@ -658,21 +658,21 @@ class MNNProvider(
             val safeHistory = trimHistoryToTokenBudget(session, conversationHistory, maxPromptTokens)
 
             _inputTokenCount =
-                kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
+                kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
                     .getOrElse { error ->
                         if (useInternalToolCall) {
                             throw error
                         }
-                        countTokens(buildPrompt(conversationHistory))
+                        countTokens(buildPrompt(conversationHistory)).toLong()
                     }
-            onTokensUpdated(_inputTokenCount, 0, 0)
+            onTokensUpdated(_inputTokenCount, 0L, 0L)
 
             AppLogger.d(
                 TAG,
                 "开始MNN LLM推理，历史消息数: ${conversationHistory.size}, thinking模式: $enableThinking, toolCall=$useInternalToolCall"
             )
 
-            var outputTokenCount = 0
+            var outputTokenCount = 0L
             val toolCallOutputBuffer = StringBuilder()
             val finalOutputBuffer = StringBuilder()
             val emitDirectly = !useInternalToolCall
@@ -680,7 +680,7 @@ class MNNProvider(
                 if (isCancelled) {
                     false
                 } else {
-                    outputTokenCount += 1
+                    outputTokenCount += 1L
                     _outputTokenCount = outputTokenCount
 
                     if (emitDirectly) {
@@ -692,7 +692,7 @@ class MNNProvider(
 
                     kotlin.runCatching {
                         kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            onTokensUpdated(_inputTokenCount, 0L, _outputTokenCount)
                         }
                     }
 
@@ -953,17 +953,17 @@ class MNNProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         val flattenedHistory = flattenTypedHistory(chatHistory, preserveThinkInHistory = false)
         val initResult = initModel()
         if (initResult.isFailure) {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt)
+            return countTokens(prompt).toLong()
         }
 
         val session = llmSession ?: run {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt)
+            return countTokens(prompt).toLong()
         }
 
         val modelDir = getModelDir(context, modelName)
@@ -971,10 +971,10 @@ class MNNProvider(
 
         val maxPromptTokens = (maxAllTokens - 512).coerceAtLeast(128)
         val safeHistory = trimHistoryToTokenBudget(session, flattenedHistory, maxPromptTokens)
-        return kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
+        return kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
             .getOrElse {
                 val prompt = buildPrompt(flattenedHistory)
-                countTokens(prompt)
+                countTokens(prompt).toLong()
             }
     }
 

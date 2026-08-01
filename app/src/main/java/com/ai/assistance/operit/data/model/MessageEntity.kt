@@ -29,9 +29,9 @@ data class MessageEntity(
         val selectedVariantIndex: Int = 0,
         val provider: String = "", // 供应商
         val modelName: String = "", // 模型名称
-        val inputTokens: Int = 0,
-        val outputTokens: Int = 0,
-        val cachedInputTokens: Int = 0,
+        val inputTokens: Long = 0L,
+        val outputTokens: Long = 0L,
+        val cachedInputTokens: Long = 0L,
         val sentAt: Long = 0L,
         val outputDurationMs: Long = 0L,
         val waitDurationMs: Long = 0L,

@@ -9,9 +9,9 @@ import com.ai.assistance.operit.data.api.MarketStatsApiService
 import com.ai.assistance.operit.data.api.MarketV2Entry
 import com.ai.assistance.operit.data.mcp.InstallResult
 import com.ai.assistance.operit.data.mcp.MCPLocalServer
+import com.ai.assistance.operit.data.mcp.McpConfigImportParser
 import com.ai.assistance.operit.data.mcp.MCPRepository
 import com.ai.assistance.operit.data.skill.SkillRepository
-import com.google.gson.JsonParser
 import com.ai.assistance.operit.util.AppLogger
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -228,9 +228,7 @@ fun MarketV2Entry.canInstallFromUnifiedMarket(): Boolean {
 }
 
 fun parseMcpServerIds(installConfig: String): Set<String> {
-    if (installConfig.isBlank()) return emptySet()
-    return runCatching {
-        val root = JsonParser.parseString(installConfig).asJsonObject
-        root.getAsJsonObject("mcpServers")?.keySet()?.toSet().orEmpty()
-    }.getOrDefault(emptySet())
+    return McpConfigImportParser.parse(installConfig).servers
+        .map { server -> server.id }
+        .toSet()
 }

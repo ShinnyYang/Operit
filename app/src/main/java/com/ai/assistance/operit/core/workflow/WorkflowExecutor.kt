@@ -25,6 +25,7 @@ import com.ai.assistance.operit.data.model.WorkflowLogLevel
 import com.ai.assistance.operit.data.model.WorkflowNode
 import com.ai.assistance.operit.data.model.WorkflowNodeConnection
 import com.ai.assistance.operit.core.tools.MessageSendResultData
+import com.ai.assistance.operit.data.preferences.initAndroidPermissionPreferences
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -150,6 +151,10 @@ class WorkflowExecutor(private val context: Context) {
     }
 
     private fun prepareRuntime(workflow: Workflow) {
+        // Scheduled workers and broadcast receivers may enter here before the main Activity
+        // initialization path. Establish the preference dependency before registering tools.
+        initAndroidPermissionPreferences(context.applicationContext)
+
         val actionNodes = workflow.nodes
             .filterIsInstance<ExecuteNode>()
             .filter { it.actionType.isNotBlank() }

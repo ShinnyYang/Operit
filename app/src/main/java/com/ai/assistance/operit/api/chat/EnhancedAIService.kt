@@ -96,9 +96,9 @@ import com.ai.assistance.operit.util.LocaleUtils
  */
 class EnhancedAIService private constructor(private val context: Context) {
     data class TurnTokenSnapshot(
-        val inputTokens: Int,
-        val outputTokens: Int,
-        val cachedInputTokens: Int,
+        val inputTokens: Long,
+        val outputTokens: Long,
+        val cachedInputTokens: Long,
     )
 
     companion object {
@@ -197,7 +197,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         suspend fun getCurrentInputTokenCountForFunction(
                 context: Context,
                 functionType: FunctionType
-        ): Int {
+        ): Long {
             return getInstance(context)
                     .multiServiceManager
                     .getServiceForFunction(functionType)
@@ -213,7 +213,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         suspend fun getCurrentOutputTokenCountForFunction(
                 context: Context,
                 functionType: FunctionType
-        ): Int {
+        ): Long {
             return getInstance(context)
                     .multiServiceManager
                     .getServiceForFunction(functionType)
@@ -395,12 +395,12 @@ class EnhancedAIService private constructor(private val context: Context) {
     }
 
     // Per-request token counts
-    private val _perRequestTokenCounts = MutableStateFlow<Pair<Int, Int>?>(null)
-    val perRequestTokenCounts: StateFlow<Pair<Int, Int>?> = _perRequestTokenCounts.asStateFlow()
+    private val _perRequestTokenCounts = MutableStateFlow<Pair<Long, Long>?>(null)
+    val perRequestTokenCounts: StateFlow<Pair<Long, Long>?> = _perRequestTokenCounts.asStateFlow()
 
     // Stable request window estimate for the next model hop.
-    private val _requestWindowEstimate = MutableStateFlow<Int?>(null)
-    val requestWindowEstimateFlow: StateFlow<Int?> = _requestWindowEstimate.asStateFlow()
+    private val _requestWindowEstimate = MutableStateFlow<Long?>(null)
+    val requestWindowEstimateFlow: StateFlow<Long?> = _requestWindowEstimate.asStateFlow()
 
     // Conversation management
     // private val streamBuffer = StringBuilder() // Moved to MessageExecutionContext
@@ -501,17 +501,12 @@ class EnhancedAIService private constructor(private val context: Context) {
     // private val conversationHistory = mutableListOf<Pair<String, String>>() // Moved to MessageExecutionContext
     // private val conversationMutex = Mutex() // Moved to MessageExecutionContext
 
-    private var accumulatedInputTokenCount = 0
-    private var accumulatedOutputTokenCount = 0
-    private var accumulatedCachedInputTokenCount = 0
-    private var currentRequestInputTokenCount = 0
-    private var currentRequestOutputTokenCount = 0
-    private var currentRequestCachedInputTokenCount = 0
-
-    private fun saturatedTokenSum(vararg values: Int): Int {
-        val total = values.fold(0L) { acc, value -> acc + value.toLong().coerceAtLeast(0L) }
-        return total.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
-    }
+    private var accumulatedInputTokenCount = 0L
+    private var accumulatedOutputTokenCount = 0L
+    private var accumulatedCachedInputTokenCount = 0L
+    private var currentRequestInputTokenCount = 0L
+    private var currentRequestOutputTokenCount = 0L
+    private var currentRequestCachedInputTokenCount = 0L
 
     // Callbacks
     private var currentResponseCallback: ((content: String, thinking: String?) -> Unit)? = null
@@ -669,7 +664,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         }
     }
 
-    private fun publishRequestWindowEstimate(windowSize: Int) {
+    private fun publishRequestWindowEstimate(windowSize: Long) {
         _requestWindowEstimate.value = windowSize
     }
 
@@ -678,7 +673,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         preparedHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?,
         publishEstimate: Boolean
-    ): Int {
+    ): Long {
         val windowSize =
             serviceForFunction.calculateInputTokens(
                 chatHistory = preparedHistory,
@@ -762,7 +757,7 @@ class EnhancedAIService private constructor(private val context: Context) {
         memorySpaceIdOverride: String? = null,
         stream: Boolean = true,
         publishEstimate: Boolean = true
-    ): Int {
+    ): Long {
         val modelConfig =
             getModelConfigForFunction(
                 functionType = functionType,
@@ -933,12 +928,12 @@ class EnhancedAIService private constructor(private val context: Context) {
             }
 
         AppLogger.d(TAG, "sendMessage调用开始: 功能类型=$functionType, 提示词类型=$promptFunctionType")
-        accumulatedInputTokenCount = 0
-        accumulatedOutputTokenCount = 0
-        accumulatedCachedInputTokenCount = 0
-        currentRequestInputTokenCount = 0
-        currentRequestOutputTokenCount = 0
-        currentRequestCachedInputTokenCount = 0
+        accumulatedInputTokenCount = 0L
+        accumulatedOutputTokenCount = 0L
+        accumulatedCachedInputTokenCount = 0L
+        currentRequestInputTokenCount = 0L
+        currentRequestOutputTokenCount = 0L
+        currentRequestCachedInputTokenCount = 0L
 
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val wrappedStream = stream {
@@ -1019,9 +1014,9 @@ class EnhancedAIService private constructor(private val context: Context) {
 
                     // 清空之前的单次请求token计数
                     _perRequestTokenCounts.value = null
-                    currentRequestInputTokenCount = 0
-                    currentRequestOutputTokenCount = 0
-                    currentRequestCachedInputTokenCount = 0
+                    currentRequestInputTokenCount = 0L
+                    currentRequestOutputTokenCount = 0L
+                    currentRequestCachedInputTokenCount = 0L
 
                     // 获取工具列表（如果启用Tool Call）
                     val availableTools = getAvailableToolsForFunction(
@@ -1209,13 +1204,13 @@ class EnhancedAIService private constructor(private val context: Context) {
                     val inputTokens = serviceForFunction.inputTokenCount
                     val cachedInputTokens = serviceForFunction.cachedInputTokenCount
                     val outputTokens = serviceForFunction.outputTokenCount
-                    accumulatedInputTokenCount = saturatedTokenSum(accumulatedInputTokenCount, inputTokens)
-                    accumulatedOutputTokenCount = saturatedTokenSum(accumulatedOutputTokenCount, outputTokens)
+                    accumulatedInputTokenCount += inputTokens
+                    accumulatedOutputTokenCount += outputTokens
                     accumulatedCachedInputTokenCount =
-                        saturatedTokenSum(accumulatedCachedInputTokenCount, cachedInputTokens)
-                    currentRequestInputTokenCount = 0
-                    currentRequestOutputTokenCount = 0
-                    currentRequestCachedInputTokenCount = 0
+                        accumulatedCachedInputTokenCount + cachedInputTokens
+                    currentRequestInputTokenCount = 0L
+                    currentRequestOutputTokenCount = 0L
+                    currentRequestCachedInputTokenCount = 0L
                     apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
                     
                     // Update request count
@@ -2312,9 +2307,9 @@ class EnhancedAIService private constructor(private val context: Context) {
 
         // 清空之前的单次请求token计数
         _perRequestTokenCounts.value = null
-        currentRequestInputTokenCount = 0
-        currentRequestOutputTokenCount = 0
-        currentRequestCachedInputTokenCount = 0
+        currentRequestInputTokenCount = 0L
+        currentRequestOutputTokenCount = 0L
+        currentRequestCachedInputTokenCount = 0L
         
         // 使用新的Stream API处理工具执行结果
         withContext(Dispatchers.IO) {
@@ -2423,13 +2418,13 @@ class EnhancedAIService private constructor(private val context: Context) {
                 val inputTokens = serviceForFunction.inputTokenCount
                 val cachedInputTokens = serviceForFunction.cachedInputTokenCount
                 val outputTokens = serviceForFunction.outputTokenCount
-                accumulatedInputTokenCount = saturatedTokenSum(accumulatedInputTokenCount, inputTokens)
-                accumulatedOutputTokenCount = saturatedTokenSum(accumulatedOutputTokenCount, outputTokens)
+                accumulatedInputTokenCount += inputTokens
+                accumulatedOutputTokenCount += outputTokens
                 accumulatedCachedInputTokenCount =
-                    saturatedTokenSum(accumulatedCachedInputTokenCount, cachedInputTokens)
-                currentRequestInputTokenCount = 0
-                currentRequestOutputTokenCount = 0
-                currentRequestCachedInputTokenCount = 0
+                    accumulatedCachedInputTokenCount + cachedInputTokens
+                currentRequestInputTokenCount = 0L
+                currentRequestOutputTokenCount = 0L
+                currentRequestCachedInputTokenCount = 0L
                 apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
                 
                 // Update request count
@@ -2494,7 +2489,7 @@ class EnhancedAIService private constructor(private val context: Context) {
      * Get the current input token count from the last API call
      * @return The number of input tokens used in the most recent request
      */
-    fun getCurrentInputTokenCount(): Int {
+    fun getCurrentInputTokenCount(): Long {
         return accumulatedInputTokenCount
     }
 
@@ -2502,7 +2497,7 @@ class EnhancedAIService private constructor(private val context: Context) {
      * Get the current output token count from the last API call
      * @return The number of output tokens generated in the most recent response
      */
-    fun getCurrentOutputTokenCount(): Int {
+    fun getCurrentOutputTokenCount(): Long {
         return accumulatedOutputTokenCount
     }
 
@@ -2510,30 +2505,30 @@ class EnhancedAIService private constructor(private val context: Context) {
      * Get the current cached input token count accumulated across the current turn
      * @return The number of cached input tokens used in the current turn
      */
-    fun getCurrentCachedInputTokenCount(): Int {
+    fun getCurrentCachedInputTokenCount(): Long {
         return accumulatedCachedInputTokenCount
     }
 
     fun captureCurrentTurnTokenSnapshot(): TurnTokenSnapshot {
         return TurnTokenSnapshot(
-            inputTokens = saturatedTokenSum(accumulatedInputTokenCount, currentRequestInputTokenCount),
-            outputTokens = saturatedTokenSum(accumulatedOutputTokenCount, currentRequestOutputTokenCount),
+            inputTokens = accumulatedInputTokenCount + currentRequestInputTokenCount,
+            outputTokens = accumulatedOutputTokenCount + currentRequestOutputTokenCount,
             cachedInputTokens =
-                saturatedTokenSum(accumulatedCachedInputTokenCount, currentRequestCachedInputTokenCount)
+                accumulatedCachedInputTokenCount + currentRequestCachedInputTokenCount
         )
     }
 
     fun setCurrentTurnTokenCounts(
-        inputTokens: Int,
-        outputTokens: Int,
-        cachedInputTokens: Int = 0
+        inputTokens: Long,
+        outputTokens: Long,
+        cachedInputTokens: Long = 0L
     ) {
-        accumulatedInputTokenCount = inputTokens.coerceAtLeast(0)
-        accumulatedOutputTokenCount = outputTokens.coerceAtLeast(0)
-        accumulatedCachedInputTokenCount = cachedInputTokens.coerceAtLeast(0)
-        currentRequestInputTokenCount = 0
-        currentRequestOutputTokenCount = 0
-        currentRequestCachedInputTokenCount = 0
+        accumulatedInputTokenCount = inputTokens.coerceAtLeast(0L)
+        accumulatedOutputTokenCount = outputTokens.coerceAtLeast(0L)
+        accumulatedCachedInputTokenCount = cachedInputTokens.coerceAtLeast(0L)
+        currentRequestInputTokenCount = 0L
+        currentRequestOutputTokenCount = 0L
+        currentRequestCachedInputTokenCount = 0L
         _perRequestTokenCounts.value =
             Pair(accumulatedInputTokenCount, accumulatedOutputTokenCount)
         AppLogger.d(
@@ -2605,7 +2600,7 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @param functionType 功能类型
      * @return 输入token计数
      */
-    suspend fun getCurrentInputTokenCountForFunction(functionType: FunctionType): Int {
+    suspend fun getCurrentInputTokenCountForFunction(functionType: FunctionType): Long {
         return Companion.getCurrentInputTokenCountForFunction(context, functionType)
     }
 
@@ -2614,7 +2609,7 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @param functionType 功能类型
      * @return 输出token计数
      */
-    suspend fun getCurrentOutputTokenCountForFunction(functionType: FunctionType): Int {
+    suspend fun getCurrentOutputTokenCountForFunction(functionType: FunctionType): Long {
         return Companion.getCurrentOutputTokenCountForFunction(context, functionType)
     }
 
@@ -2827,12 +2822,12 @@ class EnhancedAIService private constructor(private val context: Context) {
 
         // Reset per-request token counts
         _perRequestTokenCounts.value = null
-        accumulatedInputTokenCount = 0
-        accumulatedOutputTokenCount = 0
-        accumulatedCachedInputTokenCount = 0
-        currentRequestInputTokenCount = 0
-        currentRequestOutputTokenCount = 0
-        currentRequestCachedInputTokenCount = 0
+        accumulatedInputTokenCount = 0L
+        accumulatedOutputTokenCount = 0L
+        accumulatedCachedInputTokenCount = 0L
+        currentRequestInputTokenCount = 0L
+        currentRequestOutputTokenCount = 0L
+        currentRequestCachedInputTokenCount = 0L
 
         // Clear callback references
         currentResponseCallback = null

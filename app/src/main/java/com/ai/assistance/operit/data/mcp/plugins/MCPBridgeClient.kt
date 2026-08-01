@@ -51,42 +51,6 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
             }
         }
 
-        fun buildRegisterRemoteCommand(
-            name: String,
-            type: String,
-            endpoint: String,
-            connectionType: String? = null,
-            description: String? = null,
-            bearerToken: String? = null,
-            headers: Map<String, String>? = null
-        ): JSONObject {
-            val params = JSONObject().apply {
-                put("type", type)
-                put("name", name)
-                put("endpoint", endpoint)
-                if (connectionType != null) {
-                    put("connectionType", connectionType)
-                }
-                if (description != null) {
-                    put("description", description)
-                }
-                if (bearerToken != null) {
-                    put("bearerToken", bearerToken)
-                }
-                if (headers != null && headers.isNotEmpty()) {
-                    val headersObj = JSONObject()
-                    headers.forEach { (key, value) -> headersObj.put(key, value) }
-                    put("headers", headersObj)
-                }
-            }
-
-            return JSONObject().apply {
-                put("command", "register")
-                put("id", UUID.randomUUID().toString())
-                put("params", params)
-            }
-        }
-
         fun buildUnregisterCommand(name: String): JSONObject {
             return JSONObject().apply {
                 put("command", "unregister")
@@ -162,22 +126,6 @@ class MCPBridgeClient(private val context: Context, private val serviceName: Str
                 if (params.length() > 0) {
                     put("params", params)
                 }
-            }
-        }
-
-        fun buildCacheToolsCommand(serviceName: String, tools: List<JSONObject>): JSONObject {
-            val toolsArray = JSONArray()
-            tools.forEach { tool -> toolsArray.put(tool) }
-
-            val params = JSONObject().apply {
-                put("name", serviceName)
-                put("tools", toolsArray)
-            }
-
-            return JSONObject().apply {
-                put("command", "cachetools")
-                put("id", UUID.randomUUID().toString())
-                put("params", params)
             }
         }
 

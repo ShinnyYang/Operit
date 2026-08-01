@@ -53,13 +53,13 @@ internal class ToolPkgJsAiProviderService(
     }
 
     @Volatile
-    private var currentInputTokenCount: Int = 0
+    private var currentInputTokenCount: Long = 0L
 
     @Volatile
-    private var currentCachedInputTokenCount: Int = 0
+    private var currentCachedInputTokenCount: Long = 0L
 
     @Volatile
-    private var currentOutputTokenCount: Int = 0
+    private var currentOutputTokenCount: Long = 0L
 
     private val executionChatId =
         "toolpkg-ai-provider:${provider.providerId}:${UUID.randomUUID().toString().replace("-", "")}"
@@ -67,22 +67,22 @@ internal class ToolPkgJsAiProviderService(
     private val providerRuntimeContextKey =
         "toolpkg_provider:${provider.containerPackageName}:${provider.providerId.trim().lowercase()}"
 
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = currentInputTokenCount
 
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = currentCachedInputTokenCount
 
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = currentOutputTokenCount
 
     override val providerModel: String
         get() = "${provider.displayName}:${config.modelName}"
 
     override fun resetTokenCounts() {
-        currentInputTokenCount = 0
-        currentCachedInputTokenCount = 0
-        currentOutputTokenCount = 0
+        currentInputTokenCount = 0L
+        currentCachedInputTokenCount = 0L
+        currentOutputTokenCount = 0L
     }
 
     override fun cancelStreaming() {
@@ -111,7 +111,7 @@ internal class ToolPkgJsAiProviderService(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean
     ): Stream<String> = com.ai.assistance.operit.util.stream.stream {
@@ -189,7 +189,7 @@ internal class ToolPkgJsAiProviderService(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         val decoded =
             invokeProviderFunction(
                 functionName = provider.calculateInputTokensFunctionName,
@@ -432,11 +432,11 @@ internal class ToolPkgJsAiProviderService(
         }
     }
 
-    private fun parseTokenCount(decoded: ProviderHookValue): Int {
+    private fun parseTokenCount(decoded: ProviderHookValue): Long {
         return when (decoded) {
-            is ProviderHookValue.NumberValue -> decoded.value.toTokenCountInt()
+            is ProviderHookValue.NumberValue -> decoded.value.toTokenCountLong()
             is ProviderHookValue.TextValue ->
-                decoded.value.trim().toBigDecimalOrNull()?.toTokenCountInt()
+                decoded.value.trim().toBigDecimalOrNull()?.toTokenCountLong()
                     ?: throw IllegalStateException("Invalid token count result: ${decoded.value}")
             is ProviderHookValue.ObjectValue -> {
                 decoded.value.optTokenCount("tokens", "inputTokens", "count")
@@ -446,33 +446,20 @@ internal class ToolPkgJsAiProviderService(
         }
     }
 
-    private fun Number.toTokenCountInt(): Int {
-        return when (this) {
-            is java.math.BigDecimal -> toTokenCountInt()
-            is java.math.BigInteger ->
-                coerceIn(java.math.BigInteger.ZERO, java.math.BigInteger.valueOf(Int.MAX_VALUE.toLong()))
-                    .toLong()
-                    .toTokenCountInt()
-            else -> toLong().toTokenCountInt()
-        }
+    private fun Number.toTokenCountLong(): Long {
+        return toString().toBigDecimal().toTokenCountLong()
     }
 
-    private fun java.math.BigDecimal.toTokenCountInt(): Int {
-        return coerceIn(java.math.BigDecimal.ZERO, java.math.BigDecimal.valueOf(Int.MAX_VALUE.toLong()))
-            .toLong()
-            .toTokenCountInt()
+    private fun java.math.BigDecimal.toTokenCountLong(): Long {
+        return longValueExact().coerceAtLeast(0L)
     }
 
-    private fun Long.toTokenCountInt(): Int {
-        return coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
-    }
-
-    private fun JSONObject.optTokenCount(vararg keys: String): Int? {
+    private fun JSONObject.optTokenCount(vararg keys: String): Long? {
         for (key in keys) {
             if (!has(key) || isNull(key)) continue
             val parsed = when (val raw = opt(key)) {
-                is Number -> raw.toTokenCountInt()
-                is String -> raw.trim().toBigDecimalOrNull()?.toTokenCountInt()
+                is Number -> raw.toTokenCountLong()
+                is String -> raw.trim().toBigDecimalOrNull()?.toTokenCountLong()
                 else -> null
             }
             if (parsed != null) return parsed
@@ -531,9 +518,9 @@ internal class ToolPkgJsAiProviderService(
     }
 
     private fun applyUsage(usage: TokenUsage) {
-        currentInputTokenCount = usage.input.coerceAtLeast(0)
-        currentCachedInputTokenCount = usage.cachedInput.coerceAtLeast(0)
-        currentOutputTokenCount = usage.output.coerceAtLeast(0)
+        currentInputTokenCount = usage.input.coerceAtLeast(0L)
+        currentCachedInputTokenCount = usage.cachedInput.coerceAtLeast(0L)
+        currentOutputTokenCount = usage.output.coerceAtLeast(0L)
     }
 
     private fun extractMessageChunks(decoded: ProviderHookValue): List<String> {
@@ -584,8 +571,8 @@ internal class ToolPkgJsAiProviderService(
     }
 
     private data class TokenUsage(
-        val input: Int,
-        val cachedInput: Int,
-        val output: Int
+        val input: Long,
+        val cachedInput: Long,
+        val output: Long
     )
 }

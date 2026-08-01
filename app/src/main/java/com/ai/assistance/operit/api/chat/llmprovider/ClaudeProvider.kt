@@ -90,11 +90,11 @@ class ClaudeProvider(
     private val tokenCacheManager = TokenCacheManager()
 
     // 公开token计数
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = tokenCacheManager.totalInputTokenCount
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = tokenCacheManager.cachedInputTokenCount
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = tokenCacheManager.outputTokenCount
 
     // 供应商:模型标识符
@@ -158,22 +158,22 @@ class ClaudeProvider(
     }
 
     private data class AnthropicUsageCounts(
-        val actualInputTokens: Int,
-        val cachedInputTokens: Int,
-        val totalInputTokens: Int,
-        val outputTokens: Int,
-        val cacheCreationInputTokens: Int
+        val actualInputTokens: Long,
+        val cachedInputTokens: Long,
+        val totalInputTokens: Long,
+        val outputTokens: Long,
+        val cacheCreationInputTokens: Long
     )
 
-    private fun sumNumericFields(jsonObject: JSONObject?): Int {
-        jsonObject ?: return 0
+    private fun sumNumericFields(jsonObject: JSONObject?): Long {
+        jsonObject ?: return 0L
 
-        var total = 0
+        var total = 0L
         val keys = jsonObject.keys()
         while (keys.hasNext()) {
             val key = keys.next()
             when (val value = jsonObject.opt(key)) {
-                is Number -> total += value.toInt()
+                is Number -> total += value.toLong()
                 is JSONObject -> total += sumNumericFields(value)
             }
         }
@@ -184,29 +184,29 @@ class ClaudeProvider(
         usage ?: return null
 
         val cachedInputTokens = when {
-            usage.has("cache_read_input_tokens") -> usage.optInt("cache_read_input_tokens", 0)
+            usage.has("cache_read_input_tokens") -> usage.optLong("cache_read_input_tokens", 0L)
             usage.optJSONObject("input_tokens_details") != null ->
-                usage.optJSONObject("input_tokens_details")?.optInt("cached_tokens", 0) ?: 0
-            else -> usage.optInt("cached_tokens", 0)
-        }.coerceAtLeast(0)
+                usage.optJSONObject("input_tokens_details")?.optLong("cached_tokens", 0L) ?: 0L
+            else -> usage.optLong("cached_tokens", 0L)
+        }.coerceAtLeast(0L)
 
         val cacheCreationInputTokens = when {
-            usage.has("cache_creation_input_tokens") -> usage.optInt("cache_creation_input_tokens", 0)
+            usage.has("cache_creation_input_tokens") -> usage.optLong("cache_creation_input_tokens", 0L)
             usage.optJSONObject("cache_creation") != null ->
                 sumNumericFields(usage.optJSONObject("cache_creation"))
-            else -> 0
-        }.coerceAtLeast(0)
+            else -> 0L
+        }.coerceAtLeast(0L)
 
         val actualInputTokens = if (usage.has("input_tokens")) {
-            usage.optInt("input_tokens", 0).coerceAtLeast(0) + cacheCreationInputTokens
+            usage.optLong("input_tokens", 0L).coerceAtLeast(0L) + cacheCreationInputTokens
         } else {
-            (usage.optInt("prompt_tokens", 0).coerceAtLeast(0) - cachedInputTokens)
-                .coerceAtLeast(0) + cacheCreationInputTokens
+            (usage.optLong("prompt_tokens", 0L).coerceAtLeast(0L) - cachedInputTokens)
+                .coerceAtLeast(0L) + cacheCreationInputTokens
         }
 
         val totalInputTokens = actualInputTokens + cachedInputTokens
         val outputTokens =
-            usage.optInt("output_tokens", usage.optInt("completion_tokens", 0)).coerceAtLeast(0)
+            usage.optLong("output_tokens", usage.optLong("completion_tokens", 0L)).coerceAtLeast(0L)
 
         if (totalInputTokens <= 0 && outputTokens <= 0) {
             return null
@@ -223,7 +223,7 @@ class ClaudeProvider(
 
     private suspend fun applyAnthropicUsage(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         source: String,
         overwriteOutputTokens: Boolean
     ): Boolean {
@@ -951,7 +951,7 @@ class ClaudeProvider(
             chatHistory: List<PromptTurn>,
             preserveThinkInHistory: Boolean,
             tools: JSONArray? = null
-    ): Triple<JSONArray, JSONArray?, Int> {
+    ): Triple<JSONArray, JSONArray?, Long> {
         val serializedHistory = buildSerializedHistory(chatHistory, preserveThinkInHistory)
         val breakpointsApplied =
             applyStableCacheBreakpoints(
@@ -980,7 +980,7 @@ class ClaudeProvider(
     override suspend fun calculateInputTokens(
             chatHistory: List<PromptTurn>,
             availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         val serializedHistory = buildSerializedHistory(chatHistory, preserveThinkInHistory = false)
         val tools =
             if (enableToolCall && availableTools != null && availableTools.isNotEmpty()) {
@@ -1392,7 +1392,7 @@ class ClaudeProvider(
             stream: Boolean,
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             onNonFatalError: suspend (error: String) -> Unit,
             enableRetry: Boolean
     ): Stream<String> {

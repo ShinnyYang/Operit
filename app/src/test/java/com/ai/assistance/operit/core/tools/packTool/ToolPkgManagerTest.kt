@@ -73,6 +73,26 @@ class ToolPkgManagerTest {
     }
 
     @Test
+    fun `releasing one of multiple context leases keeps the engine active`() {
+        val engine = mock<JsEngine>()
+        val manager = createManager(engine)
+        val contextKey = "toolpkg_xml_render:package-a:screen:node"
+
+        val firstLease = manager.acquireToolPkgExecutionEngine(contextKey, "package-a")
+        val secondLease = manager.acquireToolPkgExecutionEngine(contextKey, "package-a")
+
+        manager.releaseToolPkgExecutionEngine(contextKey, firstLease)
+
+        assertSame(engine, manager.findToolPkgExecutionEngine(contextKey))
+        verify(engine, never()).destroy()
+
+        manager.releaseToolPkgExecutionEngine(contextKey, secondLease)
+
+        assertNull(manager.findToolPkgExecutionEngine(contextKey))
+        verify(engine).destroy()
+    }
+
+    @Test
     fun `destroy closes registry and rejects later acquisition`() {
         val engine = mock<JsEngine>()
         val manager = createManager(engine)

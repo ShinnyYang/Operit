@@ -123,6 +123,10 @@ class OperitApplication : Application(), ImageLoaderFactory, WorkConfiguration.P
         appStartupTimeMs = startTime
         instance = this
 
+        // Workers and receivers can cold-start the process without creating an Activity.
+        // Initialize process-wide preference dependencies before those entry points can run.
+        initAndroidPermissionPreferences(applicationContext)
+
         configureOpenMpEnvironment()
         Thread.setDefaultUncaughtExceptionHandler(GlobalExceptionHandler(this))
 
@@ -174,8 +178,7 @@ class OperitApplication : Application(), ImageLoaderFactory, WorkConfiguration.P
         initUserPreferencesManager(applicationContext, defaultProfileName)
         AppLogger.d(TAG, "【启动计时】用户偏好管理器初始化完成 - ${System.currentTimeMillis() - startTime}ms")
 
-        initAndroidPermissionPreferences(applicationContext)
-        AppLogger.d(TAG, "【启动计时】Android权限偏好管理器初始化完成 - ${System.currentTimeMillis() - startTime}ms")
+        AppLogger.d(TAG, "【启动计时】Android权限偏好管理器已就绪 - ${System.currentTimeMillis() - startTime}ms")
 
         // 在最早时机初始化并应用语言设置（必须在获取字符串资源之前）
         initializeAppLanguage()

@@ -79,15 +79,15 @@ class ChatUtilsTest {
     }
 
     @Test fun estimateTokenCount_countsEnglishApproximately() {
-        assertEquals(1, ChatUtils.estimateTokenCount("abcd"))
+        assertEquals(1L, ChatUtils.estimateTokenCount("abcd"))
     }
 
     @Test fun estimateTokenCount_countsChineseApproximately() {
-        assertEquals(3, ChatUtils.estimateTokenCount("你好"))
+        assertEquals(3L, ChatUtils.estimateTokenCount("你好"))
     }
 
     @Test fun estimateTokenCount_countsMixedText() {
-        assertEquals(1, ChatUtils.estimateTokenCount("你a"))
+        assertEquals(1L, ChatUtils.estimateTokenCount("你a"))
     }
 
     @Test fun extractJson_returnsEmbeddedObject() {

@@ -175,7 +175,7 @@ class MessageCoordinationDelegate(
         chatModelConfigIdOverride: String? = null,
         chatModelIndexOverride: Int? = null,
         memorySpaceIdOverride: String? = null
-    ): Int {
+    ): Long {
         val currentChat = chatHistoryDelegate.chatHistories.value.firstOrNull { it.id == chatId }
         val currentRoleName =
             roleCardId?.let {
@@ -262,7 +262,7 @@ class MessageCoordinationDelegate(
         chatModelConfigIdOverride: String? = null,
         chatModelIndexOverride: Int? = null,
         memorySpaceIdOverride: String? = null
-    ): Int? {
+    ): Long? {
         val targetChatId = chatId ?: chatHistoryDelegate.currentChatId.value ?: return null
         val service = resolveWindowEstimateService(targetChatId) ?: return null
         val effectiveRoleCardId = resolveWindowEstimateRoleCardId(targetChatId, roleCardId)
@@ -292,7 +292,7 @@ class MessageCoordinationDelegate(
         chatHistoryDelegate.saveCurrentChat(
             inputTokens = inputTokens,
             outputTokens = outputTokens,
-            actualContextWindowSize = newWindowSize.toLong(),
+            actualContextWindowSize = newWindowSize,
             chatIdOverride = targetChatId
         )
         withContext(Dispatchers.Main) {
@@ -300,7 +300,7 @@ class MessageCoordinationDelegate(
                 targetChatId,
                 inputTokens,
                 outputTokens,
-                newWindowSize.toLong()
+                newWindowSize
             )
         }
         AppLogger.d(
@@ -666,7 +666,7 @@ class MessageCoordinationDelegate(
 
             val isShouldGenerateSummary = AIMessageManager.shouldGenerateSummary(
                 messages = currentMessages,
-                currentTokens = currentTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+                currentTokens = currentTokens,
                 maxTokens = maxTokensForSend,
                 tokenUsageThreshold = tokenUsageThresholdForSend,
                 enableSummary = chatContextSettings.enableSummary,
@@ -1371,7 +1371,7 @@ class MessageCoordinationDelegate(
                 .toInt()
         val shouldSummarize = AIMessageManager.shouldGenerateSummary(
             messages = currentMessages,
-            currentTokens = currentTokens.coerceAtMost(Int.MAX_VALUE.toLong()).toInt(),
+            currentTokens = currentTokens,
             maxTokens = maxTokens,
             tokenUsageThreshold = chatContextSettings.summaryTokenThreshold.toDouble(),
             enableSummary = chatContextSettings.enableSummary,

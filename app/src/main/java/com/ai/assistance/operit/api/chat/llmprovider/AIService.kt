@@ -10,13 +10,13 @@ import com.ai.assistance.operit.util.stream.Stream
 /** AI服务接口，定义与不同AI提供商进行交互的标准方法 */
 interface AIService {
     /** 输入token计数 (仅新增部分) */
-    val inputTokenCount: Int
+    val inputTokenCount: Long
 
     /** 缓存命中的输入token计数 */
-    val cachedInputTokenCount: Int
+    val cachedInputTokenCount: Long
 
     /** 输出token计数 */
-    val outputTokenCount: Int
+    val outputTokenCount: Long
 
     /** 获取供应商:模型标识符，格式如"DEEPSEEK:deepseek-chat" */
     val providerModel: String
@@ -56,7 +56,7 @@ interface AIService {
             stream: Boolean = true,
             availableTools: List<ToolPrompt>? = null,
             preserveThinkInHistory: Boolean = false, // 新增参数，控制是否保留历史中的思考过程
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit = { _, _, _ -> },
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit = { _, _, _ -> },
             onNonFatalError: suspend (error: String) -> Unit = {},
             enableRetry: Boolean = true
     ): Stream<String>
@@ -79,7 +79,7 @@ interface AIService {
     suspend fun calculateInputTokens(
             chatHistory: List<PromptTurn>,
             availableTools: List<ToolPrompt>? = null
-    ): Int
+    ): Long
 
     /**
      * 释放资源

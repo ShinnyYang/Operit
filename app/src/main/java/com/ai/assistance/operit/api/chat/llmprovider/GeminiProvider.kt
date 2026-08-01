@@ -84,11 +84,11 @@ class GeminiProvider(
     // 思考状态跟踪
     private var isInThinkingMode = false
 
-    override val inputTokenCount: Int
+    override val inputTokenCount: Long
         get() = tokenCacheManager.totalInputTokenCount
-    override val cachedInputTokenCount: Int
+    override val cachedInputTokenCount: Long
         get() = tokenCacheManager.cachedInputTokenCount
-    override val outputTokenCount: Int
+    override val outputTokenCount: Long
         get() = tokenCacheManager.outputTokenCount
 
     // 供应商:模型标识符
@@ -131,7 +131,7 @@ class GeminiProvider(
     override suspend fun calculateInputTokens(
             chatHistory: List<PromptTurn>,
             availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         // 构建工具定义的JSON字符串
         val toolsJson = buildToolsJson(availableTools)
         val comparableHistory =
@@ -503,7 +503,7 @@ class GeminiProvider(
             chatHistory: List<PromptTurn>,
             toolsJson: String? = null,
             preserveThinkInHistory: Boolean = false
-    ): Pair<Pair<JSONArray, JSONObject?>, Int> {
+    ): Pair<Pair<JSONArray, JSONObject?>, Long> {
         val contentsArray = JSONArray()
         var systemInstruction: JSONObject? = null
 
@@ -1032,7 +1032,7 @@ class GeminiProvider(
             stream: Boolean,
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             onNonFatalError: suspend (error: String) -> Unit,
             enableRetry: Boolean
     ): Stream<String> {
@@ -1367,7 +1367,7 @@ class GeminiProvider(
             response: Response,
             streamCollector: StreamCollector<String>,
             requestId: String,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             receivedContent: StringBuilder
     ) {
         AppLogger.d(TAG, "开始处理响应流")
@@ -1589,7 +1589,7 @@ class GeminiProvider(
             response: Response,
             streamCollector: StreamCollector<String>,
             requestId: String,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             receivedContent: StringBuilder
     ) {
         AppLogger.d(TAG, "开始处理非流式响应")
@@ -1636,7 +1636,7 @@ class GeminiProvider(
         context: Context,
         json: JSONObject,
         requestId: String,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
     ): String {
         val contentBuilder = StringBuilder()
         val searchSourcesBuilder = StringBuilder()
@@ -1862,9 +1862,9 @@ class GeminiProvider(
             // 提取实际的token使用数据
             val usageMetadata = json.optJSONObject("usageMetadata")
             if (usageMetadata != null) {
-                val promptTokenCount = usageMetadata.optInt("promptTokenCount", 0)
-                val cachedContentTokenCount = usageMetadata.optInt("cachedContentTokenCount", 0)
-                val candidatesTokenCount = usageMetadata.optInt("candidatesTokenCount", 0)
+                val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0L)
+                val cachedContentTokenCount = usageMetadata.optLong("cachedContentTokenCount", 0L)
+                val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
 
                 val hasServerUsage =
                     promptTokenCount > 0 || cachedContentTokenCount > 0 || candidatesTokenCount > 0
