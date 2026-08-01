@@ -6,4 +6,6 @@
 
 预期结果：远程插件不访问 terminal、pnpm、bridge registry、spawn 或 unspawn；本地插件的 stdio 生命周期保持在 bridge 内。
 
+MCP 配置页面通过 `MCPRepository` 读取远程工具名。repository 从已持久化的远程元数据注册 runtime，并用 Kotlin SDK session 发现和缓存工具；页面本身不再向 bridge 查询远程服务。没有本地插件时，页面也不会初始化 bridge 查询。
+
 [DONE]

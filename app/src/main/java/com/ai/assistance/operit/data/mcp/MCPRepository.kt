@@ -938,6 +938,10 @@ class MCPRepository(private val context: Context) {
                         serviceName to pluginId
                     }
                     .toMap()
+                if (localPluginServiceNames.isEmpty()) {
+                    AppLogger.d(TAG, "No local stdio plugins to synchronize from bridge")
+                    return@withContext
+                }
                 val bridge = com.ai.assistance.operit.data.mcp.plugins.MCPBridge.getInstance(context)
                 val listResponse = bridge.listMcpServices()
 
@@ -1088,6 +1092,56 @@ class MCPRepository(private val context: Context) {
         val session = MCPManager.getInstance(context).getOrCreateSession(metadata.id)
             ?: return emptyList()
         return session.getToolDescriptions()
+    }
+
+    /**
+     * Returns the names exposed by a remote MCP service for list presentation.
+     *
+     * Remote configuration is persisted independently from the in-memory runtime. This
+     * method establishes that runtime boundary from the current metadata before asking
+     * the Kotlin SDK session for tools, so a server added while the app is running can
+     * be presented without involving the local stdio bridge.
+     */
+    suspend fun getRemoteToolNames(pluginId: String): List<String> = withContext(Dispatchers.IO) {
+        val metadata = mcpLocalServer.getPluginMetadata(pluginId)
+        if (metadata?.type != "remote") {
+            return@withContext emptyList()
+        }
+
+        val cachedToolNames = mcpLocalServer.getCachedTools(pluginId)
+            .orEmpty()
+            .map { cachedTool -> cachedTool.name.trim() }
+            .filter { toolName -> toolName.isNotEmpty() }
+            .distinct()
+        if (cachedToolNames.isNotEmpty()) {
+            return@withContext cachedToolNames
+        }
+
+        if (metadata.disabled) {
+            return@withContext emptyList()
+        }
+
+        val mcpManager = MCPManager.getInstance(context)
+        mcpManager.registerRuntime(pluginId, createRuntimeDescriptor(metadata))
+        val session = mcpManager.getOrCreateSession(pluginId)
+            ?: return@withContext emptyList()
+        val discoveredTools = session.listTools()
+            .mapNotNull { tool ->
+                val toolName = tool.name.trim()
+                toolName.takeIf { it.isNotEmpty() }?.let { name ->
+                    MCPLocalServer.CachedToolInfo(
+                        name = name,
+                        description = tool.description,
+                        inputSchema = tool.inputSchema
+                    )
+                }
+            }
+
+        if (discoveredTools.isNotEmpty()) {
+            mcpLocalServer.cacheServerTools(pluginId, discoveredTools)
+        }
+
+        discoveredTools.map { tool -> tool.name }.distinct()
     }
 
     /**
