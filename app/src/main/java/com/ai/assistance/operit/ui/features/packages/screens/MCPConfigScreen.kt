@@ -1474,6 +1474,10 @@ private fun getPluginAsServer(
             isRemote ||
             (pluginInfo?.isInstalled == true)
 
+    if (metadataFromConfig?.type == "remote") {
+        return metadataFromConfig.copy(isInstalled = isInstalled)
+    }
+
     // 尝试从内存中的服务器列表查找
     val existingServer = mcpRepository.mcpServers.value.find { it.id == pluginId }
 
@@ -1498,7 +1502,9 @@ private fun getPluginAsServer(
         repoUrl = pluginInfo?.repoUrl ?: "",
         type = pluginInfo?.type ?: "local",
         endpoint = pluginInfo?.endpoint,
-        connectionType = pluginInfo?.connectionType
+        connectionType = pluginInfo?.connectionType,
+        bearerToken = pluginInfo?.bearerToken,
+        headers = pluginInfo?.headers
     )
 }
 

@@ -213,7 +213,7 @@ class MessageCoordinationDelegate(
         return runCatching { characterCardManager.findCharacterCardByName(characterCardName)?.id }.getOrNull()
     }
 
-    private suspend fun resolveWindowEstimateRoleCardId(
+    private suspend fun resolveRoleCardId(
         chatId: String?,
         roleCardId: String?
     ): String? {
@@ -233,7 +233,7 @@ class MessageCoordinationDelegate(
                 return card.id
             }
         }
-        return resolveWindowEstimateRoleCardId(chatId, null)
+        return resolveRoleCardId(chatId, null)
             ?: CharacterCardManager.DEFAULT_CHARACTER_CARD_ID
     }
 
@@ -265,7 +265,7 @@ class MessageCoordinationDelegate(
     ): Long? {
         val targetChatId = chatId ?: chatHistoryDelegate.currentChatId.value ?: return null
         val service = resolveWindowEstimateService(targetChatId) ?: return null
-        val effectiveRoleCardId = resolveWindowEstimateRoleCardId(targetChatId, roleCardId)
+        val effectiveRoleCardId = resolveRoleCardId(targetChatId, roleCardId)
         val effectivePromptFunctionType = promptFunctionType ?: currentPromptFunctionType
         val effectiveChatModelConfigIdOverride =
             chatModelConfigIdOverride ?: currentChatModelConfigIdOverride
@@ -599,9 +599,8 @@ class MessageCoordinationDelegate(
         // 获取当前附件列表
         val currentAttachments =
             if (shouldReadComposerState) attachmentDelegate.attachments.value else emptyList()
-        // 角色卡和群组地位相等，都可以为 null，优先使用 override，否则使用当前活跃的角色卡（可能为 null）
-        val roleCardId = roleCardIdOverride?.takeIf { it.isNotBlank() }
-            ?: runBlocking { activePromptManager.resolveActiveCardIdForSend() }
+        // 角色卡和群组地位相等，都可以为 null。
+        val roleCardId = runBlocking { resolveRoleCardId(chatId, roleCardIdOverride) }
         val resolvedOverrides = try {
             if (promptFunctionType == PromptFunctionType.CHAT) {
                 val (resolvedChatModelConfigIdOverride, resolvedChatModelIndexOverride) =
@@ -1466,7 +1465,7 @@ class MessageCoordinationDelegate(
 
             try {
                 val roleCardId =
-                    resolveWindowEstimateRoleCardId(
+                    resolveRoleCardId(
                         chatId = currentChatId,
                         roleCardId = null
                     )
@@ -1524,7 +1523,7 @@ class MessageCoordinationDelegate(
                     ?: sourceMessages.lastOrNull()?.content
                     ?: ""
             val roleCardId =
-                resolveWindowEstimateRoleCardId(
+                resolveRoleCardId(
                     chatId = currentChatId,
                     roleCardId = null
                 )
