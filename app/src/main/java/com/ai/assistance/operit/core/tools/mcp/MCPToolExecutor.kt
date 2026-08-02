@@ -24,7 +24,15 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
         ToolExecutor {
     companion object {
         private const val TAG = "MCPToolExecutor"
+        private const val REPLACEMENT_CHARACTER = '\uFFFD'
     }
+
+    private data class ArgumentIntegrityViolation(
+            val parameterName: String,
+            val replacementCharacterCount: Int,
+            val characterOffset: Int,
+            val utf8ByteOffset: Int
+    )
 
     /** 保存过长的 MCP 结果，并返回适合内联展示的内容 */
     private fun persistLongResultIfNeeded(
@@ -393,8 +401,45 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
             )
         }
 
-        // 这里可以添加更多验证逻辑，但目前简单返回成功
+        findArgumentIntegrityViolation(tool)?.let { violation ->
+            // U+FFFD means the original argument bytes have already been lost. Sending a write
+            // request would silently persist corrupted user content on the remote MCP server.
+            AppLogger.e(
+                    TAG,
+                    "Blocked MCP tool call with corrupted argument: tool=${tool.name}, " +
+                            "parameter=${violation.parameterName}, " +
+                            "replacementCount=${violation.replacementCharacterCount}, " +
+                            "characterOffset=${violation.characterOffset}, " +
+                            "utf8ByteOffset=${violation.utf8ByteOffset}"
+            )
+            return ToolValidationResult(
+                    valid = false,
+                    errorMessage =
+                            "MCP tool argument '${violation.parameterName}' contains " +
+                                    "${violation.replacementCharacterCount} invalid UTF-8 " +
+                                    "replacement character(s) (U+FFFD); the call was blocked " +
+                                    "before it reached the MCP server. First UTF-8 byte offset: " +
+                                    violation.utf8ByteOffset
+            )
+        }
+
         return ToolValidationResult(valid = true)
+    }
+
+    private fun findArgumentIntegrityViolation(tool: AITool): ArgumentIntegrityViolation? {
+        val parameter = tool.parameters.firstOrNull { it.value.contains(REPLACEMENT_CHARACTER) }
+                ?: return null
+        val characterOffset = parameter.value.indexOf(REPLACEMENT_CHARACTER)
+        val utf8ByteOffset = parameter.value
+                .substring(0, characterOffset)
+                .toByteArray(Charsets.UTF_8)
+                .size
+        return ArgumentIntegrityViolation(
+                parameterName = parameter.name,
+                replacementCharacterCount = parameter.value.count { it == REPLACEMENT_CHARACTER },
+                characterOffset = characterOffset,
+                utf8ByteOffset = utf8ByteOffset
+        )
     }
 }
 
