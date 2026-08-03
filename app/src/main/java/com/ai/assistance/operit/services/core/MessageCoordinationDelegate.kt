@@ -216,10 +216,10 @@ class MessageCoordinationDelegate(
     private suspend fun resolveRoleCardId(
         chatId: String?,
         roleCardId: String?
-    ): String? {
+    ): String {
         return roleCardId
             ?: resolveBoundRoleCardId(chatId)
-            ?: runCatching { activePromptManager.resolveActiveCardIdForSend() }.getOrNull()
+            ?: activePromptManager.resolveActiveCardIdForSend()
     }
 
     private suspend fun resolveRegenerationRoleCardId(
@@ -234,7 +234,6 @@ class MessageCoordinationDelegate(
             }
         }
         return resolveRoleCardId(chatId, null)
-            ?: CharacterCardManager.DEFAULT_CHARACTER_CARD_ID
     }
 
     private fun isGroupChatSession(chatId: String?): Boolean {
@@ -599,7 +598,7 @@ class MessageCoordinationDelegate(
         // 获取当前附件列表
         val currentAttachments =
             if (shouldReadComposerState) attachmentDelegate.attachments.value else emptyList()
-        // 角色卡和群组地位相等，都可以为 null。
+        // 群组会解析为活动提示管理器指定的默认角色卡。
         val roleCardId = runBlocking { resolveRoleCardId(chatId, roleCardIdOverride) }
         val resolvedOverrides = try {
             if (promptFunctionType == PromptFunctionType.CHAT) {

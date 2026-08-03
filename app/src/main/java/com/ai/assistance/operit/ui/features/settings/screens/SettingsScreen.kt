@@ -35,6 +35,7 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.core.tools.defaultTool.standard.CookiePrivacyManager
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.preferences.GitHubAuthPreferences
+import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.repository.ChatHistoryManager
 import com.ai.assistance.operit.ui.features.github.GitHubLoginDialog
 import com.ai.assistance.operit.ui.theme.LocalThemePreferenceSnapshot
@@ -69,12 +70,19 @@ fun SettingsScreen(
 ) {
         val context = LocalContext.current
         val githubAuth = remember { GitHubAuthPreferences.getInstance(context) }
+        val userPreferences = remember { UserPreferencesManager.getInstance(context) }
         val scope = rememberCoroutineScope()
         var showGitHubLogin by remember { mutableStateOf(false) }
         var showClearCookieConfirm by remember { mutableStateOf(false) }
 
         val isGitHubLoggedIn = githubAuth.isLoggedInFlow.collectAsState(initial = false).value
         val gitHubUser = githubAuth.userInfoFlow.collectAsState(initial = null).value
+        val convertLongPastedTextToFile by
+                userPreferences.convertLongPastedTextToFile.collectAsState(initial = true)
+        val longPastedTextFileThreshold by
+                userPreferences.longPastedTextFileThreshold.collectAsState(
+                        initial = UserPreferencesManager.DEFAULT_LONG_PASTED_TEXT_FILE_THRESHOLD
+                )
 
         // 创建和记住滚动状态，设置为上次保存的位置
         val scrollState = rememberScrollState(SettingsScreenScrollPosition.value)
@@ -181,6 +189,43 @@ fun SettingsScreen(
                                 icon = Icons.Default.AspectRatio,
                                 onClick = navigateToLayoutAdjustmentSettings
                         )
+                }
+
+                SettingsSection(
+                        title = stringResource(R.string.settings_section_chat_input),
+                        icon = Icons.Default.Chat,
+                        containerColor = cardContainerColor
+                ) {
+                        CompactToggleWithDescription(
+                                title = stringResource(R.string.long_pasted_text_to_file),
+                                description = stringResource(R.string.long_pasted_text_to_file_desc),
+                                checked = convertLongPastedTextToFile,
+                                onCheckedChange = { enabled ->
+                                        scope.launch {
+                                                userPreferences.saveConvertLongPastedTextToFile(enabled)
+                                        }
+                                }
+                        )
+
+                        if (convertLongPastedTextToFile) {
+                                CompactSlider(
+                                        title = stringResource(R.string.long_pasted_text_threshold),
+                                        subtitle = stringResource(R.string.long_pasted_text_threshold_desc),
+                                        value = longPastedTextFileThreshold.toFloat(),
+                                        onValueChange = { threshold ->
+                                                scope.launch {
+                                                        userPreferences.saveLongPastedTextFileThreshold(
+                                                                threshold.toInt()
+                                                        )
+                                                }
+                                        },
+                                        valueRange = 1_000f..100_000f,
+                                        steps = 0,
+                                        decimalFormatPattern = "0",
+                                        unitText = stringResource(R.string.long_pasted_text_threshold_unit),
+                                        backgroundColor = cardContainerColor
+                                )
+                        }
                 }
 
                 // ======= AI模型配置 =======
@@ -547,7 +592,7 @@ private fun CompactSlider(
                                                 }
                                         },
                                         modifier = Modifier
-                                                .width(40.dp)
+                                                .width(64.dp)
                                                 .background(
                                                         MaterialTheme.colorScheme.surfaceVariant,
                                                         RoundedCornerShape(4.dp)

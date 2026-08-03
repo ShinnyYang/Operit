@@ -25,6 +25,7 @@ status: in-progress
 - Android 依赖：Kotlin MCP SDK、Ktor client 和版本对齐。
 - MCP runtime session、manager、启动器、工具缓存和工具注册。
 - `MCPToolExecutor`、`MCPPackage`、`MCPRepository`、MCP 详情页面。
+- 远程 Streamable HTTP/SSE 的连接、请求和 SSE 空闲超时。
 - 配置模型和配置文件格式不变。
 
 ## 验证

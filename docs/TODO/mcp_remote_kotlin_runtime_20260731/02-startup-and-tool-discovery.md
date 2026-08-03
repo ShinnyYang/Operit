@@ -8,4 +8,6 @@
 
 MCP 配置页面通过 `MCPRepository` 读取远程工具名。repository 从已持久化的远程元数据注册 runtime，并用 Kotlin SDK session 发现和缓存工具；页面本身不再向 bridge 查询远程服务。没有本地插件时，页面也不会初始化 bridge 查询。
 
+远程工具调用的返回在 `MCPToolExecutor` 中统一解析。标准 `content` 直接呈现；只有 `structuredContent` 时，执行器解析其中嵌套的 JSON 结果，再输出文本内容，避免 Kotlin SDK 的序列化转义进入工具执行界面。
+
 [DONE]

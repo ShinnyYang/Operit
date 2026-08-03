@@ -238,6 +238,7 @@ data class MarketV2PublisherEntrySummary(
     val type: String = "",
     val relation: String,
     val stateCode: String = "pending",
+    val listingState: String = "",
     val categoryId: String = "",
     val updatedAt: String = "",
     val reasonCodes: List<String> = emptyList()

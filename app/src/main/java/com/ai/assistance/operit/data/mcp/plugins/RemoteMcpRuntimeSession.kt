@@ -7,6 +7,7 @@ import com.ai.assistance.operit.core.tools.mcp.McpRuntimeSession
 import com.ai.assistance.operit.core.tools.mcp.McpRuntimeTool
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.sse.SSE
 import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.headers
@@ -31,9 +32,18 @@ class RemoteMcpRuntimeSession(
 ) : McpRuntimeSession {
     companion object {
         private const val TAG = "RemoteMcpRuntimeSession"
+        private const val CONNECT_TIMEOUT_MILLIS = 15_000L
+        private const val REMOTE_RESULT_TIMEOUT_MILLIS = 60_000L
     }
 
     private val httpClient = HttpClient(OkHttp) {
+        install(HttpTimeout) {
+            connectTimeoutMillis = CONNECT_TIMEOUT_MILLIS
+            requestTimeoutMillis = REMOTE_RESULT_TIMEOUT_MILLIS
+            // Streamable HTTP delivers a 202 tool result through the existing SSE connection.
+            // Without an explicit idle window, OkHttp's short default can close that stream first.
+            socketTimeoutMillis = REMOTE_RESULT_TIMEOUT_MILLIS
+        }
         install(SSE)
     }
 

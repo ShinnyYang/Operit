@@ -71,7 +71,7 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
     /**
      * 从 MCP 结果中提取内容
      * 
-     * 解析 content 数组，智能识别并提取不同类型的内容：
+     * 解析标准 content 数组和 structuredContent，智能识别并提取不同类型的内容：
      * - text: 直接提取文本，如果是 JSON 字符串则尝试格式化
      * - image: 显示图像信息
      * - resource: 提取资源内容或显示资源信息
@@ -84,105 +84,123 @@ class MCPToolExecutor(private val context: Context, private val mcpManager: MCPM
             return "{}"
         }
 
-        // 提取 content 数组中的内容
-        val contentArray = resultData.optJSONArray("content")
-        val contentText =
-                if (contentArray != null && contentArray.length() > 0) {
-                    val extractedText = StringBuilder()
-                    for (i in 0 until contentArray.length()) {
-                        val contentItem = contentArray.optJSONObject(i) ?: continue
-                        val contentType = contentItem.optString("type", "text")
-
-                        when (contentType) {
-                            "text" -> {
-                                val text = contentItem.optString("text", "")
-                                val processedText =
-                                        if (isJsonString(text)) {
-                                            try {
-                                                formatJson(text)
-                                            } catch (e: Exception) {
-                                                text
-                                            }
-                                        } else {
-                                            text
-                                        }
-                                extractedText.append(processedText)
-                            }
-                            "image" -> {
-                                val mimeType = contentItem.optString("mimeType", "image/png")
-                                val data = contentItem.optString("data", "")
-                                if (data.isNotEmpty()) {
-                                    val imageId = ImagePoolManager.addImageFromBase64(data, mimeType)
-                                    if (imageId != "error") {
-                                        extractedText.append("<link type=\"image\" id=\"$imageId\"></link>")
-                                    } else {
-                                        val dataSize = data.length
-                                        extractedText.append("[Image: $mimeType, Size: $dataSize bytes]")
-                                    }
-                                } else {
-                                    extractedText.append("[Image: $mimeType, Size: 0 bytes]")
-                                }
-                            }
-                            "resource" -> {
-                                val resource = contentItem.optJSONObject("resource")
-                                if (resource != null) {
-                                    val uri = resource.optString("uri", "")
-                                    val text = resource.optString("text")
-                                    val mimeType = resource.optString("mimeType", "")
-                                    val blob = resource.optString("blob", "")
-                                    val data = if (blob.isNotEmpty()) blob else resource.optString("data", "")
-                                    val isImage = mimeType.startsWith("image/") && data.isNotEmpty()
-                                    if (isImage) {
-                                        val finalMimeType = if (mimeType.isNotEmpty()) mimeType else "image/png"
-                                        val imageId = ImagePoolManager.addImageFromBase64(data, finalMimeType)
-                                        if (imageId != "error") {
-                                            extractedText.append("<link type=\"image\" id=\"$imageId\"></link>")
-                                        } else if (text != null && text.isNotEmpty()) {
-                                            extractedText.append(text)
-                                        } else {
-                                            extractedText.append("[Resource: $uri]")
-                                        }
-                                    } else if (text != null && text.isNotEmpty()) {
-                                        extractedText.append(text)
-                                    } else {
-                                        extractedText.append("[Resource: $uri]")
-                                    }
-                                }
-                            }
-                            else -> {
-                                extractedText.append("[Unknown content type '$contentType': ${contentItem}]")
-                            }
-                        }
-
-                        if (i < contentArray.length() - 1) {
-                            extractedText.append("\n")
-                        }
-                    }
-                    extractedText.toString()
-                } else {
-                    ""
-                }
-
-        // 提取元数据 (resultData 中除了 "content" 之外的所有字段)
-        val metadata = JSONObject()
-        val keys = resultData.keys()
-        while (keys.hasNext()) {
-            val key = keys.next()
-            if (key != "content") {
-                metadata.put(key, resultData.get(key))
-            }
+        val contentText = extractStandardContent(resultData.optJSONArray("content"))
+        if (contentText.isNotEmpty()) {
+            return contentText
         }
 
-        val metadataText = if (metadata.length() > 0) metadata.toString() else ""
+        val structuredText = extractStructuredContent(resultData.opt("structuredContent"))
+        if (structuredText.isNotEmpty()) {
+            return structuredText
+        }
 
-        // 组合元数据和内容
-        return when {
-            metadataText.isNotEmpty() && contentText.isNotEmpty() -> {
-                "$metadataText\n\n$contentText"
+        return resultData.toString()
+    }
+
+    private fun extractStandardContent(contentArray: org.json.JSONArray?): String {
+        if (contentArray == null || contentArray.length() == 0) {
+            return ""
+        }
+
+        val extractedText = StringBuilder()
+        for (i in 0 until contentArray.length()) {
+            val contentItem = contentArray.optJSONObject(i) ?: continue
+            val contentType = contentItem.optString("type", "text")
+
+            when (contentType) {
+                "text" -> {
+                    val text = contentItem.optString("text", "")
+                    extractedText.append(if (isJsonString(text)) formatJson(text) else text)
+                }
+                "image" -> {
+                    val mimeType = contentItem.optString("mimeType", "image/png")
+                    val data = contentItem.optString("data", "")
+                    if (data.isNotEmpty()) {
+                        val imageId = ImagePoolManager.addImageFromBase64(data, mimeType)
+                        if (imageId != "error") {
+                            extractedText.append("<link type=\"image\" id=\"$imageId\"></link>")
+                        } else {
+                            extractedText.append("[Image: $mimeType, Size: ${data.length} bytes]")
+                        }
+                    } else {
+                        extractedText.append("[Image: $mimeType, Size: 0 bytes]")
+                    }
+                }
+                "resource" -> {
+                    val resource = contentItem.optJSONObject("resource")
+                    if (resource != null) {
+                        val uri = resource.optString("uri", "")
+                        val text = resource.optString("text")
+                        val mimeType = resource.optString("mimeType", "")
+                        val blob = resource.optString("blob", "")
+                        val data = if (blob.isNotEmpty()) blob else resource.optString("data", "")
+                        val isImage = mimeType.startsWith("image/") && data.isNotEmpty()
+                        if (isImage) {
+                            val finalMimeType = if (mimeType.isNotEmpty()) mimeType else "image/png"
+                            val imageId = ImagePoolManager.addImageFromBase64(data, finalMimeType)
+                            if (imageId != "error") {
+                                extractedText.append("<link type=\"image\" id=\"$imageId\"></link>")
+                            } else if (text.isNotEmpty()) {
+                                extractedText.append(text)
+                            } else {
+                                extractedText.append("[Resource: $uri]")
+                            }
+                        } else if (text.isNotEmpty()) {
+                            extractedText.append(text)
+                        } else {
+                            extractedText.append("[Resource: $uri]")
+                        }
+                    }
+                }
+                else -> {
+                    extractedText.append("[Unknown content type '$contentType': ${contentItem}]")
+                }
             }
-            metadataText.isNotEmpty() -> metadataText
-            contentText.isNotEmpty() -> contentText
-            else -> resultData.toString() // fallback to original data if both are empty
+
+            if (i < contentArray.length() - 1) {
+                extractedText.append("\n")
+            }
+        }
+        return extractedText.toString()
+    }
+
+    /**
+     * Remote MCP servers may put their payload in structuredContent. Some services place
+     * a JSON document in its result field, so parse that document before selecting text.
+     */
+    private fun extractStructuredContent(value: Any?): String {
+        return when (value) {
+            null, JSONObject.NULL -> ""
+            is JSONObject -> {
+                val nestedResult = value.opt("result")
+                val nestedResultText =
+                    if (nestedResult == null || nestedResult == JSONObject.NULL) "" else extractStructuredContent(nestedResult)
+                val contentText = value.optString("content", "")
+                when {
+                    nestedResultText.isNotEmpty() -> nestedResultText
+                    contentText.isNotEmpty() -> contentText
+                    else -> value.toString()
+                }
+            }
+            is org.json.JSONArray -> value.toString()
+            is String -> {
+                val parsedValue = parseStructuredJson(value)
+                if (parsedValue == null) value else extractStructuredContent(parsedValue)
+            }
+            else -> value.toString()
+        }
+    }
+
+    private fun parseStructuredJson(value: String): Any? {
+        val trimmed = value.trim()
+        return try {
+            when {
+                trimmed.startsWith("{") && trimmed.endsWith("}") -> JSONObject(trimmed)
+                trimmed.startsWith("[") && trimmed.endsWith("]") -> org.json.JSONArray(trimmed)
+                else -> null
+            }
+        } catch (e: Exception) {
+            null
         }
     }
 

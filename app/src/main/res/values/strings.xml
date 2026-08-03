@@ -3131,6 +3131,13 @@
     <string name="chat_summarizing_memory">正在总结记忆...</string>
     <string name="chat_input_processing_collect_failed">输入处理状态收集失败: %1$s</string>
     <string name="chat_input_hint">输入消息...</string>
+    <string name="chat_pasted_text_attached">已将粘贴文本作为附件添加：%1$s</string>
+    <string name="settings_section_chat_input">聊天输入</string>
+    <string name="long_pasted_text_to_file">超长粘贴文本转文件</string>
+    <string name="long_pasted_text_to_file_desc">粘贴超过设定字符数的文本时，自动作为文本附件添加</string>
+    <string name="long_pasted_text_threshold">转换阈值</string>
+    <string name="long_pasted_text_threshold_desc">粘贴文本超过此字符数时转为文件</string>
+    <string name="long_pasted_text_threshold_unit">字符</string>
     <string name="chat_pending_queue_title">待发送队列（%1$d）</string>
     <string name="chat_queue_add_message">加入发送队列</string>
     <string name="chat_queue_added">已加入发送队列</string>

@@ -9,6 +9,7 @@ import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.model.ParameterCategory
+import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -35,6 +36,8 @@ import java.net.URL
 import java.net.UnknownHostException
 import java.util.UUID
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -1234,10 +1237,12 @@ class GeminiProvider(
         // 添加生成配置
         val generationConfig = JSONObject()
 
-        // 如果启用了思考模式，则为Gemini模型添加特定的`thinkingConfig`参数
         if (enableThinking) {
-            val thinkingConfig = JSONObject()
-            thinkingConfig.put("includeThoughts", true)
+            val thinkingQualityLevel =
+                runBlocking {
+                    ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                }
+            val thinkingConfig = GeminiThinkingConfig.fromGlobalQuality(thinkingQualityLevel)
             generationConfig.put("thinkingConfig", thinkingConfig)
             logDebug("已为Gemini模型启用“思考模式”。")
         }
@@ -1245,6 +1250,10 @@ class GeminiProvider(
         // 添加模型参数
         for (param in modelParameters) {
             if (param.isEnabled) {
+                if (GeminiThinkingConfig.isReservedParameter(param.apiName)) {
+                    logDebug("Gemini思考参数由全局思考设置控制，忽略模型参数: ${param.apiName}")
+                    continue
+                }
                 when (param.apiName) {
                     "temperature" ->
                             generationConfig.put(

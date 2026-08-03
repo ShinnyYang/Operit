@@ -388,13 +388,15 @@ private fun ManagedEntryCard(
     onDelete: (MarketV2PublisherEntrySummary) -> Unit
 ) {
     val review = remember(entry) { entry.resolveMarketReviewSnapshot() }
+    // A pending listing has no public detail shard, so public-detail actions cannot be opened yet.
+    val canOpenPublicEntry = entry.isOpen() && entry.listingState != "pending_listing"
     MarketManageItemCard(
         title = entry.title,
         description = entry.manageSummaryText(),
-        isOpen = entry.isOpen(),
-        showActions = canManageEntry || entry.isOpen(),
+        isOpen = canOpenPublicEntry,
+        showActions = canManageEntry || canOpenPublicEntry,
         onClick = {
-            if (entry.isOpen()) {
+            if (canOpenPublicEntry) {
                 viewModel.openEntryDetail(entry, onNavigateToDetail)
             } else {
                 onShowReview(entry)
@@ -407,7 +409,8 @@ private fun ManagedEntryCard(
         supportingContent = {
             MarketManageReviewFlow(
                 reviewState = review.state,
-                isOpen = entry.isOpen()
+                isOpen = entry.isOpen(),
+                listingState = entry.listingState
             )
             if (review.reasons.isNotEmpty()) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -418,7 +421,7 @@ private fun ManagedEntryCard(
             }
         },
         actions = {
-            if (canManageEntry) {
+            if (canManageEntry && canOpenPublicEntry) {
                 MarketManageSecondaryActionButton(
                     label = stringResource(R.string.edit),
                     icon = Icons.Default.Edit,
@@ -435,7 +438,7 @@ private fun ManagedEntryCard(
                     }
                 )
             }
-            if (entry.isOpen()) {
+            if (canOpenPublicEntry) {
                 MarketManageSecondaryActionButton(
                     label = stringResource(R.string.market_publish_new_version),
                     icon = Icons.Default.NewReleases,

@@ -65,10 +65,11 @@ internal class ToolPkgJsAstMinifier(context: Context) : Closeable {
                         compress: {
                             defaults: true,
                             passes: 3,
-                            toplevel: true
+                            // Preserve CommonJS export and lexical declaration order.
+                            toplevel: false
                         },
                         mangle: {
-                            toplevel: true,
+                            toplevel: false,
                             keep_classnames: false,
                             keep_fnames: false
                         },

@@ -348,6 +348,11 @@ fun MCPConfigScreen(
         AppLogger.d("MCPConfigScreen", "Fetching tools for configured services...")
 
         val toolsMap = mutableMapOf<String, List<String>>()
+        // Keep discovering tools after the page becomes interactive; only the full-screen mask is bounded.
+        val fullscreenLoadingTimeout = launch {
+            delay(2_000)
+            isToolsLoading = false
+        }
 
         try {
             val hasLocalPlugins = visiblePluginIds.any { pluginId ->
@@ -397,6 +402,7 @@ fun MCPConfigScreen(
             AppLogger.e("MCPConfigScreen", "Error fetching tools", e)
             Toast.makeText(context, context.getString(R.string.tools_load_error, e.message), Toast.LENGTH_SHORT).show()
         } finally {
+            fullscreenLoadingTimeout.cancel()
             isToolsLoading = false
         }
     }
