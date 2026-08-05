@@ -57,11 +57,11 @@ ANDROID_FULL_PATTERNS = (
     "tools/native_ripgrep/**",
 )
 ANDROID_MODULE_ROOTS = (
-    "dragonbones",
-    "fbx",
-    "llama",
-    "mmd",
-    "mnn",
+    "avator/dragonbones",
+    "avator/fbx",
+    "avator/mmd",
+    "llm/llama",
+    "llm/mnn",
     "quickjs",
     "showerclient",
     "terminal",
