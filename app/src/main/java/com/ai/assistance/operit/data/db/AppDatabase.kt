@@ -10,27 +10,39 @@ import com.ai.assistance.operit.data.dao.ChatContentDao
 import com.ai.assistance.operit.data.dao.ChatDao
 import com.ai.assistance.operit.data.dao.MessageDao
 import com.ai.assistance.operit.data.dao.MessageVariantDao
+import com.ai.assistance.operit.data.dao.TokenStatsDao
 import com.ai.assistance.operit.data.model.ChatEntity
 import com.ai.assistance.operit.data.model.MessageEntity
 import com.ai.assistance.operit.data.model.MessageVariantEntity
-
+import com.ai.assistance.operit.data.model.TokenStatBaselineEntity
+import com.ai.assistance.operit.data.model.TokenStatDisplayModelEntity
+import com.ai.assistance.operit.data.model.TokenStatEventEntity
+import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
+import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
 /** 应用数据库，包含聊天表和消息表 */
 @Database(
-    entities = [ChatEntity::class, MessageEntity::class, MessageVariantEntity::class],
-    version = 20,
+    entities = [
+        ChatEntity::class,
+        MessageEntity::class,
+        MessageVariantEntity::class,
+        TokenStatIdentityEntity::class,
+        TokenStatDisplayModelEntity::class,
+        TokenStatPriceOverrideEntity::class,
+        TokenStatEventEntity::class,
+        TokenStatBaselineEntity::class,
+    ],
+    version = 21,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-
     /** 获取聊天DAO */
     abstract fun chatDao(): ChatDao
 
     /** 获取消息DAO */
     abstract fun messageDao(): MessageDao
-
     abstract fun messageVariantDao(): MessageVariantDao
-
     abstract fun chatContentDao(): ChatContentDao
+    abstract fun tokenStatsDao(): TokenStatsDao
 
     companion object {
         @Volatile
@@ -221,6 +233,146 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /**
+         * v20 → v21：token 统计账本表（全部为纯新增，幂等可重入）。
+         * 事件表通过外键级联到身份表；baseline 冻结价格语义见
+         * [com.ai.assistance.operit.data.stats.TokenBaselineMigrator]。
+         */
+        private val MIGRATION_20_21 =
+            object : Migration(20, 21) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stat_identities` (
+                            `identityId` TEXT NOT NULL,
+                            `configId` TEXT NOT NULL,
+                            `provider` TEXT NOT NULL,
+                            `model` TEXT NOT NULL,
+                            `displayModelId` TEXT NOT NULL,
+                            PRIMARY KEY(`identityId`)
+                        )
+                        """.trimIndent()
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                            "`index_token_stat_identities_configId_provider_model` " +
+                            "ON `token_stat_identities` (`configId`, `provider`, `model`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_token_stat_identities_displayModelId` " +
+                            "ON `token_stat_identities` (`displayModelId`)"
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stat_display_models` (
+                            `displayModelId` TEXT NOT NULL,
+                            `normalizedModel` TEXT NOT NULL,
+                            `displayName` TEXT NOT NULL,
+                            PRIMARY KEY(`displayModelId`)
+                        )
+                        """.trimIndent()
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                            "`index_token_stat_display_models_normalizedModel` " +
+                            "ON `token_stat_display_models` (`normalizedModel`)"
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stat_price_overrides` (
+                            `rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            `scope` TEXT NOT NULL,
+                            `provider` TEXT NOT NULL,
+                            `model` TEXT NOT NULL,
+                            `configId` TEXT NOT NULL,
+                            `billingMode` TEXT NOT NULL,
+                            `pricingCurrency` TEXT NOT NULL,
+                            `inputPricePerMillion` REAL,
+                            `cachedInputPricePerMillion` REAL,
+                            `cacheWritePricePerMillion` REAL,
+                            `outputPricePerMillion` REAL,
+                            `pricePerRequest` REAL
+                        )
+                        """.trimIndent()
+                    )
+                    db.execSQL(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                            "`index_token_stat_price_overrides_scope_provider_model_configId` " +
+                            "ON `token_stat_price_overrides` (`scope`, `provider`, `model`, `configId`)"
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stat_events` (
+                            `eventId` TEXT NOT NULL,
+                            `statIdentityId` TEXT NOT NULL,
+                            `category` TEXT NOT NULL,
+                            `status` TEXT NOT NULL,
+                            `startedAtMs` INTEGER NOT NULL,
+                            `endedAtMs` INTEGER NOT NULL,
+                            `firstTokenAtMs` INTEGER,
+                            `uncachedInputTokens` INTEGER,
+                            `cachedInputTokens` INTEGER,
+                            `cacheWriteTokens` INTEGER,
+                            `outputTokens` INTEGER,
+                            `reasoningTokens` INTEGER,
+                            `reasoningIncludedInOutput` INTEGER,
+                            `billingMode` TEXT NOT NULL,
+                            `pricingCurrency` TEXT NOT NULL,
+                            `inputPricePerMillion` REAL,
+                            `cachedInputPricePerMillion` REAL,
+                            `cacheWritePricePerMillion` REAL,
+                            `outputPricePerMillion` REAL,
+                            `pricePerRequest` REAL,
+                            `pricingSource` TEXT NOT NULL,
+                            `costInPricingCurrency` REAL,
+                            PRIMARY KEY(`eventId`),
+                            FOREIGN KEY(`statIdentityId`)
+                                REFERENCES `token_stat_identities`(`identityId`)
+                                ON UPDATE NO ACTION ON DELETE CASCADE
+                        )
+                        """.trimIndent()
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS " +
+                            "`index_token_stat_events_statIdentityId_startedAtMs` " +
+                            "ON `token_stat_events` (`statIdentityId`, `startedAtMs`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_token_stat_events_startedAtMs` " +
+                            "ON `token_stat_events` (`startedAtMs`)"
+                    )
+                    db.execSQL(
+                        "CREATE INDEX IF NOT EXISTS `index_token_stat_events_category_startedAtMs` " +
+                            "ON `token_stat_events` (`category`, `startedAtMs`)"
+                    )
+                    db.execSQL(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stat_baselines` (
+                            `identityId` TEXT NOT NULL,
+                            `inputTokens` INTEGER NOT NULL,
+                            `cachedInputTokens` INTEGER NOT NULL,
+                            `outputTokens` INTEGER NOT NULL,
+                            `requestCount` INTEGER NOT NULL,
+                            `pricingCurrency` TEXT NOT NULL,
+                            `costInPricingCurrency` REAL,
+                            `isEstimated` INTEGER NOT NULL,
+                            `fingerprint` TEXT NOT NULL,
+                            `importedAtMs` INTEGER NOT NULL,
+                            `frozenBillingMode` TEXT NOT NULL,
+                            `frozenInputPricePerMillion` REAL,
+                            `frozenCachedInputPricePerMillion` REAL,
+                            `frozenOutputPricePerMillion` REAL,
+                            `frozenPricePerRequest` REAL,
+                            PRIMARY KEY(`identityId`),
+                            FOREIGN KEY(`identityId`)
+                                REFERENCES `token_stat_identities`(`identityId`)
+                                ON UPDATE NO ACTION ON DELETE CASCADE
+                        )
+                        """.trimIndent()
+                    )
+                }
+            }
+
         // 定义从版本2到3的迁移
         private val MIGRATION_2_3 =
             object : Migration(2, 3) {
@@ -337,7 +489,8 @@ abstract class AppDatabase : RoomDatabase() {
                                 MIGRATION_16_17,
                                 MIGRATION_17_18,
                                 MIGRATION_18_19,
-                                MIGRATION_19_20
+                                MIGRATION_19_20,
+                                MIGRATION_20_21
                             ) // 添加新的迁移
                             .build()
                     INSTANCE = instance

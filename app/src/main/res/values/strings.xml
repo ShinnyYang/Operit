@@ -3526,6 +3526,7 @@
     <string name="settings_reset_model_counts">重置该模型</string>
     <string name="settings_reset_model_confirmation">重置模型确认</string>
     <string name="settings_reset_model_warning">这将清除 %1$s 的Token和请求次数统计，此操作不可恢复。</string>
+    <string name="settings_token_stats_reset_failed">重置统计失败，请重试</string>
     <string name="settings_reset">重置</string>
     <string name="settings_edit_pricing">编辑定价</string>
     <string name="settings_input_tokens">输入Token</string>
