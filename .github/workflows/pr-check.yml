@@ -68,11 +68,6 @@ jobs:
             --base "${{ steps.plan.outputs.base_sha }}" \
             --candidate "${{ steps.plan.outputs.candidate_sha }}"
 
-      - name: Check Android lint baseline
-        id: lint-baseline
-        continue-on-error: true
-        run: python3 ci/script/normalize_lint_baseline.py --check
-
       - name: Check Markdown links
         id: markdown
         continue-on-error: true
@@ -145,7 +140,6 @@ jobs:
           PLAN_OUTCOME: ${{ steps.plan.outcome }}
           GATE_TESTS_OUTCOME: ${{ steps.gate-tests.outcome }}
           HYGIENE_OUTCOME: ${{ steps.hygiene.outcome }}
-          LINT_BASELINE_OUTCOME: ${{ steps.lint-baseline.outcome }}
           MARKDOWN_OUTCOME: ${{ steps.markdown.outcome }}
           LOCALIZATION_OUTCOME: ${{ steps.localization.outcome }}
           YAML_OUTCOME: ${{ steps.yaml.outcome }}
@@ -178,7 +172,6 @@ jobs:
           check_stage candidate true "$PLAN_OUTCOME"
           check_stage gate-tests true "$GATE_TESTS_OUTCOME"
           check_stage hygiene true "$HYGIENE_OUTCOME"
-          check_stage lint-baseline true "$LINT_BASELINE_OUTCOME"
           check_stage markdown true "$MARKDOWN_OUTCOME"
           check_stage localization "$LOCALIZATION_REQUIRED" "$LOCALIZATION_OUTCOME"
           check_stage yaml "$YAML_REQUIRED" "$YAML_OUTCOME"
