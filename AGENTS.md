@@ -36,4 +36,4 @@ ts的报错catch后需要log出来
 
 代码的更改应维护相称的文档，注意docs\doc-src\before_docing.md
 debug的时候注释记录你的修改意图（为什么，不这么做后果是什么）
-完成初步计划后，使用docs\TODO\README.md来细化计划 
+完成初步计划后，使用docs\TODO\README.md来细化计划
