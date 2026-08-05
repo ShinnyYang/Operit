@@ -37,4 +37,4 @@ Gemini GenerateContent REST 参考定义 `generationConfig.thinkingConfig` 的 `
 
 ## 完成记录
 
-已完成 Gemini 思考参数的请求映射与 JVM 测试覆盖。`part.thought` 的折叠展示和 `thoughtSignature` 历史传递复用既有实现。本次未运行编译、构建或测试命令。
+已完成 Gemini 思考参数的请求映射与 JVM 测试覆盖。`part.thought` 的折叠展示和 `thoughtSignature` 历史传递复用既有实现。CI 暴露的 Android `JSONObject` JVM stub 问题已通过测试纯 Kotlin 配置值解决，并运行定向 JVM 测试验证。

@@ -10,16 +10,16 @@ class GeminiThinkingConfigTest {
         val expectedLevels = listOf("MINIMAL", "LOW", "MEDIUM", "HIGH", "HIGH")
 
         expectedLevels.forEachIndexed { index, expectedLevel ->
-            val config = GeminiProvider.createThinkingConfigFromGlobalQuality(index + 1)
+            val config = GeminiThinkingConfig.fromGlobalQuality(index + 1)
 
-            assertEquals(expectedLevel, config.getString("thinkingLevel"))
+            assertEquals(expectedLevel, config.thinkingLevel)
         }
     }
 
     @Test
     fun `requests thought summaries for every enabled global thinking level`() {
-        val config = GeminiProvider.createThinkingConfigFromGlobalQuality(3)
+        val config = GeminiThinkingConfig.fromGlobalQuality(3)
 
-        assertTrue(config.getBoolean("includeThoughts"))
+        assertTrue(config.includeThoughts)
     }
 }
