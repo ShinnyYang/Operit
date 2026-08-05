@@ -96,7 +96,7 @@ python3 ./tools/example_packages/sync_example_packages.py --no-hot-reload
 
 ## 创建 Pull Request
 
-所有上游 PR 的目标分支是 `main`，不再使用旧的 `pr-branch` 流程。建议使用以下分支前缀：
+所有上游 PR 的目标分支是 `main`，不再使用旧的 `pr-branch` 流程。新建分支必须使用以下前缀加简短描述：
 
 - `feat/`：新功能
 - `fix/`：问题修复
@@ -104,6 +104,8 @@ python3 ./tools/example_packages/sync_example_packages.py --no-hot-reload
 - `ci/`：构建和自动化
 - `refactor/`：不改变行为的重构
 - `test/`：测试改动
+
+分支名描述改动内容，不使用代理、模型或个人身份作为前缀。例如 CI 改动使用 `ci/skip-android-lint`，不使用 `codex/skip-android-lint`。已有分支维持原名，只有新建分支适用此规则。
 
 推送个人分支并创建 PR：
 
