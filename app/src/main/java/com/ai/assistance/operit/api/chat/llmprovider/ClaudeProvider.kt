@@ -183,6 +183,15 @@ class ClaudeProvider(
     private fun parseAnthropicUsage(usage: JSONObject?): AnthropicUsageCounts? {
         usage ?: return null
 
+        // 评审 P1-5：显式全零 payload 也是“已观察到的 usage”——按字段存在判断，
+        // 不能按 “>0” 过滤；P2-1：Long 解析，旧 UI 计数边界饱和 Int。
+        val hasAny =
+            usage.has("input_tokens") || usage.has("prompt_tokens") ||
+                usage.has("cache_read_input_tokens") || usage.has("cached_tokens") ||
+                usage.has("cache_creation_input_tokens") || usage.has("cache_creation") ||
+                usage.has("output_tokens") || usage.has("completion_tokens")
+        if (!hasAny) return null
+
         val cachedInputTokens = when {
             usage.has("cache_read_input_tokens") -> usage.optLong("cache_read_input_tokens", 0L)
             usage.optJSONObject("input_tokens_details") != null ->
@@ -221,11 +230,17 @@ class ClaudeProvider(
         )
     }
 
+    /** 旧 UI 计数边界（P2-1）：Long 饱和为 Int，绝不回绕为负。 */
+    private fun Long.saturateToInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
+
     private suspend fun applyAnthropicUsage(
         usage: JSONObject?,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         source: String,
-        overwriteOutputTokens: Boolean
+        overwriteOutputTokens: Boolean,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1,
+        completeSnapshot: Boolean = false
     ): Boolean {
         val parsed = parseAnthropicUsage(usage) ?: return false
 
@@ -247,6 +262,15 @@ class ClaudeProvider(
             parsed.totalInputTokens,
             parsed.cachedInputTokens,
             tokenCacheManager.outputTokenCount
+        )
+        onUsageReported?.invoke(
+            // 流式 start/delta 是部分更新（省略字段保留旧值）；非流式最终响应是
+            // 完整快照（null = 明确未知，覆盖旧值）——见 TokenStatRequestContext 合并
+            com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.anthropic(
+                usage,
+                completeSnapshot,
+            ) ?: return true,
+            attemptNumber
         )
         return true
     }
@@ -1393,8 +1417,10 @@ class ClaudeProvider(
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+            onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
             onNonFatalError: suspend (error: String) -> Unit,
-            enableRetry: Boolean
+            enableRetry: Boolean,
+            statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -1569,7 +1595,10 @@ class ClaudeProvider(
                                 usage = json.optJSONObject("usage"),
                                 onTokensUpdated = onTokensUpdated,
                                 source = "non_streaming_json",
-                                overwriteOutputTokens = true
+                                overwriteOutputTokens = true,
+                                onUsageReported = onUsageReported,
+                                attemptNumber = retryCount + 1,
+                                completeSnapshot = true
                             )
                             if (resultText.isBlank() && !usageApplied) {
                                 throw IOException(context.getString(R.string.provider_error_parsing_failed))
@@ -1597,7 +1626,10 @@ class ClaudeProvider(
                                 usage = json.optJSONObject("usage"),
                                 onTokensUpdated = onTokensUpdated,
                                 source = "non_streaming_response",
-                                overwriteOutputTokens = true
+                                overwriteOutputTokens = true,
+                                onUsageReported = onUsageReported,
+                                attemptNumber = retryCount + 1,
+                                completeSnapshot = true
                             )
                             if (resultText.isNotBlank() && !usageApplied) {
                                 onTokensUpdated(
@@ -1668,7 +1700,9 @@ class ClaudeProvider(
                                         usage = jsonResponse.optJSONObject("message")?.optJSONObject("usage"),
                                         onTokensUpdated = onTokensUpdated,
                                         source = "message_start",
-                                        overwriteOutputTokens = false
+                                        overwriteOutputTokens = false,
+                                        onUsageReported = onUsageReported,
+                                        attemptNumber = retryCount + 1
                                     )
                                 }
                                 "content_block_start" -> {
@@ -1818,7 +1852,9 @@ class ClaudeProvider(
                                         usage = jsonResponse.optJSONObject("usage"),
                                         onTokensUpdated = onTokensUpdated,
                                         source = "message_delta",
-                                        overwriteOutputTokens = true
+                                        overwriteOutputTokens = true,
+                                        onUsageReported = onUsageReported,
+                                        attemptNumber = retryCount + 1,
                                     )
                                 }
                                 "message_stop" -> {
@@ -1878,7 +1914,10 @@ class ClaudeProvider(
                                     usage = wholeJson.optJSONObject("usage"),
                                     onTokensUpdated = onTokensUpdated,
                                     source = "buffered_json_fallback",
-                                    overwriteOutputTokens = true
+                                    overwriteOutputTokens = true,
+                                    onUsageReported = onUsageReported,
+                                    attemptNumber = retryCount + 1,
+                                    completeSnapshot = true
                                 )
                                 if (resultText.isNotBlank() && !usageApplied) {
                                     onTokensUpdated(
@@ -1965,7 +2004,8 @@ class ClaudeProvider(
                 R.string.openai_error_connection_timeout,
                 maxRetries,
                 lastException?.message ?: context.getString(R.string.provider_error_network_interrupted)
-            )
+            ),
+            lastException
         )
         }
         return responseStream.withEventChannel(eventChannel)
@@ -1985,7 +2025,10 @@ class ClaudeProvider(
         )
     }
 
-    override suspend fun testConnection(context: Context): Result<String> {
+    override suspend fun testConnection(
+        context: Context,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
+    ): Result<String> {
         return try {
             // 通过发送一条短消息来测试完整的连接、认证和API端点。
             // 这比getModelsList更可靠，因为它直接命中了聊天API。
@@ -1997,6 +2040,7 @@ class ClaudeProvider(
                 emptyList(),
                 false,
                 onTokensUpdated = { _, _, _ -> },
+                onUsageReported = onUsageReported,
                 onNonFatalError = {},
                 enableRetry = false
             )
@@ -2006,6 +2050,9 @@ class ClaudeProvider(
             stream.collect { _ -> }
 
             Result.success(context.getString(R.string.openai_connection_success))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 取消必须原样传播，不能变成 Result.failure
+            throw e
         } catch (e: Exception) {
             AppLogger.e("AIService", "连接测试失败", e)
             Result.failure(IOException(context.getString(R.string.openai_connection_test_failed, e.message ?: ""), e))

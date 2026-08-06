@@ -19,6 +19,7 @@ import com.ai.assistance.operit.data.model.TokenStatDisplayModelEntity
 import com.ai.assistance.operit.data.model.TokenStatEventEntity
 import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
+import com.ai.assistance.operit.data.model.TokenStatResetCutoffEntity
 /** 应用数据库，包含聊天表和消息表 */
 @Database(
     entities = [
@@ -30,6 +31,7 @@ import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
         TokenStatPriceOverrideEntity::class,
         TokenStatEventEntity::class,
         TokenStatBaselineEntity::class,
+        TokenStatResetCutoffEntity::class,
     ],
     version = 21,
     exportSchema = false
@@ -370,8 +372,61 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
+                    // 事件表增加脱敏诊断列与费用计算所需的结构化列：
+                    // - `acceptedGeneration`：reset tombstone 一致性边界（排空事务检查）；
+                    // - `totalInputTokens`：provider 明确上报的总输入（拆分未知时重估直接读取）；
+                    // - `cacheWriteSeparateBilling`：缓存写入是否独立计费；
+                    // - `diagnosticsJson`：来源标签、usageObserved、usageReportCount 等诊断元数据。
+                    // 另新增 `token_stat_reset_cutoffs` 表（reset tombstone）。全部为纯新增，
+                    // 幂等可重入（重复执行时列/表已存在即跳过）。
+                    try {
+                        db.execSQL(
+                            "ALTER TABLE `token_stat_events` ADD COLUMN " +
+                                "`acceptedGeneration` INTEGER NOT NULL DEFAULT 0"
+                        )
+                    } catch (_: Exception) {
+                        // 列已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            "ALTER TABLE `token_stat_events` ADD COLUMN `totalInputTokens` INTEGER"
+                        )
+                    } catch (_: Exception) {
+                        // 列已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            "ALTER TABLE `token_stat_events` ADD COLUMN " +
+                                "`cacheWriteSeparateBilling` INTEGER"
+                        )
+                    } catch (_: Exception) {
+                        // 列已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            "ALTER TABLE `token_stat_events` ADD COLUMN `diagnosticsJson` TEXT"
+                        )
+                    } catch (_: Exception) {
+                        // 列已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS `token_stat_reset_cutoffs` (
+                                `kind` TEXT NOT NULL,
+                                `provider` TEXT NOT NULL,
+                                `model` TEXT NOT NULL,
+                                `generation` INTEGER NOT NULL,
+                                PRIMARY KEY(`kind`, `provider`, `model`)
+                            )
+                            """.trimIndent()
+                        )
+                    } catch (_: Exception) {
+                        // 表已存在（幂等重放），忽略
+                    }
                 }
             }
+
 
         // 定义从版本2到3的迁移
         private val MIGRATION_2_3 =

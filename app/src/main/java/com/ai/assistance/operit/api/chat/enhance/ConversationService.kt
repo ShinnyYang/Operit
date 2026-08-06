@@ -269,7 +269,8 @@ class ConversationService(
                     summaryService.sendMessage(
                             context = context,
                             chatHistory = preparedHistory,
-                            modelParameters = modelParameters
+                            modelParameters = modelParameters,
+                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.SUMMARY
                     )
 
             // 收集流中的所有内容
@@ -320,18 +321,7 @@ class ConversationService(
                 return "Conversation Summary: Unable to generate valid summary."
             }
 
-            // 将总结token计数添加到用户偏好分析的token统计中
-            try {
-                AppLogger.d(TAG, "总结生成使用了输入token: $inputTokens, 缓存token: $cachedInputTokens, 输出token: $outputTokens")
-                apiPreferences.updateTokensForProviderModel(summaryService.providerModel, inputTokens, outputTokens, cachedInputTokens)
-                
-                // Update request count for summary generation
-                apiPreferences.incrementRequestCountForProviderModel(summaryService.providerModel)
-                
-                AppLogger.d(TAG, "已将总结token统计添加到用户偏好分析token计数中")
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "更新token统计失败", e)
-            }
+            AppLogger.d(TAG, "总结生成使用了输入token: $inputTokens, 缓存token: $cachedInputTokens, 输出token: $outputTokens")
 
             return summaryContent
         } catch (e: Exception) {
@@ -368,28 +358,18 @@ class ConversationService(
                 chatHistory = preparedHistory,
                 modelParameters = modelParameters,
                 stream = false,
-                enableRetry = false
+                enableRetry = false,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.TITLE
             ).collect { content -> contentBuilder.append(content) }
 
             val title = sanitizeConversationTitle(
                 ChatUtils.removeThinkingContent(contentBuilder.toString().trim())
             )
 
-            try {
-                val inputTokens = titleService.inputTokenCount
-                val cachedInputTokens = titleService.cachedInputTokenCount
-                val outputTokens = titleService.outputTokenCount
-                apiPreferences.updateTokensForProviderModel(
-                    titleService.providerModel,
-                    inputTokens,
-                    outputTokens,
-                    cachedInputTokens
-                )
-                apiPreferences.incrementRequestCountForProviderModel(titleService.providerModel)
-                AppLogger.d(TAG, "标题生成使用了输入token: $inputTokens, 缓存token: $cachedInputTokens, 输出token: $outputTokens")
-            } catch (e: Exception) {
-                AppLogger.e(TAG, "更新标题生成token统计失败", e)
-            }
+            val inputTokens = titleService.inputTokenCount
+            val cachedInputTokens = titleService.cachedInputTokenCount
+            val outputTokens = titleService.outputTokenCount
+            AppLogger.d(TAG, "标题生成使用了输入token: $inputTokens, 缓存token: $cachedInputTokens, 输出token: $outputTokens")
 
             title
         } catch (e: Exception) {
@@ -1132,7 +1112,8 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
             val stream = translationService.sendMessage(
                 context = context,
                 chatHistory = chatHistory + PromptTurn(kind = PromptTurnKind.USER, content = translationPrompt),
-                modelParameters = modelParameters
+                modelParameters = modelParameters,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             )
             
             stream.collect { content ->
@@ -1191,7 +1172,8 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
             val stream = summaryService.sendMessage(
                 context = context,
                 chatHistory = chatHistory + PromptTurn(kind = PromptTurnKind.USER, content = descriptionPrompt),
-                modelParameters = modelParameters
+                modelParameters = modelParameters,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             )
             
             stream.collect { content ->
@@ -1249,7 +1231,8 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
             service.sendMessage(
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
-                modelParameters = modelParameters
+                modelParameters = modelParameters,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }
@@ -1294,7 +1277,8 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
             service.sendMessage(
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
-                modelParameters = modelParameters
+                modelParameters = modelParameters,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }
@@ -1337,7 +1321,8 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
             service.sendMessage(
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
-                modelParameters = modelParameters
+                modelParameters = modelParameters,
+                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }

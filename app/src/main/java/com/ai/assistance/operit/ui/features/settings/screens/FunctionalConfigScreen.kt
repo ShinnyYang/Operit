@@ -525,7 +525,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -554,7 +555,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -583,7 +585,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -605,7 +608,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -625,7 +629,8 @@ fun FunctionConfigCard(
                                                         ),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     ).collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
                                                 }
@@ -655,7 +660,8 @@ fun FunctionConfigCard(
                                                         ),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     ).collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
                                                 }
@@ -668,7 +674,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = "Hi")),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -684,7 +691,8 @@ fun FunctionConfigCard(
                                                         listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                                                         parameters,
                                                         stream = false,
-                                                        enableRetry = false
+                                                        enableRetry = false,
+                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()

@@ -46,6 +46,7 @@ import com.ai.assistance.operit.data.preferences.initUserPreferencesManager
 import com.ai.assistance.operit.data.preferences.preferencesManager
 import com.ai.assistance.operit.data.repository.CustomEmojiRepository
 import com.ai.assistance.operit.data.stats.TokenBaselineImportRunner
+import com.ai.assistance.operit.data.stats.TokenStatSpool
 import com.ai.assistance.operit.ui.features.chat.webview.LocalWebServer
 import com.ai.assistance.operit.ui.features.chat.webview.workspace.editor.language.LanguageFactory
 import com.ai.assistance.operit.util.GlobalExceptionHandler
@@ -294,9 +295,12 @@ class OperitApplication : Application(), ImageLoaderFactory, WorkConfiguration.P
         }
 
         // 旧 DataStore 累计统计 → baseline 幂等导入（一次性；已存在 baseline 冻结）。
+        // 最后主动重放统计 spool（P1-2）：生产冷启动不依赖新请求，失败段由退避
+        // 定时重试持续恢复。
         applicationScope.launch {
             val statsStartTime = System.currentTimeMillis()
             TokenBaselineImportRunner.ensureMigrated(applicationContext)
+            TokenStatSpool.replay(applicationContext)
             AppLogger.d(
                 TAG,
                 "【启动计时】旧累计统计 baseline 导入完成（异步） - " +
