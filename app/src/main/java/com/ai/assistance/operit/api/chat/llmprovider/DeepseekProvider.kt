@@ -20,7 +20,7 @@ import org.json.JSONObject
 /**
  * 针对DeepSeek模型的特定API Provider。
  * 继承自OpenAIProvider，以重用大部分兼容逻辑，但特别处理了`reasoning_content`参数。
- * 当启用推理模式时，会将assistant消息中的<think>标签内容提取出来作为reasoning_content字段。
+ * 当启用推理模式时，会将assistant消息中的 thinking标签内容提取出来作为reasoning_content字段。
  */
 class DeepseekProvider(
     apiEndpoint: String,
@@ -163,7 +163,7 @@ class DeepseekProvider(
 
     /**
      * 构建支持reasoning_content的消息数组
-     * 对于assistant角色的消息，提取<think>标签内容作为reasoning_content
+     * 对于assistant角色的消息，提取 thinking标签内容作为reasoning_content
      */
     private fun buildMessagesWithReasoning(
         context: Context,
@@ -452,7 +452,7 @@ class DeepseekProvider(
             return null
         }
 
-        val efforts = listOf("high", "high", "max", "max", "max")
+        val efforts = listOf("low", "high", "max", "max", "max")
         val qualityIndex = qualityLevel.coerceIn(
             ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
             ApiPreferences.MAX_THINKING_QUALITY_LEVEL
