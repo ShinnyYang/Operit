@@ -46,6 +46,39 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 
+/** Keeps Gemini thinking mapping testable without invoking Android's JVM JSON stubs. */
+internal data class GeminiThinkingConfig(
+    val includeThoughts: Boolean,
+    val thinkingLevel: String
+) {
+    fun toJsonObject(): JSONObject =
+        JSONObject()
+            .put(INCLUDE_THOUGHTS, includeThoughts)
+            .put(THINKING_LEVEL, thinkingLevel)
+
+    companion object {
+        private const val INCLUDE_THOUGHTS = "includeThoughts"
+        private const val THINKING_LEVEL = "thinkingLevel"
+        private val thinkingLevelsByGlobalQuality =
+            mapOf(
+                1 to "MINIMAL",
+                2 to "LOW",
+                3 to "MEDIUM",
+                4 to "HIGH",
+                5 to "HIGH"
+            )
+
+        fun fromGlobalQuality(qualityLevel: Int): GeminiThinkingConfig {
+            val thinkingLevel =
+                thinkingLevelsByGlobalQuality[qualityLevel]
+                    ?: throw IllegalArgumentException(
+                        "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
+                    )
+            return GeminiThinkingConfig(includeThoughts = true, thinkingLevel = thinkingLevel)
+        }
+    }
+}
+
 /** Google Gemini API的实现 支持标准Gemini接口流式传输 */
 class GeminiProvider(
     private val apiEndpoint: String,
@@ -60,27 +93,6 @@ class GeminiProvider(
     companion object {
         private const val TAG = "GeminiProvider"
         private const val DEBUG = true // 开启调试日志
-        private const val INCLUDE_THOUGHTS = "includeThoughts"
-        private const val THINKING_LEVEL = "thinkingLevel"
-        private val thinkingLevelsByGlobalQuality =
-            mapOf(
-                1 to "MINIMAL",
-                2 to "LOW",
-                3 to "MEDIUM",
-                4 to "HIGH",
-                5 to "HIGH"
-            )
-
-        internal fun createThinkingConfigFromGlobalQuality(qualityLevel: Int): JSONObject {
-            val thinkingLevel =
-                thinkingLevelsByGlobalQuality[qualityLevel]
-                    ?: throw IllegalArgumentException(
-                        "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
-                    )
-            return JSONObject()
-                .put(INCLUDE_THOUGHTS, true)
-                .put(THINKING_LEVEL, thinkingLevel)
-        }
     }
 
     // HTTP客户端
@@ -1315,7 +1327,8 @@ class GeminiProvider(
                 runBlocking {
                     ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
                 }
-            val thinkingConfig = createThinkingConfigFromGlobalQuality(thinkingQualityLevel)
+            val thinkingConfig =
+                GeminiThinkingConfig.fromGlobalQuality(thinkingQualityLevel).toJsonObject()
             generationConfig.put("thinkingConfig", thinkingConfig)
             logDebug("已为Gemini模型启用“思考模式”。")
         }

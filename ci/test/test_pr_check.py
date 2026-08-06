@@ -55,6 +55,17 @@ class ScopeClassificationTest(unittest.TestCase):
         self.assertFalse(plan.android_jvm)
         self.assertTrue(plan.android_full)
 
+    def test_relocated_native_modules_use_full_lane(self) -> None:
+        for path in (
+            "avator/dragonbones/CMakeLists.txt",
+            "avator/fbx/CMakeLists.txt",
+            "avator/mmd/CMakeLists.txt",
+            "llm/llama/CMakeLists.txt",
+            "llm/mnn/CMakeLists.txt",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(classify_paths([path]).android_full)
+
     def test_upstream_only_docs_are_not_part_of_candidate_paths(self) -> None:
         plan = classify_paths(["app/src/main/res/values-ro/strings.xml"])
 
