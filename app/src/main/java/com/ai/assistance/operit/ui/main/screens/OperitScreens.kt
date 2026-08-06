@@ -366,11 +366,11 @@ sealed class Screen(
                 onNavigateToEditRepo = { type, issue ->
                     navigateTo(RepoEdit(type, issue))
                 },
-                onNavigateToPublishArtifactVersion = { issue ->
-                    navigateTo(ArtifactContinuePublish(issue.toArtifactPublishClusterContext()))
+                onNavigateToPublishArtifactVersion = { issue, canEditEntry ->
+                    navigateTo(ArtifactContinuePublish(issue.toArtifactPublishClusterContext(canEditEntry)))
                 },
-                onNavigateToPublishRepoVersion = { type, issue ->
-                    navigateTo(RepoPublishVersion(type, issue))
+                onNavigateToPublishRepoVersion = { type, issue, canEditEntry ->
+                    navigateTo(RepoPublishVersion(type, issue, canEditEntry))
                 },
                 onNavigateToPublishArtifact = { navigateTo(ArtifactPublish) },
                 onNavigateToPublishRepo = { type -> navigateTo(RepoPublish(type)) },
@@ -499,7 +499,8 @@ sealed class Screen(
 
     data class RepoPublishVersion(
         val type: MarketStatsType,
-        val editingEntry: com.ai.assistance.operit.data.api.MarketV2Entry
+        val editingEntry: com.ai.assistance.operit.data.api.MarketV2Entry,
+        val canEditEntry: Boolean = false
     ) : Screen(navItem = NavItem.Packages) {
         @Composable
         override fun Content(
@@ -515,7 +516,8 @@ sealed class Screen(
                 type = type,
                 onNavigateBack = onGoBack,
                 editingEntry = editingEntry,
-                publishVersionOnly = true
+                publishVersionOnly = true,
+                canEditEntry = canEditEntry
             )
         }
 

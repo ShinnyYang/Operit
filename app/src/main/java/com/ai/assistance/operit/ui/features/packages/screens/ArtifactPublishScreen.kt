@@ -101,7 +101,9 @@ private fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishEdi
     )
 }
 
-fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishClusterContext(): ArtifactPublishClusterContext {
+fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishClusterContext(
+    canEditEntry: Boolean = false
+): ArtifactPublishClusterContext {
     val versionValue = latestVersion
     return ArtifactPublishClusterContext(
         entryId = id,
@@ -110,7 +112,8 @@ fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishClusterCont
         lockedDisplayName = title,
         projectDisplayName = title,
         projectDescription = detail.ifBlank { description },
-        categoryId = categoryId
+        categoryId = categoryId,
+        canEditEntry = canEditEntry
     )
 }
 
@@ -149,7 +152,8 @@ fun ArtifactPublishScreen(
     val isContinuationMode = activePublishContext != null
     val lockedRuntimePackageId = initialInfo?.runtimePackageId?.ifBlank { initialInfo.normalizedId }.orEmpty()
     val lockedDisplayName = activePublishContext?.lockedDisplayName?.trim().orEmpty()
-    val isDisplayNameLocked = !isEditMode && lockedDisplayName.isNotBlank()
+    val canEditContinuationEntry = activePublishContext?.canEditEntry ?: true
+    val isDisplayNameLocked = !isEditMode && lockedDisplayName.isNotBlank() && !canEditContinuationEntry
     val continuationDescription =
         stringResource(R.string.artifact_publish_continuation_description)
 

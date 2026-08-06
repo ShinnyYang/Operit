@@ -4312,6 +4312,10 @@
     <string name="market_manage_removed">已提交移除「%1$s」的请求</string>
     <string name="market_manage_resubmitted">已提交重新上架「%1$s」的请求</string>
     <string name="market_manage_resubmit">重新提交</string>
+    <string name="market_manage_submit_revision">修改后提交新版本</string>
+    <string name="market_manage_revision_cooldown">被打回后的修改版提交仍在冷却中，还需等待 %1$s。</string>
+    <string name="market_manage_loading_request_title">正在加载请求</string>
+    <string name="market_manage_loading_request_message">请求正在处理中，请稍候…</string>
     <string name="market_manage_resubmitting_title">正在重新提交</string>
     <string name="market_manage_resubmitting_message">正在提交审核请求，请稍候…</string>
     <string name="market_manage_resubmit_cooldown_message">该条目已进入本地冷却期，剩余 %1$s 后才能再次提交。</string>
