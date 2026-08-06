@@ -243,7 +243,13 @@ data class MarketV2PublisherEntrySummary(
     val updatedAt: String = "",
     val reasonCodes: List<String> = emptyList(),
     val reviewDetail: String? = null,
-    val reviewDetailUpdatedAt: String? = null
+    val reviewDetailUpdatedAt: String? = null,
+    /**
+     * Server-computed time at which a changes-requested revision may be
+     * submitted.  It is intentionally optional for older private shards and
+     * for entries that are not currently waiting for changes.
+     */
+    val revisionAvailableAt: String? = null
 )
 
 @Serializable
@@ -831,6 +837,25 @@ class MarketStatsApiService {
             }
         }
 
+    /**
+     * Loads the authenticated publisher's full entry data, including an unpublished
+     * latest version. This is required to prepare a revision after review changes.
+     */
+    suspend fun getMyEntryDetail(entryId: String): Result<MarketV2Entry> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val resolvedEntryId = entryId.trim().ifBlank { error("Missing entry id") }
+                requestDynamic(
+                    method = "GET",
+                    pathSegments = listOf("market", "v2", "my", "entries", resolvedEntryId, "detail"),
+                    label = "getMyEntryDetail entryId=$resolvedEntryId"
+                ) { body, _ ->
+                    val response = json.decodeFromString(MarketV2EntryResponse.serializer(), body)
+                    response.item ?: response.entry ?: error("Entry detail not found")
+                }
+            }
+        }
+
     suspend fun getPublisherEntries(authorId: String): Result<List<MarketV2PublisherEntrySummary>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -976,20 +1001,6 @@ class MarketStatsApiService {
                 ) { _, _ ->
                     (getEntry(entryId).getOrNull() ?: MarketV2Entry(id = entryId, stateCode = "withdrawn"))
                         .copy(stateCode = "withdrawn")
-                }
-            }
-        }
-
-    suspend fun resubmitEntry(entryId: String): Result<MarketV2Entry> =
-        withContext(Dispatchers.IO) {
-            runCatching {
-                requestDynamic(
-                    method = "POST",
-                    pathSegments = listOf("market", "v2", "entries", entryId, "resubmit"),
-                    label = "resubmitEntry entryId=$entryId"
-                ) { _, _ ->
-                    (getEntry(entryId).getOrNull() ?: MarketV2Entry(id = entryId, stateCode = "pending"))
-                        .copy(stateCode = "pending")
                 }
             }
         }

@@ -157,7 +157,8 @@ class ArtifactMarketViewModel(
         }
 
         val resolvedDisplayName =
-            publishContext?.lockedDisplayName
+            publishContext?.takeUnless { it.canEditEntry }
+                ?.lockedDisplayName
                 ?.trim()
                 ?.takeIf { it.isNotBlank() }
                 ?: displayName
@@ -542,7 +543,7 @@ class ArtifactMarketViewModel(
     }
     private fun resolvePublishDisplayName(request: PublishArtifactRequest): String {
         val lockedDisplayName = request.publishContext?.lockedDisplayName?.trim().orEmpty()
-        if (request.publishContext != null) {
+        if (request.publishContext != null && !request.publishContext.canEditEntry) {
             if (lockedDisplayName.isBlank()) {
                 throw IllegalStateException(getText(R.string.artifact_publish_locked_name_required))
             }

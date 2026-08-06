@@ -7984,6 +7984,7 @@
     <string name="artifact_publish_encrypt_market_toolpkg_title">Minify and Obfuscate for Publishing</string>
 
     <string name="market_manage_resubmit">Resubmit</string>
+    <string name="market_manage_revision_cooldown">Revision submission is cooling down after the review return. Please wait %1$s.</string>
     <string name="market_manage_resubmitting_title">Resubmitting</string>
     <string name="market_manage_resubmitting_message">Submitting review request, please wait…</string>
     <string name="market_manage_resubmit_cooldown_message">This entry is in local cooldown. Remaining %1$s before resubmission.</string>
