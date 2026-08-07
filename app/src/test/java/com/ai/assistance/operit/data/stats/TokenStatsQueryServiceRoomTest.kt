@@ -64,7 +64,7 @@ class TokenStatsQueryServiceRoomTest {
         database =
             Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
                 .setDriver(recordingDriver)
-                .addMigrations(AppDatabase.MIGRATION_28_29, AppDatabase.MIGRATION_29_30)
+                .addMigrations(AppDatabase.MIGRATION_20_21)
                 .allowMainThreadQueries()
                 .build()
     }

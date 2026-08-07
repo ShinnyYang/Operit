@@ -19,6 +19,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -31,14 +33,12 @@ import org.mockito.kotlin.whenever
 /**
  * 导入器测试：
  * 1. 取消传播：ensureMigrated 的 catch(Exception) 不得吞掉 CancellationException。
- * 2. 冻结价格 + 计数跟踪 + 恢复生命周期（真实 ApiPreferences 快照路径 + 真实
+ * 2. 冻结价格 + 计数跟踪（真实 ApiPreferences 快照路径 + 真实
  *    Room 数据库）：
  *    - 无自定义价格迁移也冻结；计数不变时普通 setter/快照变化不重估 baseline；
  *    - 计数变化（真实累计 setter 增长 / 用户 reset 降低）用行内冻结价格重估，
  *      整体替换为快照绝对值，不产生负增量；冻结价格列永不被普通启动替换；
- *      consumePendingRestore）才受控补导一次（替换冻结价格）；部分字段恢复不触发
- *      任何启发式，直到 completion hook 才统一处理；相同 generation 重复消费幂等；
- *    - 受控补导不删除/不覆盖活动 DataStore 文件、不级联删除事件。
+ *    - legacy cleanup outbox fence：导入前排空 pending cleanup，旧快照被拒。
  *
  * DataStore 隔离：模块级 `Context.apiDataStore` 委托在单个 JVM 内只创建一个
  * DataStore 实例（绑定首个访问它的 Context），且每个文件的 DataStore 写入在
@@ -195,19 +195,27 @@ class TokenBaselineImportRunnerTest {
     @Test
     fun `cancellation propagates through import runner instead of being swallowed`() =
         runBlocking {
-            val context = mock<Context>()
-            whenever(context.applicationContext).thenReturn(context)
-            val prefs = mock<ApiPreferences>()
-            whenever(prefs.legacyStatsSnapshot())
-                .thenThrow(CancellationException("import cancelled"))
-            injectApiPreferences(prefs)
+            val dbDir = kotlin.io.path.createTempDirectory("runner-test").toFile()
+            val database = openDatabase(dbDir)
+            TokenBaselineImportRunner.databaseProvider = { database }
             try {
-                TokenBaselineImportRunner.ensureMigrated(context)
-                fail("expected CancellationException to propagate")
-            } catch (e: CancellationException) {
-                assertEquals("import cancelled", e.message)
+                val context = mock<Context>()
+                whenever(context.applicationContext).thenReturn(context)
+                val prefs = mock<ApiPreferences>()
+                // P1 闭环：快照读取已改为带 marker 的单次读取（fence 数据源）
+                whenever(prefs.legacyStatsSnapshotWithMarkers())
+                    .thenThrow(CancellationException("import cancelled"))
+                injectApiPreferences(prefs)
+                try {
+                    TokenBaselineImportRunner.ensureMigrated(context)
+                    fail("expected CancellationException to propagate")
+                } catch (e: CancellationException) {
+                    assertEquals("import cancelled", e.message)
+                }
             } finally {
                 injectApiPreferences(null)
+                TokenBaselineImportRunner.databaseProvider = null
+                database.close()
             }
         }
 
@@ -344,13 +352,19 @@ class TokenBaselineImportRunnerTest {
                 val dao = database.tokenStatsDao()
                 assertEquals(2, dao.countBaselines())
 
-                // 显式重置 B：独立删除路径，只删 B 的 baseline
+                // 显式重置 B：独立删除路径，只删 B 的 baseline；P1 闭环会在删除事务后
+                // 排空 B 的 legacy 累计键（该文件的唯一真实写入）——Windows 先读入
+                // 缓存再移除磁盘文件，使排空 edit 的 rename 目标不存在。
+                prefs.getInputTokensForProviderModel(providerModelB)
+                check(File(File(phase, "datastore"), "api_settings.preferences_pb").delete())
                 TokenStatsResetCoordinator.daoProvider = { dao }
                 try {
-                    TokenStatsResetCoordinator.resetStatisticsForProviderModel(
-                        ctx,
-                        providerModelB,
-                    )
+                    Mockito.mockStatic(AppLogger::class.java).use {
+                        TokenStatsResetCoordinator.resetStatisticsForProviderModel(
+                            ctx,
+                            providerModelB,
+                        )
+                    }
                 } finally {
                     TokenStatsResetCoordinator.daoProvider = null
                 }
@@ -361,6 +375,9 @@ class TokenBaselineImportRunnerTest {
                 val identityA =
                     TokenStatIdentityResolver.identityId("", "DEEPSEEK", "deepseek-chat")
                 assertEquals(1_000_000L, dao.getBaseline(identityA)!!.inputTokens)
+                // 排空确认：B 的旧键已清除且 marker 已写（A 键保留）
+                assertEquals(0L, prefs.getInputTokensForProviderModel(providerModelB))
+                assertEquals(1_000_000L, prefs.getInputTokensForProviderModel(providerModel))
             } finally {
                 injectApiPreferences(null)
                 TokenBaselineImportRunner.databaseProvider = null
@@ -494,4 +511,169 @@ class TokenBaselineImportRunnerTest {
                 database.close()
             }
         }
+
+    @Test
+    fun `cold start drains pending cleanup before import and deleted baseline never resurrects`() =
+        runBlocking {
+            val dbDir = kotlin.io.path.createTempDirectory("runner-test").toFile()
+            val database = openDatabase(dbDir)
+            val dao = database.tokenStatsDao()
+            TokenBaselineImportRunner.databaseProvider = { database }
+            try {
+                // Room：legacy A 在 group-x（将随删除移除 baseline），legacy B 保留
+                seedLegacyIdentity(dao, identityIdA, "DEEPSEEK", "deepseek-chat", "group-x")
+                seedLegacyIdentity(dao, identityIdB, "OPENAI", "gpt-4o", "gpt-4o")
+                dao.upsertBaseline(legacyBaseline(identityIdA))
+                // DataStore：A 与 B 都有累计计数
+                val phase = kotlin.io.path.createTempDirectory("runner-phase").toFile()
+                val seed = kotlin.io.path.createTempDirectory("runner-seed").toFile()
+                val seedFile = File(seed, "seed.preferences_pb")
+                seedPreferencesFile(seedFile) { prefs ->
+                    prefs[ApiPreferences.getTokenInputKey(providerA)] = 1_000_000L
+                    prefs[ApiPreferences.getTokenCachedInputKey(providerA)] = 200_000L
+                    prefs[ApiPreferences.getTokenOutputKey(providerA)] = 500_000L
+                    prefs[ApiPreferences.getTokenInputKey(providerModelB)] = 2_000_000L
+                    prefs[ApiPreferences.getTokenOutputKey(providerModelB)] = 1_000_000L
+                }
+                restorePreferencesInto(phase, seedFile)
+                val ctx = mockContext(phase)
+                val prefs = constructApiPreferences(ctx)
+                injectApiPreferences(prefs)
+                // Windows DataStore：读入缓存后移除磁盘文件，使排空的 edit 成为唯一真实写入
+                prefs.getInputTokensForProviderModel(providerA)
+                check(File(File(phase, "datastore"), "api_settings.preferences_pb").delete())
+
+                // 删除事务：A 的 baseline 删除 + PENDING operation（items 精确到 A）
+                val op =
+                    dao.deleteDisplayModelEventsTx("group-x", deleteBaselines = true)
+                        .cleanupOperation!!
+                assertEquals(1, dao.countPendingCleanupOperations())
+                assertEquals(0, dao.countBaselines())
+
+                // 冷启动导入：先排空（A 键清除 + marker），再以清理后的快照导入 B
+                Mockito.mockStatic(AppLogger::class.java).use {
+                    TokenBaselineImportRunner.ensureMigrated(ctx)
+                }
+                assertEquals("A baseline must stay deleted", null, dao.getBaseline(identityIdA))
+                assertNotNull("B baseline must be imported from the remaining snapshot", dao.getBaseline(identityIdB))
+                assertEquals(0, dao.countPendingCleanupOperations())
+                assertEquals(setOf(op.operationId), prefs.appliedLegacyCleanupMarkerIds())
+                assertEquals(0L, prefs.getInputTokensForProviderModel(providerA))
+                assertEquals(2_000_000L, prefs.getInputTokensForProviderModel(providerModelB))
+
+                // 再次冷启动：幂等——B 不重复、A 不复活
+                Mockito.mockStatic(AppLogger::class.java).use {
+                    TokenBaselineImportRunner.ensureMigrated(ctx)
+                }
+                assertEquals(1, dao.countBaselines())
+            } finally {
+                injectApiPreferences(null)
+                TokenBaselineImportRunner.databaseProvider = null
+                database.close()
+            }
+        }
+
+    @Test
+    fun `import skips entirely while pending cleanup cannot drain`() = runBlocking {
+        val dbDir = kotlin.io.path.createTempDirectory("runner-test").toFile()
+        val database = openDatabase(dbDir)
+        val dao = database.tokenStatsDao()
+        TokenBaselineImportRunner.databaseProvider = { database }
+        try {
+            seedLegacyIdentity(dao, identityIdA, "DEEPSEEK", "deepseek-chat", "group-x")
+            seedLegacyIdentity(dao, identityIdB, "OPENAI", "gpt-4o", "gpt-4o")
+            dao.upsertBaseline(legacyBaseline(identityIdA))
+            val phase = kotlin.io.path.createTempDirectory("runner-phase").toFile()
+            val seed = kotlin.io.path.createTempDirectory("runner-seed").toFile()
+            val seedFile = File(seed, "seed.preferences_pb")
+            seedPreferencesFile(seedFile) { prefs ->
+                prefs[ApiPreferences.getTokenInputKey(providerA)] = 1_000_000L
+                prefs[ApiPreferences.getTokenInputKey(providerModelB)] = 2_000_000L
+            }
+            restorePreferencesInto(phase, seedFile)
+            val ctx = mockContext(phase)
+            val op = dao.deleteDisplayModelEventsTx("group-x", deleteBaselines = true).cleanupOperation!!
+
+            // DataStore 排空失败：ensureMigrated 捕获并跳过本次导入（不应用旧快照）
+            val failingPrefs = mock<ApiPreferences>()
+            whenever(failingPrefs.applyLegacyCleanup(op.operationId, listOf(providerA)))
+                .thenAnswer { throw java.io.IOException("datastore down") }
+            injectApiPreferences(failingPrefs)
+            Mockito.mockStatic(AppLogger::class.java).use {
+                TokenBaselineImportRunner.ensureMigrated(ctx)
+            }
+            assertEquals("import must not run while cleanup is pending", 0, dao.countBaselines())
+            assertEquals(1, dao.countPendingCleanupOperations())
+
+            // 排空恢复后（模拟下次启动）：清理完成、B 导入、A 保持删除
+            val realPrefs = constructApiPreferences(ctx)
+            injectApiPreferences(realPrefs)
+            realPrefs.getInputTokensForProviderModel(providerA)
+            check(File(File(phase, "datastore"), "api_settings.preferences_pb").delete())
+            Mockito.mockStatic(AppLogger::class.java).use {
+                TokenBaselineImportRunner.ensureMigrated(ctx)
+            }
+            assertNull(dao.getBaseline(identityIdA))
+            assertNotNull(dao.getBaseline(identityIdB))
+            assertEquals(0, dao.countPendingCleanupOperations())
+        } finally {
+            injectApiPreferences(null)
+            TokenBaselineImportRunner.databaseProvider = null
+            database.close()
+        }
+    }
+
+    @Test
+    fun `stale snapshot missing the applied marker is rejected by the fence`() = runBlocking {
+        val dbDir = kotlin.io.path.createTempDirectory("runner-test").toFile()
+        val database = openDatabase(dbDir)
+        val dao = database.tokenStatsDao()
+        TokenBaselineImportRunner.databaseProvider = { database }
+        try {
+            seedLegacyIdentity(dao, identityIdB, "OPENAI", "gpt-4o", "gpt-4o")
+            // operation 已 APPLIED（清理完成）但快照读取发生在其 marker 写入之前：
+            // 模拟“先读旧快照 → cleanup 完成 → 旧快照写回”窗口
+            val phase = kotlin.io.path.createTempDirectory("runner-phase").toFile()
+            val seed = kotlin.io.path.createTempDirectory("runner-seed").toFile()
+            val seedFile = File(seed, "seed.preferences_pb")
+            seedPreferencesFile(seedFile) { prefs ->
+                prefs[ApiPreferences.getTokenInputKey(providerModelB)] = 2_000_000L
+            }
+            restorePreferencesInto(phase, seedFile)
+            val ctx = mockContext(phase)
+            // Room：先建 op 再手动 ACK（模拟已完成清理、快照仍旧）
+            seedLegacyIdentity(dao, identityIdA, "DEEPSEEK", "deepseek-chat", "group-x")
+            val op = dao.deleteDisplayModelEventsTx("group-x", deleteBaselines = true).cleanupOperation!!
+            dao.ackCleanupOperation(op.operationId)
+            assertEquals(0, dao.countPendingCleanupOperations())
+
+            val stalePrefs = mock<ApiPreferences>()
+            whenever(stalePrefs.legacyStatsSnapshotWithMarkers())
+                .thenReturn(
+                    com.ai.assistance.operit.data.preferences.LegacyStatsSnapshotRead(
+                        snapshot =
+                            com.ai.assistance.operit.data.stats.LegacyTokenStatsSnapshot.parse(
+                                mapOf(
+                                    ApiPreferences.getTokenInputKey(providerModelB).name to 2_000_000L,
+                                )
+                            ),
+                        cleanupMarkerIds = emptySet(),
+                    )
+                )
+            injectApiPreferences(stalePrefs)
+            Mockito.mockStatic(AppLogger::class.java).use {
+                TokenBaselineImportRunner.ensureMigrated(ctx)
+            }
+            assertEquals(
+                "stale snapshot without the applied marker must be rejected",
+                0,
+                dao.countBaselines(),
+            )
+        } finally {
+            injectApiPreferences(null)
+            TokenBaselineImportRunner.databaseProvider = null
+            database.close()
+        }
+    }
+
 }

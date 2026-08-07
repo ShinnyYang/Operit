@@ -38,6 +38,8 @@ class TokenStatsRoomMigrationTest {
         val context = mock<Context>()
         whenever(context.applicationContext).thenReturn(context)
         whenever(context.packageName).thenReturn("com.ai.assistance.operit")
+        // DataStore 委托在 coordinator 排空时按 filesDir 定位偏好文件（隔离到临时目录）
+        whenever(context.filesDir).thenReturn(tempDir)
         // 模拟 Android Context 的数据库目录解析：<tempDir>/<name>
         whenever(context.getDatabasePath(any())).thenAnswer { invocation ->
             File(tempDir, invocation.getArgument<String>(0))
@@ -496,13 +498,18 @@ outputTokens = 500L,
 
                 // 按 provider/model 重置：所有配置实例的事件 + 全部匹配 baseline 一起清。
                 // 通过 daoProvider 注入缝把真实 DAO 交给协调器（生产路径用
-                // AppDatabase.withTransaction 包同一组删除）。
+                // AppDatabase.withTransaction 包同一组删除）。P1 闭环：删除后协调器
+                // 排空 legacy cleanup——DataStore 侧注入 mock 隔离（真实键级协议由
+                // TokenStatsCleanupOutboxTest 覆盖，此处聚焦 Room 语义与删除矩阵）。
                 TokenStatsResetCoordinator.daoProvider = { dao }
+                val prefsMock = mock<com.ai.assistance.operit.data.preferences.ApiPreferences>()
+                injectApiPreferences(prefsMock)
                 try {
                     TokenStatsResetCoordinator
                         .resetStatisticsForProviderModel(mockContext(tempDir), "DEEPSEEK:deepseek-chat")
                 } finally {
                     TokenStatsResetCoordinator.daoProvider = null
+                    injectApiPreferences(null)
                 }
 
                 assertEquals(1, dao.countEvents())
@@ -581,58 +588,12 @@ outputTokens = 500L,
             }
         }
 
-    /** 用导出的 v29 schema JSON 构造一个真实的 v29 数据库文件（含一条事件行）。 */
-    private fun buildV29Database(dbPath: String) {
-        val schemaFile = File(schemaDir, "29.json")
-        assertTrue("schema export missing: ${schemaFile.absolutePath}", schemaFile.isFile)
-        val schema = json.decodeFromString<RoomSchema>(schemaFile.readText())
-        assertEquals(29, schema.database.version)
-
-        DriverManager.getConnection("jdbc:sqlite:$dbPath").use { connection ->
-            connection.createStatement().use { statement ->
-                schema.database.entities.forEach { entity ->
-                    statement.execute(entity.createSql.replace("\${TABLE_NAME}", entity.tableName))
-                    entity.indices.forEach { index ->
-                        statement.execute(index.createSql.replace("\${TABLE_NAME}", entity.tableName))
-                    }
-                }
-                statement.execute(
-                    "CREATE TABLE IF NOT EXISTS room_master_table " +
-                        "(id INTEGER PRIMARY KEY, identity_hash TEXT NOT NULL)"
-                )
-                statement.execute(
-                    "INSERT OR REPLACE INTO room_master_table (id, identity_hash) " +
-                        "VALUES(42, '${schema.database.identityHash}')"
-                )
-                statement.execute("PRAGMA user_version = 29")
-                // 旧数据：迁移前插入一条事件，验证迁移后数据保留（含价格快照）
-                statement.execute(
-                    "INSERT INTO token_stat_identities " +
-                        "(identityId, configId, provider, model, displayModelId) " +
-                        "VALUES ('identity-1', '', 'DEEPSEEK', 'deepseek-chat', 'deepseek-chat')"
-                )
-                statement.execute(
-                    "INSERT INTO token_stat_events " +
-                        "(eventId, statIdentityId, category, status, startedAtMs, endedAtMs, " +
-                        "firstTokenAtMs, uncachedInputTokens, cachedInputTokens, cacheWriteTokens, " +
-                        "outputTokens, reasoningTokens, reasoningIncludedInOutput, billingMode, " +
-                        "pricingCurrency, inputPricePerMillion, cachedInputPricePerMillion, " +
-                        "cacheWritePricePerMillion, outputPricePerMillion, pricePerRequest, " +
-                        "pricingSource, costInPricingCurrency) " +
-                        "VALUES ('evt-v29', 'identity-1', 'CHAT', 'COMPLETED', 1000, 2000, 1200, " +
-                        "800, 200, 100, 500, 50, 1, 'TOKEN', 'USD', 1.0, 0.5, 2.0, 3.0, NULL, " +
-                        "'DEFAULT', 0.0019)"
-                )
-            }
-        }
-    }
-
     @Test
-    fun `v29 database migrates to v30 keeping events and adding diagnostics column`() =
+    fun `v20 database migrates to v21 adding diagnostics columns and new tables`() =
         runBlocking {
             val tempDir = kotlin.io.path.createTempDirectory("room-migration-test").toFile()
             val dbFile = File(tempDir, "app_database")
-            buildV29Database(dbFile.absolutePath)
+            buildV20Database(dbFile.absolutePath)
 
             val database =
                 Room.databaseBuilder(mockContext(tempDir), AppDatabase::class.java, "app_database")
@@ -642,36 +603,125 @@ outputTokens = 500L,
                     .build()
 
             try {
-                // 触发打开与迁移（Room 内部校验 identityHash 与 TableInfo，包括新列）
+                // 触发打开与迁移（Room 内部校验 identityHash 与 TableInfo，包括新列/新表）
                 val dao = database.tokenStatsDao()
-                val readBack = dao.getEvent("evt-v29")
-                assertNotNull("migration must preserve legacy event rows", readBack)
-                assertEquals(800L, readBack!!.uncachedInputTokens)
-                assertEquals("DEFAULT", readBack.pricingSource)
-                assertNull("v29 rows have no diagnostics", readBack.diagnosticsJson)
-                // v30 新增的结构化列对旧行保持 null（未知），与新写入可区分
-                assertNull(readBack.totalInputTokens)
-                assertNull(readBack.cacheWriteSeparateBilling)
-
-                // 新列可写
-                dao.insertEvent(
-                    readBack.copy(
-                        eventId = "evt-v30",
-totalInputTokens = 1000L,
+                val identityId = TokenStatIdentityResolver.identityId("", "DEEPSEEK", "deepseek-chat")
+                dao.insertIdentityIfAbsent(
+                    TokenStatIdentityEntity(
+                        identityId = identityId,
+                        configId = "",
+                        provider = "DEEPSEEK",
+                        model = "deepseek-chat",
+                        displayModelId = "deepseek-chat",
+                    )
+                )
+                // 事件新列可写：诊断列默认 null，写入后往返一致
+                val event =
+                    TokenStatEventEntity(
+                        eventId = "evt-v21",
+                        statIdentityId = identityId,
+                        category = TokenStatCategory.CHAT.name,
+                        status = TokenStatStatus.COMPLETED.name,
+                        startedAtMs = 1000L,
+                        endedAtMs = 2000L,
+                        uncachedInputTokens = 800,
+                        cachedInputTokens = 200,
+                        outputTokens = 500,
+                        billingMode = BillingMode.TOKEN.name,
+                        pricingCurrency = "USD",
+                        inputPricePerMillion = 1.0,
+                        cachedInputPricePerMillion = 0.5,
+                        outputPricePerMillion = 2.0,
+                        pricingSource = PricingSource.DEFAULT.name,
+                        costInPricingCurrency = 0.0019,
+                        totalInputTokens = 1000L,
                         cacheWriteSeparateBilling = false,
                         diagnosticsJson = "{\"source\":\"openai_chat_completions\",\"usageObserved\":true}",
                     )
-                )
-                val v30Event = dao.getEvent("evt-v30")!!
-                assertEquals(1000L, v30Event.totalInputTokens)
-                assertEquals(false, v30Event.cacheWriteSeparateBilling)
-                assertTrue(v30Event.diagnosticsJson!!.contains("\"source\":\"openai_chat_completions\""))
+                dao.insertEvent(event)
+                val readBack = dao.getEvent("evt-v21")!!
+                assertEquals(800, readBack.uncachedInputTokens)
+                assertEquals(1000L, readBack.totalInputTokens)
+                assertEquals(false, readBack.cacheWriteSeparateBilling)
+                assertTrue(readBack.diagnosticsJson!!.contains("\"source\":\"openai_chat_completions\""))
 
-                // 迁移可重入（ALTER 幂等）：以驱动变体再跑一次
+                // v21 新增 reset/range tombstone 与 cleanup outbox 表真实存在
+                val tables = queryTables(dbFile.absolutePath)
+                assertTrue("token_stat_reset_cutoffs", tables.contains("token_stat_reset_cutoffs"))
+                assertTrue("token_stat_range_cutoffs", tables.contains("token_stat_range_cutoffs"))
+                assertTrue("token_stat_cleanup_operations", tables.contains("token_stat_cleanup_operations"))
+                assertTrue("token_stat_cleanup_items", tables.contains("token_stat_cleanup_items"))
+
+                // range 删除 tombstone 可读写
+                dao.deleteRangeEventsTx(100L, 200L)
+                assertEquals(1, dao.rangeCutoffs().size)
+                assertEquals(1L, dao.currentResetGeneration())
+
+                // 迁移可重入（CREATE IF NOT EXISTS / ALTER 幂等）：以驱动变体再跑一次
                 JdbcSQLiteConnection(dbFile.absolutePath).use { connection ->
                     AppDatabase.MIGRATION_20_21.migrate(connection)
-                    assertEquals(30, userVersion(connection))
+                    assertEquals(21, userVersion(connection))
                 }
+            } finally {
+                database.close()
+            }
+        }
+
+    @Test
+    fun `v21 cleanup outbox tables enforce foreign key and cascade on operation delete`() =
+        runBlocking {
+            val tempDir = kotlin.io.path.createTempDirectory("room-migration-test").toFile()
+            val dbFile = File(tempDir, "app_database")
+            buildV20Database(dbFile.absolutePath)
+
+            val database =
+                Room.databaseBuilder(mockContext(tempDir), AppDatabase::class.java, "app_database")
+                    .setDriver(JdbcSQLiteDriver())
+                    .addMigrations(AppDatabase.MIGRATION_20_21)
+                    .allowMainThreadQueries()
+                    .build()
+
+            try {
+                val dao = database.tokenStatsDao()
+                // 通过删除事务（真实路径）创建 operation + items
+                dao.insertIdentityIfAbsent(
+                    TokenStatIdentityEntity(
+                        identityId = "id-legacy",
+                        configId = "",
+                        provider = "DEEPSEEK",
+                        model = "deepseek-chat",
+                        displayModelId = "deepseek-chat",
+                    )
+                )
+                dao.upsertDisplayModel(
+                    TokenStatDisplayModelEntity(
+                        displayModelId = "deepseek-chat",
+                        normalizedModel = "deepseek-chat",
+                        displayName = "deepseek-chat",
+                    )
+                )
+                val result = dao.deleteDisplayModelEventsTx("deepseek-chat", deleteBaselines = true)
+                val op = result.cleanupOperation!!
+                assertEquals(1, dao.getCleanupItems(op.operationId).size)
+                assertEquals(1, dao.countPendingCleanupOperations())
+                // 外键：孤儿 item（operation 不存在）必须被拒绝
+                JdbcSQLiteConnection(dbFile.absolutePath).use { connection ->
+                    connection.prepare("PRAGMA journal_mode = OFF").use { it.step() }
+                    connection.prepare("PRAGMA foreign_keys = ON").use { it.step() }
+                    val orphan =
+                        runCatching {
+                            connection.prepare(
+                                "INSERT INTO token_stat_cleanup_items " +
+                                    "(operationId, identityId, provider, model) " +
+                                    "VALUES ('no-such-op', 'id', 'P', 'M')"
+                            ).use { it.step() }
+                        }
+                    assertTrue("orphan item must violate FK", orphan.isFailure)
+                }
+                // 级联：删除 operation 后 items 跟随删除
+                dao.deleteCleanupOperation(op.operationId)
+                assertEquals(0, dao.getCleanupItems(op.operationId).size)
+                assertEquals(0, dao.countPendingCleanupOperations())
             } finally {
                 database.close()
             }

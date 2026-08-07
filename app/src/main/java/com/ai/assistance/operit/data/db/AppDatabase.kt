@@ -15,10 +15,13 @@ import com.ai.assistance.operit.data.model.ChatEntity
 import com.ai.assistance.operit.data.model.MessageEntity
 import com.ai.assistance.operit.data.model.MessageVariantEntity
 import com.ai.assistance.operit.data.model.TokenStatBaselineEntity
+import com.ai.assistance.operit.data.model.TokenStatCleanupItemEntity
+import com.ai.assistance.operit.data.model.TokenStatCleanupOperationEntity
 import com.ai.assistance.operit.data.model.TokenStatDisplayModelEntity
 import com.ai.assistance.operit.data.model.TokenStatEventEntity
 import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
+import com.ai.assistance.operit.data.model.TokenStatRangeCutoffEntity
 import com.ai.assistance.operit.data.model.TokenStatResetCutoffEntity
 /** 应用数据库，包含聊天表和消息表 */
 @Database(
@@ -32,6 +35,9 @@ import com.ai.assistance.operit.data.model.TokenStatResetCutoffEntity
         TokenStatEventEntity::class,
         TokenStatBaselineEntity::class,
         TokenStatResetCutoffEntity::class,
+        TokenStatRangeCutoffEntity::class,
+        TokenStatCleanupOperationEntity::class,
+        TokenStatCleanupItemEntity::class,
     ],
     version = 21,
     exportSchema = false
@@ -426,6 +432,64 @@ abstract class AppDatabase : RoomDatabase() {
                     }
                 }
             }
+                    try {
+                        db.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS `token_stat_range_cutoffs` (
+                                `generation` INTEGER NOT NULL,
+                                `startMs` INTEGER NOT NULL,
+                                `endMs` INTEGER NOT NULL,
+                                PRIMARY KEY(`generation`)
+                            )
+                            """.trimIndent()
+                        )
+                    } catch (_: Exception) {
+                        // 表已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS `token_stat_cleanup_operations` (
+                                `operationId` TEXT NOT NULL,
+                                `scope` TEXT NOT NULL,
+                                `targetRef` TEXT NOT NULL,
+                                `deleteBaselines` INTEGER NOT NULL,
+                                `status` TEXT NOT NULL,
+                                `createdAtMs` INTEGER NOT NULL,
+                                PRIMARY KEY(`operationId`)
+                            )
+                            """.trimIndent()
+                        )
+                    } catch (_: Exception) {
+                        // 表已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            """
+                            CREATE TABLE IF NOT EXISTS `token_stat_cleanup_items` (
+                                `operationId` TEXT NOT NULL,
+                                `identityId` TEXT NOT NULL,
+                                `provider` TEXT NOT NULL,
+                                `model` TEXT NOT NULL,
+                                PRIMARY KEY(`operationId`, `identityId`),
+                                FOREIGN KEY(`operationId`)
+                                    REFERENCES `token_stat_cleanup_operations`(`operationId`)
+                                    ON UPDATE NO ACTION ON DELETE CASCADE
+                            )
+                            """.trimIndent()
+                        )
+                    } catch (_: Exception) {
+                        // 表已存在（幂等重放），忽略
+                    }
+                    try {
+                        db.execSQL(
+                            "CREATE INDEX IF NOT EXISTS `index_token_stat_cleanup_items_operationId` " +
+                                "ON `token_stat_cleanup_items` (`operationId`)"
+                        )
+                    } catch (_: Exception) {
+                        // 索引已存在（幂等重放），忽略
+                    }
+
 
 
         // 定义从版本2到3的迁移
