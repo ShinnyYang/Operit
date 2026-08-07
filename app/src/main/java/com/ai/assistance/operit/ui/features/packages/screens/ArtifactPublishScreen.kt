@@ -305,7 +305,7 @@ fun ArtifactPublishScreen(
                             else -> stringResource(R.string.publish_description)
                         },
                     style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Text(
                     text =
@@ -314,7 +314,8 @@ fun ArtifactPublishScreen(
                             isContinuationMode -> continuationDescription
                             else -> stringResource(R.string.artifact_publish_info_description)
                         },
-                    style = MaterialTheme.typography.bodySmall
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
         }
@@ -343,12 +344,18 @@ fun ArtifactPublishScreen(
                                 append(context.getString(R.string.artifact_publish_file_locked))
                             }
                         }.ifBlank { context.getString(R.string.artifact_publish_only_description_versions_editable) }
+                    // The translucent container cannot infer onSurfaceVariant; explicit colors prevent
+                    // these labels from inheriting a mismatched foreground in dark themes.
                     Text(
                         text = stringResource(R.string.artifact_publish_current_artifact),
                         style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.SemiBold
                     )
-                    Text(initialInfo.title.ifBlank { selectorDisplayName })
+                    Text(
+                        text = initialInfo.title.ifBlank { selectorDisplayName },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
                         text = summaryText,
                         style = MaterialTheme.typography.bodySmall,
@@ -369,6 +376,7 @@ fun ArtifactPublishScreen(
                     Text(
                         text = stringResource(R.string.artifact_publish_publish_update_version),
                         style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.SemiBold
                     )
                     if (lockedDisplayName.isNotBlank()) {
@@ -378,13 +386,13 @@ fun ArtifactPublishScreen(
                                 lockedDisplayName
                             ),
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
                     Text(
                         text = stringResource(R.string.artifact_publish_package_name_auto_inherited),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
                     )
                 }
             }

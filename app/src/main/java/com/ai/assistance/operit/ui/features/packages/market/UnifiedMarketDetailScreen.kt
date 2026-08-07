@@ -1154,9 +1154,12 @@ private fun UnifiedMarketDetailEmptyCommentsCard() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // The alpha-adjusted card cannot infer onSurfaceVariant, so keep the empty-state title
+            // from inheriting a low-contrast foreground in dark themes.
             Text(
                 text = stringResource(R.string.mcp_plugin_no_comments),
                 style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontWeight = FontWeight.Bold
             )
             Text(
@@ -1229,6 +1232,7 @@ private fun UnifiedMarketDetailCommentCard(
                     Text(
                         text = comment.author.login,
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         fontWeight = FontWeight.SemiBold
                     )
                     if (body.isNotBlank()) {
