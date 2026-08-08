@@ -3,6 +3,7 @@ package com.ai.assistance.operit.integrations.http
 import android.content.Context
 import com.ai.assistance.operit.BuildConfig
 import com.ai.assistance.operit.data.preferences.ExternalHttpApiPreferences
+import com.ai.assistance.operit.integrations.a2a.A2aHttpHandler
 import com.ai.assistance.operit.integrations.externalchat.ExternalChatAcceptedResponse
 import com.ai.assistance.operit.integrations.externalchat.ExternalChatHealthResponse
 import com.ai.assistance.operit.integrations.externalchat.ExternalChatHttpRequest
@@ -45,6 +46,7 @@ class ExternalChatHttpServer(
 
     private val appContext = context.applicationContext
     private val executor = ExternalChatRequestExecutor(appContext)
+    private val a2aHandler = A2aHttpHandler(appContext, serviceScope, ::requireBearerToken)
     private val webChatBridge = WebChatHttpBridge(appContext, preferences, serviceScope)
     private val callbackClient = OkHttpClient.Builder()
         .retryOnConnectionFailure(false)
@@ -64,6 +66,7 @@ class ExternalChatHttpServer(
         if (!running.get()) {
             return
         }
+        a2aHandler.close()
         stop()
         running.set(false)
         AppLogger.i(TAG, "External HTTP chat server stopped")
@@ -72,6 +75,8 @@ class ExternalChatHttpServer(
     override fun serve(session: IHTTPSession): Response {
         return when {
             session.method == Method.OPTIONS -> handleOptions(session)
+            session.uri == A2aHttpHandler.AGENT_CARD_PATH -> a2aHandler.handleAgentCard(session).withCors()
+            session.uri == A2aHttpHandler.A2A_PATH -> a2aHandler.handleJsonRpc(session).withCors()
             session.uri == HEALTH_PATH && session.method == Method.GET -> handleHealth(session)
             session.uri == CHAT_PATH && session.method == Method.POST -> handleChat(session)
             session.uri.startsWith(WEB_API_PREFIX) -> webChatBridge.handleApi(session)

@@ -1162,6 +1162,10 @@
     <string name="agreement_disclaimer">The plain language version is only for easier understanding. If it differs from the Chinese formal version, the Chinese formal version prevails.</string>
     <string name="agreement_accept">I have read and agree</string>
     <string name="agreement_wait">Please wait... (%1$d)</string>
+    <string name="market_agreement_title">Plugin Market Agreement and Community Rules</string>
+    <string name="market_agreement_subtitle">Please read and agree to this agreement before entering the plugin market. The market is for sharing and discovering plugins; authors are encouraged to open source through a public GitHub repository.</string>
+    <string name="market_agreement_version">Market agreement version: %1$s</string>
+    <string name="market_agreement_content">1. Market role. The Operit plugin market is only for sharing, discovering, and indexing scripts, packages, Skills, MCP servers, and other extensions, and for providing in-market browsing, downloading, and installation entry points. The market is not the plugin author, buyer, seller, broker, payment provider, guarantor, or rights registry. Listing, displaying, ranking, or recommending a plugin does not mean that Operit developed, owns, represents, or endorses it.\n\n2. Publication license. By submitting a plugin to the market, the publisher grants Operit a non-exclusive, non-transferable license limited to what is necessary to operate the market: to store, cache, reproduce, process, display, and index the market entry, and to provide the plugin to market users for downloading and installation. Publication also means that the publisher allows market users to download, install, and use the plugin for its intended purpose, but does not by itself permit modification or redistribution. This license does not transfer copyright, ownership, or other rights in the plugin, and does not give the market a general right to sublicense the plugin outside the market. The publisher must have the right to grant this license.\n\n3. GitHub open-source recommendation. We recommend that publishers publish source code directly in a public GitHub repository they control, together with a README, license, versions or Releases, and changelogs, and register that source with the market. A publicly visible GitHub repository does not automatically grant an open-source license. Permission to use, modify, or redistribute must come from the author\'s stated open-source license or another written authorization.\n\n4. User use and redistribution. The right to redistribute a plugin remains with its author or other rights holder unless the applicable license or another authorization permits it. The preceding permission to download, install, and use does not grant every user the right to upload, forward, repackage, sell, or republish the plugin. Unless the law provides otherwise, users may modify and redistribute a plugin only under the license or authorization stated by the author. A plugin without permission to redistribute may not be redistributed by users. The rights for an open-source plugin are determined by its open-source license.\n\n5. Third-party risks and security responsibility. Plugins have independent code, configuration, and runtime permissions. They may execute code, start local services, access files, read environment variables, or connect to the network. Users must review and bear the risks of enabling, installing, and using plugins. Publishers must not commit API keys, cookies, tokens, private keys, passwords, or user data to plugins, repositories, examples, or configuration, and must accurately disclose the author, license, permissions, network behavior, environment variables, external services, and known risks. Operit does not guarantee the security, accuracy, availability, legality, or compatibility of third-party extensions.\n\n6. Comments and community conduct. Comments must relate to plugin features, usage, defects, or security issues. Do not post QQ, Telegram, Discord, or other group numbers, contact details, advertisements, traffic diversion, transaction information, unrelated links, or other disruptive content. Do not disclose API keys, cookies, tokens, private keys, passwords, or personal data.\n\n7. No trading or diversion. Do not buy, sell, resell, or provide paid installation of plugins in the market. Do not use payments, tips, memberships, private messages, or third-party links to charge others for free plugins. The market does not provide payment, fulfillment, refunds, or transaction dispute services. Free plugins require no payment to anyone; charges, licenses, or promises from third-party channels are not endorsed by Operit.\n\n8. Market service boundary. To provide sharing, downloading, and installation, the market may store, cache, or transmit market entries and plugin files, but it does not promise permanent hosting, backup, confidentiality, or anti-copying. Publishing to the market means that the author authorizes the market to provide downloading and installation to market users under this agreement; it does not automatically give the public a right to redistribute the plugin. Availability and continued access may depend on the author\'s repository, GitHub, and other third-party services.\n\n9. Enforcement and updates. Comments, entries, or accounts that violate these rules may be restricted, hidden, or removed. When this market agreement changes materially due to product, legal, or security requirements, its version will be increased. Users must read and confirm the updated agreement when they next enter the market.</string>
     
     <!-- File Manager -->
     <string name="files_selected">%1$d files selected</string>
@@ -1851,6 +1855,13 @@
     <string name="external_http_chat_save_token">Save</string>
     <string name="external_http_chat_token_saved">Token saved</string>
     <string name="external_http_chat_token_length_error">Token must be at least 6 characters</string>
+    <string name="external_http_chat_a2a_title">A2A Agent Interface</string>
+    <string name="external_http_chat_a2a_desc">Uses the same listening port and Bearer token to provide A2A 1.0 JSON-RPC. Give an A2A client the Agent Card URL for discovery first.</string>
+    <string name="external_http_chat_a2a_agent_card">Agent Card URL</string>
+    <string name="external_http_chat_a2a_json_rpc">JSON-RPC URL</string>
+    <string name="external_http_chat_a2a_copy_agent_card">Copy Agent Card</string>
+    <string name="external_http_chat_a2a_copy_json_rpc">Copy JSON-RPC</string>
+    <string name="external_http_chat_a2a_url_copied">A2A URL copied</string>
     <string name="operation_details">Operation Details</string>
     <string name="path">Path</string>
     <string name="from_node">From node: %1$s</string>
@@ -5750,6 +5761,8 @@
     <string name="memory_auto_save_interval_minutes">Autosave interval (minutes)</string>
     <string name="memory_auto_save_interval_value">%1$d min · range %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">Adjustable range %1$d-%2$d minutes, default %3$d minutes</string>
+    <string name="memory_extraction_custom_rules">Memory Extraction Rules</string>
+    <string name="memory_extraction_custom_rules_placeholder">For example: Store project decisions and user preferences only; organize by project.</string>
     <string name="memory_search_mode_balanced">Balanced</string>
     <string name="memory_search_mode_keyword_first">Keyword First</string>
     <string name="memory_search_mode_semantic_first">Semantic First</string>
@@ -6422,7 +6435,7 @@
     <string name="webvisit_url_label">Visiting URL:</string>
     <string name="webvisit_status_loading_page">Loading page...</string>
     <string name="webvisit_status_waiting_page">Waiting for page to fully load...</string>
-    <string name="webvisit_status_captcha">Please complete CAPTCHA verification within %1$d seconds...</string>
+    <string name="webvisit_load_timeout">Web page load timed out; the visit was ended.</string>
     <string name="webvisit_status_extracting">Extracting content, will auto-continue in %1$d seconds...</string>
     <string name="webvisit_status_extracted_waiting">Content extracted, waiting for manual continue...</string>
     <string name="webvisit_status_waiting_extraction">Page loaded, waiting for content extraction...</string>
@@ -6618,6 +6631,7 @@
     <string name="toolpkg_hook_timeout_description">Limits the total wait time for ToolPkg chat-input, prompt, and summary hook chains on the send path. On timeout, the current hook is skipped and processing continues. Default: 10 seconds. Does not affect message-processing response takeover.</string>
     <string name="toolpkg_hook_timeout_value">%1$d s</string>
     <string name="toolpkg_hook_timeout_continue_sending">A pre-send plugin timed out. It was skipped and the message will continue sending.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">Pre-send plugin "%1$s" timed out. It was skipped and the message will continue sending.</string>
     <string name="tool_collapse_mode_title">Collapse Tools</string>
     <string name="tool_collapse_mode_desc">Set the default collapse scope for tool-call groups in messages</string>
     <string name="tool_collapse_mode_read_only">Collapse Multiple Read-only Tools</string>
@@ -7653,6 +7667,7 @@
     <string name="market_section_manage">Manage</string>
     <string name="market_section_publish">Publish</string>
     <string name="market_notifications_title">Messages</string>
+    <string name="market_agreement_entry">Market Agreement</string>
     <string name="market_notifications_empty_title">No messages yet</string>
     <string name="market_notifications_empty_description">Market messages will appear here.</string>
     <string name="market_manage_removed">Submitted removal request for "%1$s"</string>

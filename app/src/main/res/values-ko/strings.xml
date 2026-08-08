@@ -5297,6 +5297,8 @@
     <string name="memory_auto_save_interval_minutes">자동 저장 간격(분)</string>
     <string name="memory_auto_save_interval_value">%1$d분 · 범위 %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">조정 가능한 범위 %1$d-%2$d분, 기본값 %3$d분</string>
+    <string name="memory_extraction_custom_rules">메모리 추출 추가 규칙</string>
+    <string name="memory_extraction_custom_rules_placeholder">예: 프로젝트 결정과 사용자 선호도만 저장하고 프로젝트별로 분류합니다.</string>
     <string name="memory_search_mode_balanced">균형</string>
     <string name="memory_search_mode_keyword_first">키워드 우선</string>
     <string name="memory_search_mode_semantic_first">의미 우선</string>
@@ -6041,7 +6043,7 @@
     <string name="webvisit_url_label">방문 URL:</string>
     <string name="webvisit_status_loading_page">페이지 로드 중...</string>
     <string name="webvisit_status_waiting_page">페이지가 완전히 로드되기를 기다리는 중...</string>
-    <string name="webvisit_status_captcha">%1$d초 내에 CAPTCHA 확인을 완료해 주세요...</string>
+    <string name="webvisit_load_timeout">웹 페이지 로드 시간이 초과되어 방문을 종료했습니다.</string>
     <string name="webvisit_status_extracting">콘텐츠 추출이 %1$d초 후에 자동으로 계속됩니다...</string>
     <string name="webvisit_status_extracted_waiting">콘텐츠 추출 중, 수동 계속을 기다리는 중...</string>
     <string name="webvisit_status_waiting_extraction">페이지가 로드되어 콘텐츠 추출을 기다리는 중...</string>
@@ -6212,6 +6214,7 @@
     <string name="toolpkg_hook_timeout_description">전송 경로에서 ToolPkg 채팅 입력, 프롬프트 및 요약 Hook 체인의 총 대기 시간을 제한합니다. 제한 시간이 지나면 현재 Hook을 건너뛰고 처리를 계속합니다. 기본값은 10초입니다. message_processing 응답 인계에는 영향을 주지 않습니다.</string>
     <string name="toolpkg_hook_timeout_value">%1$d초</string>
     <string name="toolpkg_hook_timeout_continue_sending">전송 전 플러그인 응답 시간이 초과되었습니다. 해당 플러그인을 건너뛰고 메시지를 계속 전송합니다.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">전송 전 플러그인 "%1$s"의 응답 시간이 초과되었습니다. 해당 플러그인을 건너뛰고 메시지를 계속 전송합니다.</string>
     <string name="enable_enter_to_send">보내려면 Enter를 누르세요.</string>
     <string name="enable_enter_to_send_description">활성화되면 채팅 입력에서 Enter를 누르면 메시지가 직접 전송되고 키보드 보내기 키에도 보내기가 표시됩니다.</string>
     <string name="tool_collapse_mode_title">도구 축소</string>

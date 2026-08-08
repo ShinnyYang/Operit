@@ -5892,7 +5892,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="webvisit_url_label">URL Lawatan:</string>
     <string name="webvisit_status_loading_page">Memuatkan halaman...</string>
     <string name="webvisit_status_waiting_page">Menunggu halaman dimuatkan sepenuhnya...</string>
-    <string name="webvisit_status_captcha">Sila selesaikan pengesahan CAPTCHA dalam %1$d saat...</string>
+    <string name="webvisit_load_timeout">Masa pemuatan halaman web tamat; lawatan telah ditamatkan.</string>
     <string name="webvisit_status_extracting">Mengekstrak kandungan, akan disambung secara automatik dalam %1$d saat...</string>
     <string name="webvisit_status_extracted_waiting">Kandungan telah diekstrak, menunggu sambungan manual...</string>
     <string name="webvisit_status_waiting_extraction">Halaman telah dimuatkan, menunggu pengekstrakan kandungan...</string>
@@ -6273,6 +6273,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="toolpkg_hook_timeout_description">Mengehadkan jumlah masa menunggu rantaian Hook input sembang, gesaan dan ringkasan ToolPkg pada laluan penghantaran. Apabila tamat masa, Hook semasa dilangkau dan pemprosesan diteruskan. Lalai: 10 saat. Tidak menjejaskan pengambilalihan respons message_processing.</string>
     <string name="toolpkg_hook_timeout_value">%1$d saat</string>
     <string name="toolpkg_hook_timeout_continue_sending">Pemalam sebelum penghantaran tamat masa. Ia dilangkau dan mesej akan terus dihantar.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">Pemalam sebelum penghantaran "%1$s" tamat masa. Ia dilangkau dan mesej akan terus dihantar.</string>
     <string name="enable_enter_to_send">Hantar dengan Enter</string>
     <string name="enable_enter_to_send_description">Apabila dihidupkan, tekan Enter dalam kotak input sembang akan terus hantar, dan kekunci hantar papan kekunci juga akan dipaparkan sebagai hantar.</string>
     <string name="tool_collapse_mode_title">Alat lipat</string>
@@ -7193,6 +7194,8 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="backup_raw_snapshot_progress_replacing_external_files">Sedang menulis Android/data/nama_pakej/files...</string>
     <string name="memory_auto_save_interval_value">%1$d minit · julat %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">Julat boleh laras %1$d-%2$d minit, lalai %3$d minit</string>
+    <string name="memory_extraction_custom_rules">Peraturan Tambahan Pengekstrakan Memori</string>
+    <string name="memory_extraction_custom_rules_placeholder">Contohnya: simpan hanya keputusan projek dan pilihan pengguna; susun mengikut projek.</string>
     <string name="chat_selected_messages_no_user_for_memory">Tiada mesej pengguna dalam mesej yang dipilih yang boleh dimasukkan ke dalam ingatan</string>
     <string name="chat_selected_messages_added_to_memory_queue">%1$d mesej pengguna telah ditambahkan ke baris gilir ringkasan ingatan automatik</string>
     <string name="chat_selected_messages_add_to_memory_queue_failed">Gagal menambah ke baris gilir ringkasan ingatan automatik: %1$s</string>

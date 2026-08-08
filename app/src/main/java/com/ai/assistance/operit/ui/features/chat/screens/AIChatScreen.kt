@@ -1422,8 +1422,8 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
         }
 
         ChatToastHost(
-            message = toastEvent,
-            onDismiss = { actualViewModel.clearToastEvent() },
+            event = toastEvent,
+            onDismiss = actualViewModel::clearToastEvent,
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .padding(

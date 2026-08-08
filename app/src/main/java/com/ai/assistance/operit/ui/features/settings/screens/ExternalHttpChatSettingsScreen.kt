@@ -94,6 +94,8 @@ fun ExternalHttpChatSettingsScreen(onBackPressed: () -> Unit) {
     val sampleBaseUrl = accessUrls.firstOrNull() ?: "http://127.0.0.1:$savedPort"
     val webEntryUrl = "$sampleBaseUrl/"
     val webApiBaseUrl = "$sampleBaseUrl/api/"
+    val a2aAgentCardUrl = "$sampleBaseUrl/.well-known/agent-card.json"
+    val a2aJsonRpcUrl = "$sampleBaseUrl/a2a"
     val syncCurl = remember(sampleBaseUrl, curlToken) {
         """
 curl -X POST "$sampleBaseUrl/api/external-chat" \
@@ -395,6 +397,61 @@ adb shell am broadcast \
                         SelectionContainer {
                             Text(text = url, style = MaterialTheme.typography.bodyMedium)
                         }
+                    }
+                }
+            }
+
+            SettingsCard(
+                title = stringResource(R.string.external_http_chat_a2a_title),
+                subtitle = stringResource(R.string.external_http_chat_a2a_desc),
+                containerColor = sectionContainerColor,
+                borderColor = cardBorderColor,
+                icon = {
+                    Icon(Icons.Default.Link, contentDescription = null)
+                }
+            ) {
+                Text(
+                    text = stringResource(R.string.external_http_chat_a2a_agent_card),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                SelectionContainer {
+                    Text(text = a2aAgentCardUrl, style = MaterialTheme.typography.bodyMedium)
+                }
+                Text(
+                    text = stringResource(R.string.external_http_chat_a2a_json_rpc),
+                    style = MaterialTheme.typography.labelLarge
+                )
+                SelectionContainer {
+                    Text(text = a2aJsonRpcUrl, style = MaterialTheme.typography.bodyMedium)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(
+                        onClick = {
+                            copyText(
+                                text = a2aAgentCardUrl,
+                                label = "a2a-agent-card-url",
+                                successMessage = context.getString(
+                                    R.string.external_http_chat_a2a_url_copied
+                                )
+                            )
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Text(stringResource(R.string.external_http_chat_a2a_copy_agent_card))
+                    }
+                    TextButton(
+                        onClick = {
+                            copyText(
+                                text = a2aJsonRpcUrl,
+                                label = "a2a-json-rpc-url",
+                                successMessage = context.getString(
+                                    R.string.external_http_chat_a2a_url_copied
+                                )
+                            )
+                        }
+                    ) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = null)
+                        Text(stringResource(R.string.external_http_chat_a2a_copy_json_rpc))
                     }
                 }
             }

@@ -297,7 +297,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     // UI状态相关
     val errorMessage: StateFlow<String?> by lazy { uiStateDelegate.errorMessage }
     val popupMessage: StateFlow<String?> by lazy { uiStateDelegate.popupMessage }
-    val toastEvent: StateFlow<String?> by lazy { uiStateDelegate.toastEvent }
+    val toastEvent: StateFlow<ChatToastEvent?> by lazy { uiStateDelegate.toastEvent }
     val masterPermissionLevel: StateFlow<PermissionLevel> by lazy {
         uiStateDelegate.masterPermissionLevel
     }
@@ -1663,7 +1663,7 @@ class ChatViewModel(private val context: Context) : ViewModel() {
     fun popupMessage(message: String) = uiStateDelegate.showPopupMessage(message)
     fun clearPopupMessage() = uiStateDelegate.clearPopupMessage()
     fun showToast(message: String) = uiStateDelegate.showToast(message)
-    fun clearToastEvent() = uiStateDelegate.clearToastEvent()
+    fun clearToastEvent(eventId: Long) = uiStateDelegate.clearToastEvent(eventId)
 
     // 悬浮窗相关方法
     fun onFloatingButtonClick(

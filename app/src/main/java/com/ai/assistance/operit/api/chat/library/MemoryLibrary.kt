@@ -517,7 +517,10 @@ object MemoryLibrary {
             // --- Hybrid Strategy: Local rough search + LLM final decision ---
             // 1. Use a compact search query (question-focused) for rough candidate selection.
             val contextQuery = buildCandidateSearchQuery(query, solution)
-            val searchConfig = MemorySearchSettingsPreferences(context, profileId).load()
+            val memorySearchSettings = MemorySearchSettingsPreferences(context, profileId)
+            val searchConfig = memorySearchSettings.load()
+            val memoryExtractionCustomRules =
+                memorySearchSettings.loadMemoryExtractionCustomRules()
             val candidateMemories = memoryRepository.searchMemories(
                 query = contextQuery,
                 scoreMode = searchConfig.scoreMode,
@@ -577,7 +580,8 @@ object MemoryLibrary {
                 existingFoldersPrompt = existingFoldersPrompt,
                 useEnglish = useEnglish,
                 profileDocument = profileDocument,
-                profileUpdateEnabled = profileUpdateEnabled
+                profileUpdateEnabled = profileUpdateEnabled,
+                memoryExtractionCustomRules = memoryExtractionCustomRules
             )
 
             val analysisMessage = buildAnalysisMessage(context, query, solution, conversationHistory, useEnglish)

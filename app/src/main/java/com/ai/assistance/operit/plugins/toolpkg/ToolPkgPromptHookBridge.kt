@@ -181,6 +181,8 @@ internal object ToolPkgPromptHookBridge {
                     containerPackageName = resolvedContainer,
                     hookId = resolvedHookId
                 )
+                // Preserve the package and Hook ID so the existing floating Toast names the exact plugin.
+                current.onHookTimeout?.invoke("$resolvedContainer:$resolvedHookId")
                 break
             }
             val result =
@@ -203,6 +205,7 @@ internal object ToolPkgPromptHookBridge {
                     hookId = resolvedHookId
                 )
             ) {
+                current.onHookTimeout?.invoke("$resolvedContainer:$resolvedHookId")
                 break
             }
             val decoded =

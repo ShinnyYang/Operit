@@ -6032,6 +6032,8 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="memory_auto_save_interval_minutes">Intervalul de salvare automată (minute)</string>
     <string name="memory_auto_save_interval_value">%1$d minute · interval %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">Intervalul de reglare %1$d-%2$d minute, implicit %3$d minute</string>
+    <string name="memory_extraction_custom_rules">Reguli suplimentare de extragere a memoriei</string>
+    <string name="memory_extraction_custom_rules_placeholder">De exemplu: păstrează doar deciziile proiectului și preferințele utilizatorului; organizează după proiect.</string>
     <string name="memory_search_mode_balanced">Modul de echilibru</string>
     <string name="memory_search_mode_keyword_first">Prioritate pentru cuvintele-cheie</string>
     <string name="memory_search_mode_semantic_first">Prioritate vectorială</string>
@@ -6867,7 +6869,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="webvisit_url_label">Accesați adresa web:</string>
     <string name="webvisit_status_loading_page">Se încarcă pagina...</string>
     <string name="webvisit_status_waiting_page">Așteptați până când pagina se încarcă complet...</string>
-    <string name="webvisit_status_captcha">Vă rugăm să%1$dVerificarea om-mașină se realizează în câteva secunde...</string>
+    <string name="webvisit_load_timeout">Încărcarea paginii web a expirat; accesarea a fost încheiată.</string>
     <string name="webvisit_status_extracting">Se încarcă conținutul,%1$dSe va relua automat după câteva secunde...</string>
     <string name="webvisit_status_extracted_waiting">Conținutul a fost extras; se așteaptă continuarea manuală...</string>
     <string name="webvisit_status_waiting_extraction">Pagina s-a încărcat, se așteaptă extragerea conținutului...</string>
@@ -7063,6 +7065,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="toolpkg_hook_timeout_description">Limitează timpul total de așteptare al lanțurilor Hook ToolPkg pentru intrarea de chat, prompt și rezumat pe traseul de trimitere. La expirare, Hook-ul curent este omis, iar procesarea continuă. Valoare implicită: 10 secunde. Nu afectează preluarea răspunsului message_processing.</string>
     <string name="toolpkg_hook_timeout_value">%1$d secunde</string>
     <string name="toolpkg_hook_timeout_continue_sending">Un plugin anterior trimiterii a expirat. A fost omis, iar mesajul va continua să fie trimis.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">Pluginul anterior trimiterii „%1$s” a expirat. A fost omis, iar mesajul va continua să fie trimis.</string>
     <string name="enable_enter_to_send">Apăsați Enter pentru a trimite</string>
     <string name="enable_enter_to_send_description">După activare, apăsarea tastei Enter în caseta de introducere a mesajului va trimite direct mesajul, iar butonul de trimitere de pe tastatură va afișa „Trimis”.</string>
     <string name="tool_collapse_mode_title">Instrument de pliere</string>

@@ -347,7 +347,8 @@
         <!-- 添加广播接收器配置 -->
         <receiver
             android:name=".core.tools.javascript.ScriptExecutionReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.ai.assistance.operit.EXECUTE_JS" />
             </intent-filter>
@@ -355,7 +356,8 @@
 
         <receiver
             android:name=".core.tools.packTool.ToolPkgDebugInstallReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.ai.assistance.operit.DEBUG_INSTALL_TOOLPKG" />
             </intent-filter>
@@ -363,7 +365,8 @@
 
         <receiver
             android:name=".core.tools.packTool.PackageDebugRefreshReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.ai.assistance.operit.DEBUG_REFRESH_PACKAGES" />
             </intent-filter>
@@ -371,7 +374,8 @@
 
         <receiver
             android:name=".core.tools.packTool.ToolPkgComposeDslDebugDumpReceiver"
-            android:exported="true">
+            android:exported="true"
+            android:permission="android.permission.DUMP">
             <intent-filter>
                 <action android:name="com.ai.assistance.operit.DUMP_COMPOSE_DSL_UI" />
             </intent-filter>
