@@ -43,9 +43,9 @@ class LlamaProvider(
         }
     }
 
-    private var _inputTokenCount: Long = 0L
-    private var _outputTokenCount: Long = 0L
-    private var _cachedInputTokenCount: Long = 0L
+    private var _inputTokenCount: Int = 0
+    private var _outputTokenCount: Int = 0
+    private var _cachedInputTokenCount: Int = 0
 
     @Volatile
     private var isCancelled = false
@@ -53,22 +53,22 @@ class LlamaProvider(
     private val sessionLock = Any()
     private var session: LlamaSession? = null
 
-    override val inputTokenCount: Long
+    override val inputTokenCount: Int
         get() = _inputTokenCount
 
-    override val cachedInputTokenCount: Long
+    override val cachedInputTokenCount: Int
         get() = _cachedInputTokenCount
 
-    override val outputTokenCount: Long
+    override val outputTokenCount: Int
         get() = _outputTokenCount
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
 
     override fun resetTokenCounts() {
-        _inputTokenCount = 0L
-        _outputTokenCount = 0L
-        _cachedInputTokenCount = 0L
+        _inputTokenCount = 0
+        _outputTokenCount = 0
+        _cachedInputTokenCount = 0
     }
 
     private fun logLargeString(prefix: String, message: String) {
@@ -139,7 +139,7 @@ class LlamaProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Long {
+    ): Int {
         return withContext(Dispatchers.IO) {
             kotlin.runCatching {
                 val s = ensureSessionLocked()
@@ -160,8 +160,8 @@ class LlamaProvider(
                     s.applyChatTemplate(roles, contents, true)
                 } ?: return@runCatching null
 
-                s.countTokens(prompt).toLong()
-            }.getOrNull() ?: 0L
+                s.countTokens(prompt)
+            }.getOrNull() ?: 0
         }
     }
 
@@ -173,7 +173,7 @@ class LlamaProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
@@ -278,9 +278,9 @@ class LlamaProvider(
             }
         }
 
-        _inputTokenCount = kotlin.runCatching { s.countTokens(prompt).toLong() }.getOrElse { 0L }
-        _outputTokenCount = 0L
-        onTokensUpdated(_inputTokenCount, 0L, 0L)
+        _inputTokenCount = kotlin.runCatching { s.countTokens(prompt) }.getOrElse { 0 }
+        _outputTokenCount = 0
+        onTokensUpdated(_inputTokenCount, 0, 0)
 
         val requestedMaxNewTokens = modelParameters
             .find { it.name == "max_tokens" }
@@ -292,71 +292,73 @@ class LlamaProvider(
             "开始llama.cpp推理，history=${chatHistory.size}, threads=${sessionConfig.nThreads}, n_ctx=${sessionConfig.nCtx}, n_batch=${sessionConfig.nBatch}, n_ubatch=${sessionConfig.nUBatch}, gpu_layers=${sessionConfig.nGpuLayers}, mmap=${sessionConfig.useMmap}"
         )
 
-        var outputTokenCount = 0L
+        var outputTokenCount = 0
         val toolCallOutputBuffer = StringBuilder()
         val finalOutputBuffer = StringBuilder()
 
-        val success = withContext(Dispatchers.IO) {
-            s.generateStream(prompt, requestedMaxNewTokens) { token ->
-                if (isCancelled) {
-                    false
-                } else {
-                    outputTokenCount += 1L
-                    _outputTokenCount = outputTokenCount
-
-                    if (effectiveEnableToolCall) {
-                        toolCallOutputBuffer.append(token)
+        val usageReporter = LocalUsageReporter(
+            com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.SOURCE_LLAMA,
+            onUsageReported,
+        )
+        usageReporter.runReportingFinally({ _inputTokenCount }, { _outputTokenCount }) {
+            val success = withContext(Dispatchers.IO) {
+                s.generateStream(prompt, requestedMaxNewTokens) { token ->
+                    if (isCancelled) {
+                        false
                     } else {
-                        finalOutputBuffer.append(token)
-                        runBlocking { emit(token) }
-                    }
+                        outputTokenCount += 1
+                        _outputTokenCount = outputTokenCount
 
-                    kotlin.runCatching {
-                        kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0L, _outputTokenCount)
+                        if (effectiveEnableToolCall) {
+                            toolCallOutputBuffer.append(token)
+                        } else {
+                            finalOutputBuffer.append(token)
+                            runBlocking { emit(token) }
                         }
-                    }
 
-                    true
+                        kotlin.runCatching {
+                            kotlinx.coroutines.runBlocking {
+                                onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            }
+                        }
+
+                        true
+                    }
                 }
             }
-        }
 
-        // 结束顺序即契约（评审 P2-3）：取消优先判定——先上报已实测 usage 再抛
-        // 取消，绝不转换/emit 不完整的工具 XML；未取消才处理工具缓冲
-        LocalGenerationEnd.end(
-            cancelled = isCancelled,
-            success = success,
-            inputTokens = _inputTokenCount,
-            outputTokens = _outputTokenCount,
-            source = com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.SOURCE_LLAMA,
-            cancelMessage = context.getString(R.string.llama_error_request_cancelled),
-            onUsageReported = onUsageReported,
-            emitToolResult = {
-                if (effectiveEnableToolCall) {
-                    val normalizedPayload = withContext(Dispatchers.IO) {
-                        kotlin.runCatching {
-                            s.parseToolCallResponse(toolCallOutputBuffer.toString())
-                        }.getOrNull()
+            LocalGenerationEnd.end(
+                cancelled = isCancelled,
+                success = success,
+                usageReporter = usageReporter,
+                inputTokens = _inputTokenCount,
+                outputTokens = _outputTokenCount,
+                cancelMessage = context.getString(R.string.llama_error_request_cancelled),
+                emitToolResult = {
+                    if (effectiveEnableToolCall) {
+                        val normalizedPayload = withContext(Dispatchers.IO) {
+                            kotlin.runCatching {
+                                s.parseToolCallResponse(toolCallOutputBuffer.toString())
+                            }.getOrNull()
+                        }
+                        val converted = StructuredToolCallBridge.convertToolCallPayloadToXml(
+                            normalizedPayload ?: toolCallOutputBuffer.toString()
+                        )
+                        if (converted.isNotBlank()) {
+                            finalOutputBuffer.append(converted)
+                            emit(converted)
+                        }
                     }
-                    val converted = StructuredToolCallBridge.convertToolCallPayloadToXml(
-                        normalizedPayload ?: toolCallOutputBuffer.toString()
-                    )
-                    if (converted.isNotBlank()) {
-                        finalOutputBuffer.append(converted)
-                        emit(converted)
+                },
+                failWith = {
+                    kotlin.runCatching {
+                        onNonFatalError(context.getString(R.string.llama_error_inference_failed))
                     }
-                }
-            },
-            failWith = {
-                // 推理失败：保留用户可见错误文本后以失败终止（统计边界记为 FAILED）
-                kotlin.runCatching {
-                    onNonFatalError(context.getString(R.string.llama_error_inference_failed))
-                }
-                emit("\n\n${context.getString(R.string.llama_error_inference_tag)}")
-                throw IOException(context.getString(R.string.llama_error_inference_failed))
-            },
-        )
+                    emit("\n\n${context.getString(R.string.llama_error_inference_tag)}")
+                    throw IOException(context.getString(R.string.llama_error_inference_failed))
+                },
+            )
+        }
 
         AppLogger.i(TAG, "llama.cpp推理完成，输出token数: $_outputTokenCount")
         logFinalOutput(finalOutputBuffer, "Final llama.cpp output summary: ")

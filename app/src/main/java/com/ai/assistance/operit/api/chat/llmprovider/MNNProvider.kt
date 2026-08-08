@@ -67,29 +67,29 @@ class MNNProvider(
     private var cachedModelIsAudio: Boolean? = null
 
     // Token计数
-    private var _inputTokenCount = 0L
-    private var _outputTokenCount = 0L
-    private var _cachedInputTokenCount = 0L
+    private var _inputTokenCount = 0
+    private var _outputTokenCount = 0
+    private var _cachedInputTokenCount = 0
 
     @Volatile
     private var isCancelled = false
 
-    override val inputTokenCount: Long
+    override val inputTokenCount: Int
         get() = _inputTokenCount
 
-    override val outputTokenCount: Long
+    override val outputTokenCount: Int
         get() = _outputTokenCount
 
-    override val cachedInputTokenCount: Long
+    override val cachedInputTokenCount: Int
         get() = _cachedInputTokenCount
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
 
     override fun resetTokenCounts() {
-        _inputTokenCount = 0L
-        _outputTokenCount = 0L
-        _cachedInputTokenCount = 0L
+        _inputTokenCount = 0
+        _outputTokenCount = 0
+        _cachedInputTokenCount = 0
     }
 
     override fun cancelStreaming() {
@@ -602,7 +602,7 @@ class MNNProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
@@ -660,76 +660,77 @@ class MNNProvider(
             val safeHistory = trimHistoryToTokenBudget(session, conversationHistory, maxPromptTokens)
 
             _inputTokenCount =
-                kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
+                kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
                     .getOrElse { error ->
                         if (useInternalToolCall) {
                             throw error
                         }
-                        countTokens(buildPrompt(conversationHistory)).toLong()
+                        countTokens(buildPrompt(conversationHistory))
                     }
-            onTokensUpdated(_inputTokenCount, 0L, 0L)
+            onTokensUpdated(_inputTokenCount, 0, 0)
 
             AppLogger.d(
                 TAG,
                 "开始MNN LLM推理，历史消息数: ${conversationHistory.size}, thinking模式: $enableThinking, toolCall=$useInternalToolCall"
             )
 
-            var outputTokenCount = 0L
+            var outputTokenCount = 0
             val toolCallOutputBuffer = StringBuilder()
             val finalOutputBuffer = StringBuilder()
             val emitDirectly = !useInternalToolCall
-            val success = session.generateStream(safeHistory, requestedMaxNewTokens) { token ->
-                if (isCancelled) {
-                    false
-                } else {
-                    outputTokenCount += 1L
-                    _outputTokenCount = outputTokenCount
-
-                    if (emitDirectly) {
-                        finalOutputBuffer.append(token)
-                        runBlocking { emit(token) }
-                    } else {
-                        toolCallOutputBuffer.append(token)
-                    }
-
-                    kotlin.runCatching {
-                        kotlinx.coroutines.runBlocking {
-                            onTokensUpdated(_inputTokenCount, 0L, _outputTokenCount)
-                        }
-                    }
-
-                    true
-                }
-            }
-
-            // 结束顺序即契约（评审 P2-3）：取消优先判定——先上报已实测 usage 再抛
-            // 取消，绝不转换/emit 不完整的工具 XML；未取消才处理工具缓冲
-            LocalGenerationEnd.end(
-                cancelled = isCancelled,
-                success = success,
-                inputTokens = _inputTokenCount,
-                outputTokens = _outputTokenCount,
-                source = com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.SOURCE_MNN,
-                cancelMessage = context.getString(R.string.mnn_error_request_cancelled),
-                onUsageReported = onUsageReported,
-                emitToolResult = {
-                    if (useInternalToolCall && toolCallOutputBuffer.isNotEmpty()) {
-                        val converted =
-                            StructuredToolCallBridge.convertToolCallPayloadToXml(
-                                toolCallOutputBuffer.toString()
-                            )
-                        if (converted.isNotBlank()) {
-                            finalOutputBuffer.append(converted)
-                            emit(converted)
-                        }
-                    }
-                },
-                failWith = {
-                    // 推理失败：先上报已实测的 usage，再以失败终止（用户可见错误
-                    // 文本由下方 catch 统一 emit）
-                    throw IOException(context.getString(R.string.mnn_reasoning_error))
-                },
+            val usageReporter = LocalUsageReporter(
+                com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.SOURCE_MNN,
+                onUsageReported,
             )
+            usageReporter.runReportingFinally({ _inputTokenCount }, { _outputTokenCount }) {
+                val success = session.generateStream(safeHistory, requestedMaxNewTokens) { token ->
+                    if (isCancelled) {
+                        false
+                    } else {
+                        outputTokenCount += 1
+                        _outputTokenCount = outputTokenCount
+
+                        if (emitDirectly) {
+                            finalOutputBuffer.append(token)
+                            runBlocking { emit(token) }
+                        } else {
+                            toolCallOutputBuffer.append(token)
+                        }
+
+                        kotlin.runCatching {
+                            kotlinx.coroutines.runBlocking {
+                                onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                            }
+                        }
+
+                        true
+                    }
+                }
+
+                LocalGenerationEnd.end(
+                    cancelled = isCancelled,
+                    success = success,
+                    usageReporter = usageReporter,
+                    inputTokens = _inputTokenCount,
+                    outputTokens = _outputTokenCount,
+                    cancelMessage = context.getString(R.string.mnn_error_request_cancelled),
+                    emitToolResult = {
+                        if (useInternalToolCall && toolCallOutputBuffer.isNotEmpty()) {
+                            val converted =
+                                StructuredToolCallBridge.convertToolCallPayloadToXml(
+                                    toolCallOutputBuffer.toString()
+                                )
+                            if (converted.isNotBlank()) {
+                                finalOutputBuffer.append(converted)
+                                emit(converted)
+                            }
+                        }
+                    },
+                    failWith = {
+                        throw IOException(context.getString(R.string.mnn_reasoning_error))
+                    },
+                )
+            }
 
             AppLogger.i(TAG, "MNN LLM推理完成，输出token数: $_outputTokenCount")
             logFinalOutput(finalOutputBuffer, "Final MNN output summary: ")
@@ -980,17 +981,17 @@ class MNNProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Long {
+    ): Int {
         val flattenedHistory = flattenTypedHistory(chatHistory, preserveThinkInHistory = false)
         val initResult = initModel()
         if (initResult.isFailure) {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt).toLong()
+            return countTokens(prompt)
         }
 
         val session = llmSession ?: run {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt).toLong()
+            return countTokens(prompt)
         }
 
         val modelDir = getModelDir(context, modelName)
@@ -998,10 +999,10 @@ class MNNProvider(
 
         val maxPromptTokens = (maxAllTokens - 512).coerceAtLeast(128)
         val safeHistory = trimHistoryToTokenBudget(session, flattenedHistory, maxPromptTokens)
-        return kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
+        return kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
             .getOrElse {
                 val prompt = buildPrompt(flattenedHistory)
-                countTokens(prompt).toLong()
+                countTokens(prompt)
             }
     }
 
