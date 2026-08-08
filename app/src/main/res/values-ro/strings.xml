@@ -5633,6 +5633,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="backup_model_config_current_count">În prezent, există în total %1$d Configurația modelului.</string>
 
     <string name="backup_exporting">Se exportă%1$s...</string>
+    <string name="backup_text_export_progress">Se exportă textul lung: %1$d%% (%2$d / %3$d caractere procesate)</string>
     <string name="backup_importing">Se importă%1$s...</string>
     <string name="backup_deleting">Se șterg istoricul conversațiilor...</string>
     <string name="backup_export_success">Exportul s-a realizat cu succes</string>

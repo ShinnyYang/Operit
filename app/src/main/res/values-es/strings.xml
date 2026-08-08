@@ -4975,6 +4975,7 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="backup_model_config_subtitle">Copia de seguridad y restauración de todas las configuraciones del modelo, incluyendo claves API y parámetros.</string>
     <string name="backup_model_config_current_count">Actualmente hay %1$d configuraciones de modelo.</string>
     <string name="backup_exporting">Exportando %1$s...</string>
+    <string name="backup_text_export_progress">Exportando texto largo: %1$d%% (%2$d / %3$d caracteres procesados)</string>
     <string name="backup_importing">Importando %1$s...</string>
     <string name="backup_deleting">Limpiando el historial de chat...</string>
     <string name="backup_export_success">Exportación exitosa</string>

@@ -4932,6 +4932,7 @@
     <string name="backup_model_config_subtitle">API 키 및 매개변수를 포함한 모든 모델 설정 백업 및 복원</string>
     <string name="backup_model_config_current_count">현재 모델 구성 %1$d개입니다.</string>
     <string name="backup_exporting">%1$s 내보내기 중...</string>
+    <string name="backup_text_export_progress">긴 텍스트 내보내기: %1$d%% (처리됨 %2$d / %3$d자)</string>
     <string name="backup_importing">%1$s 가져오는 중...</string>
     <string name="backup_deleting">채팅 기록을 지우는 중...</string>
     <string name="backup_export_success">내보내기 성공</string>

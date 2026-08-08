@@ -4519,6 +4519,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="backup_model_config_subtitle">Faça backup e restaure todas as configurações do modelo, incluindo chaves e parâmetros de API</string>
     <string name="backup_model_config_current_count">Atualmente existem %1$d configurações de modelo.</string>
     <string name="backup_exporting">Exportando %1$s...</string>
+    <string name="backup_text_export_progress">Exportando texto longo: %1$d%% (%2$d / %3$d caracteres processados)</string>
     <string name="backup_importing">Importando %1$s...</string>
     <string name="backup_deleting">Limpando histórico de bate-papo...</string>
     <string name="backup_export_success">Exportação bem-sucedida</string>

@@ -4819,6 +4819,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="backup_model_config_subtitle">Cadangkan dan pulihkan semua pengaturan model, termasuk kunci API dan parameter</string>
     <string name="backup_model_config_current_count">Saat ini ada %1$d konfigurasi model.</string>
     <string name="backup_exporting">Sedang mengekspor %1$s...</string>
+    <string name="backup_text_export_progress">Mengekspor teks panjang: %1$d%% (%2$d / %3$d karakter telah diproses)</string>
     <string name="backup_importing">Sedang mengimpor %1$s...</string>
     <string name="backup_deleting">Sedang menghapus riwayat obrolan...</string>
     <string name="backup_export_success">Ekspor Berhasil</string>

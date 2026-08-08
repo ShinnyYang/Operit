@@ -68,6 +68,11 @@ data class MessageVariantContentRow(
     val contentCharacterCount: Long,
 )
 
+data class ChatContentCharacterCount(
+    val chatId: String,
+    val contentCharacterCount: Long,
+)
+
 /** Reads message text in bounded rows so a single large message cannot overflow CursorWindow. */
 @Dao
 abstract class ChatContentDao {
@@ -239,6 +244,31 @@ abstract class ChatContentDao {
         startCharacter: Long,
         characterCount: Int,
     ): String?
+
+    @Query(
+        """
+        SELECT
+            chats.id AS chatId,
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN messages.selectedVariantIndex = 0 THEN LENGTH(messages.content)
+                        ELSE LENGTH(selectedVariant.content)
+                    END
+                ),
+                0
+            ) AS contentCharacterCount
+        FROM chats
+        LEFT JOIN messages
+            ON messages.chatId = chats.id
+        LEFT JOIN message_variants AS selectedVariant
+            ON selectedVariant.chatId = messages.chatId
+            AND selectedVariant.messageTimestamp = messages.timestamp
+            AND selectedVariant.variantIndex = messages.selectedVariantIndex
+        GROUP BY chats.id
+        """
+    )
+    abstract suspend fun getSelectedContentCharacterCountsByChat(): List<ChatContentCharacterCount>
 
     @Transaction
     open suspend fun getMessagesForChat(chatId: String): List<MessageEntity> =

@@ -4822,6 +4822,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
 
     <string name="backup_model_config_current_count">Kini terdapat %1$d konfigurasi model.</string>
     <string name="backup_exporting">Sedang mengeksport %1$s...</string>
+    <string name="backup_text_export_progress">Mengeksport teks panjang: %1$d%% (%2$d / %3$d aksara diproses)</string>
     <string name="backup_importing">Sedang mengimport %1$s...</string>
     <string name="backup_deleting">Sedang membersihkan rekod sembang...</string>
     <string name="backup_export_success">Eksport berjaya</string>
