@@ -23,6 +23,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito
@@ -57,6 +58,15 @@ class TokenBaselineImportRunnerTest {
         clearApiDataStoreSingleton()
         TokenBaselineImportRunner.databaseProvider = null
         injectApiPreferences(null)
+    }
+
+    @After
+    fun tearDown() {
+        injectApiPreferences(null)
+        clearApiDataStoreSingleton()
+        TokenBaselineImportRunner.databaseProvider = null
+        TokenStatsResetCoordinator.daoProvider = null
+        ApiPreferences.toolPkgProviderNamesProvider = null
     }
 
     /** 清空 `Context.apiDataStore` 委托缓存的数据存储单例（隔离生命周期）。 */
@@ -191,6 +201,18 @@ class TokenBaselineImportRunnerTest {
     }
 
     // ==== 测试 ====
+
+    @Test
+    fun `strict migration reports database failure as not ready`() = runBlocking {
+        TokenBaselineImportRunner.databaseProvider = { throw java.io.IOException("database unavailable") }
+        val context = mock<Context>()
+        whenever(context.applicationContext).thenReturn(context)
+
+        val ready = Mockito.mockStatic(AppLogger::class.java).use {
+            TokenBaselineImportRunner.ensureMigratedStrict(context)
+        }
+        assertFalse(ready)
+    }
 
     @Test
     fun `cancellation propagates through import runner instead of being swallowed`() =
@@ -610,9 +632,16 @@ class TokenBaselineImportRunnerTest {
             injectApiPreferences(realPrefs)
             realPrefs.getInputTokensForProviderModel(providerA)
             check(File(File(phase, "datastore"), "api_settings.preferences_pb").delete())
-            Mockito.mockStatic(AppLogger::class.java).use {
-                TokenBaselineImportRunner.ensureMigrated(ctx)
+            val retryReady = Mockito.mockStatic(AppLogger::class.java).use {
+                TokenBaselineImportRunner.ensureMigratedStrict(ctx)
             }
+            val retryRead = realPrefs.legacyStatsSnapshotWithMarkers()
+            assertTrue(
+                "retry not ready: pending=${dao.countPendingCleanupOperations()}, " +
+                    "markers=${retryRead.cleanupMarkerIds}, " +
+                    "models=${retryRead.snapshot.providerModels.keys}",
+                retryReady,
+            )
             assertNull(dao.getBaseline(identityIdA))
             assertNotNull(dao.getBaseline(identityIdB))
             assertEquals(0, dao.countPendingCleanupOperations())
@@ -675,5 +704,6 @@ class TokenBaselineImportRunnerTest {
             database.close()
         }
     }
+
 
 }

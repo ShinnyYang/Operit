@@ -17,9 +17,17 @@ import kotlinx.coroutines.CancellationException
  * 普通导入（[ensureMigrated]）：计数指纹变化时（旧系统累计 setter 增长，或用户
  * reset 后降低）用 baseline 行内**冻结价格**重估计数/成本，整体替换为快照绝对值；
  * 计数不变时普通价格 setter 不重估。普通导入**只更新快照中明确存在的模型**，
- * 快照缺失的模型保持原样（不删除——偏好文件可能暂时缺失；显式删除
- * 走 [TokenStatsResetCoordinator] 的用户重置路径）。普通启动的空快照安全 no-op
- * （见 [runImport] 的空快照守卫）。
+ * 快照缺失的模型保持原样（不删除——偏好文件可能暂时缺失/部分恢复；显式删除
+ * 走 [TokenStatsResetCoordinator] 的用户重置路径）。受控补导（恢复驱动）：真实
+ * 恢复后的偏好快照，在**同一 Room 事务**内以 forceReplace 语义整体重导（替换
+ * 冻结价格），并把恢复 generation 写入幂等锚点表；相同 generation 已应用则跳过
+ * （崩溃后重放安全）。只有该完整受控补导才按恢复快照处理缺失模型（删除其旧系统
+ * baseline，见 [TokenBaselineMigrator]）；恢复快照**为空同样合法**——旧系统
+ * 从未有统计即无 legacy baseline 可留，受控补导仍执行并删除全部 legacy baseline
+ * （保留非空 configId 的 baseline）。普通启动的空快照则安全 no-op（见
+ * [runImport] 的空快照守卫）。
+ * 整库（databases/）与偏好（datastore/）恢复顺序由 RawSnapshot 流程保证
+ * （datastore 先于 databases 覆盖，登记在全部替换成功后、recovery state 完成前）。
  *
  * P1 闭环（legacy cleanup outbox fence）：两个导入入口在读取快照**之前**先排空
  * pending cleanup operation（[TokenStatsResetCoordinator.drainPendingCleanupWith]，
@@ -40,22 +48,33 @@ object TokenBaselineImportRunner {
     internal var databaseProvider: ((Context) -> AppDatabase)? = null
 
     suspend fun ensureMigrated(context: Context) {
+        ensureMigratedStrict(context)
+    }
+
+    /** Startup readiness entry point: false means this attempt must not be treated as ready. */
+    internal suspend fun ensureMigratedStrict(context: Context): Boolean {
         try {
-            runImport(context.applicationContext, forceReplace = false)
+            return runImport(context.applicationContext, forceReplace = false)
         } catch (e: CancellationException) {
             // 取消必须向上传播，不能当作迁移失败吞掉
             throw e
         } catch (e: Exception) {
             // 迁移失败不影响主流程；下次启动会重试（指纹与事务保证幂等）。
             AppLogger.e(TAG, "旧累计统计导入失败（将在下次启动重试）", e)
+            return false
         }
     }
 
     // ==== 恢复生命周期：pending 标记 ====
 
+    /**
+     * 冷启动消费 pending 标记：有标记才补导。无标记（含 Room-only 恢复）不动作。
+     * 补导与 generation 记录在同一事务中；相同 generation 已应用则跳过。
+     * 新 generation（不静默删除信号）。
+     */
     // ==== 导入 ====
 
-    internal suspend fun runImport(appContext: Context, forceReplace: Boolean) {
+    internal suspend fun runImport(appContext: Context, forceReplace: Boolean): Boolean {
         val injected = databaseProvider
         val database = injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
         val dao = database.tokenStatsDao()
@@ -67,8 +86,8 @@ object TokenBaselineImportRunner {
         // 普通启动守卫：空快照直接返回，不触碰数据库（取消/空源都安全，绝不删除）。
         // 注意：受控补导（consumePendingLocked）不走此入口，空快照也以
         // forceReplace 语义执行删除计划。
-        if (read.snapshot.providerModels.isEmpty()) return
-        if (injected != null) {
+        if (read.snapshot.providerModels.isEmpty()) return true
+        return if (injected != null) {
             runImport(appContext, dao, read.snapshot, read.cleanupMarkerIds, forceReplace)
         } else {
             database.withTransaction {
@@ -83,7 +102,7 @@ object TokenBaselineImportRunner {
         snapshot: LegacyTokenStatsSnapshot,
         cleanupMarkerIds: Set<String>,
         forceReplace: Boolean,
-    ) {
+    ): Boolean {
         // 导入 fence（P1 闭环）：Room 侧无 PENDING cleanup 且**全部** cleanup
         // operation ID 都包含在本快照的 marker 集合中，才允许应用该快照——
         // 否则快照早于某次 legacy cleanup（或清理尚未排空），应用会复活已删除
@@ -93,7 +112,7 @@ object TokenBaselineImportRunner {
                 TAG,
                 "legacy cleanup 未排空或快照 marker 过期，跳过本次 baseline 导入（下次启动重试）"
             )
-            return
+            return false
         }
         val existingBaselines = dao.getAllBaselines().associateBy { it.identityId }
         val existingIdentities = dao.getAllIdentities().associateBy { it.identityId }
@@ -154,6 +173,7 @@ object TokenBaselineImportRunner {
             "旧累计统计导入完成: 导入 ${preserved.baselines.size} 个 baseline, " +
                 "跳过 ${preserved.skippedProviderModels.size} 个无模型键"
         )
+        return true
     }
 
     private fun ensureIdentity(providerModel: String): TokenStatIdentityEntity {
