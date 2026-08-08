@@ -27,7 +27,10 @@ import android.net.http.SslError
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickMultipleVisualMedia
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -209,7 +212,8 @@ internal data class ComposeDslFilePickerRequest(
     val executionContextKey: String,
     val mimeTypes: List<String>,
     val allowMultiple: Boolean,
-    val persistPermission: Boolean
+    val persistPermission: Boolean,
+    val pickerMode: String? = null
 )
 
 private data class ComposeDslPendingFilePickerLaunch(
@@ -272,13 +276,19 @@ internal object ComposeDslFilePickerHostRegistry {
                     }
                 }
             }.ifEmpty { listOf("*/*") }
+        val pickerMode = options?.optString("picker", null)?.trim()?.ifBlank { null }
+        if (pickerMode == "photo" && mimeTypes.none { it == "image/*" || it.startsWith("image/") }) {
+            onError("picker: \"photo\" requires image/* mime types")
+            return
+        }
         val request =
             ComposeDslFilePickerRequest(
                 routeInstanceId = payload.optString("routeInstanceId").trim(),
                 executionContextKey = executionContextKey,
                 mimeTypes = mimeTypes,
                 allowMultiple = options?.optBoolean("allowMultiple", false) == true,
-                persistPermission = options?.optBoolean("persistPermission", true) != false
+                persistPermission = options?.optBoolean("persistPermission", true) != false,
+                pickerMode = pickerMode
             )
         composeDslFilePickerMainHandler.post {
             launcher(request) { result ->
@@ -585,6 +595,65 @@ fun ToolPkgComposeDslToolScreen(
                                 )
                             )
                         )
+                    }
+                )
+            }
+        } else {
+            null
+        }
+    val photoPickerSingleLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
+        if (activityResultRegistryOwner != null) {
+            rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+                val pending = pendingFilePickerLaunch
+                pendingFilePickerLaunch = null
+                if (pending == null) return@rememberLauncherForActivityResult
+                if (uri == null) {
+                    pending.onComplete(Result.success(buildComposeDslFilePickerResultJson(context, emptyList(), true)))
+                    return@rememberLauncherForActivityResult
+                }
+                runCatching {
+                    val copiedFile = stageComposeDslPickedFile(context, uri, null)
+                    buildComposeDslFilePickerResultJson(
+                        context = context,
+                        copiedFiles = listOf(uri to copiedFile),
+                        cancelled = false
+                    )
+                }.fold(
+                    onSuccess = { resultJson -> pending.onComplete(Result.success(resultJson)) },
+                    onFailure = { error ->
+                        AppLogger.e(TAG, "compose_dsl photo picker staging failed", error)
+                        pending.onComplete(Result.failure(IllegalStateException(error.message?.trim().orEmpty().ifBlank { "复制图片到临时目录失败" })))
+                    }
+                )
+            }
+        } else {
+            null
+        }
+    val photoPickerMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
+        if (activityResultRegistryOwner != null) {
+            rememberLauncherForActivityResult(PickMultipleVisualMedia(Int.MAX_VALUE)) { uris ->
+                val pending = pendingFilePickerLaunch
+                pendingFilePickerLaunch = null
+                if (pending == null) return@rememberLauncherForActivityResult
+                if (uris.isEmpty()) {
+                    pending.onComplete(Result.success(buildComposeDslFilePickerResultJson(context, emptyList(), true)))
+                    return@rememberLauncherForActivityResult
+                }
+                runCatching {
+                    val copiedFiles = uris.map { uri ->
+                        val copiedFile = stageComposeDslPickedFile(context, uri, null)
+                        uri to copiedFile
+                    }
+                    buildComposeDslFilePickerResultJson(
+                        context = context,
+                        copiedFiles = copiedFiles,
+                        cancelled = false
+                    )
+                }.fold(
+                    onSuccess = { resultJson -> pending.onComplete(Result.success(resultJson)) },
+                    onFailure = { error ->
+                        AppLogger.e(TAG, "compose_dsl photo picker staging failed", error)
+                        pending.onComplete(Result.failure(IllegalStateException(error.message?.trim().orEmpty().ifBlank { "复制图片到临时目录失败" })))
                     }
                 )
             }
@@ -1115,6 +1184,41 @@ fun ToolPkgComposeDslToolScreen(
             val launcher = filePickerLauncher
             if (launcher == null) {
                 onComplete(Result.failure(IllegalStateException("compose file picker requires an activity result registry owner")))
+                return@bind
+            }
+            if (request.pickerMode == "photo") {
+                val photoSingle = photoPickerSingleLauncher
+                val photoMulti = photoPickerMultiLauncher
+                if (photoSingle == null || photoMulti == null) {
+                    onComplete(Result.failure(IllegalStateException("compose file picker requires an activity result registry owner")))
+                    return@bind
+                }
+                if (PickVisualMedia.isPhotoPickerAvailable(context)) {
+                    pendingFilePickerLaunch = ComposeDslPendingFilePickerLaunch(request = request, onComplete = onComplete)
+                    if (request.allowMultiple) {
+                        photoMulti.launch(PickVisualMediaRequest.Builder().setMediaType(PickVisualMedia.ImageOnly).build())
+                    } else {
+                        photoSingle.launch(
+                            PickVisualMediaRequest.Builder()
+                                .setMediaType(PickVisualMedia.ImageOnly)
+                                .build()
+                        )
+                    }
+                } else {
+                    // Photo Picker unavailable, fallback to ACTION_GET_CONTENT + image/*
+                    // Force persistPermission = false for fallback (no persistable URI permissions needed)
+                    pendingFilePickerLaunch = ComposeDslPendingFilePickerLaunch(
+                        request = request.copy(persistPermission = false),
+                        onComplete = onComplete
+                    )
+                    val intent =
+                        Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "image/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, request.allowMultiple)
+                        }
+                    launcher.launch(intent)
+                }
                 return@bind
             }
             pendingFilePickerLaunch = ComposeDslPendingFilePickerLaunch(request = request, onComplete = onComplete)

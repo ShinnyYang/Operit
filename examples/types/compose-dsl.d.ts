@@ -1107,6 +1107,12 @@ export interface ComposeFilePickerOptions {
   mimeTypes?: string[];
   allowMultiple?: boolean;
   persistPermission?: boolean;
+  /**
+   * Optional media picker mode. Use "photo" to launch the system
+   * Photo Picker / gallery for image selection (requires image/* mime types).
+   * When unset, falls back to the document picker behavior.
+   */
+  picker?: "photo";
 }
 
 export interface ComposePickedFile {
