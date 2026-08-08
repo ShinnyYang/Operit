@@ -1154,7 +1154,7 @@ class WebChatHttpBridge(
                         )
                     )
 
-                    core.sendUserMessage()
+                    core.sendUserMessage(preferActiveRoleCard = true)
 
                     val responseStream: SharedStream<String>? =
                         withTimeoutOrNull<SharedStream<String>>(STREAM_READY_TIMEOUT_MS) {

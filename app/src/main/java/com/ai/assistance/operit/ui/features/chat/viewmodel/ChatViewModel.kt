@@ -1459,13 +1459,17 @@ class ChatViewModel(private val context: Context) : ViewModel() {
 
     fun sendUserMessage(promptFunctionType: PromptFunctionType = PromptFunctionType.CHAT) {
         hideMentionSuggestionPanel()
-        messageCoordinationDelegate.sendUserMessage(promptFunctionType)
+        messageCoordinationDelegate.sendUserMessage(
+            promptFunctionType = promptFunctionType,
+            preferActiveRoleCard = true,
+        )
     }
 
     fun sendTextMessage(text: String, promptFunctionType: PromptFunctionType = PromptFunctionType.CHAT) {
         hideMentionSuggestionPanel()
         messageCoordinationDelegate.sendUserMessage(
             promptFunctionType = promptFunctionType,
+            preferActiveRoleCard = true,
             messageTextOverride = text
         )
     }
