@@ -5608,7 +5608,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="webvisit_url_label">URL da visita:</string>
     <string name="webvisit_status_loading_page">Carregando página...</string>
     <string name="webvisit_status_waiting_page">Aguarde a página carregar totalmente...</string>
-    <string name="webvisit_status_captcha">Conclua a verificação homem-máquina em %1$d segundos...</string>
+    <string name="webvisit_load_timeout">O carregamento da página expirou; o acesso foi encerrado.</string>
     <string name="webvisit_status_extracting">A extração de conteúdo continuará automaticamente em %1$d segundos...</string>
     <string name="webvisit_status_extracted_waiting">O conteúdo foi extraído, aguardando para ser continuado manualmente...</string>
     <string name="webvisit_status_waiting_extraction">Página carregada, aguardando a busca do conteúdo...</string>
@@ -5779,6 +5779,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="toolpkg_hook_timeout_description">Limita o tempo total de espera das cadeias de Hook de entrada de chat, prompt e resumo do ToolPkg no caminho de envio. Ao expirar, o Hook atual é ignorado e o processamento continua. Padrão: 10 segundos. Não afeta a tomada de resposta de message_processing.</string>
     <string name="toolpkg_hook_timeout_value">%1$d segundos</string>
     <string name="toolpkg_hook_timeout_continue_sending">Um plugin anterior ao envio excedeu o tempo limite. Ele foi ignorado e a mensagem continuará sendo enviada.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">O plugin anterior ao envio "%1$s" excedeu o tempo limite. Ele foi ignorado e a mensagem continuará sendo enviada.</string>
     <string name="enable_enter_to_send">Entre para enviar</string>
     <string name="enable_enter_to_send_description">Depois de ligado, pressionar Enter na caixa de entrada do bate-papo o enviará diretamente, e a tecla de envio do teclado também será exibida como enviar.</string>
     <string name="tool_collapse_mode_title">Ferramenta dobrável</string>
@@ -7033,6 +7034,8 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="backup_raw_snapshot_progress_replacing_external_files">Escrevendo em Android/data/nome_do_pacote/files...</string>
     <string name="memory_auto_save_interval_value">%1$d minutos · intervalo %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">Intervalo ajustável de %1$d a %2$d minutos, padrão %3$d minutos</string>
+    <string name="memory_extraction_custom_rules">Regras adicionais de extração de memória</string>
+    <string name="memory_extraction_custom_rules_placeholder">Por exemplo: armazene apenas decisões do projeto e preferências do usuário; organize por projeto.</string>
     <string name="chat_selected_messages_no_user_for_memory">Não há mensagens de usuário selecionadas que possam ser incluídas na memória.</string>
     <string name="chat_selected_messages_added_to_memory_queue">%1$d mensagens de usuário foram adicionadas à fila de resumo automático de memória.</string>
     <string name="chat_selected_messages_add_to_memory_queue_failed">Falha ao adicionar à fila de resumo automático de memória: %1$s</string>

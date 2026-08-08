@@ -39,6 +39,8 @@
 
 因此上层始终看到 XML，兼容旧逻辑。
 
+模型配置的新建默认值为 `true`，首次初始化的默认 DeepSeek 配置同样开启 Tool Call。已保存配置中的显式开关值不会因默认值调整而改变。
+
 ---
 
 ## 2. 不启用 Tool Call（enableToolCall = false）

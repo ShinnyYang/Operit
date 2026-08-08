@@ -34,6 +34,119 @@ data class SttModelAsset(
     val expectedSha256: String,
 )
 
+data class ApkRotationSigningConfig(
+    val apksigner: File,
+    val oldStoreFile: File,
+    val oldStorePassword: String,
+    val oldKeyAlias: String,
+    val oldKeyPassword: String,
+    val newStoreFile: File,
+    val newStorePassword: String,
+    val newKeyAlias: String,
+    val newKeyPassword: String,
+    val lineageFile: File,
+)
+
+fun requiredLocalProperty(name: String): String {
+    val value = localProperties.getProperty(name)?.trim()
+    require(!value.isNullOrEmpty()) {
+        "local.properties must define $name for Release/Nightly APK rotation signing"
+    }
+    return value
+}
+
+fun configuredFileProperty(name: String): File {
+    val configuredPath = File(requiredLocalProperty(name))
+    val resolvedPath = if (configuredPath.isAbsolute) configuredPath else rootProject.file(configuredPath)
+    require(resolvedPath.isFile) {
+        "Configured $name does not point to a file: ${resolvedPath.path}"
+    }
+    return resolvedPath
+}
+
+fun loadApkRotationSigningConfig(): ApkRotationSigningConfig {
+    val sdkDirectory = File(requiredLocalProperty("sdk.dir"))
+    require(sdkDirectory.isDirectory) {
+        "Configured sdk.dir does not point to a directory: ${sdkDirectory.path}"
+    }
+
+    val apksignerName = if (System.getProperty("os.name").contains("Windows", ignoreCase = true)) {
+        "apksigner.bat"
+    } else {
+        "apksigner"
+    }
+    val apksigner = sdkDirectory.resolve("build-tools/35.0.0/$apksignerName")
+    require(apksigner.isFile) {
+        "Android build-tools 35.0.0 apksigner is required: ${apksigner.path}"
+    }
+
+    return ApkRotationSigningConfig(
+        apksigner = apksigner,
+        oldStoreFile = configuredFileProperty("RELEASE_STORE_FILE"),
+        oldStorePassword = requiredLocalProperty("RELEASE_STORE_PASSWORD"),
+        oldKeyAlias = requiredLocalProperty("RELEASE_KEY_ALIAS"),
+        oldKeyPassword = requiredLocalProperty("RELEASE_KEY_PASSWORD"),
+        newStoreFile = configuredFileProperty("APK_ROTATION_NEW_STORE_FILE"),
+        newStorePassword = requiredLocalProperty("APK_ROTATION_NEW_STORE_PASSWORD"),
+        newKeyAlias = requiredLocalProperty("APK_ROTATION_NEW_KEY_ALIAS"),
+        newKeyPassword = requiredLocalProperty("APK_ROTATION_NEW_KEY_PASSWORD"),
+        lineageFile = configuredFileProperty("APK_ROTATION_LINEAGE_FILE"),
+    )
+}
+
+fun signApkWithRotation(apkFile: File) {
+    require(apkFile.isFile) { "APK to sign was not produced: ${apkFile.path}" }
+    val config = loadApkRotationSigningConfig()
+    val rotatedApk = apkFile.resolveSibling(".${apkFile.name}.rotation-signing")
+    require(!rotatedApk.exists()) {
+        "Refusing to overwrite an existing rotation signing output: ${rotatedApk.path}"
+    }
+
+    // API 28 is the first platform that selects V3 and understands proof-of-rotation;
+    // API 26/27 therefore continue to select the old signer from the V2 block.
+    val signingArguments = listOf(
+        "sign",
+        "--in", apkFile.path,
+        "--out", rotatedApk.path,
+        "--min-sdk-version", "26",
+        "--v1-signing-enabled", "false",
+        "--v2-signing-enabled", "true",
+        "--v3-signing-enabled", "true",
+        "--v4-signing-enabled", "false",
+        "--lineage", config.lineageFile.path,
+        "--rotation-min-sdk-version", "28",
+        "--ks", config.oldStoreFile.path,
+        "--ks-type", "PKCS12",
+        "--ks-key-alias", config.oldKeyAlias,
+        "--ks-pass", "env:OPERIT_OLD_STORE_PASSWORD",
+        "--key-pass", "env:OPERIT_OLD_KEY_PASSWORD",
+        "--next-signer",
+        "--ks", config.newStoreFile.path,
+        "--ks-type", "PKCS12",
+        "--ks-key-alias", config.newKeyAlias,
+        "--ks-pass", "env:OPERIT_NEW_STORE_PASSWORD",
+        "--key-pass", "env:OPERIT_NEW_KEY_PASSWORD",
+    )
+
+    project.exec {
+        commandLine(listOf(config.apksigner.path) + signingArguments)
+        environment("OPERIT_OLD_STORE_PASSWORD", config.oldStorePassword)
+        environment("OPERIT_OLD_KEY_PASSWORD", config.oldKeyPassword)
+        environment("OPERIT_NEW_STORE_PASSWORD", config.newStorePassword)
+        environment("OPERIT_NEW_KEY_PASSWORD", config.newKeyPassword)
+    }
+
+    project.exec {
+        commandLine(config.apksigner.path, "verify", "--verbose", "--print-certs", rotatedApk.path)
+    }
+
+    Files.move(
+        rotatedApk.toPath(),
+        apkFile.toPath(),
+        StandardCopyOption.REPLACE_EXISTING,
+    )
+}
+
 val requiredExternallyBuiltNativeLibraries =
     listOf(
         file("src/main/jniLibs/arm64-v8a/liboperit_ripgrep.so"),
@@ -285,7 +398,7 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 45
-        versionName = "1.12.0+8"
+        versionName = "1.12.0+9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -322,9 +435,9 @@ android {
             }
         }
         debug {
-            if (releaseSigningConfig != null) {
-                signingConfig = releaseSigningConfig
-            }
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+            resValue("string", "app_name", "Operit Debug")
         }
         create("clone") {
             initWith(getByName("debug"))
@@ -411,6 +524,42 @@ android {
 //    aaptOptions {
 //        noCompress += "tflite"
 //    }
+}
+
+val signRotatedReleaseApk by tasks.registering {
+    description = "Signs the Release APK with the legacy V2 signer and rotated V3 signer."
+    group = "distribution"
+    dependsOn("packageRelease")
+    doLast {
+        signApkWithRotation(
+            project.layout.buildDirectory
+                .file("outputs/apk/release/app-release.apk")
+                .get()
+                .asFile,
+        )
+    }
+}
+
+val signRotatedNightlyApk by tasks.registering {
+    description = "Signs the Nightly APK with the legacy V2 signer and rotated V3 signer."
+    group = "distribution"
+    dependsOn("packageNightly")
+    doLast {
+        signApkWithRotation(
+            project.layout.buildDirectory
+                .file("outputs/apk/nightly/app-nightly.apk")
+                .get()
+                .asFile,
+        )
+    }
+}
+
+tasks.matching { it.name == "assembleRelease" }.configureEach {
+    finalizedBy(signRotatedReleaseApk)
+}
+
+tasks.matching { it.name == "assembleNightly" }.configureEach {
+    finalizedBy(signRotatedNightlyApk)
 }
 
 tasks.named("preBuild") {

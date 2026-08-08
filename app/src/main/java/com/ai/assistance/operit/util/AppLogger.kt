@@ -33,6 +33,7 @@ object AppLogger {
     private const val LOG_DIR_NAME = "logs"
     private const val LOG_FILE_NAME = "operit.log"
     private const val PACKAGE_LOG_DIR_NAME = "packageLogs"
+    private const val MAX_PACKAGE_LOG_FILES = 20
     private const val TOOLPKG_LOG_TAG = "ToolPkg"
     private const val MAX_LOG_MESSAGE_CHARS = 12_000
     private const val MAX_LOG_THROWABLE_CHARS = 24_000
@@ -40,6 +41,7 @@ object AppLogger {
     // Simple date formatter for log lines
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US)
     private val startupFileDateFormat = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US)
+    private val packageLogFileNamePattern = Pattern.compile("\\d{8}_\\d{6}_\\d{3}\\.log")
     private val packageIdRegexes = listOf(
         Pattern.compile("""\btoolPkgId=([A-Za-z0-9._:-]+)\b"""),
         Pattern.compile("""\bpackage(?:/subpackage)?=([A-Za-z0-9._:-]+)\b"""),
@@ -124,10 +126,30 @@ object AppLogger {
             val startupMs = OperitApplication.appStartupTimeMs.takeIf { it > 0L } ?: System.currentTimeMillis()
             val fileName = startupFileDateFormat.format(Date(startupMs)) + ".log"
             File(dir, fileName).also { file ->
+                // Prune before the first write so the new startup file fits within the cap.
+                if (!file.exists()) {
+                    prunePackageLogFiles(dir)
+                }
                 packageLogFile = file
             }
         } catch (_: Throwable) {
             null
+        }
+    }
+
+    private fun prunePackageLogFiles(dir: File) {
+        val files = dir.listFiles { file ->
+            file.isFile && packageLogFileNamePattern.matcher(file.name).matches()
+        }?.sortedBy { it.name } ?: return
+
+        var remainingFiles = files.size
+        for (file in files) {
+            if (remainingFiles < MAX_PACKAGE_LOG_FILES) {
+                break
+            }
+            if (file.delete()) {
+                remainingFiles -= 1
+            }
         }
     }
 

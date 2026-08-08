@@ -1,4 +1,8 @@
 *.iml
+*.keystore
+*.jks
+*.p12
+*.lineage
 .gradle
 .gradle-local
 /local.properties

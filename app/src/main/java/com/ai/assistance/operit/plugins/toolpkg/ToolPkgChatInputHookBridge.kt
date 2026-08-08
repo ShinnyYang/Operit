@@ -70,7 +70,10 @@ internal object ToolPkgChatInputHookBridge {
                     )
                     if (current.eventName == ChatInputEvents.SUBMIT_REQUESTED) {
                         timeoutNoticeMessage =
-                            context.context.getString(R.string.toolpkg_hook_timeout_continue_sending)
+                            context.context.getString(
+                                R.string.toolpkg_hook_timeout_continue_sending_with_plugin,
+                                "${hook.containerPackageName}:${hook.hookId}"
+                            )
                     }
                     break
                 }
@@ -96,7 +99,10 @@ internal object ToolPkgChatInputHookBridge {
                 ) {
                     if (current.eventName == ChatInputEvents.SUBMIT_REQUESTED) {
                         timeoutNoticeMessage =
-                            context.context.getString(R.string.toolpkg_hook_timeout_continue_sending)
+                            context.context.getString(
+                                R.string.toolpkg_hook_timeout_continue_sending_with_plugin,
+                                "${hook.containerPackageName}:${hook.hookId}"
+                            )
                     }
                     break
                 }

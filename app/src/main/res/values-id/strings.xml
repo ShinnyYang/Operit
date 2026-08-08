@@ -5935,8 +5935,8 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="webvisit_url_label">URL yang diakses:</string>
     <string name="webvisit_status_loading_page">Memuat halaman...</string>
     <string name="webvisit_status_waiting_page">Menunggu halaman dimuat sepenuhnya...</string>
+    <string name="webvisit_load_timeout">Waktu pemuatan halaman web habis; kunjungan diakhiri.</string>
 
-    <string name="webvisit_status_captcha">Selesaikan verifikasi CAPTCHA dalam %1$d detik...</string>
     <string name="webvisit_status_extracting">Sedang mengekstrak konten, akan dilanjutkan otomatis dalam %1$d detik...</string>
     <string name="webvisit_status_extracted_waiting">Konten telah diekstrak, menunggu untuk dilanjutkan secara manual...</string>
     <string name="webvisit_status_waiting_extraction">Halaman telah dimuat, menunggu untuk mengekstrak konten...</string>
@@ -6152,6 +6152,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="toolpkg_hook_timeout_description">Membatasi total waktu tunggu rantai Hook input chat, prompt, dan ringkasan ToolPkg pada jalur pengiriman. Saat batas waktu habis, Hook saat ini dilewati dan pemrosesan berlanjut. Nilai bawaan: 10 detik. Tidak memengaruhi pengambilalihan respons message_processing.</string>
     <string name="toolpkg_hook_timeout_value">%1$d detik</string>
     <string name="toolpkg_hook_timeout_continue_sending">Plugin sebelum pengiriman kehabisan waktu. Plugin dilewati dan pesan akan tetap dikirim.</string>
+    <string name="toolpkg_hook_timeout_continue_sending_with_plugin">Plugin sebelum pengiriman "%1$s" kehabisan waktu. Plugin dilewati dan pesan akan tetap dikirim.</string>
     <string name="enable_enter_to_send">Kirim dengan Enter</string>
     <string name="enable_enter_to_send_description">Saat diaktifkan, menekan Enter di kotak input obrolan akan langsung mengirim, dan tombol kirim keyboard juga akan ditampilkan sebagai kirim.</string>
     <string name="tool_collapse_mode_title">Ciutkan Alat</string>
@@ -7196,6 +7197,8 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="backup_raw_snapshot_progress_replacing_external_files">Menulis Android/data/nama paket/files...</string>
     <string name="memory_auto_save_interval_value">%1$d menit · rentang %2$d-%3$d</string>
     <string name="memory_auto_save_interval_hint">Rentang yang dapat disesuaikan %1$d-%2$d menit, default %3$d menit</string>
+    <string name="memory_extraction_custom_rules">Aturan Tambahan Ekstraksi Memori</string>
+    <string name="memory_extraction_custom_rules_placeholder">Contoh: simpan hanya keputusan proyek dan preferensi pengguna; kelompokkan berdasarkan proyek.</string>
     <string name="chat_selected_messages_no_user_for_memory">Tidak ada pesan pengguna yang dapat dimasukkan ke dalam memori di antara pesan yang dipilih</string>
     <string name="chat_selected_messages_added_to_memory_queue">%1$d pesan pengguna telah ditambahkan ke antrian ringkasan memori otomatis</string>
     <string name="chat_selected_messages_add_to_memory_queue_failed">Gagal menambahkan ke antrian ringkasan memori otomatis: %1$s</string>

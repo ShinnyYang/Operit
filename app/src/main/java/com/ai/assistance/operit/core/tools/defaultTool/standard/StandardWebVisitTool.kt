@@ -132,7 +132,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
 
     private val isExpandedState = mutableStateOf(false)
     private val isExpandedByUserState = mutableStateOf(false)
-    private val isCaptchaDetectedState = mutableStateOf(false)
 
     override fun invoke(tool: AITool): ToolResult {
         val url = tool.parameters.find { it.name == "url" }?.value
@@ -568,7 +567,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
                     overlayLifecycleOwner = lifecycleOwner
                     isExpandedState.value = false
                     isExpandedByUserState.value = false
-                    isCaptchaDetectedState.value = false
 
                     if (indicatorLayoutParams == null) {
                         indicatorLayoutParams = createIndicatorLayoutParams()
@@ -656,9 +654,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
                                             )
                                         }
                                     }
-                                },
-                                onCaptchaStateChanged = { isCaptcha ->
-                                    updateOverlayWindowLayout(isCaptcha)
                                 },
                                 isExpanded = isExpandedState,
                                 onMinimizeRequested = {
@@ -874,16 +869,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
         updateOverlayWindowLayout()
     }
 
-    private fun updateOverlayWindowLayout(isCaptchaVerification: Boolean) {
-        isCaptchaDetectedState.value = isCaptchaVerification
-        if (isCaptchaVerification) {
-            isExpandedState.value = true
-        } else if (!isExpandedByUserState.value) {
-            isExpandedState.value = false
-        }
-        updateOverlayWindowLayout()
-    }
-
     private fun updateOverlayWindowLayout() {
         val windowManager = overlayWindowManager ?: return
         val view = overlayComposeView ?: return
@@ -969,7 +954,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
             includeImageLinks: Boolean,
             onWebViewCreated: (WebView) -> Unit,
             onContentExtracted: (String) -> Unit,
-            onCaptchaStateChanged: (Boolean) -> Unit,
             isExpanded: State<Boolean>,
             onMinimizeRequested: () -> Unit
     ) {
@@ -993,19 +977,12 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
         val autoModeEnabled = remember { mutableStateOf(true) } // 是否启用自动模式
         val autoCountdownActive = remember { mutableStateOf(false) } // 倒计时是否激活
         val autoCountdownSeconds = remember { mutableStateOf(0) } // 倒计时秒数
-        val isCaptchaVerification = remember { mutableStateOf(false) } // 是否需要人机验证
 
-        LaunchedEffect(isCaptchaVerification.value) {
-            onCaptchaStateChanged(isCaptchaVerification.value)
-        }
-
-        // 修改LaunchedEffect部分，使滚动和倒计时同时进行
-        LaunchedEffect(autoCountdownActive.value, isCaptchaVerification.value) {
+        LaunchedEffect(autoCountdownActive.value) {
             if (autoCountdownActive.value) {
-                val countdownDuration = if (isCaptchaVerification.value) 10 else visitWebWaitSeconds
-                autoCountdownSeconds.value = countdownDuration
+                autoCountdownSeconds.value = visitWebWaitSeconds
 
-                for (i in countdownDuration downTo 1) {
+                for (i in visitWebWaitSeconds downTo 1) {
                     autoCountdownSeconds.value = i
                     delay(1000)
 
@@ -1016,7 +993,7 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
 
                 if (autoCountdownActive.value) {
                     autoCountdownActive.value = false
-                    if (pageContent.value.isNotEmpty() && !isCaptchaVerification.value) {
+                    if (pageContent.value.isNotEmpty()) {
                         onContentExtracted(pageContent.value)
                     }
                 }
@@ -1028,29 +1005,10 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
             delay(10_000)
             if (!pageLoaded.value &&
                             !hasExtractedContent.value &&
-                            !extractionRequested.value &&
-                            autoModeEnabled.value &&
-                            !isCaptchaVerification.value
+                            !extractionRequested.value
             ) {
-                val webView = webViewReference
-                if (webView != null && webView.isAttachedToWindow) {
-                    AppLogger.w(TAG, "Page load timeout (10s), force content extraction: ${currentUrl.value}")
-                    pageLoaded.value = true
-                    extractionRequested.value = true
-                    isLoading.value = true
-                    extractPageContent(webView, includeImageLinks) { content ->
-                        isLoading.value = false
-                        hasExtractedContent.value = true
-                        pageContent.value = content
-
-                        if (autoModeEnabled.value) {
-                            autoCountdownActive.value = true
-                            autoScrollToBottom(webView, visitWebWaitSeconds) {
-                                AppLogger.d(TAG, "页面滚动完成")
-                            }
-                        }
-                    }
-                }
+                AppLogger.w(TAG, "Page load timeout (10s): ${currentUrl.value}")
+                onContentExtracted(context.getString(R.string.webvisit_load_timeout))
             }
         }
 
@@ -1073,7 +1031,6 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
                                 when {
                                     !pageLoaded.value -> context.getString(R.string.webvisit_status_loading_page)
                                     isLoading.value -> context.getString(R.string.webvisit_status_waiting_page)
-                                    isCaptchaVerification.value -> context.getString(R.string.webvisit_status_captcha, autoCountdownSeconds.value)
                                     autoCountdownActive.value -> context.getString(R.string.webvisit_status_extracting, autoCountdownSeconds.value)
                                     hasExtractedContent.value -> context.getString(R.string.webvisit_status_extracted_waiting)
                                     else -> context.getString(R.string.webvisit_status_waiting_extraction)
@@ -1211,36 +1168,10 @@ class StandardWebVisitTool(private val context: Context) : ToolExecutor {
                                                             pageContent.value = ""
                                                             autoCountdownActive.value = false
                                                             autoModeEnabled.value = true
-                                                            isCaptchaVerification.value = false
                                                         }
 
-                                                        // 检查是否是Google人机验证页面
-                                                        if (loadedUrl.contains("google.com/sorry/index")) {
-                                                            AppLogger.d(TAG, "Google CAPTCHA page detected, returning error.")
-                                                            onContentExtracted("{\"error\":\"Google CAPTCHA detected. Please try again later or solve it in a browser.\"}")
-                                                            return@onPageFinished
-                                                        }
-
-                                                        // 检查是否需要人机验证
-                                                        view.evaluateJavascript("(function() { return document.body.innerText.includes('人机验证') || document.body.innerHTML.includes('captcha'); })();") { result ->
-                                                            val isCaptcha = result?.toBoolean() ?: false
-                                                            if (isCaptcha && !isCaptchaVerification.value) {
-                                                                isCaptchaVerification.value = true
-                                                                autoModeEnabled.value = false // 需要手动验证，禁用自动模式
-                                                                autoCountdownActive.value = true // 开始10秒倒计时
-                                                            } else if (!isCaptcha && isCaptchaVerification.value) {
-                                                                // 用户完成了验证
-                                                                isCaptchaVerification.value = false
-                                                                autoModeEnabled.value = true
-                                                                // 重新触发内容提取和5秒倒计时
-                                                                triggerContentExtraction(view)
-                                                            }
-                                                        }
-
-                                                        // 页面加载完成后，如果不是人机验证模式，则延迟自动提取内容
-                                                        if (autoModeEnabled.value && !isCaptchaVerification.value) {
-                                                            triggerContentExtraction(view)
-                                                        }
+                                                        // 页面无论显示什么内容都按普通网页处理，不把站点页面转换为交互式验证流程。
+                                                        triggerContentExtraction(view)
                                                     }
 
                                                     private fun triggerContentExtraction(view: WebView) {

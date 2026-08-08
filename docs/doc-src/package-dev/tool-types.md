@@ -52,6 +52,9 @@ interface ToolResultMap {
 
 - `http_request` → `HttpResponseData`
 - `visit_web` → `VisitWebResultData`
+
+`visit_web` 只读取页面内容，不执行登录、验证码或其他交互式验证。页面加载超过 10 秒仍未完成时，会结束本次访问并返回超时结果。
+
 - `browser_click` → `StringResultData`
 - `browser_close` → `StringResultData`
 - `browser_close_all` → `StringResultData`
