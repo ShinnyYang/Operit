@@ -62,7 +62,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -72,6 +76,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ai.assistance.operit.R
@@ -1138,6 +1143,37 @@ private fun MessageCopyPreviewBottomSheet(
     val clipboardManager = LocalClipboardManager.current
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val textScrollState = rememberScrollState()
+    val copyPreviewNestedScrollConnection =
+        remember(textScrollState) {
+            object : NestedScrollConnection {
+                override fun onPostScroll(
+                    consumed: Offset,
+                    available: Offset,
+                    source: NestedScrollSource,
+                ): Offset {
+                    return if (
+                        source == NestedScrollSource.UserInput &&
+                            textScrollState.value == 0 &&
+                            available.y > 0f
+                    ) {
+                        Offset(x = 0f, y = available.y)
+                    } else {
+                        Offset.Zero
+                    }
+                }
+
+                override suspend fun onPostFling(
+                    consumed: Velocity,
+                    available: Velocity,
+                ): Velocity {
+                    return if (textScrollState.value == 0 && available.y > 0f) {
+                        Velocity(x = 0f, y = available.y)
+                    } else {
+                        Velocity.Zero
+                    }
+                }
+            }
+        }
     var showPlainText by remember(text) { mutableStateOf(true) }
     var plainText by remember(text) { mutableStateOf<String?>(null) }
     LaunchedEffect(text, context) {
@@ -1201,6 +1237,8 @@ private fun MessageCopyPreviewBottomSheet(
                     modifier = Modifier
                         .fillMaxWidth()
                         .heightIn(max = 520.dp)
+                        // Keep top pulls in the preview so the sheet does not start a second rebound.
+                        .nestedScroll(copyPreviewNestedScrollConnection)
                         .verticalScroll(textScrollState)
                         .padding(bottom = 12.dp)
                 ) {
