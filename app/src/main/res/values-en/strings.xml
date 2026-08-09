@@ -2582,8 +2582,18 @@
     <!-- Speech Services Settings -->
     <string name="speech_services_tts_title">Text-to-Speech (TTS) Settings</string>
     <string name="speech_services_tts_desc">Configure how text is converted to voice output</string>
+    <string name="speech_services_tts_profiles">TTS Profiles</string>
     <string name="speech_services_stt_title">Speech-to-Text (STT) Settings</string>
     <string name="speech_services_stt_desc">Configure how speech is converted to text</string>
+    <string name="speech_services_stt_profiles">STT Profiles</string>
+    <string name="speech_services_profile_current">Current profile</string>
+    <string name="speech_services_profile_create">Create speech profile</string>
+    <string name="speech_services_profile_created">Speech profile created</string>
+    <string name="speech_services_profile_delete">Delete speech profile</string>
+    <string name="speech_services_profile_delete_message">Delete &quot;%1$s&quot;?</string>
+    <string name="speech_services_profile_loading">Loading speech profiles...</string>
+    <string name="speech_services_profile_migrated_tts">Migrated TTS configuration</string>
+    <string name="speech_services_profile_migrated_stt">Migrated STT configuration</string>
     <string name="speech_services_tts_speech_rate_value">Speech rate: %1$.2fx</string>
     <string name="speech_services_tts_pitch_value">Pitch: %1$.2fx</string>
     <string name="speech_services_service_type">Service Type</string>

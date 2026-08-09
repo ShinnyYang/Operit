@@ -2636,8 +2636,18 @@
     <!-- Speech Services Settings -->
     <string name="speech_services_tts_title">文本转语音 (TTS) 设置</string>
     <string name="speech_services_tts_desc">配置如何将文本转换为语音输出</string>
+    <string name="speech_services_tts_profiles">TTS 配置档案</string>
     <string name="speech_services_stt_title">语音转文本 (STT) 设置</string>
     <string name="speech_services_stt_desc">配置如何将语音转换为文本</string>
+    <string name="speech_services_stt_profiles">STT 配置档案</string>
+    <string name="speech_services_profile_current">当前档案</string>
+    <string name="speech_services_profile_create">新建配置档案</string>
+    <string name="speech_services_profile_created">配置档案已创建</string>
+    <string name="speech_services_profile_delete">删除配置档案</string>
+    <string name="speech_services_profile_delete_message">确定删除“%1$s”吗？</string>
+    <string name="speech_services_profile_loading">正在加载配置档案…</string>
+    <string name="speech_services_profile_migrated_tts">迁移的 TTS 配置</string>
+    <string name="speech_services_profile_migrated_stt">迁移的 STT 配置</string>
     <string name="speech_services_tts_speech_rate_value">语速: %1$.2fx</string>
     <string name="speech_services_tts_pitch_value">音调: %1$.2fx</string>
     <string name="speech_services_service_type">服务类型</string>
