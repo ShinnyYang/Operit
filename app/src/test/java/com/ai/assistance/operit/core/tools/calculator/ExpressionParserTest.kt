@@ -267,9 +267,13 @@ class ExpressionParserTest {
         assertEquals(Math.log(Math.E), parseAndEval("ln(E)"), 0.001)
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun `math function call`() {
-        parseAndEval("Math.sin(0)")
+    @Test fun `qualified math function call`() {
+        assertEquals(1.0, parseAndEval("Math.sin(Math.PI / 2)"), 0.001)
+    }
+
+    @Test fun `qualified math constants`() {
+        assertEquals(Math.PI, parseAndEval("Math.PI"), 0.001)
+        assertEquals(Math.E, parseAndEval("Math.E"), 0.001)
     }
 
     @Test fun `whitespace does not affect result`() {
@@ -341,9 +345,8 @@ class ExpressionParserTest {
         parseAndEval("2 3")
     }
 
-    @Test(expected = IllegalArgumentException::class)
-    fun `stats dot syntax not supported by parser`() {
-        parseAndEval("stats.mean(2, 4, 6, 8)")
+    @Test fun `qualified stats function call`() {
+        assertEquals(5.0, parseAndEval("stats.mean(2, 4, 6, 8)"), 0.001)
     }
 
     @Test fun `variable reuse after assignment`() {
