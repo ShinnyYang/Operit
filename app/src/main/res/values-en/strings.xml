@@ -5237,6 +5237,7 @@
     <string name="backup_model_config_current_count">Currently %1$d model configuration(s).</string>
     
     <string name="backup_exporting">Exporting %1$s...</string>
+    <string name="backup_text_export_progress">Exporting long text: %1$d%% (%2$d / %3$d characters processed)</string>
     <string name="backup_importing">Importing %1$s...</string>
     <string name="backup_deleting">Clearing chat history...</string>
     <string name="backup_export_success">Export Successful</string>

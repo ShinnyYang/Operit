@@ -157,6 +157,10 @@ fun ChatBackupSettingsScreen() {
     var totalModelConfigCount by remember { mutableStateOf(0) }
     var operationState by remember { mutableStateOf(ChatHistoryOperation.IDLE) }
     var operationMessage by remember { mutableStateOf("") }
+    var isLongTextExport by remember { mutableStateOf(false) }
+    var longTextExportProgress by remember { mutableStateOf(0f) }
+    var longTextExportProcessedCharacters by remember { mutableStateOf(0L) }
+    var longTextExportTotalCharacters by remember { mutableStateOf(0L) }
     var characterCardOperationState by remember { mutableStateOf(CharacterCardOperation.IDLE) }
     var characterCardOperationMessage by remember { mutableStateOf("") }
     var memoryOperationState by remember { mutableStateOf(MemoryOperation.IDLE) }
@@ -543,6 +547,10 @@ fun ChatBackupSettingsScreen() {
                 totalChatCount = totalChatCount,
                 operationState = operationState,
                 operationMessage = operationMessage,
+                isLongTextExport = isLongTextExport,
+                longTextExportProgress = longTextExportProgress,
+                longTextExportProcessedCharacters = longTextExportProcessedCharacters,
+                longTextExportTotalCharacters = longTextExportTotalCharacters,
                 onExport = {
                     // 显示格式选择对话框
                     showExportFormatDialog = true
@@ -1228,8 +1236,20 @@ fun ChatBackupSettingsScreen() {
                 showExportFormatDialog = false
                 scope.launch {
                     operationState = ChatHistoryOperation.EXPORTING
+                    isLongTextExport = false
+                    longTextExportProgress = 0f
+                    longTextExportProcessedCharacters = 0L
+                    longTextExportTotalCharacters = 0L
                     try {
-                        val filePath = chatHistoryManager.exportChatHistoriesToDownloads(selectedExportFormat)
+                        val filePath = chatHistoryManager.exportChatHistoriesToDownloads(
+                            format = selectedExportFormat,
+                            onProgress = { progress ->
+                                isLongTextExport = progress.isLongText
+                                longTextExportProgress = progress.progress
+                                longTextExportProcessedCharacters = progress.processedCharacters
+                                longTextExportTotalCharacters = progress.totalCharacters
+                            },
+                        )
                         if (filePath != null) {
                             operationState = ChatHistoryOperation.EXPORTED
                             val chatCount = chatHistoryManager.chatHistoriesFlow.first().size
@@ -1600,4 +1620,3 @@ private suspend fun importMemoriesFromUri(
 
     memoryRepository.importMemoriesFromJson(jsonString, strategy)
 }
-
