@@ -980,6 +980,20 @@ export interface CircularProgressIndicatorProps extends ComposeCommonProps {
 
 export interface SnackbarHostProps extends ComposeCommonProps {}
 
+/** Embeds the host AI chat surface without its workspace panel. */
+export interface AiChatProps extends ComposeCommonProps {}
+
+/** Controls a responsive trailing panel around the supplied screen content. */
+export interface AdaptiveSidePanelProps extends ComposeCommonProps {
+  open: boolean;
+  side: ComposeChildren;
+  onOpenChanged: (open: boolean) => void;
+  defaultWidth?: number;
+  minWidth?: number;
+  minContentWidth?: number;
+  breakpoint?: number;
+}
+
 export interface CanvasProps extends ComposeCommonProps {
   commands?: ComposeCanvasCommand[];
   transform?: ComposeCanvasTransform;
@@ -1076,6 +1090,8 @@ export interface ComposeUiFactoryRegistry {
   LinearProgressIndicator: ComposeNodeFactory<LinearProgressIndicatorProps>;
   CircularProgressIndicator: ComposeNodeFactory<CircularProgressIndicatorProps>;
   SnackbarHost: ComposeNodeFactory<SnackbarHostProps>;
+  AiChat: ComposeNodeFactory<AiChatProps>;
+  AdaptiveSidePanel: ComposeNodeFactory<AdaptiveSidePanelProps>;
   Canvas: ComposeNodeFactory<CanvasProps>;
   WebView: ComposeNodeFactory<WebViewProps>;
 }
