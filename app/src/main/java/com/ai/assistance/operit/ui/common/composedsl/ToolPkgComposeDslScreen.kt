@@ -277,8 +277,12 @@ internal object ComposeDslFilePickerHostRegistry {
                 }
             }.ifEmpty { listOf("*/*") }
         val pickerMode = options?.optString("picker", null)?.trim()?.ifBlank { null }
-        if (pickerMode == "photo" && mimeTypes.none { it == "image/*" || it.startsWith("image/") }) {
-            onError("picker: \"photo\" requires image/* mime types")
+        if (pickerMode != null && pickerMode != "photo") {
+            onError("unsupported file picker mode: $pickerMode")
+            return
+        }
+        if (pickerMode == "photo" && mimeTypes != listOf("image/*")) {
+            onError("picker: \"photo\" requires mimeTypes: [\"image/*\"]")
             return
         }
         val request =
@@ -287,7 +291,8 @@ internal object ComposeDslFilePickerHostRegistry {
                 executionContextKey = executionContextKey,
                 mimeTypes = mimeTypes,
                 allowMultiple = options?.optBoolean("allowMultiple", false) == true,
-                persistPermission = options?.optBoolean("persistPermission", true) != false,
+                // Photo Picker grants are transient. Results are staged locally instead.
+                persistPermission = if (pickerMode == "photo") false else options?.optBoolean("persistPermission", true) != false,
                 pickerMode = pickerMode
             )
         composeDslFilePickerMainHandler.post {
@@ -631,7 +636,7 @@ fun ToolPkgComposeDslToolScreen(
         }
     val photoPickerMultiLauncher: ActivityResultLauncher<PickVisualMediaRequest>? =
         if (activityResultRegistryOwner != null) {
-            rememberLauncherForActivityResult(PickMultipleVisualMedia(Int.MAX_VALUE)) { uris ->
+            rememberLauncherForActivityResult(PickMultipleVisualMedia()) { uris ->
                 val pending = pendingFilePickerLaunch
                 pendingFilePickerLaunch = null
                 if (pending == null) return@rememberLauncherForActivityResult

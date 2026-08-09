@@ -1109,8 +1109,11 @@ export interface ComposeFilePickerOptions {
   persistPermission?: boolean;
   /**
    * Optional media picker mode. Use "photo" to launch the system
-   * Photo Picker / gallery for image selection (requires image/* mime types).
-   * When unset, falls back to the document picker behavior.
+   * Photo Picker / gallery for image selection. Requires exactly
+   * `mimeTypes: ["image/*"]`; concrete image subtypes are unsupported.
+   * Photo Picker URIs cannot be persisted, so `persistPermission` is ignored
+   * in this mode and selected files are staged locally. When unset, falls
+   * back to the document picker behavior.
    */
   picker?: "photo";
 }
