@@ -1056,6 +1056,24 @@ exports.default = Screen;
 - `Checkbox`：复选框
 - `Card`：卡片
 - `Icon`：图标
+- `AiChat`：嵌入当前主聊天的消息列表和输入区，不包含工作区
+- `AdaptiveSidePanel`：宽屏可拖拽分栏、窄屏覆盖层的自适应侧栏
+
+`AdaptiveSidePanel` 的第二个参数是主内容，`side` 是侧栏内容。两者都必须恰好传入一个节点；`open` 与 `onOpenChanged` 由插件状态管理。默认在 600dp 以上使用分栏，侧栏初始宽度为 360dp，最小宽度为 280dp，主内容至少保留 320dp。
+
+```javascript
+function Screen(ctx) {
+    const [sideOpen, setSideOpen] = ctx.useState('sideOpen', true);
+
+    return ctx.UI.AdaptiveSidePanel({
+        open: sideOpen,
+        onOpenChanged: setSideOpen,
+        side: ctx.UI.Column({ padding: 16 }, [
+            ctx.UI.Text({ text: 'Plugin side panel' })
+        ])
+    }, ctx.UI.AiChat());
+}
+```
 
 #### 进度组件
 - `LinearProgressIndicator`：线性进度条

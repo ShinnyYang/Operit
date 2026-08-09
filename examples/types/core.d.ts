@@ -113,18 +113,6 @@ export namespace NativeInterface {
     function callToolAsyncStreaming(callbackId: string, intermediateCallbackId: string, toolType: string, toolName: string, paramsJson: string): void;
 
     /**
-     * Set the result of script execution
-     * @param result - Result string
-     */
-    function setResult(result: string): void;
-
-    /**
-     * Set an error for script execution
-     * @param error - Error message
-     */
-    function setError(error: string): void;
-
-    /**
      * Log informational message
      * @param message - Message to log
      */

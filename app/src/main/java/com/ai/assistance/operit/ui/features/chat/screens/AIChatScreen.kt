@@ -121,6 +121,7 @@ fun AIChatScreen(
         padding: PaddingValues = PaddingValues(),
         viewModel: ChatViewModel? = null,
         isFloatingMode: Boolean = false,
+        embedded: Boolean = false,
         onLoading: (Boolean) -> Unit = {},
         onError: (String) -> Unit = {},
         hasBackgroundImage: Boolean = false,
@@ -782,7 +783,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
     val hasBoundWorkspace = !currentChatView?.workspace.isNullOrBlank()
 
     SideEffect {
-        if (isCurrentScreen) {
+        if (isCurrentScreen && !embedded) {
             setScreenSoftInputMode(requestedSoftInputMode)
             setUseScreenImePadding(shouldUseGlobalImePadding)
         }
@@ -791,8 +792,8 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
 
     // 当showWebView或showAiComputer状态改变时，更新TopAppBar的actions
     // 使用DisposableEffect确保当AIChatScreen离开组合时，actions被清空
-    LaunchedEffect(isCurrentScreen, showWebView, showAiComputer, isWorkspacePreparing, appBarContentColor, hasBoundWorkspace) {
-        if (isCurrentScreen) {
+    LaunchedEffect(isCurrentScreen, embedded, showWebView, showAiComputer, isWorkspacePreparing, appBarContentColor, hasBoundWorkspace) {
+        if (isCurrentScreen && !embedded) {
             setTopBarActions {
                 // AI电脑模式切换按钮
                 IconButton(
@@ -1206,8 +1207,9 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
                 ),
         )
 
+        val isWorkspaceVisible = !embedded && showWebView
         val workspaceOverlayModifier =
-            if (showWebView) {
+            if (isWorkspaceVisible) {
                 Modifier
                     .fillMaxSize()
                     .clipToBounds()
@@ -1227,7 +1229,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
                     WorkspaceScreen(
                         actualViewModel = actualViewModel,
                         currentChat = currentChat,
-                        isVisible = showWebView, // Pass visibility state
+                        isVisible = isWorkspaceVisible, // Pass visibility state
                         onExportClick = { workDir ->
                             webContentDir = workDir
                             AppLogger.d(
@@ -1243,7 +1245,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
             if (measurables.isEmpty()) {
                 layout(0, 0) {}
             } else {
-                if (showWebView) {
+                if (isWorkspaceVisible) {
                     val placeable = measurables.first().measure(constraints)
                     layout(placeable.width, placeable.height) {
                         placeable.placeRelative(0, 0)
@@ -1258,7 +1260,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
         }
 
         // AI电脑模式作为浮层：关闭时完全移出组合，确保 SurfaceView 被释放，避免机型相关残影
-        if (showAiComputer) {
+        if (!embedded && showAiComputer) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1269,7 +1271,7 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
         }
 
         AnimatedVisibility(
-            visible = isWorkspacePreparing,
+            visible = !embedded && isWorkspacePreparing,
             enter = fadeIn(animationSpec = tween(180)),
             exit = fadeOut(animationSpec = tween(120))
         ) {

@@ -39,6 +39,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.matchParentSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -70,6 +72,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -122,6 +125,7 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.rememberNestedScrollInteropConnection
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -163,6 +167,7 @@ import com.ai.assistance.operit.ui.common.displays.MarkdownTextComposable
 import com.ai.assistance.operit.ui.common.markdown.DefaultXmlRenderer
 import com.ai.assistance.operit.ui.common.markdown.StreamMarkdownRenderer
 import com.ai.assistance.operit.ui.components.CustomScaffold
+import com.ai.assistance.operit.ui.features.chat.screens.AIChatScreen
 import com.ai.assistance.operit.ui.main.LocalTopBarTitleContent
 import com.ai.assistance.operit.ui.main.TopBarTitleContent
 import com.ai.assistance.operit.ui.main.components.LocalIsCurrentScreen
@@ -1310,6 +1315,14 @@ internal fun renderComposeDslNode(
             )
     ) {
         val normalizedType = normalizeToken(node.type)
+        if (normalizedType == "aichat") {
+            renderAiChatNode(node, modifierResolver)
+            return@CompositionLocalProvider
+        }
+        if (normalizedType == "adaptivesidepanel") {
+            renderAdaptiveSidePanelNode(node, onAction, nodePath, modifierResolver)
+            return@CompositionLocalProvider
+        }
         if (normalizedType == "canvas") {
             renderCanvasNode(node, onAction, modifierResolver)
             return@CompositionLocalProvider
@@ -1448,6 +1461,180 @@ internal fun applyComposeDslNodeDebugLayoutModifier(modifier: Modifier): Modifie
 
 internal typealias ComposeDslNodeRenderer =
     @Composable (ToolPkgComposeDslNode, (String, Any?) -> Unit, String, ComposeDslModifierResolver) -> Unit
+
+@Composable
+private fun renderAiChatNode(
+    node: ToolPkgComposeDslNode,
+    modifierResolver: ComposeDslModifierResolver
+) {
+    Box(modifier = applyScopedCommonModifier(Modifier, node.props, modifierResolver)) {
+        AIChatScreen(embedded = true)
+    }
+}
+
+@Composable
+private fun renderAdaptiveSidePanelNode(
+    node: ToolPkgComposeDslNode,
+    onAction: (String, Any?) -> Unit,
+    nodePath: String,
+    modifierResolver: ComposeDslModifierResolver
+) {
+    val props = node.props
+    val onOpenChangedActionId =
+        requireNotNull(ToolPkgComposeDslParser.extractActionId(props["onOpenChanged"])) {
+            "AdaptiveSidePanel.onOpenChanged is required"
+        }.also { actionId ->
+            require(actionId.isNotBlank()) {
+                "AdaptiveSidePanel.onOpenChanged is required"
+            }
+        }
+
+    val open = props["open"] == true
+    val defaultWidth = (props["defaultWidth"] as? Number)?.toFloat()?.takeIf { it > 0f } ?: 360f
+    val minWidth = (props["minWidth"] as? Number)?.toFloat()?.takeIf { it > 0f } ?: 280f
+    val minContentWidth =
+        (props["minContentWidth"] as? Number)?.toFloat()?.takeIf { it > 0f } ?: 320f
+    val breakpoint = (props["breakpoint"] as? Number)?.toFloat()?.takeIf { it > 0f } ?: 600f
+    val density = LocalDensity.current
+    var resizedPanelWidth by remember(nodePath) { mutableStateOf<Dp?>(null) }
+
+    BoxWithConstraints(
+        modifier = applyScopedCommonModifier(Modifier, props, modifierResolver)
+    ) {
+        val isWideLayout = maxWidth >= breakpoint.dp
+        val maximumPanelWidth =
+            if (isWideLayout) {
+                (maxWidth - minContentWidth.dp).coerceAtLeast(0.dp)
+            } else {
+                maxWidth
+            }
+        val minimumPanelWidth =
+            if (isWideLayout) minOf(minWidth.dp, maximumPanelWidth) else maximumPanelWidth
+        val panelWidth =
+            (resizedPanelWidth ?: defaultWidth.dp).coerceIn(minimumPanelWidth, maximumPanelWidth)
+
+        if (isWideLayout) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                    renderAdaptiveSidePanelSlot(
+                        node = node,
+                        slotName = "content",
+                        onAction = onAction,
+                        nodePath = nodePath,
+                        modifierResolver = modifierResolver,
+                        useChildrenAsContent = true
+                    )
+                }
+                if (open) {
+                    Box(modifier = Modifier.width(panelWidth).fillMaxHeight()) {
+                        renderAdaptiveSidePanelSlot(
+                            node = node,
+                            slotName = "side",
+                            onAction = onAction,
+                            nodePath = nodePath,
+                            modifierResolver = modifierResolver
+                        )
+                        Box(
+                            modifier =
+                                Modifier
+                                    .align(Alignment.CenterStart)
+                                    .offset(x = (-12).dp)
+                                    .width(24.dp)
+                                    .fillMaxHeight()
+                                    .pointerInput(minimumPanelWidth, maximumPanelWidth, panelWidth) {
+                                        detectDragGestures { change, dragAmount ->
+                                            change.consume()
+                                            val widthDelta = with(density) { dragAmount.x.toDp() }
+                                            resizedPanelWidth =
+                                                (panelWidth - widthDelta).coerceIn(
+                                                    minimumPanelWidth,
+                                                    maximumPanelWidth
+                                                )
+                                        }
+                                    },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .width(3.dp)
+                                        .height(56.dp)
+                                        .background(
+                                            MaterialTheme.colorScheme.outlineVariant,
+                                            RoundedCornerShape(2.dp)
+                                        )
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            Box(modifier = Modifier.fillMaxSize()) {
+                renderAdaptiveSidePanelSlot(
+                    node = node,
+                    slotName = "content",
+                    onAction = onAction,
+                    nodePath = nodePath,
+                    modifierResolver = modifierResolver,
+                    useChildrenAsContent = true
+                )
+                if (open) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .matchParentSize()
+                                .background(Color.Black.copy(alpha = 0.18f))
+                                .clickable { onAction(onOpenChangedActionId, false) }
+                    )
+                    Box(
+                        modifier =
+                            Modifier
+                                .align(Alignment.CenterEnd)
+                                .width(panelWidth)
+                                .fillMaxHeight()
+                    ) {
+                        renderAdaptiveSidePanelSlot(
+                            node = node,
+                            slotName = "side",
+                            onAction = onAction,
+                            nodePath = nodePath,
+                            modifierResolver = modifierResolver
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun renderAdaptiveSidePanelSlot(
+    node: ToolPkgComposeDslNode,
+    slotName: String,
+    onAction: (String, Any?) -> Unit,
+    nodePath: String,
+    modifierResolver: ComposeDslModifierResolver,
+    useChildrenAsContent: Boolean = false
+) {
+    val explicitSlotNodes = node.slots[slotName].orEmpty()
+    val slotNodes =
+        if (explicitSlotNodes.isNotEmpty()) {
+            explicitSlotNodes
+        } else if (useChildrenAsContent) {
+            node.children
+        } else {
+            emptyList()
+        }
+    require(slotNodes.size == 1) {
+        "AdaptiveSidePanel.$slotName requires exactly one child"
+    }
+    renderComposeDslNode(
+        node = slotNodes.single(),
+        onAction = onAction,
+        nodePath = "$nodePath:$slotName/0",
+        modifierResolver = modifierResolver
+    )
+}
 
 private data class CanvasCommand(
     val type: String,
