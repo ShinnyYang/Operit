@@ -1139,6 +1139,29 @@ ctx.reportError(error);
 `ctx.getHostRoutes()` 只返回宿主 Native 路由，便于插件显式发现可用原生页面。
 Native 路由 ID 命名规则：`native.<Screen对象名的snake_case>`，例如 `Screen.Toolbox -> native.toolbox`。
 
+#### 文件选择
+
+`ctx.openFilePicker(options?)` 使用一个 `picker` 字段选择来源。省略时使用文档选择。
+
+```javascript
+const images = await ctx.openFilePicker({
+    picker: 'image',
+    allowMultiple: true
+});
+
+const directory = await ctx.openFilePicker({
+    picker: 'directory',
+    persistPermission: true
+});
+```
+
+- `document`：文档选择，可使用 `mimeTypes`、`allowMultiple` 和 `persistPermission`
+- `image`、`video`、`media`：系统视觉媒体选择，分别限定图片、视频、或两者；可使用 `allowMultiple`
+- `directory`：目录选择，可使用 `persistPermission`
+- `camera`：拍摄一张 JPEG 图片
+
+每个结果都含有 `uri`。文档、视觉媒体和相机结果还会含有临时本地 `path`，目录结果只提供 `uri`。不能用于该来源的选项会使调用失败，不能被静默忽略。
+
 兼容说明：
 
 - `ToolPkg.registerToolboxUiModule(...)` 仍然保留。

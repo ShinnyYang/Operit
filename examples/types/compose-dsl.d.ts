@@ -1119,23 +1119,41 @@ export interface ComposeResolveToolNameRequest {
   preferImported?: boolean;
 }
 
+export type ComposeFilePickerMode =
+  | "document"
+  | "image"
+  | "video"
+  | "media"
+  | "directory"
+  | "camera";
+
 export interface ComposeFilePickerOptions {
-  mimeTypes?: string[];
-  allowMultiple?: boolean;
-  persistPermission?: boolean;
   /**
-   * Optional media picker mode. Use "photo" to launch the system
-   * Photo Picker / gallery for image selection. Requires exactly
-   * `mimeTypes: ["image/*"]`; concrete image subtypes are unsupported.
-   * Photo Picker URIs cannot be persisted, so `persistPermission` is ignored
-   * in this mode and selected files are staged locally. When unset, falls
-   * back to the document picker behavior.
+   * Selection source. Defaults to "document".
    */
-  picker?: "photo";
+  picker?: ComposeFilePickerMode;
+  /**
+   * MIME filter for the document picker only.
+   */
+  mimeTypes?: string[];
+  /**
+   * Enables multiple selection for document, image, video, and media pickers.
+   */
+  allowMultiple?: boolean;
+  /**
+   * Retains URI access for document and directory pickers.
+   */
+  persistPermission?: boolean;
 }
 
 export interface ComposePickedFile {
+  /**
+   * Selected content URI. Directory results expose this as their only location.
+   */
   uri: string;
+  /**
+   * Temporary local file for document, visual-media, and camera results.
+   */
   path?: string;
   name?: string;
   mimeType?: string;
