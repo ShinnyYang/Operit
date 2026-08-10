@@ -76,8 +76,9 @@ data class ProviderUsageSnapshot(
  * - Anthropic：文档明确 `input_tokens` **不含** `cache_read_input_tokens` 与
  *   `cache_creation_input_tokens`（总量 = 三者之和），因此三个分量各自独立保留，
  *   缓存写入单独计费；`output_tokens` 包含 thinking → 推理已包含在输出。
- * - Gemini：`candidatesTokenCount` 包含 thought token；`thoughtsTokenCount` 有值时
- *   单独保留（仍计入输出）。
+ * - Gemini：`candidatesTokenCount` 是 response candidates token，`thoughtsTokenCount`
+ *   是思考 token（官方 API 独立字段，不含在 candidatesTokenCount 内，按输出计费）
+ *   → 计费时输出 = candidates + thoughts。
  * - 本地模型（llama/MNN）：没有 provider usage 对象，token 为本地实测计数
  *   （tokenizer 计数 + 逐 token 生成计数），缓存分量明确为 0。
  *
@@ -251,7 +252,9 @@ object ProviderUsageNormalizer {
         return snapshot.takeIf { it.hasKnownFields() }
     }
 
-    /** Gemini：`usageMetadata`，`candidatesTokenCount` 包含 thought token。
+    /** Gemini：`usageMetadata`；`candidatesTokenCount` 为 response candidates token，
+     *  `thoughtsTokenCount` 为思考 token（官方 API 独立字段，按输出计费，不含在
+     *  candidatesTokenCount 内）→ [reasoningIncludedInOutput] = false。
      *  流式逐 chunk 上报的是服务器累计快照，省略字段不代表撤销 → 保持部分更新。 */
     fun gemini(
         usageMetadata: JSONObject?,
@@ -283,7 +286,8 @@ object ProviderUsageNormalizer {
                 totalInputTokens = prompt,
                 outputTokens = output,
                 reasoningTokens = thoughts,
-                reasoningIncludedInOutput = true,
+                // P1-4：thoughtsTokenCount 独立于 candidatesTokenCount，计费需另行补加
+                reasoningIncludedInOutput = false,
                 // Gemini 无独立缓存写入计费概念
                 cacheWriteSeparateBilling = false,
                 completeSnapshot = completeSnapshot,

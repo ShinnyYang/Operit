@@ -15,7 +15,8 @@ import org.junit.Test
  * - OpenAI 系 completion_tokens 包含推理 → reasoningIncludedInOutput = true；
  * - Anthropic input_tokens 不含缓存分量（文档：总量 = input + cache_read + cache_creation），
  *   缓存写入独立保留、独立计费；
- * - Gemini candidatesTokenCount 包含 thought → 推理已包含在输出。
+ * - Gemini candidatesTokenCount 不含 thoughtsTokenCount（官方 API 独立字段，
+ *   思考 token 按输出计费）→ 推理未包含在输出。
  */
 class ProviderUsageNormalizerTest {
 
@@ -232,7 +233,62 @@ class ProviderUsageNormalizerTest {
         assertNull("Gemini 无缓存写入概念", snapshot.cacheWriteTokens)
         assertEquals(400L, snapshot.outputTokens)
         assertEquals(90L, snapshot.reasoningTokens)
-        assertEquals("candidatesTokenCount 包含 thought", true, snapshot.reasoningIncludedInOutput)
+        assertEquals("candidatesTokenCount 不含 thought（独立计费）", false, snapshot.reasoningIncludedInOutput)
+    }
+
+    @Test
+    fun `gemini thoughts are billed on top of candidates by cost layer`() {
+        // P1-4：thoughtsTokenCount 独立于 candidatesTokenCount，计费输出 = candidates + thoughts。
+        // prompt=100, candidates=20, thoughts=80 → billed output = 100。
+        val metadata =
+            JSONObject(
+                """
+                {
+                  "promptTokenCount": 100,
+                  "cachedContentTokenCount": 0,
+                  "candidatesTokenCount": 20,
+                  "thoughtsTokenCount": 80,
+                  "totalTokenCount": 200
+                }
+                """.trimIndent()
+            )
+        val snapshot = ProviderUsageNormalizer.gemini(metadata)!!
+        assertEquals(100L, snapshot.uncachedInputTokens)
+        assertEquals(0L, snapshot.cachedInputTokens)
+        assertEquals(20L, snapshot.outputTokens)
+        assertEquals(80L, snapshot.reasoningTokens)
+        assertEquals(false, snapshot.reasoningIncludedInOutput)
+        assertEquals(
+            100L,
+            TokenCostCalculator.billedOutputTokens(snapshot.toTokenUsageInput()),
+        )
+    }
+
+    @Test
+    fun `gemini usage metadata without candidates fields stays fully billable`() {
+        // P1-4：prompt 被拦截时不返回 candidates，但 usageMetadata 仍然存在；provider
+        // 层必须把该 usage 上报，归一化后应得到完整可计费快照（输入照常计费，输出为真实 0）。
+        val metadata =
+            JSONObject(
+                """
+                {
+                  "promptTokenCount": 100,
+                  "cachedContentTokenCount": 0,
+                  "candidatesTokenCount": 0,
+                  "thoughtsTokenCount": 0
+                }
+                """.trimIndent()
+            )
+        val snapshot = ProviderUsageNormalizer.gemini(metadata)!!
+        assertEquals(100L, snapshot.uncachedInputTokens)
+        assertEquals(0L, snapshot.cachedInputTokens)
+        assertEquals(0L, snapshot.outputTokens)
+        assertEquals(0L, snapshot.reasoningTokens)
+        assertEquals(false, snapshot.reasoningIncludedInOutput)
+        assertEquals(
+            0L,
+            TokenCostCalculator.billedOutputTokens(snapshot.toTokenUsageInput()),
+        )
     }
 
     @Test

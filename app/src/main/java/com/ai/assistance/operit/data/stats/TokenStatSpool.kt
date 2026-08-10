@@ -92,6 +92,14 @@ internal object TokenStatSpool {
     internal const val QUARANTINE_PREFIX = "quarantine_"
 
     /**
+     * 恢复 REPLACING 持久化标记文件名（审计 P1：必须可被启动路径读取）。恢复替换开始
+     * 前（commitReplacement）写入 filesDir 根，恢复成功后删除；进程崩溃在替换中途时
+     * 标记保留，启动时由 [consumeAbandonedRestoreIfAny] 消费——旧 spool 绝不 replay 进
+     * 可能已被替换的数据库。backup 包 [RestoreReplacingMarker] 引用本常量，避免两处漂移。
+     */
+    internal const val RESTORE_REPLACING_MARKER_FILE_NAME = "restore_replacing.flag"
+
+    /**
      * P2：seal copy 回退中途失败的部分目标隔离前缀（`seal_failed_<uuid>`）。隔离文件 scanner
      * 忽略（不匹配 [SEALED_PREFIX]）、计入递归总 cap（占用可见）、由维护入口 [retryPendingCleanup]
      * 清理（active 保留完整内容，隔离副本删除安全，无数据损失）。P2 终审：同时作为**受管失败
@@ -607,7 +615,43 @@ internal object TokenStatSpool {
      * [commitReplacement] must persist the external REPLACING state. Request fencing changes only
      * after that commit succeeds, and before [block] closes stores or replaces any directory.
      */
-    internal suspend fun <T> withExclusiveRestoreAccess(
+    /**
+     * 启动时消费崩溃遗留的恢复 REPLACING 标记（审计 P1 修复）：进程在恢复替换开始
+     * （commitReplacement 已持久化标记）后、成功完成（标记删除）前崩溃时，重启后必须
+     * 在初始 drain/replay 之前处理——否则旧 spool 事件会 replay 进可能已被替换的数据库。
+     *
+     * fail-closed 语义：标记存在即代表"上一次恢复未确认完成"——清理旧 spool（其内容属于
+     * 恢复前的旧事件，绝不应进入当前数据库）并删除标记；任一失败抛 [IOException]（调用方
+     * 启动 readiness 因此失败并重试，绝不带不确定状态开始 replay）。无标记时返回 false，
+     * 正常启动不受影响。
+     */
+    suspend fun consumeAbandonedRestoreIfAny(context: Context): Boolean =
+        lifecycleMutex.withLock {
+            val appContext = context.applicationContext
+            val marker = File(appContext.filesDir, RESTORE_REPLACING_MARKER_FILE_NAME)
+            if (!marker.exists()) return@withLock false
+            AppLogger.w(
+                TAG,
+                "abandoned restore REPLACING marker found; discarding pre-restore spool " +
+                    "before startup replay",
+            )
+            // 旧 spool 是恢复前事件，绝不被 replay：清理 + 目录项同步（与恢复成功路径同协议）。
+            clearForRestoreLocked(appContext)
+            if (!marker.delete()) {
+                throw IOException(
+                    "abandoned restore marker could not be removed: ${marker.absolutePath}",
+                )
+            }
+            val parent = marker.parentFile
+            if (parent == null || !requireSpoolDirSync(parent)) {
+                throw IOException(
+                    "abandoned restore marker removal not durable: ${marker.absolutePath}",
+                )
+            }
+            true
+        }
+
+    suspend fun <T> withExclusiveRestoreAccess(
         context: Context,
         prepareBeforeCommit: suspend () -> Unit,
         commitReplacement: suspend () -> Unit,

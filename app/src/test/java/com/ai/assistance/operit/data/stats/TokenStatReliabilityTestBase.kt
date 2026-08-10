@@ -69,6 +69,9 @@ internal abstract class TokenStatReliabilityTestBase {
         TokenStatsLedger.legacyPriceProvider = { _, _ -> null }
         TokenStatSpool.clearPendingStateForTest()
         TokenTrackingAIService.resetPricingExecutorForTest()
+        // 收尾日志可能跑在 Dispatchers.IO 等后台线程，thread-local 的 mockStatic(AppLogger)
+        // 无法覆盖；统一关闭 android.util.Log 调用（文件日志照常），避免 "not mocked"。
+        AppLogger.enableSystemLog = false
         TokenStatSpool.afterSegmentReadForTest = null
         TokenStatSpool.spoolDeleteForTest = null
         TokenStatSpool.segmentDeleteForTest = null
@@ -92,6 +95,7 @@ internal abstract class TokenStatReliabilityTestBase {
 
     @After
     fun tearDown() {
+        AppLogger.enableSystemLog = true
         // P1-1 终审修复：测试可能以“目录项未确认持久”状态结束（gate=false），tearDown 的快照
         // barrier 会重新 bootstrap——必须先恢复“目录 fsync 支持且成功”的平台常态（Windows JVM
         // 真实探测恒为 UNSUPPORTED），否则 gate 在 tearDown 中失败并掩盖测试结果。

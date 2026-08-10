@@ -1696,6 +1696,40 @@ class GeminiProvider(
         try {
             throwIfGeminiErrorPayload(context, json)
 
+            // 提取实际的token使用数据：必须先于 candidates/content 的提前返回执行，
+            // 否则“无 candidates 但带 usageMetadata”的响应（如 prompt 被拦截）会漏记用量。
+            var serverUsageApplied = false
+            val usageMetadata = json.optJSONObject("usageMetadata")
+            if (usageMetadata != null) {
+                val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0L)
+                val cachedContentTokenCount = usageMetadata.optLong("cachedContentTokenCount", 0L)
+                val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
+
+                val hasServerUsage =
+                    usageMetadata.has("promptTokenCount") ||
+                        usageMetadata.has("cachedContentTokenCount") ||
+                        usageMetadata.has("candidatesTokenCount")
+                if (hasServerUsage) {
+                    serverUsageApplied = true
+                    // 更新实际的token计数
+                    val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
+                    tokenCacheManager.updateActualTokens(actualInputTokens, cachedContentTokenCount)
+                    tokenCacheManager.setOutputTokens(candidatesTokenCount)
+
+                    logDebug("API实际Token使用: 输入=$actualInputTokens, 缓存=$cachedContentTokenCount, 输出=$candidatesTokenCount")
+
+                    // 更新回调，使用实际的token统计
+                    onTokensUpdated(
+                        tokenCacheManager.totalInputTokenCount,
+                        tokenCacheManager.cachedInputTokenCount,
+                        tokenCacheManager.outputTokenCount
+                    )
+                    onUsageReported?.let { callback ->
+                        ProviderUsageNormalizer.gemini(usageMetadata)?.let { callback(it, attemptNumber) }
+                    }
+                }
+            }
+
             // 提取候选项
             val candidates = json.optJSONArray("candidates")
             if (candidates == null || candidates.length() == 0) {
@@ -1895,50 +1929,23 @@ class GeminiProvider(
                         logDebug("提取文本，长度=${text.length}")
                     }
 
-                    // 估算token
-                    val tokens = ChatUtils.estimateTokenCount(text)
-                    tokenCacheManager.addOutputTokens(tokens)
-                    onTokensUpdated(
-                            tokenCacheManager.totalInputTokenCount,
-                            tokenCacheManager.cachedInputTokenCount,
-                            tokenCacheManager.outputTokenCount
-                    )
+                    // 估算token：本 chunk 已应用服务器累计实际值时不再叠加估算，
+                    // 否则会在 setOutputTokens 的累计实际值之上重复计数（原实现靠
+                    // 末尾覆盖避免重复，usage 提取提前后需显式跳过）
+                    if (!serverUsageApplied) {
+                        val tokens = ChatUtils.estimateTokenCount(text)
+                        tokenCacheManager.addOutputTokens(tokens)
+                        onTokensUpdated(
+                                tokenCacheManager.totalInputTokenCount,
+                                tokenCacheManager.cachedInputTokenCount,
+                                tokenCacheManager.outputTokenCount
+                        )
+                    }
                 }
             }
 
             pendingThoughtSignatures.forEach { signature ->
                 appendGeminiThoughtSignatureMeta(contentBuilder, signature)
-            }
-
-            // 提取实际的token使用数据
-            val usageMetadata = json.optJSONObject("usageMetadata")
-            if (usageMetadata != null) {
-                val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0L)
-                val cachedContentTokenCount = usageMetadata.optLong("cachedContentTokenCount", 0L)
-                val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
-
-                val hasServerUsage =
-                    usageMetadata.has("promptTokenCount") ||
-                        usageMetadata.has("cachedContentTokenCount") ||
-                        usageMetadata.has("candidatesTokenCount")
-                if (hasServerUsage) {
-                    // 更新实际的token计数
-                    val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
-                    tokenCacheManager.updateActualTokens(actualInputTokens, cachedContentTokenCount)
-                    tokenCacheManager.setOutputTokens(candidatesTokenCount)
-
-                    logDebug("API实际Token使用: 输入=$actualInputTokens, 缓存=$cachedContentTokenCount, 输出=$candidatesTokenCount")
-
-                    // 更新回调，使用实际的token统计
-                    onTokensUpdated(
-                        tokenCacheManager.totalInputTokenCount,
-                        tokenCacheManager.cachedInputTokenCount,
-                        tokenCacheManager.outputTokenCount
-                    )
-                    onUsageReported?.let { callback ->
-                        ProviderUsageNormalizer.gemini(usageMetadata)?.let { callback(it, attemptNumber) }
-                    }
-                }
             }
 
             // 将搜索来源拼接到内容最前面

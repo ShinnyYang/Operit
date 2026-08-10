@@ -2,6 +2,7 @@ package com.ai.assistance.operit.data.stats
 
 import com.ai.assistance.operit.data.collects.PricingCurrency
 import com.ai.assistance.operit.data.model.BillingMode
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -95,6 +96,33 @@ reasoningTokens = 300L,
         assertEquals(800L, cost.billedOutputTokens)
         // 1000/1e6*1 + 800/1e6*2 = 0.001 + 0.0016
         assertEquals(0.0026, cost.amount!!, 1e-12)
+    }
+
+    @Test
+    fun `gemini end to end bills thoughts on top of candidates`() {
+        // P1-4：Gemini thoughtsTokenCount 独立于 candidatesTokenCount，按输出计费；
+        // prompt=100, candidates=20, thoughts=80, total=200 → billed output = 100。
+        val usage =
+            ProviderUsageNormalizer.gemini(
+                JSONObject(
+                    """
+                    {
+                      "promptTokenCount": 100,
+                      "cachedContentTokenCount": 0,
+                      "candidatesTokenCount": 20,
+                      "thoughtsTokenCount": 80,
+                      "totalTokenCount": 200
+                    }
+                    """.trimIndent()
+                )
+            )!!.toTokenUsageInput()
+
+        val cost = TokenCostCalculator.computeCost(usage, tokenPricing)
+
+        assertEquals(100L, cost.billedOutputTokens)
+        assertEquals(100L, cost.billedInputTokens)
+        // 100/1e6*1 + 0/1e6*0.5 + 100/1e6*2 = 0.0003
+        assertEquals(0.0003, cost.amount!!, 1e-12)
     }
 
     @Test

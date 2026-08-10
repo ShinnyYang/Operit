@@ -36,18 +36,25 @@ import java.io.File
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
@@ -82,6 +89,9 @@ class TokenTrackingAIServiceTest {
         // 流框架日志走 android.util.Log，JVM 测试不可用：关闭避免 Stub! 异常
         com.ai.assistance.operit.util.stream.StreamLogger.setEnabled(false)
         com.ai.assistance.operit.util.stream.StreamLogger.setVerboseEnabled(false)
+        // 收尾日志跑在 Dispatchers.IO（P1-3），thread-local 的 mockStatic(AppLogger)
+        // 无法覆盖后台线程；统一关闭 android.util.Log 调用，避免 "not mocked"。
+        com.ai.assistance.operit.util.AppLogger.enableSystemLog = false
         tempDir = kotlin.io.path.createTempDirectory("tracking-test").toFile()
         context = mockContext(tempDir)
         database =
@@ -105,6 +115,7 @@ class TokenTrackingAIServiceTest {
 
     @After
     fun tearDown() {
+        com.ai.assistance.operit.util.AppLogger.enableSystemLog = true
         runBlocking {
             TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = false) { }
         }
@@ -901,7 +912,7 @@ class TokenTrackingAIServiceTest {
     }
 
     @Test
-    fun `generation read failure aborts before model invocation`() = runBlocking {
+    fun `generation read failure degrades tracking and still invokes the model`() = runBlocking {
         org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
             var invoked = false
             val fake =
@@ -912,16 +923,25 @@ class TokenTrackingAIServiceTest {
                         onUsage?.invoke(usage(), 1)
                     }
                 }
+            // P1-2：统计数据库/身份不可用时降级跟踪——请求必须照常开始与完成
             TokenStatsLedger.databaseProvider = { throw IOException("generation unavailable") }
             try {
-                tracked(fake).sendMessage(context = context).collect { }
-                fail("call must not start without a durable reset generation")
-            } catch (e: IOException) {
-                assertEquals("generation unavailable", e.message)
+                val collected = StringBuilder()
+                tracked(fake).sendMessage(context = context).collect { collected.append(it) }
+                assertEquals("still delivered", collected.toString())
             } finally {
                 TokenStatsLedger.databaseProvider = { database }
             }
-            assertFalse("model must not be invoked", invoked)
+            assertTrue("model must be invoked despite statistics degradation", invoked)
+            // 降级上下文的事件经 spool 保留：排空重试在数据库恢复后落账（身份 INSERT IGNORE 补齐）
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15)
+            while (database.tokenStatsDao().countEvents() == 0 && System.nanoTime() < deadline) {
+                delay(100)
+            }
+            assertEquals(1, database.tokenStatsDao().countEvents())
+            val event = database.tokenStatsDao().getAllEvents().single()
+            assertEquals(TokenStatStatus.COMPLETED.name, event.status)
+            assertEquals(800L, event.uncachedInputTokens)
         }
     }
 
@@ -1601,6 +1621,53 @@ class TokenTrackingAIServiceTest {
         }
     }
 
+    // ==== P1-3：统计收尾绝不执行同步文件 I/O / Future.get() 在调用方 Main 线程 ====
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    @Test
+    fun `statistics finalization never performs sync io on the caller main thread`() = runBlocking {
+        org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
+            // 模拟 UI 入口：rememberCoroutineScope（Main）→ 连接测试 / 收集统计包装流。
+            // recordSafely 进入 IO 上下文后触发探针记录实际执行线程——收尾的
+            // FutureTask.get() 与 append 的 FileOutputStream+fd.sync() 绝不允许
+            // 跑在 Main 上（ANR 风险，P1-3）。
+            val mainExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "test-main-thread") }
+            Dispatchers.setMain(mainExecutor.asCoroutineDispatcher())
+            val finalizationThreads = ConcurrentHashMap.newKeySet<String>()
+            TokenTrackingAIService.recordIoThreadProbeForTest = {
+                finalizationThreads += Thread.currentThread().name
+            }
+            try {
+                withContext(Dispatchers.Main) {
+                    // 成功流收尾（recordSafely）
+                    tracked(FakeAiService()).sendMessage(context = context).collect { }
+                    // 模型失败流的收尾（persistAndCapture，同样 fail-open 且跑在 IO）
+                    try {
+                        tracked(FakeAiService { _ -> stream { throw IOException("model failed") } })
+                            .sendMessage(context = context).collect { }
+                    } catch (_: IOException) {
+                        // expected
+                    }
+                    // 连接测试（ModelConfigScreen 的 Main scope 入口形态）
+                    tracked(FakeAiService(testConnectionResult = Result.success("ok")))
+                        .testConnection(context)
+                }
+                assertTrue(
+                    "statistics finalization must actually dispatch to IO",
+                    finalizationThreads.isNotEmpty(),
+                )
+                assertFalse(
+                    "statistics finalization must never run sync io on the main thread: $finalizationThreads",
+                    finalizationThreads.any { it == "test-main-thread" },
+                )
+            } finally {
+                TokenTrackingAIService.recordIoThreadProbeForTest = null
+                Dispatchers.resetMain()
+                mainExecutor.shutdown()
+            }
+        }
+    }
+
     // ==== P1-1：发生时价格快照 ====
 
     @Test
@@ -1852,10 +1919,10 @@ class TokenTrackingAIServiceTest {
             }
         }
 
-    // ==== P1-4：append 故障不丢事件（有界紧急队列 + 恢复） ====
+    // ==== P1-4：append 故障不伪装 durable（fail-open：只记日志，绝不影响业务） ====
 
     @Test
-    fun `append failure defers to emergency queue and recovers with exactly one event each`() =
+    fun `append failure returns lost without pretending durability and recovers cleanly`() =
         runBlocking {
             org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
                 val previousRecordTimeout = TokenTrackingAIService.recordTimeoutMs
@@ -1864,28 +1931,28 @@ class TokenTrackingAIServiceTest {
                     // 让 spool 目录不可创建：filesDir 下同名文件占位
                     val spoolPath = File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME)
                     spoolPath.writeText("i am a file, not a directory")
-                    var failures = 0
+                    var lost = 0
                     (0 until 5).forEach { index ->
-                            val request =
-                                TokenStatRequestContext(
-                                    eventId = "evt-emergency-$index",
-                                    category = TokenStatCategory.CHAT,
-                                    configId = "cfg-1",
-                                    provider = "DEEPSEEK",
-                                    model = "deepseek-chat",
-                                    startedAtMs = System.currentTimeMillis(),
-                                )
-                            request.onUsage(usage(), 1)
-                            request.finish(TokenStatStatus.COMPLETED)
-                            try {
-                                TokenTrackingAIService.recordSafely(context, request)
-                                fail("non-durable append must not return normally")
-                            } catch (_: TokenStatsPersistenceException) {
-                                failures++
-                            }
+                        val request =
+                            TokenStatRequestContext(
+                                eventId = "evt-emergency-$index",
+                                category = TokenStatCategory.CHAT,
+                                configId = "cfg-1",
+                                provider = "DEEPSEEK",
+                                model = "deepseek-chat",
+                                startedAtMs = System.currentTimeMillis(),
+                            )
+                        request.onUsage(usage(), 1)
+                        request.finish(TokenStatStatus.COMPLETED)
+                        // P1-2：统计收尾 fail-open——append 失败明确返回 LOST，不再抛出
+                        if (TokenTrackingAIService.recordSafely(context, request) ==
+                            RecordOutcome.LOST
+                        ) {
+                            lost++
                         }
-                    // 全部明确失败；无内存队列冒充 durable 副本
-                    assertEquals(5, failures)
+                    }
+                    // 全部明确 LOST；无内存队列冒充 durable 副本，绝无伪落账
+                    assertEquals(5, lost)
                     assertEquals(0, TokenStatSpool.emergencyQueueSizeForTest())
                     assertEquals(0, database.tokenStatsDao().countEvents())
                     // P2-4：deferred 事件不登记 waiter（latch 已直接完成）
@@ -1904,28 +1971,30 @@ class TokenTrackingAIServiceTest {
         }
 
     @Test
-    fun `append failure fails success and is suppressed on model failure`() = runBlocking {
-        val spoolPath = File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME)
-        spoolPath.writeText("not a directory")
-        org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
-            try {
-                tracked(FakeAiService()).sendMessage(context = context).collect { }
-                fail("successful model result must not hide statistics persistence failure")
-            } catch (_: TokenStatsPersistenceException) {
-            }
+    fun `append failure does not fail a successful model result and stays suppressed on model failure`() =
+        runBlocking {
+            val spoolPath = File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME)
+            spoolPath.writeText("not a directory")
+            org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
+                // P1-2：成功流收集正常完成——统计收尾失败不得改写成功的模型结果
+                val collected = StringBuilder()
+                tracked(FakeAiService()).sendMessage(context = context).collect { collected.append(it) }
+                assertEquals("hello", collected.toString())
+                assertEquals(0, database.tokenStatsDao().countEvents())
 
-            val modelFailure = IOException("model failed")
-            val failing = FakeAiService { _ -> stream { throw modelFailure } }
-            try {
-                tracked(failing).sendMessage(context = context).collect { }
-                fail("model failure must propagate")
-            } catch (e: IOException) {
-                assertTrue("original model exception stays primary", e === modelFailure)
-                assertEquals(1, e.suppressed.size)
-                assertTrue(e.suppressed[0] is TokenStatsPersistenceException)
+                // 模型失败路径保持 fail-open：原始模型异常为主异常，统计失败为 suppressed
+                val modelFailure = IOException("model failed")
+                val failing = FakeAiService { _ -> stream { throw modelFailure } }
+                try {
+                    tracked(failing).sendMessage(context = context).collect { }
+                    fail("model failure must propagate")
+                } catch (e: IOException) {
+                    assertTrue("original model exception stays primary", e === modelFailure)
+                    assertEquals(1, e.suppressed.size)
+                    assertTrue(e.suppressed[0] is TokenStatsPersistenceException)
+                }
             }
         }
-    }
 
     // ==== P2-2：损坏行整段隔离（保留证据） ====
 
@@ -2083,13 +2152,14 @@ class TokenTrackingAIServiceTest {
     // ==== P1 终审：恢复屏障对 in-flight provider/stream 请求的 request/session fencing ====
 
     @Test
-    fun `restore barrier rejects in-flight and same-process requests until simulated restart`() =
+    fun `restore barrier drops in-flight statistics without failing the model and rejects same-process requests until restart`() =
         runBlocking {
             org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
                 // 真实 TokenTracking + fake provider：请求停在 provider 流阶段（未收尾）时
                 // 执行完整 restore（block 模拟恢复替换数据库 + clearAfter 删除旧 spool）→
-                // 旧请求释放后收尾 append 被请求 fence 明确拒绝（模型成功不伪装）；同进程
-                // 新请求被拒绝开始；模拟进程重启（reset 状态）后新请求可正常写入。
+                // 旧请求释放后收尾 append 被请求 fence 明确拒绝——P1-2：统计收尾失败不得
+                // 改写成功的模型结果（事件丢弃并记日志，绝不写新 DB）；同进程新请求仍被
+                // 明确拒绝开始；模拟进程重启（reset 状态）后新请求可正常写入。
                 val entered = CompletableDeferred<Unit>()
                 val release = CompletableDeferred<Unit>()
                 val fake =
@@ -2101,6 +2171,7 @@ class TokenTrackingAIServiceTest {
                             emit("tail")
                         }
                     }
+                var completedSuccessfully = false
                 var primary: Throwable? = null
                 val requestJob =
                     launch {
@@ -2108,7 +2179,7 @@ class TokenTrackingAIServiceTest {
                             tracked(fake)
                                 .sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
                                 .collect { }
-                            fail("old in-flight request must fail after a completed restore")
+                            completedSuccessfully = true
                         } catch (e: Throwable) {
                             primary = e
                             if (e is CancellationException) throw e
@@ -2130,9 +2201,10 @@ class TokenTrackingAIServiceTest {
                 release.complete(Unit)
                 requestJob.join()
                 assertTrue(
-                    "old successful request must receive an explicit persistence exception, was: $primary",
-                    primary is TokenStatsPersistenceException,
+                    "statistics fence must never fail a successful model result",
+                    completedSuccessfully,
                 )
+                assertNull("fence rejection is logged and dropped, not thrown: $primary", primary)
                 // 恢复后的 spool/Room 无旧事件：旧请求从未写入（fence 在写 spool 前拒绝）
                 assertEquals(0, database.tokenStatsDao().countEvents())
                 val spoolDir = File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME)
@@ -2165,11 +2237,12 @@ class TokenTrackingAIServiceTest {
         }
 
     @Test
-    fun `restore failure before replacement keeps accepting new requests while old in-flight is rejected`() =
+    fun `restore failure before replacement drops in-flight statistics without failing the model`() =
         runBlocking {
             org.mockito.Mockito.mockStatic(com.ai.assistance.operit.util.AppLogger::class.java).use {
                 // 旧请求停在 provider 阶段；restore 在替换前失败（drain 阶段失败——epoch 已
-                // 递增但 accepting 保持 true）→ 旧请求释放后被 fence 拒绝；同进程新请求
+                // 递增但 accepting 保持 true）→ 旧请求释放后收尾被 fence 拒绝——P1-2：统计
+                // 收尾失败不得改写成功的模型结果（事件丢弃并记日志）；同进程新请求
                 // （新 epoch）照常落账——替换前失败可继续。
                 val spool = File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME).apply { mkdirs() }
                 val pre =
@@ -2196,6 +2269,7 @@ class TokenTrackingAIServiceTest {
                             release.await()
                         }
                     }
+                var completedSuccessfully = false
                 var primary: Throwable? = null
                 val requestJob =
                     launch {
@@ -2203,7 +2277,7 @@ class TokenTrackingAIServiceTest {
                             tracked(fake)
                                 .sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
                                 .collect { }
-                            fail("old in-flight request must be rejected after a restore attempt")
+                            completedSuccessfully = true
                         } catch (e: Throwable) {
                             primary = e
                             if (e is CancellationException) throw e
@@ -2231,13 +2305,14 @@ class TokenTrackingAIServiceTest {
                 } finally {
                     TokenStatSpool.segmentReadErrorForTest = null
                 }
-                // 旧请求释放：epoch 不匹配 → 明确拒绝（不写 spool/DB）
+                // 旧请求释放：epoch 不匹配 → fence 拒绝（不写 spool/DB），模型结果不受影响
                 release.complete(Unit)
                 requestJob.join()
                 assertTrue(
-                    "old in-flight request must be rejected, was: $primary",
-                    primary is TokenStatsPersistenceException,
+                    "statistics fence must never fail a successful model result",
+                    completedSuccessfully,
                 )
+                assertNull("fence rejection is logged and dropped, not thrown: $primary", primary)
                 // 同进程新请求（新 epoch）：替换前失败可继续，正常落账；旧 spool 段（restore
                 // 失败未替换/未清理）一并排空到未被替换的旧 DB
                 tracked(FakeAiService())
@@ -2247,7 +2322,7 @@ class TokenTrackingAIServiceTest {
                 while (database.tokenStatsDao().countEvents() < 2 && System.nanoTime() < deadline) {
                     delay(50)
                 }
-                // 只有旧 spool 段 + 新请求两个事件：in-flight 旧请求被 fence 拒绝，
+                // 只有旧 spool 段 + 新请求两个事件：in-flight 旧请求被 fence 丢弃，
                 // 其事件（第 3 个）绝不出现
                 val ids = database.tokenStatsDao().getAllEvents().map { it.eventId }.toSet()
                 assertEquals(2, ids.size)

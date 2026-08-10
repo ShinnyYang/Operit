@@ -3,6 +3,7 @@ package com.ai.assistance.operit.data.backup
 import android.content.Context
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.ai.assistance.operit.data.db.AppDatabase
+import com.ai.assistance.operit.data.stats.TokenStatSpool
 import com.ai.assistance.operit.util.AppLogger
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -72,13 +73,6 @@ object RoomDatabaseBackupManager {
             throw IllegalStateException("Database file not found: ${dbFile.absolutePath}")
         }
 
-        try {
-            val sqliteDb: SupportSQLiteDatabase = AppDatabase.getDatabase(context).openHelper.writableDatabase
-            sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
-        } catch (e: Exception) {
-            AppLogger.w(TAG, "wal_checkpoint failed", e)
-        }
-
         val operitDir = OperitBackupDirs.roomDbDir()
 
         val targetFile = File(operitDir, "${AUTO_BACKUP_FILE_PREFIX}${day}.zip")
@@ -88,14 +82,26 @@ object RoomDatabaseBackupManager {
             tmpFile.delete()
         }
 
-        val walFile = File(dbFile.absolutePath + "-wal")
-        val shmFile = File(dbFile.absolutePath + "-shm")
+        // P1 终审：排他快照屏障——先排空 spool（已 fsync 未入 Room 的统计事件全部进入
+        // Room），再进入排他状态执行 checkpoint + 打包，备份期间没有新的 insert 注册，
+        // 数据库备份不会漏掉仍在 spool 中的统计事件；屏障失败明确抛错。
+        TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = true) {
+            try {
+                val sqliteDb: SupportSQLiteDatabase = AppDatabase.getDatabase(context).openHelper.writableDatabase
+                sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "wal_checkpoint failed", e)
+            }
 
-        writeZip(tmpFile, mapOf(
-            DB_NAME to dbFile,
-            "${DB_NAME}-wal" to walFile,
-            "${DB_NAME}-shm" to shmFile
-        ))
+            val walFile = File(dbFile.absolutePath + "-wal")
+            val shmFile = File(dbFile.absolutePath + "-shm")
+
+            writeZip(tmpFile, mapOf(
+                DB_NAME to dbFile,
+                "${DB_NAME}-wal" to walFile,
+                "${DB_NAME}-shm" to shmFile
+            ))
+        }
 
         if (targetFile.exists()) {
             targetFile.delete()
@@ -114,13 +120,6 @@ object RoomDatabaseBackupManager {
             throw IllegalStateException("Database file not found: ${dbFile.absolutePath}")
         }
 
-        try {
-            val sqliteDb: SupportSQLiteDatabase = AppDatabase.getDatabase(context).openHelper.writableDatabase
-            sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
-        } catch (e: Exception) {
-            AppLogger.w(TAG, "wal_checkpoint failed", e)
-        }
-
         val operitDir = OperitBackupDirs.roomDbDir()
 
         val timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss"))
@@ -131,14 +130,26 @@ object RoomDatabaseBackupManager {
             tmpFile.delete()
         }
 
-        val walFile = File(dbFile.absolutePath + "-wal")
-        val shmFile = File(dbFile.absolutePath + "-shm")
+        // P1 终审：排他快照屏障——先排空 spool（已 fsync 未入 Room 的统计事件全部进入
+        // Room），再进入排他状态执行 checkpoint + 打包，备份期间没有新的 insert 注册，
+        // 数据库备份不会漏掉仍在 spool 中的统计事件；屏障失败明确抛错。
+        TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = true) {
+            try {
+                val sqliteDb: SupportSQLiteDatabase = AppDatabase.getDatabase(context).openHelper.writableDatabase
+                sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "wal_checkpoint failed", e)
+            }
 
-        writeZip(tmpFile, mapOf(
-            DB_NAME to dbFile,
-            "${DB_NAME}-wal" to walFile,
-            "${DB_NAME}-shm" to shmFile
-        ))
+            val walFile = File(dbFile.absolutePath + "-wal")
+            val shmFile = File(dbFile.absolutePath + "-shm")
+
+            writeZip(tmpFile, mapOf(
+                DB_NAME to dbFile,
+                "${DB_NAME}-wal" to walFile,
+                "${DB_NAME}-shm" to shmFile
+            ))
+        }
 
         if (targetFile.exists()) {
             targetFile.delete()

@@ -95,6 +95,9 @@ object TokenStatsStartupCoordinator {
                 if (migrated != null) migrated(context)
                 else TokenBaselineImportRunner.ensureMigratedStrict(context)
             if (!migrationReady) return false
+            // 审计 P1：崩溃遗留的恢复 REPLACING 标记必须在任何 spool replay 之前消费
+            // （清理旧 spool + 删除标记）；失败即初始化失败，绝不带不确定状态开始 replay。
+            TokenStatSpool.consumeAbandonedRestoreIfAny(context)
             val restore = consumePendingRestoreStep
             val restoreReady =
                 if (restore != null) restore(context)

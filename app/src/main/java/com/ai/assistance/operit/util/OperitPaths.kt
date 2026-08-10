@@ -24,8 +24,17 @@ object OperitPaths {
     const val MEDIA_POOL_DIR_NAME = "media_pool"
     const val SKILL_REPO_ZIP_POOL_DIR_NAME = "skill_repo_zip_pool"
 
+    /**
+     * JVM 单元测试注入点：覆盖 [Environment.getExternalStoragePublicDirectory]（纯 JVM
+     * 无该桩，且 thread-local 的 mockStatic 无法覆盖 Dispatchers.IO 线程）。测试设置、
+     * tearDown 置回 null。
+     */
+    @Volatile
+    internal var downloadsDirOverrideForTest: File? = null
+
     fun downloadsDir(): File {
-        return Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        return downloadsDirOverrideForTest
+            ?: Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
     }
 
     fun operitRootDir(): File {

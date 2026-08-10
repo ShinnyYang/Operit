@@ -31,12 +31,18 @@ import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException as JavaTimeoutException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
 
-/** A successful model call cannot hide loss of its accepted usage event. */
+/**
+ * 统计持久化故障标记（P1-2）：只在两条路径出现——
+ * - 模型已失败/取消的收尾中作为原异常的 suppressed 保留（观测性，不覆盖主异常）；
+ * - 恢复替换后 [newRequest] 对同进程新请求的明确拒绝（恢复语义）。
+ * 成功的模型结果绝不被它改写：成功路径的统计故障只记日志并返回 [RecordOutcome.LOST]。
+ */
 class TokenStatsPersistenceException(message: String, cause: Throwable? = null) :
     java.io.IOException(message, cause)
 
@@ -59,8 +65,10 @@ class TokenStatsPersistenceException(message: String, cause: Throwable? = null) 
  *   链中的 timeout 信号，避免 UserCancellationException(cause=InterruptedIOException)
  *   被误判为 TIMEOUT。
  * - 请求收尾同步解析价格并 fsync 完整事件到 TokenStatSpool，后台 writer 只做 Room
- *   insert。价格读取失败写 UNKNOWN；磁盘 append 失败会使成功调用明确失败。模型本身
- *   已失败/取消时，持久化故障作为 suppressed 异常保留，不覆盖原异常。
+ *   insert。价格读取失败写 UNKNOWN。统计收尾全程 fail-open（P1-2）：任何持久化
+ *   故障只记录健康日志并返回 [RecordOutcome.LOST]，绝不改写成功的模型结果；模型
+ *   本身已失败/取消时，统计故障作为 suppressed 异常保留在原异常上，主异常仍是
+ *   模型异常。
  * - 调用者 usage observer（外部回调）与 provider 业务隔离：非取消异常只记录日志，
  *   不改变账本/请求结果；取消遵循协程取消语义向上传播。
  */
@@ -143,12 +151,10 @@ class TokenTrackingAIService(
             request.finish(
                 result.exceptionOrNull()?.let { classify(it) } ?: TokenStatStatus.COMPLETED
             )
-            val persistenceFailure = persistAndCapture(appContext, request, result.exceptionOrNull())
-            when {
-                result.isFailure -> result
-                persistenceFailure != null -> Result.failure(persistenceFailure)
-                else -> result
-            }
+            // P1-2：统计收尾 fail-open——持久化故障只作为模型失败的 suppressed 保留，
+            // 绝不把连接测试的成功结果改写为失败（模型失败路径保持主异常不变）。
+            persistAndCapture(appContext, request, result.exceptionOrNull())
+            result
         } catch (e: CancellationException) {
             request.finish(TokenStatStatus.CANCELLED)
             persistAndCapture(appContext, request, e)
@@ -194,13 +200,29 @@ class TokenTrackingAIService(
         // 分组要么看见该身份（写 IDENTITY tombstone，删除前接受的事件被跳过），要么请求
         // 拿到 ≥ tombstone 的新 generation（删除后请求正常入账）。首次请求的身份绝不可能
         // 绕过分组删除 tombstone 复活旧事件。
+        // P1-2：统计数据库/身份不可用时**降级跟踪**——模型请求照常开始。降级上下文仍带
+        // 完整 eventId/时间/usage，收尾 append 走 spool；身份由排空 INSERT IGNORE 补齐
+        // （故障瞬时则事件照常落账）。acceptedGeneration 取 0 是保守方向：若期间发生过
+        // reset，事件只会被 tombstone 跳过（不复活），绝不可能绕过 reset 入账。
         val acceptedGeneration =
-            TokenStatsLedger.ensureIdentityAndCaptureGeneration(
-                appContext,
-                configId,
-                provider,
-                model,
-            )
+            try {
+                TokenStatsLedger.ensureIdentityAndCaptureGeneration(
+                    appContext,
+                    configId,
+                    provider,
+                    model,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e(
+                    TAG,
+                    "统计身份/代次读取失败，本次请求降级跟踪（不影响模型调用）: " +
+                        "configId=$configId, provider=$provider, model=$model",
+                    e,
+                )
+                0L
+            }
         return TokenStatRequestContext(
             eventId = "evt_${UUID.randomUUID().toString().replace("-", "")}",
             category = category ?: TokenStatCategory.OTHER,
@@ -261,6 +283,7 @@ class TokenTrackingAIService(
                 throw t
             }
             request.finish(TokenStatStatus.COMPLETED)
+            // P1-2 fail-open：统计收尾失败只记日志返回 LOST，绝不上抛改写成功结果。
             recordSafely(appContext, request)
         }
     }
@@ -293,6 +316,7 @@ class TokenTrackingAIService(
                 throw t
             }
             request.finish(TokenStatStatus.COMPLETED)
+            // P1-2 fail-open：统计收尾失败只记日志返回 LOST，绝不上抛改写成功结果。
             recordSafely(appContext, request)
         }
     }
@@ -303,19 +327,32 @@ class TokenTrackingAIService(
         /** 单次统计落账的有界等待时长；测试可缩短以验证超时只日志不阻塞业务。 */
         internal var recordTimeoutMs: Long = 5_000L
 
+        /** 测试注入缝：recordSafely 进入 IO 收尾上下文后最先调用（P1-3：验证收尾的
+         *  同步文件 I/O / Future.get() 不跑在调用方 Main 线程）。 */
+        internal var recordIoThreadProbeForTest: (() -> Unit)? = null
+
         /**
-         * 单次落账结果（评审 P1-1/P1-4：进程死亡边界必须向调用方暴露统计失败
-         * 状态，不能伪装已记录）：
-         * [DURABLE] means the complete event has been fsynced. Non-durable outcomes throw.
+         * 单次落账结果：
+         * - [DURABLE] means the complete event has been fsynced；
+         * - [LOST] 表示统计收尾失败（磁盘/容量/恢复 fence 拒绝等），事件未持久化；已记录
+         *   健康日志，调用方绝不得改写模型结果（P1-2 fail-open）。
          */
         internal enum class RecordOutcome {
             DURABLE,
+            LOST,
         }
 
         /**
-         * 可靠、独立、持久落账（companion 版本，供嵌套流类使用）：
+         * 统计收尾（companion 版本，供嵌套流类使用）：
          * - 在请求收尾边界有界解析并冻结价格，随后同步 fsync 完整事件；
-         * - 价格超时/失败形成 UNKNOWN 事件，append 失败抛明确持久化故障；
+         * - 价格超时/失败形成 UNKNOWN 事件；
+         * - 收尾整体运行在 [Dispatchers.IO]（P1-3）：[prepareLineBounded] 的
+         *   [FutureTask.get] 等待与 [TokenStatSpool.append] 的 FileOutputStream+fsync
+         *   绝不阻塞调用方（Main）线程；[TokenStatSpool.awaitRoomVisibility] 是纯挂起
+         *   等待（内部 withTimeoutOrNull 有界），在 IO 上执行无碍；
+         * - **fail-open（P1-2）**：任何持久化故障只记录健康日志并返回 [RecordOutcome.LOST]，
+         *   绝不抛出——成功的模型结果绝不被统计收尾改写为失败；模型已失败的路径由
+         *   [persistAndCapture] 把 LOST 转为原始异常的 suppressed。
          * - [recordTimeoutMs] 只等待可选的 Room 可见性，不参与 durable 判定；
          * - 进程重启后由 OperitApplication 主动 [com.ai.assistance.operit.data.stats.TokenStatSpool.replay]
          *   重放（幂等 eventId IGNORE）。
@@ -323,34 +360,49 @@ class TokenTrackingAIService(
         internal suspend fun recordSafely(
             appContext: Context,
             request: TokenStatRequestContext,
-        ): RecordOutcome {
-            return withContext(NonCancellable) {
-                val baseJson = request.toSpoolBaseJson()
-                val line =
-                    try {
-                        prepareLineBounded(appContext, request)
-                    } catch (e: JavaTimeoutException) {
-                        TokenStatsLedger.prepareUnresolvedEventLine(
-                            request,
-                            baseJson,
-                            "pricing_read_timeout",
+        ): RecordOutcome =
+            withContext(Dispatchers.IO + NonCancellable) {
+                recordIoThreadProbeForTest?.invoke()
+                try {
+                    val baseJson = request.toSpoolBaseJson()
+                    val line =
+                        try {
+                            prepareLineBounded(appContext, request)
+                        } catch (e: JavaTimeoutException) {
+                            TokenStatsLedger.prepareUnresolvedEventLine(
+                                request,
+                                baseJson,
+                                "pricing_read_timeout",
+                            )
+                        } catch (e: Exception) {
+                            TokenStatsLedger.prepareUnresolvedEventLine(
+                                request,
+                                baseJson,
+                                "pricing_read_failed:${e.javaClass.simpleName}",
+                            )
+                        }
+                    if (!TokenStatSpool.append(appContext, line, request.eventId, request.sessionEpoch)) {
+                        AppLogger.e(
+                            TAG,
+                            "统计事件未能持久化（不影响模型结果）: eventId=${request.eventId}, " +
+                                "category=${request.category}, status=${request.status}",
                         )
-                    } catch (e: Exception) {
-                        TokenStatsLedger.prepareUnresolvedEventLine(
-                            request,
-                            baseJson,
-                            "pricing_read_failed:${e.javaClass.simpleName}",
-                        )
+                        return@withContext RecordOutcome.LOST
                     }
-                if (!TokenStatSpool.append(appContext, line, request.eventId, request.sessionEpoch)) {
-                    throw TokenStatsPersistenceException(
-                        "Token statistics could not be durably persisted for ${request.eventId}",
+                    TokenStatSpool.awaitRoomVisibility(request.eventId, recordTimeoutMs)
+                    RecordOutcome.DURABLE
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    AppLogger.e(
+                        TAG,
+                        "统计收尾失败（不影响模型结果）: eventId=${request.eventId}, " +
+                            "category=${request.category}, status=${request.status}",
+                        e,
                     )
+                    RecordOutcome.LOST
                 }
-                TokenStatSpool.awaitRoomVisibility(request.eventId, recordTimeoutMs)
-                RecordOutcome.DURABLE
             }
-        }
 
         /**
          * Bounded pricing worker (P2-1): one daemon thread plus one queue slot. A wedged price
@@ -409,19 +461,25 @@ class TokenTrackingAIService(
             }
         }
 
-        /** Keep the model error primary; persistence failure remains observable as suppressed. */
+        /**
+         * 模型失败路径的收尾：统计故障（[RecordOutcome.LOST]）作为 suppressed 附加在
+         * 原始异常上，原始模型异常仍为主异常（P1-2：模型失败侧保持 fail-open 语义不变）。
+         */
         private suspend fun persistAndCapture(
             appContext: Context,
             request: TokenStatRequestContext,
             original: Throwable?,
-        ): TokenStatsPersistenceException? =
-            try {
-                recordSafely(appContext, request)
-                null
-            } catch (e: TokenStatsPersistenceException) {
-                original?.addSuppressed(e)
-                e
+        ): TokenStatsPersistenceException? {
+            if (recordSafely(appContext, request) == RecordOutcome.LOST) {
+                val persistence =
+                    TokenStatsPersistenceException(
+                        "Token statistics could not be durably persisted for ${request.eventId}",
+                    )
+                original?.addSuppressed(persistence)
+                return persistence
             }
+            return null
+        }
 
         /**
          * 结束状态分类。明确的非超时取消（用户取消/协程取消）优先：其 cause 链里

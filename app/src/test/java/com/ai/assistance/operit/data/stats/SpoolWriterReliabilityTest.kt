@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.ai.assistance.operit.api.chat.llmprovider.TokenStatsPersistenceException
 import com.ai.assistance.operit.api.chat.llmprovider.TokenTrackingAIService
+import com.ai.assistance.operit.api.chat.llmprovider.TokenTrackingAIService.Companion.RecordOutcome
 import com.ai.assistance.operit.data.dao.TokenStatsDao
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.model.BillingMode
@@ -75,12 +76,12 @@ internal class SpoolWriterReliabilityTest : TokenStatReliabilityTestBase() {
     fun `more than two thousand append failures never return durable`() = runBlocking {
         File(root, TokenStatSpool.SPOOL_DIR_NAME).writeText("not a directory")
         Mockito.mockStatic(AppLogger::class.java).use {
+            // P1-2：统计收尾 fail-open——append 失败明确返回 LOST（绝不抛出、绝不伪 durable）
             repeat(2_001) { index ->
-                try {
-                    TokenTrackingAIService.recordSafely(context, request("disk-failure-$index"))
-                    fail("append failure must throw")
-                } catch (_: TokenStatsPersistenceException) {
-                }
+                assertEquals(
+                    RecordOutcome.LOST,
+                    TokenTrackingAIService.recordSafely(context, request("disk-failure-$index")),
+                )
             }
         }
         assertEquals(0, TokenStatSpool.emergencyQueueSizeForTest())
