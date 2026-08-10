@@ -304,8 +304,6 @@ fun ChatBackupSettingsScreen() {
     }
     LaunchedEffect(Unit) { refreshQuarantineInfo() }
     }
-    var pendingOfficialOperitMigrationUri by remember { mutableStateOf<Uri?>(null) }
-    var showOfficialOperitMigrationConfirmDialog by remember { mutableStateOf(false) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showMemoryImportStrategyDialog by remember { mutableStateOf(false) }
     var pendingMemoryImportUri by remember { mutableStateOf<Uri?>(null) }
@@ -1828,10 +1826,6 @@ fun ChatBackupSettingsScreen() {
 
     if (showRawSnapshotRestoreConfirmDialog) {
         val targetName = pendingRawSnapshotRestoreUri?.lastPathSegment ?: "-"
-        val replacingDatabasesProgressText =
-            stringResource(R.string.backup_raw_snapshot_progress_replacing_databases)
-        val finalizingProgressText =
-            stringResource(R.string.backup_raw_snapshot_progress_finalizing)
         val preparingProgressText =
             stringResource(R.string.backup_raw_snapshot_progress_preparing)
         val readingZipProgressText =

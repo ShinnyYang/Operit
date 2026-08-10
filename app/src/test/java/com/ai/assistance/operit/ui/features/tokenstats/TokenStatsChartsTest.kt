@@ -80,9 +80,9 @@ class TokenStatsChartsTest {
     }
 
     @Test
-    fun `token trend uses Rainytoken palette`() {
-        assertEquals(Color(0xFFFFD1DC), RainyTokenCacheRead)
-        assertEquals(Color(0xFFFF85A2), RainyTokenUncachedInput)
-        assertEquals(Color(0xFFE91E63), RainyTokenOutput)
+    fun `token trend uses token stack palette`() {
+        assertEquals(Color(0xFFFFD1DC), TokenStackCacheRead)
+        assertEquals(Color(0xFFFF85A2), TokenStackUncachedInput)
+        assertEquals(Color(0xFFE91E63), TokenStackOutput)
     }
 }
