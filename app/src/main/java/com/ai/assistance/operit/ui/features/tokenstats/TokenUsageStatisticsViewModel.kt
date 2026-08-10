@@ -178,7 +178,7 @@ class TokenUsageStatisticsViewModel(
     private val _actionMessage = MutableStateFlow<TokenStatsActionMessage?>(null)
     val actionMessage: StateFlow<TokenStatsActionMessage?> = _actionMessage.asStateFlow()
 
-    /** 丢弃过期加载结果（与 Rainytoken 参考实现同思路的 generation 防竞态）。 */
+    /** 丢弃过期加载结果（generation 防竞态）。 */
     private var loadGeneration = 0
 
     /** 当前加载任务：新一轮 [load] 先取消旧任务，旧任务不得写 state（P1-4）。 */

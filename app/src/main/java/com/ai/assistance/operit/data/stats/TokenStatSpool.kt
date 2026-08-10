@@ -2,7 +2,6 @@ package com.ai.assistance.operit.data.stats
 
 import android.content.Context
 import com.ai.assistance.operit.api.chat.llmprovider.TokenStatsPersistenceException
-import com.ai.assistance.operit.data.backup.AtomicRestoreMarkerStore
 import com.ai.assistance.operit.data.dao.TokenStatsDao
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.util.AppLogger
@@ -698,7 +697,7 @@ internal object TokenStatSpool {
     )
 
     /**
-     * 崩溃安全读取摘要（P1-1）：经 [AtomicRestoreMarkerStore] 恢复旧/新完整值后统计，
+     * 崩溃安全读取摘要（P1-1）：经 [TokenStatMetaStore] 恢复旧/新完整值后统计，
      * 任意中断后得到的都是完整旧或完整新内容，绝不截断。公开入口持 [lifecycleMutex]
      * （sidecar 恢复与容量扫描互斥，P1-1），内部调用使用 [quarantineSummaryInfoLocked]。
      * 读取失败（非测试注入的异常路径）返回 null：纯展示信息，不参与容量/维护判定。
@@ -713,7 +712,7 @@ internal object TokenStatSpool {
     /**
      * Copy evidence (and the bounded over-cap summary and tombstone manifest) for support/export.
      *  Deletion still requires a separate acknowledged call. File I/O always runs on [ioDispatcher] (P2-2).
-     *  摘要/manifest 先经 [AtomicRestoreMarkerStore.read] 恢复 canonical（P2-2：崩溃窗口里
+     *  摘要/manifest 先经 [TokenStatMetaStore.read] 恢复 canonical（P2-2：崩溃窗口里
      *  canonical 可能缺失、内容只在 `.new`/`.bak` sidecar），导出内容绝不遗漏元数据；
      *  sidecar 本身不直接导出。受管失败段（P1-3）以原文件名导出并附 manifest 供身份核对。
      */
@@ -1290,7 +1289,7 @@ internal object TokenStatSpool {
      * 瞬时增量 = [METADATA_COPY_COUNT] × contentBytes（canonical/.new/.bak/tmp 四个槽位可能
      * 短暂同时各持一份完整副本）。投影“实际 [totalSpoolBytes]（递归含 ack trash）+ 该增量”
      * 仍 ≤ 总上限才允许发布，否则调用方有界失败且不写任何正式文件（sidecar 也不写）。spool
-     * 内所有元数据读写都持 lifecycleMutex，任意时刻至多一个 AtomicRestoreMarkerStore 写进行中
+     * 内所有元数据读写都持 lifecycleMutex，任意时刻至多一个 TokenStatMetaStore 写进行中
      * （Atomic tmp 唯一文件并发数 = 1），因此按单写者投影即可证明全部实际字节恒 ≤ 总上限。
      */
     internal fun metadataWriteBudgetExceeded(context: Context, contentBytes: Int): Boolean {

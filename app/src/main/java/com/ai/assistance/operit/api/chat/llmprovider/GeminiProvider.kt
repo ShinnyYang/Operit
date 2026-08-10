@@ -1914,15 +1914,9 @@ class GeminiProvider(
                 val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
 
                 val hasServerUsage =
-                    usageMetadata.has("promptTokenCount") ||
-                        usageMetadata.has("cachedContentTokenCount") ||
-                        usageMetadata.has("candidatesTokenCount")
+                    promptTokenCount > 0 || cachedContentTokenCount > 0 || candidatesTokenCount > 0
                 if (hasServerUsage) {
                     // 更新实际的token计数
-                    val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0).saturateToInt()
-                    val cachedContentTokenCount =
-                        usageMetadata.optLong("cachedContentTokenCount", 0).saturateToInt()
-                    val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0).saturateToInt()
                     val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
                     tokenCacheManager.updateActualTokens(actualInputTokens, cachedContentTokenCount)
                     tokenCacheManager.setOutputTokens(candidatesTokenCount)
@@ -2009,5 +2003,3 @@ class GeminiProvider(
     }
 }
 
-/** 旧 UI 计数边界（P2-1）：Long 饱和为 Int，绝不回绕为负。 */
-private fun Long.saturateToInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()

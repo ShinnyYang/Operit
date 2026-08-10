@@ -2,7 +2,6 @@ package com.ai.assistance.operit.data.stats
 
 import android.content.Context
 import com.ai.assistance.operit.api.chat.llmprovider.TokenStatsPersistenceException
-import com.ai.assistance.operit.data.backup.AtomicRestoreMarkerStore
 import com.ai.assistance.operit.data.dao.TokenStatsDao
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.util.AppLogger
@@ -139,7 +138,7 @@ internal suspend fun TokenStatSpool.quarantineSummaryInfoLocked(
     )
 }
 internal fun TokenStatSpool.summaryStore(file: File) =
-    AtomicRestoreMarkerStore(
+    TokenStatMetaStore(
         file,
         quarantineAtomicMoveForTest ?: ::atomicMoveReplacing,
         // P1-3 终审：spool 的 summary/manifest/ack state 统一走严格目录同步——write 只有
@@ -150,10 +149,10 @@ internal fun TokenStatSpool.summaryStore(file: File) =
     )
 /**
  * 有界元数据读取（P1-2，调用方持 lifecycleMutex）：测试注入缝模拟读取失败（抛明确
- * IOException，调用方据此 fail-closed），生产路径委托 [AtomicRestoreMarkerStore.read]
+ * IOException，调用方据此 fail-closed），生产路径委托 [TokenStatMetaStore.read]
  * （崩溃安全恢复 canonical/.new/.bak/tmp 完整值）。
  */
-internal suspend fun TokenStatSpool.readMetadata(store: AtomicRestoreMarkerStore, file: File): String? {
+internal suspend fun TokenStatSpool.readMetadata(store: TokenStatMetaStore, file: File): String? {
     if (metadataReadErrorForTest?.invoke(file) == true) {
         throw IOException("statistics metadata read failed (injected): ${file.name}")
     }
@@ -330,7 +329,7 @@ internal suspend fun TokenStatSpool.disposeOverCapSegment(
 /**
  * 读取 tombstone manifest（崩溃安全恢复）得到原始行；解析交给 [parseTombstoneLine]。
  * P1-3：不设 canonical isFile 前置——canonical 缺失而内容只在 `.new`/`.bak` sidecar
- * 时也必须先经 [AtomicRestoreMarkerStore.read] 恢复完整值再返回；否则仅 sidecar 存在
+ * 时也必须先经 [TokenStatMetaStore.read] 恢复完整值再返回；否则仅 sidecar 存在
  * 时 info/ack/容量/扫描会误判为空。
  * P1-2 fail-closed：读取失败必须抛明确 [IOException]（不返回 empty）——调用方（append
  * 容量检查、scanner、快照、维护）据此中止并退避；返回空只允许出现在“manifest 不存在

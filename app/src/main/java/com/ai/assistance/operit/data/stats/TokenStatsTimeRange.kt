@@ -11,7 +11,7 @@ import java.time.ZonedDateTime
  * - 今天/昨天/7d/30d/本月/上月为**自然日/自然月**：按设备当前时区（[ZoneId]）
  *   的日历边界计算，禁止用固定毫秒加减替代日历运算（DST 与跨月自动正确）。
  * - 7d = 今天往前 7 个自然日（含今天）；30d = 今天往前 30 个自然日（含今天），
- *   与 Rainytoken 参考实现一致。
+ *   与 token 统计参考实现一致。
  * - 自定义范围显式传 [TokenStatsTimeRanges.customRange]。
  *
  * “首次进入自动回退”只选择最近有实际数据的前缀（5h→12h→24h→7d→30d，见

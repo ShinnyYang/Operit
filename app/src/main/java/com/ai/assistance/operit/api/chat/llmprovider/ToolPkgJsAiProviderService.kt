@@ -527,9 +527,6 @@ internal class ToolPkgJsAiProviderService(
         return null
     }
 
-    /** 旧 UI 计数边界（评审 P2-1）：Long 饱和为 Int，绝不回绕为负。 */
-    private fun Long.saturateToInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
-
     private fun ensureNoFatalError(decoded: ProviderHookValue) {
         when (decoded) {
             is ProviderHookValue.ObjectValue -> {

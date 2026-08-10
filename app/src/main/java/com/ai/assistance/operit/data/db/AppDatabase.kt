@@ -430,8 +430,6 @@ abstract class AppDatabase : RoomDatabase() {
                     } catch (_: Exception) {
                         // 表已存在（幂等重放），忽略
                     }
-                }
-            }
                     try {
                         db.execSQL(
                             """
@@ -489,6 +487,8 @@ abstract class AppDatabase : RoomDatabase() {
                     } catch (_: Exception) {
                         // 索引已存在（幂等重放），忽略
                     }
+                }
+            }
 
 
 

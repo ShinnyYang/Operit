@@ -233,9 +233,6 @@ class ClaudeProvider(
         )
     }
 
-    /** 旧 UI 计数边界（P2-1）：Long 饱和为 Int，绝不回绕为负。 */
-    private fun Long.saturateToInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
-
     private suspend fun applyAnthropicUsage(
         usage: JSONObject?,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,

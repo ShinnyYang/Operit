@@ -739,7 +739,7 @@ private fun TokenActivityHeatmap(
             Canvas(
                 modifier = Modifier
                     .size(width, canvasHeight)
-                    // 顺序与 RainyToken 一致：查看/滚动仲裁必须先于点击检测收到事件。
+                    // 顺序：查看/滚动仲裁必须先于点击检测收到事件。
                     .pointerInput(state.viewMode, grid, data.weekly, stepPx, blockPx) {
                         val viewSpeedThresholdPxPerMs =
                             with(density) { HEATMAP_VIEW_SPEED_DP_PER_S.dp.toPx() } / 1_000f

@@ -64,7 +64,7 @@ import kotlin.math.pow
  *
  * 交互契约（避免与页面滚动互抢）：
  * - 点击与**水平拖动**才选中/切换桶详情（[detectTapGestures] +
- *   [detectHorizontalDragGestures]，与 Rainytoken 参考实现一致）；
+ *   [detectHorizontalDragGestures]）；
  * - 垂直手势不消费，LazyColumn 纵向滚动不受影响；
  * - 桶详情以图表下方的 tooltip 卡片呈现（无悬浮层，不遮挡内容）。
  *
