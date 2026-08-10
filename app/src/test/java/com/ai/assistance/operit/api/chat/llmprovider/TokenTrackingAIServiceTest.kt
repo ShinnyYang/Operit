@@ -153,9 +153,9 @@ class TokenTrackingAIServiceTest {
         /** cancelStreaming 的行为（模拟本地 provider 的 isCancelled 通知）。 */
         var cancelHandler: (() -> Unit)? = null
 
-        override val inputTokenCount: Int = 100
-        override val cachedInputTokenCount: Int = 0
-        override val outputTokenCount: Int = 50
+        override val inputTokenCount: Long = 100L
+        override val cachedInputTokenCount: Long = 0L
+        override val outputTokenCount: Long = 50L
         override val providerModel: String = "DEEPSEEK:deepseek-chat"
 
         override fun resetTokenCounts() {}
@@ -174,7 +174,7 @@ class TokenTrackingAIServiceTest {
             stream: Boolean,
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
-            onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+            onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             onUsageReported: (suspend (ProviderUsageSnapshot, Int) -> Unit)?,
             onNonFatalError: suspend (error: String) -> Unit,
             enableRetry: Boolean,
@@ -199,7 +199,7 @@ class TokenTrackingAIServiceTest {
         override suspend fun calculateInputTokens(
             chatHistory: List<PromptTurn>,
             availableTools: List<ToolPrompt>?,
-        ): Int = 100
+        ): Long = 100L
     }
 
     private fun tracked(fake: FakeAiService): TokenTrackingAIService =

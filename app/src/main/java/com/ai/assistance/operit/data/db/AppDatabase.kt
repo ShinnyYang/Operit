@@ -246,10 +246,25 @@ abstract class AppDatabase : RoomDatabase() {
          * 事件表通过外键级联到身份表；baseline 冻结价格语义见
          * [com.ai.assistance.operit.data.stats.TokenBaselineMigrator]。
          */
-        private val MIGRATION_20_21 =
+        internal val MIGRATION_20_21 =
             object : Migration(20, 21) {
                 override fun migrate(db: SupportSQLiteDatabase) {
-                    db.execSQL(
+                    runSql { db.execSQL(it) }
+                }
+
+                override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+                    runSql { sql ->
+                        val stmt = connection.prepare(sql)
+                        try {
+                            stmt.step()
+                        } finally {
+                            stmt.close()
+                        }
+                    }
+                }
+
+                private fun runSql(exec: (String) -> Unit) {
+                    exec(
                         """
                         CREATE TABLE IF NOT EXISTS `token_stat_identities` (
                             `identityId` TEXT NOT NULL,
@@ -261,16 +276,16 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE UNIQUE INDEX IF NOT EXISTS " +
                             "`index_token_stat_identities_configId_provider_model` " +
                             "ON `token_stat_identities` (`configId`, `provider`, `model`)"
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE INDEX IF NOT EXISTS `index_token_stat_identities_displayModelId` " +
                             "ON `token_stat_identities` (`displayModelId`)"
                     )
-                    db.execSQL(
+                    exec(
                         """
                         CREATE TABLE IF NOT EXISTS `token_stat_display_models` (
                             `displayModelId` TEXT NOT NULL,
@@ -280,12 +295,12 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE UNIQUE INDEX IF NOT EXISTS " +
                             "`index_token_stat_display_models_normalizedModel` " +
                             "ON `token_stat_display_models` (`normalizedModel`)"
                     )
-                    db.execSQL(
+                    exec(
                         """
                         CREATE TABLE IF NOT EXISTS `token_stat_price_overrides` (
                             `rowId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -303,12 +318,12 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE UNIQUE INDEX IF NOT EXISTS " +
                             "`index_token_stat_price_overrides_scope_provider_model_configId` " +
                             "ON `token_stat_price_overrides` (`scope`, `provider`, `model`, `configId`)"
                     )
-                    db.execSQL(
+                    exec(
                         """
                         CREATE TABLE IF NOT EXISTS `token_stat_events` (
                             `eventId` TEXT NOT NULL,
@@ -340,20 +355,20 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE INDEX IF NOT EXISTS " +
                             "`index_token_stat_events_statIdentityId_startedAtMs` " +
                             "ON `token_stat_events` (`statIdentityId`, `startedAtMs`)"
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE INDEX IF NOT EXISTS `index_token_stat_events_startedAtMs` " +
                             "ON `token_stat_events` (`startedAtMs`)"
                     )
-                    db.execSQL(
+                    exec(
                         "CREATE INDEX IF NOT EXISTS `index_token_stat_events_category_startedAtMs` " +
                             "ON `token_stat_events` (`category`, `startedAtMs`)"
                     )
-                    db.execSQL(
+                    exec(
                         """
                         CREATE TABLE IF NOT EXISTS `token_stat_baselines` (
                             `identityId` TEXT NOT NULL,
@@ -386,7 +401,7 @@ abstract class AppDatabase : RoomDatabase() {
                     // 另新增 `token_stat_reset_cutoffs` 表（reset tombstone）。全部为纯新增，
                     // 幂等可重入（重复执行时列/表已存在即跳过）。
                     try {
-                        db.execSQL(
+                        exec(
                             "ALTER TABLE `token_stat_events` ADD COLUMN " +
                                 "`acceptedGeneration` INTEGER NOT NULL DEFAULT 0"
                         )
@@ -394,14 +409,14 @@ abstract class AppDatabase : RoomDatabase() {
                         // 列已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             "ALTER TABLE `token_stat_events` ADD COLUMN `totalInputTokens` INTEGER"
                         )
                     } catch (_: Exception) {
                         // 列已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             "ALTER TABLE `token_stat_events` ADD COLUMN " +
                                 "`cacheWriteSeparateBilling` INTEGER"
                         )
@@ -409,14 +424,14 @@ abstract class AppDatabase : RoomDatabase() {
                         // 列已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             "ALTER TABLE `token_stat_events` ADD COLUMN `diagnosticsJson` TEXT"
                         )
                     } catch (_: Exception) {
                         // 列已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             """
                             CREATE TABLE IF NOT EXISTS `token_stat_reset_cutoffs` (
                                 `kind` TEXT NOT NULL,
@@ -431,7 +446,7 @@ abstract class AppDatabase : RoomDatabase() {
                         // 表已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             """
                             CREATE TABLE IF NOT EXISTS `token_stat_range_cutoffs` (
                                 `generation` INTEGER NOT NULL,
@@ -445,7 +460,7 @@ abstract class AppDatabase : RoomDatabase() {
                         // 表已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             """
                             CREATE TABLE IF NOT EXISTS `token_stat_cleanup_operations` (
                                 `operationId` TEXT NOT NULL,
@@ -462,7 +477,7 @@ abstract class AppDatabase : RoomDatabase() {
                         // 表已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             """
                             CREATE TABLE IF NOT EXISTS `token_stat_cleanup_items` (
                                 `operationId` TEXT NOT NULL,
@@ -480,7 +495,7 @@ abstract class AppDatabase : RoomDatabase() {
                         // 表已存在（幂等重放），忽略
                     }
                     try {
-                        db.execSQL(
+                        exec(
                             "CREATE INDEX IF NOT EXISTS `index_token_stat_cleanup_items_operationId` " +
                                 "ON `token_stat_cleanup_items` (`operationId`)"
                         )

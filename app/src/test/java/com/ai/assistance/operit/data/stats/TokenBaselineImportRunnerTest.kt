@@ -58,6 +58,7 @@ class TokenBaselineImportRunnerTest {
         clearApiDataStoreSingleton()
         TokenBaselineImportRunner.databaseProvider = null
         injectApiPreferences(null)
+        ApiPreferences.toolPkgProviderNamesProvider = { emptyList() }
     }
 
     @After
@@ -408,8 +409,6 @@ class TokenBaselineImportRunnerTest {
         }
 
     @Test
-
-    @Test
     fun `cumulative setter growth on normal startup updates counts with frozen pricing`() =
         runBlocking {
             val dbDir = kotlin.io.path.createTempDirectory("runner-test").toFile()
@@ -705,5 +704,43 @@ class TokenBaselineImportRunnerTest {
         }
     }
 
+    // ==== P1 闭环：legacy cleanup outbox 导入 fence ====
+    private val providerA = "DEEPSEEK:deepseek-chat"
+    private val identityIdA = TokenStatIdentityResolver.identityId("", "DEEPSEEK", "deepseek-chat")
+    private val identityIdB = TokenStatIdentityResolver.identityId("", "OPENAI", "gpt-4o")
 
+    private suspend fun seedLegacyIdentity(
+        dao: com.ai.assistance.operit.data.dao.TokenStatsDao,
+        identityId: String,
+        provider: String,
+        model: String,
+        displayModelId: String,
+    ) {
+        dao.insertIdentityIfAbsent(
+            com.ai.assistance.operit.data.model.TokenStatIdentityEntity(
+                identityId = identityId,
+                configId = "",
+                provider = provider,
+                model = model,
+                displayModelId = displayModelId,
+            )
+        )
+    }
+
+    private fun legacyBaseline(identityId: String): com.ai.assistance.operit.data.model.TokenStatBaselineEntity =
+        com.ai.assistance.operit.data.model.TokenStatBaselineEntity(
+            identityId = identityId,
+            inputTokens = 100L,
+            cachedInputTokens = 0L,
+            outputTokens = 50L,
+            requestCount = 1L,
+            pricingCurrency = "USD",
+            costInPricingCurrency = 0.0002,
+            isEstimated = true,
+            fingerprint = "fp-$identityId",
+            importedAtMs = 1L,
+            frozenBillingMode = BillingMode.TOKEN.name,
+            frozenInputPricePerMillion = 1.0,
+            frozenOutputPricePerMillion = 2.0,
+        )
 }

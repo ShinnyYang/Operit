@@ -9,6 +9,7 @@ import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.model.ParameterCategory
+import com.ai.assistance.operit.data.stats.ProviderUsageNormalizer
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.ChatMarkupRegex
@@ -1410,8 +1411,9 @@ class GeminiProvider(
             streamCollector: StreamCollector<String>,
             requestId: String,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-            receivedContent: StringBuilder
+            receivedContent: StringBuilder,
             onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+            attemptNumber: Int = 1
     ) {
         AppLogger.d(TAG, "开始处理响应流")
         val responseBody = response.body ?: throw IOException(context.getString(R.string.gemini_response_empty))
@@ -1635,8 +1637,9 @@ class GeminiProvider(
             streamCollector: StreamCollector<String>,
             requestId: String,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-            receivedContent: StringBuilder
+            receivedContent: StringBuilder,
             onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+            attemptNumber: Int = 1
     ) {
         AppLogger.d(TAG, "开始处理非流式响应")
         val responseBody = response.body ?: throw IOException(context.getString(R.string.gemini_response_empty))
@@ -1682,8 +1685,9 @@ class GeminiProvider(
         context: Context,
         json: JSONObject,
         requestId: String,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ): String {
         val contentBuilder = StringBuilder()
         val searchSourcesBuilder = StringBuilder()
@@ -1914,7 +1918,9 @@ class GeminiProvider(
                 val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
 
                 val hasServerUsage =
-                    promptTokenCount > 0 || cachedContentTokenCount > 0 || candidatesTokenCount > 0
+                    usageMetadata.has("promptTokenCount") ||
+                        usageMetadata.has("cachedContentTokenCount") ||
+                        usageMetadata.has("candidatesTokenCount")
                 if (hasServerUsage) {
                     // 更新实际的token计数
                     val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
@@ -2002,4 +2008,3 @@ class GeminiProvider(
         }
     }
 }
-

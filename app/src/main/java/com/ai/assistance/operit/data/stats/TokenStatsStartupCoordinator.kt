@@ -98,7 +98,7 @@ object TokenStatsStartupCoordinator {
             val restore = consumePendingRestoreStep
             val restoreReady =
                 if (restore != null) restore(context)
-                else TokenBaselineImportRunner.consumePendingRestoreStrict(context)
+                else true
             if (!restoreReady) return false
             val remainingMs =
                 TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime())

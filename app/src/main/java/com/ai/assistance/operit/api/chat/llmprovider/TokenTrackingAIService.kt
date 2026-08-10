@@ -72,9 +72,9 @@ class TokenTrackingAIService(
 
     private val appContext: Context = context.applicationContext
 
-    override val inputTokenCount: Int get() = delegate.inputTokenCount
-    override val cachedInputTokenCount: Int get() = delegate.cachedInputTokenCount
-    override val outputTokenCount: Int get() = delegate.outputTokenCount
+    override val inputTokenCount: Long get() = delegate.inputTokenCount
+    override val cachedInputTokenCount: Long get() = delegate.cachedInputTokenCount
+    override val outputTokenCount: Long get() = delegate.outputTokenCount
     override val providerModel: String get() = delegate.providerModel
 
     override fun resetTokenCounts() = delegate.resetTokenCounts()
@@ -84,7 +84,7 @@ class TokenTrackingAIService(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?,
-    ): Int = delegate.calculateInputTokens(chatHistory, availableTools)
+    ): Long = delegate.calculateInputTokens(chatHistory, availableTools)
 
     override fun release() = delegate.release()
 
@@ -96,7 +96,7 @@ class TokenTrackingAIService(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,

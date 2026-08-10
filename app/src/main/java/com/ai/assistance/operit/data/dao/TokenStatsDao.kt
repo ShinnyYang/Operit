@@ -600,6 +600,10 @@ abstract class TokenStatsDao {
     )
     abstract suspend fun ackCleanupOperation(operationId: String): Int
 
+    /** 删除 cleanup operation（items 经外键 ON DELETE CASCADE 跟随删除）。 */
+    @Query("DELETE FROM token_stat_cleanup_operations WHERE operationId = :operationId")
+    abstract suspend fun deleteCleanupOperation(operationId: String): Int
+
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     protected abstract suspend fun insertCleanupOperation(
         operation: TokenStatCleanupOperationEntity
@@ -933,9 +937,6 @@ abstract class TokenStatsDao {
         insertEvent(event)
         return true
     }
-}
-
-
 }
 
 /**

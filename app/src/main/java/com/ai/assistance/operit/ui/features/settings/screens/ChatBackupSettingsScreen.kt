@@ -303,7 +303,6 @@ fun ChatBackupSettingsScreen() {
         }
     }
     LaunchedEffect(Unit) { refreshQuarantineInfo() }
-    }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
     var showMemoryImportStrategyDialog by remember { mutableStateOf(false) }
     var pendingMemoryImportUri by remember { mutableStateOf<Uri?>(null) }

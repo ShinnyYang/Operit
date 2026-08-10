@@ -601,7 +601,7 @@ internal class ToolPkgJsAiProviderService(
      */
     private suspend fun applyAndForwardUsage(
         decoded: ProviderHookValue,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
     ) {
         extractUsage(decoded)?.let { usage ->
@@ -634,9 +634,9 @@ internal class ToolPkgJsAiProviderService(
     }
 
     private fun applyUsage(usage: TokenUsage) {
-        currentInputTokenCount = usage.input.coerceAtLeast(0L)
-        currentCachedInputTokenCount = usage.cachedInput.coerceAtLeast(0L)
-        currentOutputTokenCount = usage.output.coerceAtLeast(0L)
+        currentInputTokenCount = (usage.input ?: 0L).coerceAtLeast(0L)
+        currentCachedInputTokenCount = (usage.cachedInput ?: 0L).coerceAtLeast(0L)
+        currentOutputTokenCount = (usage.output ?: 0L).coerceAtLeast(0L)
     }
 
     private fun extractMessageChunks(decoded: ProviderHookValue): List<String> {
@@ -685,13 +685,17 @@ internal class ToolPkgJsAiProviderService(
             entries.forEach { (key, value) -> put(key, value) }
         }
     }
-
-    private data class TokenUsage(
-        val input: Long,
-        val cachedInput: Long,
-        val output: Long
-    )
 }
+
+internal data class TokenUsage(
+    /** 可空（评审 P1-6）：缺省字段 = 未知，绝不继承全局累计计数。 */
+    val input: Long?,
+    val cachedInput: Long?,
+    val output: Long?,
+    val attempt: Int = 1,
+    /** 上报是否显式携带 attempt 字段（新协议）；false = 旧协议累计快照。 */
+    val attemptPresent: Boolean = false,
+)
 
 /**
  * ToolPkg hook 调用抽象（测试缝）：与 [PackageManager.runToolPkgMainHook] 相同的

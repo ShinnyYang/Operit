@@ -53,14 +53,14 @@ class LlamaProvider(
     private val sessionLock = Any()
     private var session: LlamaSession? = null
 
-    override val inputTokenCount: Int
-        get() = _inputTokenCount
+    override val inputTokenCount: Long
+        get() = _inputTokenCount.toLong()
 
-    override val cachedInputTokenCount: Int
-        get() = _cachedInputTokenCount
+    override val cachedInputTokenCount: Long
+        get() = _cachedInputTokenCount.toLong()
 
-    override val outputTokenCount: Int
-        get() = _outputTokenCount
+    override val outputTokenCount: Long
+        get() = _outputTokenCount.toLong()
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
@@ -139,7 +139,7 @@ class LlamaProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         return withContext(Dispatchers.IO) {
             kotlin.runCatching {
                 val s = ensureSessionLocked()
@@ -160,8 +160,8 @@ class LlamaProvider(
                     s.applyChatTemplate(roles, contents, true)
                 } ?: return@runCatching null
 
-                s.countTokens(prompt)
-            }.getOrNull() ?: 0
+                s.countTokens(prompt).toLong()
+            }.getOrNull() ?: 0L
         }
     }
 
@@ -173,7 +173,7 @@ class LlamaProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
@@ -280,7 +280,7 @@ class LlamaProvider(
 
         _inputTokenCount = kotlin.runCatching { s.countTokens(prompt) }.getOrElse { 0 }
         _outputTokenCount = 0
-        onTokensUpdated(_inputTokenCount, 0, 0)
+        onTokensUpdated(_inputTokenCount.toLong(), 0L, 0L)
 
         val requestedMaxNewTokens = modelParameters
             .find { it.name == "max_tokens" }
@@ -318,7 +318,7 @@ class LlamaProvider(
 
                         kotlin.runCatching {
                             kotlinx.coroutines.runBlocking {
-                                onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                                onTokensUpdated(_inputTokenCount.toLong(), 0L, _outputTokenCount.toLong())
                             }
                         }
 

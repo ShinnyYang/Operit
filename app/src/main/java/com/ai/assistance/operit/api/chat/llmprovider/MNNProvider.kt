@@ -74,14 +74,14 @@ class MNNProvider(
     @Volatile
     private var isCancelled = false
 
-    override val inputTokenCount: Int
-        get() = _inputTokenCount
+    override val inputTokenCount: Long
+        get() = _inputTokenCount.toLong()
 
-    override val outputTokenCount: Int
-        get() = _outputTokenCount
+    override val outputTokenCount: Long
+        get() = _outputTokenCount.toLong()
 
-    override val cachedInputTokenCount: Int
-        get() = _cachedInputTokenCount
+    override val cachedInputTokenCount: Long
+        get() = _cachedInputTokenCount.toLong()
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
@@ -602,7 +602,7 @@ class MNNProvider(
         stream: Boolean,
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
-        onTokensUpdated: suspend (input: Int, cachedInput: Int, output: Int) -> Unit,
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
@@ -667,7 +667,7 @@ class MNNProvider(
                         }
                         countTokens(buildPrompt(conversationHistory))
                     }
-            onTokensUpdated(_inputTokenCount, 0, 0)
+            onTokensUpdated(_inputTokenCount.toLong(), 0L, 0L)
 
             AppLogger.d(
                 TAG,
@@ -699,7 +699,7 @@ class MNNProvider(
 
                         kotlin.runCatching {
                             kotlinx.coroutines.runBlocking {
-                                onTokensUpdated(_inputTokenCount, 0, _outputTokenCount)
+                                onTokensUpdated(_inputTokenCount.toLong(), 0L, _outputTokenCount.toLong())
                             }
                         }
 
@@ -981,28 +981,25 @@ class MNNProvider(
     override suspend fun calculateInputTokens(
         chatHistory: List<PromptTurn>,
         availableTools: List<ToolPrompt>?
-    ): Int {
+    ): Long {
         val flattenedHistory = flattenTypedHistory(chatHistory, preserveThinkInHistory = false)
         val initResult = initModel()
         if (initResult.isFailure) {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt)
+            return countTokens(prompt).toLong()
         }
-
         val session = llmSession ?: run {
             val prompt = buildPrompt(flattenedHistory)
-            return countTokens(prompt)
+            return countTokens(prompt).toLong()
         }
-
         val modelDir = getModelDir(context, modelName)
         val maxAllTokens = cachedModelMaxAllTokens ?: readModelMaxAllTokens(modelDir).also { cachedModelMaxAllTokens = it }
-
         val maxPromptTokens = (maxAllTokens - 512).coerceAtLeast(128)
         val safeHistory = trimHistoryToTokenBudget(session, flattenedHistory, maxPromptTokens)
-        return kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
+        return kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
             .getOrElse {
                 val prompt = buildPrompt(flattenedHistory)
-                countTokens(prompt)
+                countTokens(prompt).toLong()
             }
     }
 

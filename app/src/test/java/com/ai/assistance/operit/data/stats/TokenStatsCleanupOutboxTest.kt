@@ -109,11 +109,7 @@ class TokenStatsCleanupOutboxTest {
     private fun openDatabase(filesDir: File): AppDatabase =
         Room.databaseBuilder(mockContext(filesDir), AppDatabase::class.java, "app_database")
             .setDriver(JdbcSQLiteDriver())
-            .addMigrations(
-                AppDatabase.MIGRATION_20_21,
-                AppDatabase.MIGRATION_20_21,
-                AppDatabase.MIGRATION_20_21,
-            )
+            .addMigrations(AppDatabase.MIGRATION_20_21)
             .allowMainThreadQueries()
             .build()
 

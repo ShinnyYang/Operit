@@ -155,15 +155,16 @@ open class OpenAIProvider(
 
     private suspend fun applyUsageToCounters(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
-        tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
-        tokenCacheManager.setOutputTokens(parsed.outputTokens)
+        tokenCacheManager.updateActualTokens(parsed.actualInputTokens.toLong(), parsed.cachedInputTokens.toLong())
+        tokenCacheManager.setOutputTokens(parsed.outputTokens.toLong())
         onTokensUpdated(
-            parsed.totalInputTokens,
-            parsed.cachedInputTokens,
+            parsed.totalInputTokens.toLong(),
+            parsed.cachedInputTokens.toLong(),
             tokenCacheManager.outputTokenCount
         )
         onUsageReported?.invoke(
@@ -2048,8 +2049,9 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val eventType = jsonResponse.optString("type", "")
 
@@ -2340,8 +2342,9 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val usage = jsonResponse.optJSONObject("usage")
         val choices = jsonResponse.optJSONArray("choices")
@@ -2411,8 +2414,9 @@ open class OpenAIProvider(
         reader: java.io.BufferedReader,
         emitter: StreamEmitter,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-        context: Context
+        context: Context,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val state = StreamingState()
 

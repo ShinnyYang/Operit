@@ -9,6 +9,7 @@ import com.ai.assistance.operit.data.model.TokenStatDisplayModelEntity
 import com.ai.assistance.operit.data.model.TokenStatEventEntity
 import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
+import com.ai.assistance.operit.data.preferences.ApiPreferences
 import java.io.File
 import java.sql.DriverManager
 import kotlinx.coroutines.runBlocking
@@ -45,6 +46,14 @@ class TokenStatsRoomMigrationTest {
             File(tempDir, invocation.getArgument<String>(0))
         }
         return context
+    }
+
+    private fun injectApiPreferences(instance: ApiPreferences?) {
+        val field =
+            ApiPreferences::class.java
+                .getDeclaredField("INSTANCE")
+                .apply { isAccessible = true }
+        field.set(null, instance)
     }
 
     /** 用内嵌 v20 schema SQL 构造一个真实的 v20 数据库文件（上游不导出 schema JSON）。 */
@@ -154,8 +163,8 @@ class TokenStatsRoomMigrationTest {
                 statement.execute(
                     "INSERT INTO chats " +
                         "(id, title, createdAt, updatedAt, inputTokens, outputTokens, " +
-                        "currentWindowSize, displayOrder, locked, pinned, isFavorite) " +
-                        "VALUES ('legacy-chat', 'legacy', 1, 2, 3, 4, 5, 6, 0, 0, 0)"
+                        "currentWindowSize, displayOrder, locked, pinned) " +
+                        "VALUES ('legacy-chat', 'legacy', 1, 2, 3, 4, 5, 6, 0, 0)"
                 )
             }
         }
@@ -640,7 +649,7 @@ outputTokens = 500L,
                     )
                 dao.insertEvent(event)
                 val readBack = dao.getEvent("evt-v21")!!
-                assertEquals(800, readBack.uncachedInputTokens)
+                assertEquals(800L, readBack.uncachedInputTokens)
                 assertEquals(1000L, readBack.totalInputTokens)
                 assertEquals(false, readBack.cacheWriteSeparateBilling)
                 assertTrue(readBack.diagnosticsJson!!.contains("\"source\":\"openai_chat_completions\""))
