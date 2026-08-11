@@ -36,6 +36,7 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -1465,6 +1466,8 @@ class GeminiProvider(
                                 // 只发送新增的内容
                                 streamCollector.emit(content)
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: IOException) {
                             throw e
                         } catch (e: Exception) {
@@ -1544,6 +1547,8 @@ class GeminiProvider(
                                     isCollectingJson = false
                                     completeJsonBuilder.clear()
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: IOException) {
                                 throw e
                             } catch (e: Exception) {
@@ -1603,6 +1608,8 @@ class GeminiProvider(
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: IOException) {
                     throw e
                 } catch (e: Exception) {
@@ -1622,6 +1629,8 @@ class GeminiProvider(
                 logDebug("未检测到内容，发送空格")
                 streamCollector.emit(" ")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logError("处理响应时发生异常: ${e.message}", e)
             throw e
@@ -1672,6 +1681,8 @@ class GeminiProvider(
                 streamCollector.emit("</think>")
                 isInThinkingMode = false
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logError("处理非流式响应时发生异常: ${e.message}", e)
             throw e
@@ -1956,6 +1967,8 @@ class GeminiProvider(
             }
             
             return finalContent
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
             throw e
         } catch (e: Exception) {

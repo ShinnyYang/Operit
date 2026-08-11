@@ -2465,6 +2465,8 @@ open class OpenAIProvider(
                         }
                     }
                     processResponseChunk(jsonResponse, state, emitter, onTokensUpdated, onUsageReported, attemptNumber)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: IOException) {
                     throw e
                 } catch (e: Exception) {
@@ -2727,6 +2729,8 @@ open class OpenAIProvider(
                                 applyUsageToCounters(jsonResponse.optJSONObject("usage"), onTokensUpdated, onUsageReported, attemptNumber)
 
                                 AppLogger.d("AIService", "[req=$requestTraceId] 【发送消息】非流式响应处理完成")
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: IOException) {
                                 throw e
                             } catch (e: Exception) {
