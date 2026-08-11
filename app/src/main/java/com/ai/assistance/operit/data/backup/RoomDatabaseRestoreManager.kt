@@ -10,6 +10,10 @@ import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.withLock
@@ -22,6 +26,8 @@ object RoomDatabaseRestoreManager {
 
     private const val AUTO_BACKUP_FILE_PREFIX = "room_db_backup_"
     private const val MANUAL_BACKUP_FILE_PREFIX = "room_db_manual_backup_"
+
+    internal var atomicMoveForTest: ((File, File) -> Unit)? = null
 
     fun listRecentAutoBackups(context: Context, limit: Int = 3): List<File> {
         val newDir = OperitBackupDirs.roomDbDir()
@@ -124,28 +130,23 @@ object RoomDatabaseRestoreManager {
                         AppLogger.w(TAG, "closeDatabase failed", e)
                     }
                     extractAndValidate(zipFile, tmpDb, tmpWal, tmpShm)
+                    requireOptionalCompanions(
+                        targetWal = targetWal,
+                        targetShm = targetShm,
+                        restoredWal = tmpWal,
+                        restoredShm = tmpShm,
+                    )
                 },
                 commitReplacement = {
                     RestoreReplacingMarker.persist(context)
                 },
                 block = {
-                    targetWal.delete()
-                    targetShm.delete()
-                    targetDb.delete()
-
-                    replaceFile(tmpDb, targetDb)
+                    atomicallyReplace(tmpDb, targetDb)
                     if (tmpWal.exists()) {
-                        replaceFile(tmpWal, targetWal)
-                    } else {
-                        tmpWal.delete()
-                        targetWal.delete()
+                        atomicallyReplace(tmpWal, targetWal)
                     }
-
                     if (tmpShm.exists()) {
-                        replaceFile(tmpShm, targetShm)
-                    } else {
-                        tmpShm.delete()
-                        targetShm.delete()
+                        atomicallyReplace(tmpShm, targetShm)
                     }
                 },
             )
@@ -208,13 +209,31 @@ object RoomDatabaseRestoreManager {
         }
     }
 
-    private fun replaceFile(from: File, to: File) {
-        if (to.exists()) {
-            to.delete()
+    private fun requireOptionalCompanions(
+        targetWal: File,
+        targetShm: File,
+        restoredWal: File,
+        restoredShm: File,
+    ) {
+        if (targetWal.exists() && !restoredWal.exists()) {
+            throw IOException("Backup does not contain ${targetWal.name} required by the current database")
         }
-        if (!from.renameTo(to)) {
-            from.copyTo(to, overwrite = true)
-            from.delete()
+        if (targetShm.exists() && !restoredShm.exists()) {
+            throw IOException("Backup does not contain ${targetShm.name} required by the current database")
+        }
+    }
+
+    private fun atomicallyReplace(from: File, to: File) {
+        atomicMoveForTest?.invoke(from, to)
+        try {
+            Files.move(
+                from.toPath(),
+                to.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (e: AtomicMoveNotSupportedException) {
+            throw IOException("Atomic database replacement is unavailable: ${from.name}", e)
         }
     }
 }

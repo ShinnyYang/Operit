@@ -16,6 +16,7 @@ import com.ai.assistance.operit.util.OperitPaths
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
 import java.sql.SQLException
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -363,6 +364,44 @@ internal class BackupRestoreBarrierTest : TokenStatReliabilityTestBase() {
         TokenTrackingAIService.recordSafely(context, request("after-corrupt-room-restore"))
         awaitEvent("after-corrupt-room-restore")
         assertEquals(1, database.tokenStatsDao().countEvents())
+    }
+
+    @Test
+    fun `room restore atomic replacement failure preserves the existing database`() = runBlocking {
+        val restoreDir = File(root, "room_restore_target")
+        val existingDatabase = File(restoreDir, "app_database").apply {
+            writeText("existing-database")
+        }
+        whenever(context.getDatabasePath(any())).thenAnswer {
+            File(restoreDir, it.getArgument<String>(0))
+        }
+        val zip = File(cacheDir, "room-restore-atomic-move-failure.zip").apply {
+            ZipOutputStream(FileOutputStream(this)).use { zos ->
+                zos.putNextEntry(ZipEntry("app_database"))
+                zos.write("restored-database".toByteArray())
+                zos.closeEntry()
+            }
+        }
+
+        RoomDatabaseRestoreManager.atomicMoveForTest = { _, _ ->
+            throw IOException("injected atomic move failure")
+        }
+        try {
+            try {
+                RoomDatabaseRestoreManager.restoreFromBackupFile(context, zip)
+                fail("restore must fail when atomic replacement fails")
+            } catch (e: IOException) {
+                assertEquals("injected atomic move failure", e.message)
+            }
+
+            assertEquals("existing-database", existingDatabase.readText())
+            assertTrue(
+                "replacement-started failure must retain the replacing marker",
+                File(filesDir, RestoreReplacingMarker.FILE_NAME).exists(),
+            )
+        } finally {
+            RoomDatabaseRestoreManager.atomicMoveForTest = null
+        }
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────
