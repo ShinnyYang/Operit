@@ -20,6 +20,99 @@ operit_prepare_git_source(
     "v1.16.0"
 )
 
+# MNN can update schema/default/MNN.fbs and its C++ sources in separate commits.
+# Regenerate schema/current from the fetched revision before adding MNN so a
+# clean archive never compiles source files against stale generated symbols.
+set(OPERIT_MNN_FLATBUFFERS_SOURCE_DIR "${MNN_SOURCE_DIR}/3rd_party/flatbuffers")
+set(OPERIT_MNN_FLATC_BUILD_DIR "${OPERIT_MNN_BINARY_DIR}/flatc-host")
+set(OPERIT_MNN_FLATC_OUTPUT_DIR "${OPERIT_MNN_FLATC_BUILD_DIR}/bin")
+
+execute_process(
+    COMMAND "${CMAKE_COMMAND}"
+        "-S" "${OPERIT_MNN_FLATBUFFERS_SOURCE_DIR}"
+        "-B" "${OPERIT_MNN_FLATC_BUILD_DIR}"
+        "-DFLATBUFFERS_BUILD_TESTS=OFF"
+        "-DFLATBUFFERS_BUILD_FLATLIB=OFF"
+        "-DFLATBUFFERS_BUILD_FLATHASH=OFF"
+        "-DFLATBUFFERS_BUILD_GRPCTEST=OFF"
+        "-DFLATBUFFERS_BUILD_SHAREDLIB=OFF"
+        "-DFLATBUFFERS_INSTALL=OFF"
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${OPERIT_MNN_FLATC_OUTPUT_DIR}"
+        "-DCMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE=${OPERIT_MNN_FLATC_OUTPUT_DIR}"
+        "-DCMAKE_BUILD_TYPE=Release"
+    RESULT_VARIABLE OPERIT_MNN_FLATC_CONFIGURE_RESULT
+    OUTPUT_VARIABLE OPERIT_MNN_FLATC_CONFIGURE_OUTPUT
+    ERROR_VARIABLE OPERIT_MNN_FLATC_CONFIGURE_ERROR
+)
+if(NOT "${OPERIT_MNN_FLATC_CONFIGURE_RESULT}" STREQUAL "0")
+    message(FATAL_ERROR
+        "Failed to configure the host FlatBuffers compiler for MNN schema generation.\n"
+        "${OPERIT_MNN_FLATC_CONFIGURE_OUTPUT}\n"
+        "${OPERIT_MNN_FLATC_CONFIGURE_ERROR}"
+    )
+endif()
+
+execute_process(
+    COMMAND "${CMAKE_COMMAND}"
+        "--build" "${OPERIT_MNN_FLATC_BUILD_DIR}"
+        "--target" "flatc"
+        "--config" "Release"
+        "--parallel"
+    RESULT_VARIABLE OPERIT_MNN_FLATC_BUILD_RESULT
+    OUTPUT_VARIABLE OPERIT_MNN_FLATC_BUILD_OUTPUT
+    ERROR_VARIABLE OPERIT_MNN_FLATC_BUILD_ERROR
+)
+if(NOT "${OPERIT_MNN_FLATC_BUILD_RESULT}" STREQUAL "0")
+    message(FATAL_ERROR
+        "Failed to build the host FlatBuffers compiler for MNN schema generation.\n"
+        "${OPERIT_MNN_FLATC_BUILD_OUTPUT}\n"
+        "${OPERIT_MNN_FLATC_BUILD_ERROR}"
+    )
+endif()
+
+if(CMAKE_HOST_WIN32)
+    set(OPERIT_MNN_FLATC_EXECUTABLE "${OPERIT_MNN_FLATC_OUTPUT_DIR}/flatc.exe")
+else()
+    set(OPERIT_MNN_FLATC_EXECUTABLE "${OPERIT_MNN_FLATC_OUTPUT_DIR}/flatc")
+endif()
+if(NOT EXISTS "${OPERIT_MNN_FLATC_EXECUTABLE}")
+    message(FATAL_ERROR
+        "The host FlatBuffers compiler was built but not found at "
+        "${OPERIT_MNN_FLATC_EXECUTABLE}."
+    )
+endif()
+
+set(OPERIT_MNN_SCHEMA_DIR "${MNN_SOURCE_DIR}/schema")
+set(OPERIT_MNN_SCHEMA_CURRENT_DIR "${OPERIT_MNN_SCHEMA_DIR}/current")
+file(GLOB OPERIT_MNN_SCHEMA_HEADERS "${OPERIT_MNN_SCHEMA_CURRENT_DIR}/*.h")
+if(OPERIT_MNN_SCHEMA_HEADERS)
+    file(REMOVE ${OPERIT_MNN_SCHEMA_HEADERS})
+endif()
+file(GLOB OPERIT_MNN_SCHEMA_FILES "${OPERIT_MNN_SCHEMA_DIR}/default/*.fbs")
+if(NOT OPERIT_MNN_SCHEMA_FILES)
+    message(FATAL_ERROR "MNN schema/default does not contain any FlatBuffers schema files.")
+endif()
+
+execute_process(
+    COMMAND "${OPERIT_MNN_FLATC_EXECUTABLE}"
+        "-c"
+        "-b"
+        "--gen-object-api"
+        "--reflect-names"
+        ${OPERIT_MNN_SCHEMA_FILES}
+    WORKING_DIRECTORY "${OPERIT_MNN_SCHEMA_CURRENT_DIR}"
+    RESULT_VARIABLE OPERIT_MNN_SCHEMA_GENERATE_RESULT
+    OUTPUT_VARIABLE OPERIT_MNN_SCHEMA_GENERATE_OUTPUT
+    ERROR_VARIABLE OPERIT_MNN_SCHEMA_GENERATE_ERROR
+)
+if(NOT "${OPERIT_MNN_SCHEMA_GENERATE_RESULT}" STREQUAL "0")
+    message(FATAL_ERROR
+        "Failed to generate MNN schema/current headers.\n"
+        "${OPERIT_MNN_SCHEMA_GENERATE_OUTPUT}\n"
+        "${OPERIT_MNN_SCHEMA_GENERATE_ERROR}"
+    )
+endif()
+
 # 使用 CMake Policy CMP0077 来让 set() 覆盖 option()
 if(POLICY CMP0077)
     cmake_policy(SET CMP0077 NEW)
