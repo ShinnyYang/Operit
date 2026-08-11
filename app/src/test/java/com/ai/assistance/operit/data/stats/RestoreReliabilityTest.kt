@@ -567,14 +567,16 @@ internal class RestoreReliabilityTest : TokenStatReliabilityTestBase() {
                 var calls = 0
                 try {
                     // 阶段 0：gate=true——经快照 barrier 完成 bootstrap 两次确认（filesDir +
-                    // spool），不触发 drain（append 会调度 drain 与阶段 1 的恢复竞态）
+                    // spool），不触发 drain（append 会调度 drain 与阶段 1 的恢复竞态）。
+                    // 行构造在屏障外：屏障排他期间门控立即拒绝统计数据库访问（自死锁防护）。
+                    val lineA = line(request("gate-restore-a"))
                     TokenStatSpool.dirSyncForTest = {
                         calls += 1
                         if (calls <= 2) TokenStatSpool.DirSyncResult.OK
                         else TokenStatSpool.DirSyncResult.FAILED
                     }
                     TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = false) {
-                        File(spool, "active.jsonl").writeText(line(request("gate-restore-a")) + "\n")
+                        File(spool, "active.jsonl").writeText(lineA + "\n")
                     }
                     assertEquals(2, calls)
                     // 阶段 1：restore 清理删除 spool 目录，删除后 filesDir 目录项 sync（第 3 次）

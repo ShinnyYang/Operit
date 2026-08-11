@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.collects.PricingCurrency
 import com.ai.assistance.operit.data.dao.TokenStatsDao
-import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.model.PriceOverrideScope
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -167,10 +166,8 @@ class TokenUsageStatisticsViewModel(
     private val appContext: Context = context.applicationContext
     private val tag = "TokenUsageStatisticsViewModel"
 
-    private val statsDao: TokenStatsDao =
-        dao ?: AppDatabase.getDatabase(appContext).tokenStatsDao()
-
-    private val manager = TokenStatsSettingsManager(statsDao)
+    private val manager =
+        dao?.let(::TokenStatsSettingsManager) ?: TokenStatsSettingsManager(appContext)
 
     private val _state = MutableStateFlow(TokenStatsUiState())
     val state: StateFlow<TokenStatsUiState> = _state.asStateFlow()

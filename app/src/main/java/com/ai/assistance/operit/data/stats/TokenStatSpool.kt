@@ -78,8 +78,9 @@ import org.json.JSONObject
  *   commit; every old request is then rejected before stores close or directories are replaced.
  * - Once a restore replacement actually starts (right before [block] runs), the process stops
  *   accepting ALL statistics events ([acceptingEventsThisProcess] = false) until it restarts:
- *   the UI allows restarting later, so same-process new requests must be explicitly rejected
- *   ([isAcceptingEvents], used by the tracking boundary) and can never pollute the new DB.
+ *   the UI allows restarting later, so same-process new requests fail open — the tracking
+ *   boundary ([newRequest]) skips statistics and calls the delegate directly ([isAcceptingEvents]
+ *   drives that decision) — and can never pollute the new DB.
  *   A restore failure BEFORE replacement leaves accepting enabled (new requests continue);
  *   a failure after replacement has started keeps it disabled and requires a restart.
  */
@@ -264,6 +265,18 @@ internal object TokenStatSpool {
     internal val activeInserts = HashMap<String, Long>()
 
     /**
+     * 在册的统计数据库访问者 token 集合（reviewer P1-1 修复）：请求边界的身份事务与收尾的
+     * 价格解析等直接 Room 访问经 [com.ai.assistance.operit.data.stats.withStatsDatabaseAccess]
+     * 注册唯一 token（[statsDbAccessSeq] 递增）；快照/恢复屏障进入排他状态后有界等待其
+     * 清空（绝不与文件打包/替换竞争）。token 删除幂等：reset 清空集合后，旧访问者的
+     * finally 只移除自己的 token，不影响新注册（无负数/假零污染）。只由 stateLock 保护。
+     */
+    internal val statsDbAccessTokens = HashSet<Long>()
+
+    /** [statsDbAccessTokens] 的递增 token 序号（stateLock 保护）。 */
+    internal var statsDbAccessSeq = 0L
+
+    /**
      * Request/session fencing epoch（P1 终审）：通用恢复屏障开始时递增；Raw restore 则在
      * 外部 REPLACING 状态成功持久化后、关闭 stores 前原子递增，
      * 使所有在屏障开始前开始（已捕获旧 epoch）的 in-flight provider/stream 请求在收尾
@@ -275,8 +288,9 @@ internal object TokenStatSpool {
 
     /**
      * 本进程是否仍接受统计事件（P1 终审）：恢复屏障的替换开始（[block] 即将执行）时置 false，
-     * 直到进程重启（UI 允许稍后重启——此后所有 [append] 与新的跟踪请求被明确拒绝，绝不污染
-     * 恢复后的新 DB）。替换前失败（drain/quiesce 阶段抛错）保持 true，新请求可继续。
+     * 直到进程重启（UI 允许稍后重启）。此后 [append] 拒绝一切事件；新的跟踪请求 fail-open
+     * （[isAcceptingEvents] 供 [newRequest] 判定——跳过统计直调 delegate），模型功能不受影响，
+     * 重启后统计恢复。替换前失败（drain/quiesce 阶段抛错）保持 true，新请求可继续。
      * 进程重启（含测试模拟）经 [resetExecutorsForTest]/[clearPendingStateForTest] 复位。
      */
     @Volatile
@@ -1362,6 +1376,7 @@ internal object TokenStatSpool {
         insertExecutor = newInsertExecutor()
         databaseExecutor = newDatabaseExecutor()
         activeInserts.clear()
+        statsDbAccessTokens.clear()
         insertionWaiters.values.forEach { it.cancel() }
         insertionWaiters.clear()
         exclusiveBarrierActive = false

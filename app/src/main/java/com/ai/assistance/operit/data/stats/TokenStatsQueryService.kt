@@ -113,7 +113,9 @@ object TokenStatsQueryService {
 
     suspend fun rangeHasEvents(context: Context, range: TokenStatsTimeRange): Boolean =
         withContext(queryDispatcher) {
-            rangeHasEvents(daoOf(context), range)
+            TokenStatSpool.withStatsDatabaseAccess {
+                rangeHasEvents(daoOf(context), range)
+            }
         }
 
     /**
@@ -128,7 +130,9 @@ object TokenStatsQueryService {
 
     internal suspend fun activitySnapshot(context: Context, zone: ZoneId): TokenActivitySnapshot =
         withContext(queryDispatcher) {
-            activitySnapshot(daoOf(context), zone)
+            TokenStatSpool.withStatsDatabaseAccess {
+                activitySnapshot(daoOf(context), zone)
+            }
         }
 
     /**
@@ -189,7 +193,9 @@ object TokenStatsQueryService {
         nowMs: Long = System.currentTimeMillis(),
     ): TokenStatsPreset =
         withContext(queryDispatcher) {
-            initialPresetWithData(daoOf(context), zone, nowMs)
+            TokenStatSpool.withStatsDatabaseAccess {
+                initialPresetWithData(daoOf(context), zone, nowMs)
+            }
         }
 
     /**
@@ -207,9 +213,11 @@ object TokenStatsQueryService {
         val appContext = context.applicationContext
         return withContext(queryDispatcher) {
             val legacyPrices = readLegacyPrices(appContext, params)
-            val database =
-                databaseProvider?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
-            block(database.tokenStatsDao(), legacyPrices)
+            TokenStatSpool.withStatsDatabaseAccess {
+                val database =
+                    databaseProvider?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
+                block(database.tokenStatsDao(), legacyPrices)
+            }
         }
     }
 

@@ -51,11 +51,12 @@ object TokenStatsLedger {
     internal var legacyPriceProvider: (suspend (Context, String) -> LegacyPriceSettings?)? = null
 
     /** Linearization token captured before a model invocation starts. Failure aborts that call. */
-    suspend fun currentResetGeneration(context: Context): Long {
-        val appContext = context.applicationContext
-        val database = databaseProvider?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
-        return database.tokenStatsDao().currentResetGeneration()
-    }
+    suspend fun currentResetGeneration(context: Context): Long =
+        TokenStatSpool.withStatsDatabaseAccess {
+            val appContext = context.applicationContext
+            val database = databaseProvider?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
+            database.tokenStatsDao().currentResetGeneration()
+        }
 
     /**
      * 请求接受边界（P1-1 修复）：在**同一 Room 事务**内确保身份存在（INSERT IGNORE +
@@ -85,11 +86,13 @@ object TokenStatsLedger {
      */
     suspend fun record(context: Context, request: TokenStatRequestContext) {
         try {
-            val appContext = context.applicationContext
-            val injected = databaseProvider
-            val database =
-                injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
-            recordWith(appContext, database.tokenStatsDao(), request)
+            TokenStatSpool.withStatsDatabaseAccess {
+                val appContext = context.applicationContext
+                val injected = databaseProvider
+                val database =
+                    injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
+                recordWith(appContext, database.tokenStatsDao(), request)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -156,7 +159,7 @@ object TokenStatsLedger {
         appContext: Context,
         request: TokenStatRequestContext,
     ): FrozenEventPricing {
-        val pricing = resolvePricing(appContext, request)
+        val pricing = resolvePricingForRequest(appContext, request)
         val usage = request.aggregatedUsage()
         val cost = usage?.let { TokenCostCalculator.computeCost(it.toTokenUsageInput(), pricing)?.amount }
         return FrozenEventPricing(pricing, cost)
@@ -187,7 +190,26 @@ object TokenStatsLedger {
             .toString()
     }
 
-    private suspend fun resolvePricing(
+    /**
+     * 请求收尾价格解析（reviewer P1-1 修复）：与快照/恢复屏障注册表互斥的 Room 读取——
+     * 屏障排他期间（打包/替换中）被**立即拒绝**（[TokenStatsBarrierActiveException]），
+     * 由收尾边界转为 UNKNOWN 价格事件，绝不与数据库文件复制竞争，也不无限等待；
+     * 恢复替换完成（accepting=false）后的收尾（旧 epoch 请求）仍可读取重建后的新库，
+     * 但 append 由请求 fence 明确拒绝，绝不写入。
+     */
+    internal suspend fun resolvePricingForRequest(
+        appContext: Context,
+        request: TokenStatRequestContext,
+    ): ResolvedPricing = TokenStatSpool.withStatsDatabaseAccess {
+        resolvePricingLocked(appContext, request)
+    }
+
+    /**
+     * 无锁版本（drain/直接路径使用）：调用方已受 generation + activeInserts 注册
+     * （[TokenStatSpool.insertSafely]）或屏障 lifecycleMutex（drainBefore）保护，
+     * 与替换窗口的互斥由既有机制保证，不再重复取锁（避免 drainCore 持锁时死锁）。
+     */
+    internal suspend fun resolvePricingLocked(
         appContext: Context,
         request: TokenStatRequestContext,
     ): ResolvedPricing {
@@ -238,7 +260,9 @@ object TokenStatsLedger {
             pricing = frozen.pricing
             cost = frozen.cost
         } else {
-            pricing = resolvePricing(appContext, request)
+            // 直接路径（不经 spool）：调用方已受 generation/activeInserts 保护，
+            // 用无锁版本避免与屏障 drain 阶段的锁重入（reviewer P1-1）。
+            pricing = resolvePricingLocked(appContext, request)
             val usage = request.aggregatedUsage()
             cost = usage?.let { TokenCostCalculator.computeCost(it.toTokenUsageInput(), pricing)?.amount }
         }

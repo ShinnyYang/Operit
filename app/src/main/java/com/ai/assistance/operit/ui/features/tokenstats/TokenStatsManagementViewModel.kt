@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.dao.TokenStatsDao
-import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.model.ModelConfigSummary
 import com.ai.assistance.operit.data.model.PriceOverrideScope
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
@@ -56,9 +55,8 @@ class TokenStatsManagementViewModel(
     dao: TokenStatsDao? = null,
 ) : ViewModel() {
     private val appContext = context.applicationContext
-    private val manager = TokenStatsSettingsManager(
-        dao ?: AppDatabase.getDatabase(appContext).tokenStatsDao()
-    )
+    private val manager =
+        dao?.let(::TokenStatsSettingsManager) ?: TokenStatsSettingsManager(appContext)
     private val configManager = ModelConfigManager(appContext)
     private val apiPreferences = ApiPreferences.getInstance(appContext)
     private val _state = MutableStateFlow(TokenStatsManagementState())

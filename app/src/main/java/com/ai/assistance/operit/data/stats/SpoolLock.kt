@@ -119,8 +119,8 @@ internal suspend fun <T> TokenStatSpool.withExclusiveSnapshotAccessInternal(
     // 此后不再有任何新登记（登记与标志检查原子），registry 只减不增。
     synchronized(stateLock) { exclusiveBarrierActive = true }
     try {
-        if (!awaitActiveInsertsEmpty()) {
-            val live = synchronized(stateLock) { activeInserts.size }
+        if (!awaitActiveInsertsEmpty() || !awaitStatsDbAccessorsEmpty()) {
+            val live = synchronized(stateLock) { activeInserts.size + statsDbAccessTokens.size }
             throw IOException(
                 "statistics Room insert still active ($live); " +
                     "snapshot/restore aborted before any file replacement",
@@ -161,6 +161,60 @@ internal suspend fun <T> TokenStatSpool.withExclusiveSnapshotAccessInternal(
         synchronized(stateLock) { exclusiveBarrierActive = false }
     }
 }
+/**
+ * 统计数据库访问门控被屏障排他期拒绝的专用异常（reviewer P1-1 修复）：快照/恢复屏障
+ * 已进入排他状态（[TokenStatSpool.exclusiveBarrierActive]）时，任何新的统计数据库访问
+ * 被**立即拒绝**（绝不无限等待——屏障的 block/prepareBeforeCommit 内误调用门控入口
+ * 时也会立即失败而非自死锁）。调用方按 fail-open 语义处理：
+ * - [TokenTrackingAIService.newRequest]：跳过统计直调 delegate（模型调用不受影响）；
+ * - [TokenStatsLedger.resolvePricingForRequest]：抛给收尾边界 → UNKNOWN 价格事件。
+ */
+internal class TokenStatsBarrierActiveException :
+    java.io.IOException("token statistics database access rejected: snapshot/restore barrier active")
+
+/**
+ * 统一统计数据库访问门控（reviewer P1-1 修复）：请求边界的身份事务
+ * （[TokenStatsLedger.ensureIdentityAndCaptureGeneration]）与请求收尾的价格解析
+ * （[TokenStatsLedger.prepareEventLineDetached]）等**直接 Room 访问**通过注册表
+ * （[TokenStatSpool.statsDbAccessTokens]）与快照/恢复屏障互斥，**不持有 lifecycleMutex、
+ * 不做无限等待**：
+ * - 屏障进入排他状态（[TokenStatSpool.exclusiveBarrierActive]=true）**前**注册的访问者由
+ *   屏障有界等待清空——替换前已进入的事务在替换前完成，绝不与 checkpoint/ZIP 打包/
+ *   文件替换竞争；恢复的 closeDatabase 窗口也由该等待覆盖；
+ * - 屏障排他期间到达的访问者**立即**抛 [TokenStatsBarrierActiveException]（绝不重新打开
+ *   正在替换的 Room，也不产生备份打包窗口内的新 WAL/身份写入；请求/收尾按 fail-open
+ *   语义跳过统计，模型调用不受影响）；
+ * - 恢复替换完成后（accepting=false）由调用方在访问块内按 fence 语义判定
+ *   （[TokenTrackingAIService.newRequest] 返回 null fail-open）。
+ * token 删除幂等：reset 清空集合后，旧访问者的 finally 只移除自己的 token。
+ */
+internal suspend fun <T> TokenStatSpool.withStatsDatabaseAccess(block: suspend () -> T): T {
+    val token = synchronized(stateLock) {
+        if (exclusiveBarrierActive) {
+            null
+        } else {
+            statsDbAccessSeq += 1L
+            statsDbAccessTokens.add(statsDbAccessSeq)
+            statsDbAccessSeq
+        }
+    } ?: throw TokenStatsBarrierActiveException()
+    try {
+        return block()
+    } finally {
+        synchronized(stateLock) { statsDbAccessTokens.remove(token) }
+    }
+}
+
+/** 有界等待在册统计数据库访问者全部结束（与 [awaitActiveInsertsEmpty] 同构）。 */
+internal suspend fun TokenStatSpool.awaitStatsDbAccessorsEmpty(): Boolean {
+    val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(exclusiveQuiesceTimeoutMs)
+    while (true) {
+        if (synchronized(stateLock) { statsDbAccessTokens.isEmpty() }) return true
+        if (System.nanoTime() >= deadline) return false
+        delay(QUIESCE_POLL_INTERVAL_MS)
+    }
+}
+
 /**
  * Request/session fencing 判定（P1 终审，调用方持 lifecycleMutex）：请求开始捕获的
  * [sessionEpoch] 必须等于当前 [restoreEpoch]（恢复屏障开始时原子递增使旧请求失效），

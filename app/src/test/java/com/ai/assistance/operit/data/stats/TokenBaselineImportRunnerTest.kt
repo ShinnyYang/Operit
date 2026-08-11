@@ -12,6 +12,7 @@ import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.AppLogger
 import java.io.File
+import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -702,6 +703,44 @@ class TokenBaselineImportRunnerTest {
             TokenBaselineImportRunner.databaseProvider = null
             database.close()
         }
+    }
+
+    @Test
+    fun `import and reset are rejected before resolving Room during snapshot`() = runBlocking {
+        TokenStatSpool.clearPendingStateForTest()
+        val phase = kotlin.io.path.createTempDirectory("barrier-entry-test").toFile()
+        val ctx = mockContext(phase)
+        val importProviderCalls = AtomicInteger(0)
+        val resetProviderCalls = AtomicInteger(0)
+        TokenBaselineImportRunner.databaseProvider = {
+            importProviderCalls.incrementAndGet()
+            error("import must not resolve Room while the barrier is active")
+        }
+        TokenStatsResetCoordinator.daoProvider = {
+            resetProviderCalls.incrementAndGet()
+            error("reset must not resolve Room while the barrier is active")
+        }
+        var importRejected = false
+        var resetRejected = false
+
+        TokenStatSpool.withExclusiveSnapshotAccess(ctx, drainBefore = false) {
+            try {
+                TokenBaselineImportRunner.runImport(ctx, forceReplace = false)
+            } catch (_: TokenStatsBarrierActiveException) {
+                importRejected = true
+            }
+            try {
+                TokenStatsResetCoordinator.deleteEventsInRange(ctx, 0L, 1L)
+            } catch (_: TokenStatsBarrierActiveException) {
+                resetRejected = true
+            }
+        }
+
+        assertTrue("baseline import must be rejected during snapshot", importRejected)
+        assertTrue("reset must be rejected during snapshot", resetRejected)
+        assertEquals(0, importProviderCalls.get())
+        assertEquals(0, resetProviderCalls.get())
+        TokenStatSpool.clearPendingStateForTest()
     }
 
     // ==== P1 闭环：legacy cleanup outbox 导入 fence ====

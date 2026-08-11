@@ -11,7 +11,9 @@ import com.ai.assistance.operit.data.stats.TokenStatIdentityResolver
 import com.ai.assistance.operit.data.stats.TokenStatRequestContext
 import com.ai.assistance.operit.data.stats.TokenStatSpool
 import com.ai.assistance.operit.data.stats.TokenStatStatus
+import com.ai.assistance.operit.data.stats.TokenStatsBarrierActiveException
 import com.ai.assistance.operit.data.stats.TokenStatsLedger
+import com.ai.assistance.operit.data.stats.withStatsDatabaseAccess
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.stream.RevisableTextStream
 import com.ai.assistance.operit.util.stream.SharedStream
@@ -38,10 +40,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.runBlocking
 
 /**
- * 统计持久化故障标记（P1-2）：只在两条路径出现——
- * - 模型已失败/取消的收尾中作为原异常的 suppressed 保留（观测性，不覆盖主异常）；
- * - 恢复替换后 [newRequest] 对同进程新请求的明确拒绝（恢复语义）。
- * 成功的模型结果绝不被它改写：成功路径的统计故障只记日志并返回 [RecordOutcome.LOST]。
+ * 统计持久化故障标记：只在模型已失败/取消的收尾中作为原异常的 suppressed 保留
+ * （观测性，不覆盖主异常）。恢复替换后的同进程新请求不再抛出本异常——改为 fail-open
+ * （[newRequest] 返回 null，统计层跳过跟踪直调 delegate），模型调用不受影响。
  */
 class TokenStatsPersistenceException(message: String, cause: Throwable? = null) :
     java.io.IOException(message, cause)
@@ -123,15 +124,18 @@ class TokenTrackingAIService(
                 onTokensUpdated = onTokensUpdated,
                 // 组合内部记录与调用者 callback：内部按 attempt 记账，调用者回调
                 // 原样转发（每次上报都转发，不吞不重）；外部 observer 的异常与
-                // provider 业务隔离（非取消只日志，取消仍传播）。
+                // provider 业务隔离（非取消只日志，取消仍传播）。request 为 null
+                // （恢复替换后 fail-open）时只转发、不记账。
                 onUsageReported = { usage, attempt ->
-                    request.onUsage(usage, attempt)
+                    request?.onUsage(usage, attempt)
                     forwardUsageObserver(onUsageReported, usage, attempt)
                 },
                 onNonFatalError = onNonFatalError,
                 enableRetry = enableRetry,
                 statsCategory = statsCategory,
             )
+        // P1-2 fail-open：恢复替换后统计层跳过跟踪，直调 delegate（模型功能不受影响）。
+        if (request == null) return delegateStream
         return wrapStream(delegateStream, request)
     }
 
@@ -140,6 +144,8 @@ class TokenTrackingAIService(
         onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)?,
     ): Result<String> {
         val request = newRequest(TokenStatCategory.CONNECTION_TEST)
+        // P1-2 fail-open：恢复替换后跳过统计，直调 delegate（连接测试正常执行）。
+        if (request == null) return delegate.testConnection(context, onUsageReported)
         return try {
             val result =
                 delegate.testConnection(context) { usage, attempt ->
@@ -186,43 +192,57 @@ class TokenTrackingAIService(
         }
     }
 
-    private suspend fun newRequest(category: TokenStatCategory?): TokenStatRequestContext {
-        // P1 终审：restore 替换开始后本进程不再接受新的统计请求（直到进程重启，UI 允许
-        // 稍后重启）——在此明确拒绝开始新跟踪请求，绝不等到收尾才失败，也绝不写入已恢复
-        // 替换的数据库。替换前失败的 restore 不置位该标志，新请求照常继续。
-        if (!TokenStatSpool.isAcceptingEvents()) {
-            throw TokenStatsPersistenceException(
-                "Token statistics are not accepting new events until the app restarts after a restore",
-            )
-        }
+    /**
+     * 请求接受边界（reviewer P1-1/P1-2 修复）：
+     * - P1-1：`isAcceptingEvents` 检查、restore epoch 捕获与身份创建事务在
+     *   [TokenStatSpool.withStatsDatabaseAccess] 门控（屏障感知注册表）内原子完成——
+     *   快照/恢复屏障排他期间到达的请求被**立即拒绝**（[TokenStatsBarrierActiveException]），
+     *   绝不与文件打包/替换竞争打开 Room，模型调用不受影响；
+     * - P1-2：恢复替换完成后（accepting=false，UI 允许"稍后重启"）返回 null——
+     *   调用方 fail-open 直调 delegate（不抛异常、不阻断模型调用、不写新 DB），
+     *   重启后统计自动恢复。
+     * @return null 表示恢复替换后或屏障排他期间本进程不接受统计（fail-open 跳过跟踪）。
+     */
+    private suspend fun newRequest(category: TokenStatCategory?): TokenStatRequestContext? {
         val (provider, model) = TokenStatIdentityResolver.splitProviderModel(delegate.providerModel)
-        // P1-1：请求接受边界在**同一事务**内原子确保身份存在并读取 generation——删除展示
-        // 分组要么看见该身份（写 IDENTITY tombstone，删除前接受的事件被跳过），要么请求
-        // 拿到 ≥ tombstone 的新 generation（删除后请求正常入账）。首次请求的身份绝不可能
-        // 绕过分组删除 tombstone 复活旧事件。
-        // P1-2：统计数据库/身份不可用时**降级跟踪**——模型请求照常开始。降级上下文仍带
-        // 完整 eventId/时间/usage，收尾 append 走 spool；身份由排空 INSERT IGNORE 补齐
-        // （故障瞬时则事件照常落账）。acceptedGeneration 取 0 是保守方向：若期间发生过
-        // reset，事件只会被 tombstone 跳过（不复活），绝不可能绕过 reset 入账。
-        val acceptedGeneration =
+        val accepted =
             try {
-                TokenStatsLedger.ensureIdentityAndCaptureGeneration(
-                    appContext,
-                    configId,
-                    provider,
-                    model,
-                )
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                AppLogger.e(
-                    TAG,
-                    "统计身份/代次读取失败，本次请求降级跟踪（不影响模型调用）: " +
-                        "configId=$configId, provider=$provider, model=$model",
-                    e,
-                )
-                0L
-            }
+                TokenStatSpool.withStatsDatabaseAccess {
+                    if (!TokenStatSpool.isAcceptingEvents()) {
+                        return@withStatsDatabaseAccess null
+                    }
+                    val sessionEpoch = TokenStatSpool.captureRestoreEpoch()
+                    // P1-1：请求接受边界在**同一事务**内原子确保身份存在并读取 generation——删除展示
+                    // 分组要么看见该身份（写 IDENTITY tombstone，删除前接受的事件被跳过），要么请求
+                    // 拿到 ≥ tombstone 的新 generation（删除后请求正常入账）。首次请求的身份绝不可能
+                    // 绕过分组删除 tombstone 复活旧事件。
+                    // 统计数据库/身份不可用时**降级跟踪**——模型请求照常开始（保持既有 P1-2 语义）。
+                    val acceptedGeneration =
+                        try {
+                            TokenStatsLedger.ensureIdentityAndCaptureGeneration(
+                                appContext,
+                                configId,
+                                provider,
+                                model,
+                            )
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            AppLogger.e(
+                                TAG,
+                                "统计身份/代次读取失败，本次请求降级跟踪（不影响模型调用）: " +
+                                    "configId=$configId, provider=$provider, model=$model",
+                                e,
+                            )
+                            0L
+                        }
+                    RequestAcceptance(acceptedGeneration, sessionEpoch)
+                }
+            } catch (e: TokenStatsBarrierActiveException) {
+                // P1-1：屏障排他期间（快照打包/恢复替换中）——跳过统计直调 delegate，
+                // 绝不等待或触碰正在替换的 Room。
+                return null
+            } ?: return null
         return TokenStatRequestContext(
             eventId = "evt_${UUID.randomUUID().toString().replace("-", "")}",
             category = category ?: TokenStatCategory.OTHER,
@@ -230,12 +250,18 @@ class TokenTrackingAIService(
             provider = provider,
             model = model,
             startedAtMs = System.currentTimeMillis(),
-            acceptedGeneration = acceptedGeneration,
-            // P1 终审：请求开始时同步捕获 restore epoch（纯内存、无 Room），收尾 append
+            acceptedGeneration = accepted.generation,
+            // 请求开始时在门控内同步捕获 restore epoch（纯内存、无 Room），收尾 append
             // 时验证——restore 屏障开始即递增 epoch，旧请求被明确拒绝，不写新 DB。
-            sessionEpoch = TokenStatSpool.captureRestoreEpoch(),
+            sessionEpoch = accepted.sessionEpoch,
         )
     }
+
+    /** [newRequest] 门控内原子捕获的请求接受结果。 */
+    private data class RequestAcceptance(
+        val generation: Long,
+        val sessionEpoch: Long,
+    )
 
     /** 保持修订流语义：内部流带 eventChannel 时返回同接口的包装流。 */
     private fun wrapStream(

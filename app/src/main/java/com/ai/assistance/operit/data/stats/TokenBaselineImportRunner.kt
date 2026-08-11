@@ -74,7 +74,16 @@ object TokenBaselineImportRunner {
      */
     // ==== 导入 ====
 
-    internal suspend fun runImport(appContext: Context, forceReplace: Boolean): Boolean {
+    internal suspend fun runImport(appContext: Context, forceReplace: Boolean): Boolean =
+        TokenStatSpool.withStatsDatabaseAccess {
+            runImportWithDatabaseAccess(appContext, forceReplace)
+        }
+
+    /** 调用方已登记统计数据库访问 token；数据库实例必须在登记后解析。 */
+    private suspend fun runImportWithDatabaseAccess(
+        appContext: Context,
+        forceReplace: Boolean,
+    ): Boolean {
         val injected = databaseProvider
         val database = injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext)
         val dao = database.tokenStatsDao()
@@ -246,22 +255,20 @@ object TokenStatsResetCoordinator {
     private const val TAG = "TokenStatsReset"
 
     suspend fun resetAllStatistics(context: Context) {
-        withDao(context) { dao -> dao.resetAllStatisticsTx() }
-        drainPendingCleanup(context.applicationContext)
+        withMutation(context, drainCleanupAfter = true) { dao -> dao.resetAllStatisticsTx() }
         TokenStatSpool.replay(context.applicationContext)
     }
 
     suspend fun resetStatisticsForProviderModel(context: Context, providerModel: String) {
         val (provider, model) = TokenStatIdentityResolver.splitProviderModel(providerModel)
         if (model.isBlank()) return
-        withDao(context) { dao -> dao.resetModelTx(provider, model) }
-        drainPendingCleanup(context.applicationContext)
+        withMutation(context, drainCleanupAfter = true) { dao -> dao.resetModelTx(provider, model) }
         TokenStatSpool.replay(context.applicationContext)
     }
 
     /** 删除时间范围 [startMs, endMs) 内的事件；baseline 一律保留（阶段 5）。 */
     suspend fun deleteEventsInRange(context: Context, startMs: Long, endMs: Long) {
-        withDao(context) { dao -> dao.deleteRangeEventsTx(startMs, endMs) }
+        withMutation(context) { dao -> dao.deleteRangeEventsTx(startMs, endMs) }
         TokenStatSpool.replay(context.applicationContext)
     }
 
@@ -275,15 +282,17 @@ object TokenStatsResetCoordinator {
         displayModelId: String,
         deleteBaselines: Boolean,
     ) {
-        withDao(context) { dao -> dao.deleteDisplayModelEventsTx(displayModelId, deleteBaselines) }
-        drainPendingCleanup(context.applicationContext)
+        withMutation(context, drainCleanupAfter = true) { dao ->
+            dao.deleteDisplayModelEventsTx(displayModelId, deleteBaselines)
+        }
         TokenStatSpool.replay(context.applicationContext)
     }
 
     /** 删除全部事件；[deleteBaselines] 为 true 时同时删除全部 baseline（阶段 5）。 */
     suspend fun deleteAllEvents(context: Context, deleteBaselines: Boolean) {
-        withDao(context) { dao -> dao.deleteAllStatisticsTx(deleteBaselines) }
-        drainPendingCleanup(context.applicationContext)
+        withMutation(context, drainCleanupAfter = true) { dao ->
+            dao.deleteAllStatisticsTx(deleteBaselines)
+        }
         TokenStatSpool.replay(context.applicationContext)
     }
 
@@ -298,10 +307,12 @@ object TokenStatsResetCoordinator {
      */
     suspend fun drainPendingCleanup(context: Context) {
         val appContext = context.applicationContext
-        val injected = daoProvider
-        val dao =
-            injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext).tokenStatsDao()
-        drainPendingCleanupWith(appContext, dao)
+        TokenStatSpool.withStatsDatabaseAccess {
+            val injected = daoProvider
+            val dao =
+                injected?.invoke(appContext) ?: AppDatabase.getDatabase(appContext).tokenStatsDao()
+            drainPendingCleanupWith(appContext, dao)
+        }
     }
 
     /**
@@ -327,16 +338,30 @@ object TokenStatsResetCoordinator {
         }
     }
 
-    private suspend fun withDao(
+    /**
+     * 完整登记一次统计变更：登记后才解析 DAO；Room 事务结束后、访问 token 释放前排空
+     * cleanup outbox。spool replay 必须由调用方在本函数返回后执行，避免屏障等待锁环。
+     */
+    private suspend fun withMutation(
         context: Context,
+        drainCleanupAfter: Boolean = false,
         block: suspend (TokenStatsDao) -> Unit,
     ) {
-        val injected = daoProvider
-        if (injected != null) {
-            block(injected(context))
-            return
+        val appContext = context.applicationContext
+        TokenStatSpool.withStatsDatabaseAccess {
+            val injected = daoProvider
+            val dao: TokenStatsDao
+            if (injected != null) {
+                dao = injected(appContext)
+                block(dao)
+            } else {
+                val database = AppDatabase.getDatabase(appContext)
+                dao = database.tokenStatsDao()
+                database.withTransaction { block(dao) }
+            }
+            if (drainCleanupAfter) {
+                drainPendingCleanupWith(appContext, dao)
+            }
         }
-        val database = AppDatabase.getDatabase(context.applicationContext)
-        database.withTransaction { block(database.tokenStatsDao()) }
     }
 }

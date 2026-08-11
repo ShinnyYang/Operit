@@ -32,14 +32,16 @@ import org.mockito.kotlin.whenever
 class TokenStatsSettingsManagerTest {
 
     private lateinit var tempDir: File
+    private lateinit var context: Context
     private lateinit var database: AppDatabase
     private lateinit var dao: TokenStatsDao
     private lateinit var manager: TokenStatsSettingsManager
 
     @Before
     fun setUp() {
+        TokenStatSpool.clearPendingStateForTest()
         tempDir = kotlin.io.path.createTempDirectory("token-settings-test").toFile()
-        val context = mockContext(tempDir)
+        context = mockContext(tempDir)
         database =
             Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
                 .setDriver(JdbcSQLiteDriver())
@@ -52,6 +54,7 @@ class TokenStatsSettingsManagerTest {
 
     @After
     fun tearDown() {
+        TokenStatSpool.clearPendingStateForTest()
         database.close()
     }
 
@@ -554,5 +557,22 @@ class TokenStatsSettingsManagerTest {
             val orphan = groups.first { it.displayModelId == "orphan-group" }
             assertEquals("orphan-group", orphan.displayName)
             assertEquals(listOf("id-3"), orphan.memberIdentityIds)
+        }
+
+    @Test
+    fun `production settings access is rejected before resolving Room during snapshot`() =
+        runBlocking {
+            val productionManager = TokenStatsSettingsManager(context)
+            var rejected = false
+
+            TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = false) {
+                try {
+                    productionManager.groupModels()
+                } catch (_: TokenStatsBarrierActiveException) {
+                    rejected = true
+                }
+            }
+
+            assertTrue("settings access must not use a cached DAO during snapshot", rejected)
         }
 }

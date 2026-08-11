@@ -2158,8 +2158,9 @@ class TokenTrackingAIServiceTest {
                 // 真实 TokenTracking + fake provider：请求停在 provider 流阶段（未收尾）时
                 // 执行完整 restore（block 模拟恢复替换数据库 + clearAfter 删除旧 spool）→
                 // 旧请求释放后收尾 append 被请求 fence 明确拒绝——P1-2：统计收尾失败不得
-                // 改写成功的模型结果（事件丢弃并记日志，绝不写新 DB）；同进程新请求仍被
-                // 明确拒绝开始；模拟进程重启（reset 状态）后新请求可正常写入。
+                // 改写成功的模型结果（事件丢弃并记日志，绝不写新 DB）；同进程新请求 fail-open
+                // （统计跳过跟踪、直调 delegate，模型功能不受影响）；模拟进程重启（reset
+                // 状态）后新请求可正常写入。
                 val entered = CompletableDeferred<Unit>()
                 val release = CompletableDeferred<Unit>()
                 val fake =
@@ -2213,15 +2214,22 @@ class TokenTrackingAIServiceTest {
                     spoolDir.exists() &&
                         spoolDir.listFiles().orEmpty().any { it.isFile && it.length() > 0L },
                 )
-                // 同进程新请求：newRequest 明确拒绝开始（不污染新 DB）
-                try {
-                    tracked(FakeAiService())
-                        .sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
-                        .collect { }
-                    fail("new tracking requests must be rejected until process restart")
-                } catch (e: TokenStatsPersistenceException) {
-                    // expected
-                }
+                // 同进程新请求（UI"稍后重启"窗口）：P1-2 修复后 fail-open——统计跳过跟踪，
+                // 直调 delegate，模型功能完全不受影响，且不向新 DB 写入任何事件
+                val delegated = AtomicInteger(0)
+                tracked(
+                    FakeAiService { _ ->
+                        stream {
+                            delegated.incrementAndGet()
+                            emit("fail-open answer")
+                        }
+                    },
+                ).sendMessage(context = context, statsCategory = TokenStatCategory.CHAT).collect { }
+                assertEquals(
+                    "restored-process request must reach the delegate",
+                    1,
+                    delegated.get(),
+                )
                 assertEquals(0, database.tokenStatsDao().countEvents())
                 // 模拟进程重启：reset 状态后新请求可写
                 TokenStatSpool.clearPendingStateForTest()
@@ -2328,5 +2336,171 @@ class TokenTrackingAIServiceTest {
                 assertEquals(2, ids.size)
                 assertTrue(ids.contains("evt-pre-restore-old"))
             }
+        }
+
+    // ==== reviewer P1-1/P1-2 修复：统计数据库访问门控（立即拒绝）+ 恢复后 fail-open ====
+
+    @Test
+    fun `restore barrier rejects concurrent new request immediately without touching Room and fail-opens to the delegate`() =
+        runBlocking {
+            // 审查复现时序：恢复在 prepareBeforeCommit（closeDatabase 后、持久化标记前）
+            // 暂停；并发新请求被门控**立即拒绝**——不重建 Room、不等待屏障，直调
+            // delegate（模型功能不受影响）；恢复完成后（accepting=false）继续 fail-open。
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val restoreJob =
+                launch {
+                    TokenStatSpool.withExclusiveRestoreAccess(
+                        context = context,
+                        prepareBeforeCommit = {
+                            entered.complete(Unit)
+                            release.await()
+                        },
+                        commitReplacement = {},
+                        block = {},
+                    )
+                }
+            assertTrue(
+                "restore must be paused inside prepareBeforeCommit",
+                withTimeoutOrNull(10.seconds) { entered.await() } != null,
+            )
+            val delegated = AtomicInteger(0)
+            val requestJob =
+                launch {
+                    tracked(
+                        FakeAiService { _ ->
+                            stream {
+                                delegated.incrementAndGet()
+                                emit("answer")
+                            }
+                        },
+                    ).sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
+                        .collect { }
+                }
+            // 立即拒绝：不等屏障退出，provider 立刻被调用，Room 身份事务绝不执行
+            withTimeoutOrNull(10.seconds) { requestJob.join() }
+                ?: fail("fail-open request must not wait for the barrier to exit")
+            assertEquals("fail-open request must reach the delegate", 1, delegated.get())
+            assertEquals(0, database.tokenStatsDao().countEvents())
+            release.complete(Unit)
+            restoreJob.join()
+            // 恢复替换完成（accepting=false）后新请求依然 fail-open：直调 delegate 正常返回
+            val conn = tracked(FakeAiService(testConnectionResult = Result.success("pong")))
+                .testConnection(context)
+            assertTrue("testConnection must succeed after restore", conn.isSuccess)
+            assertEquals("pong", conn.getOrNull())
+            assertEquals(0, database.tokenStatsDao().countEvents())
+            TokenStatSpool.clearPendingStateForTest()
+        }
+
+    @Test
+    fun `snapshot barrier rejects identity writes immediately so zip packaging sees a frozen database`() =
+        runBlocking {
+            // 审查复现时序：备份在 checkpoint 之后（block 内，ZIP 打包前）暂停；并发请求
+            // 的身份事务被门控**立即拒绝**（不进 provider 前不开 Room）——打包期间绝不产生
+            // 新 WAL 或身份写入；快照不设 accepting=false：屏障退出后新请求正常落账
+            // （事件恰 1 条）。
+            // drainBefore=true 的待处理判定 fail-closed：spool 目录需存在（空目录）。
+            File(context.filesDir, TokenStatSpool.SPOOL_DIR_NAME).apply { mkdirs() }
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val snapshotJob =
+                launch {
+                    TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = true) {
+                        entered.complete(Unit)
+                        release.await()
+                    }
+                }
+            assertTrue(
+                "snapshot must be paused inside its exclusive block",
+                withTimeoutOrNull(10.seconds) { entered.await() } != null,
+            )
+            val delegated = AtomicInteger(0)
+            val requestJob =
+                launch {
+                    tracked(
+                        FakeAiService { _ ->
+                            stream {
+                                delegated.incrementAndGet()
+                                emit("answer")
+                            }
+                        },
+                    )
+                        .sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
+                        .collect { }
+                }
+            // 立即拒绝：打包期间请求直调 delegate（不等待、不写身份）
+            withTimeoutOrNull(10.seconds) { requestJob.join() }
+                ?: fail("fail-open request must not wait for the snapshot to exit")
+            assertEquals(1, delegated.get())
+            assertEquals(0, database.tokenStatsDao().countEvents())
+            release.complete(Unit)
+            snapshotJob.join()
+            // 快照后进程仍接受事件：新请求正常落账
+            tracked(FakeAiService { _ -> stream { emit("answer") } })
+                .sendMessage(context = context, statsCategory = TokenStatCategory.CHAT)
+                .collect { }
+            val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10)
+            while (database.tokenStatsDao().countEvents() == 0 && System.nanoTime() < deadline) {
+                delay(50)
+            }
+            assertEquals(1, database.tokenStatsDao().countEvents())
+        }
+
+    @Test
+    fun `restore barrier rejects request-finalization pricing reads immediately`() =
+        runBlocking {
+            // 审查复现时序：请求收尾的价格解析（直接 Room 读取）同样走门控——
+            // 屏障排他期间被**立即拒绝**（TokenStatsBarrierActiveException），绝不与
+            // 数据库文件替换竞争；屏障退出后正常完成。
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val restoreJob =
+                launch {
+                    TokenStatSpool.withExclusiveRestoreAccess(
+                        context = context,
+                        prepareBeforeCommit = {
+                            entered.complete(Unit)
+                            release.await()
+                        },
+                        commitReplacement = {},
+                        block = {},
+                    )
+                }
+            assertTrue(
+                "restore must be paused inside prepareBeforeCommit",
+                withTimeoutOrNull(10.seconds) { entered.await() } != null,
+            )
+            val ctx =
+                TokenStatRequestContext(
+                    eventId = "evt-pricing-gate",
+                    category = TokenStatCategory.CHAT,
+                    configId = "cfg-1",
+                    provider = "DEEPSEEK",
+                    model = "deepseek-chat",
+                    startedAtMs = System.currentTimeMillis(),
+                )
+            var barrierRejected = false
+            val pricingJob =
+                launch {
+                    try {
+                        TokenStatsLedger.prepareEventLineDetached(context, ctx)
+                    } catch (e: com.ai.assistance.operit.data.stats.TokenStatsBarrierActiveException) {
+                        barrierRejected = true
+                    }
+                }
+            withTimeoutOrNull(10.seconds) { pricingJob.join() }
+                ?: fail("pricing read must fail immediately while the barrier is active")
+            assertTrue("pricing read must be rejected while the barrier is active", barrierRejected)
+            release.complete(Unit)
+            restoreJob.join()
+            // 屏障退出后价格解析正常完成
+            var pricingResolved = false
+            launch {
+                TokenStatsLedger.prepareEventLineDetached(context, ctx)
+                pricingResolved = true
+            }.join()
+            assertTrue("pricing read must complete after the barrier exits", pricingResolved)
+            TokenStatSpool.clearPendingStateForTest()
         }
 }

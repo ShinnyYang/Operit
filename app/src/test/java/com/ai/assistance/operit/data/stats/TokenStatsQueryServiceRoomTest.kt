@@ -13,11 +13,16 @@ import com.ai.assistance.operit.data.model.TokenStatIdentityEntity
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
 import java.io.File
 import java.time.ZoneId
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -58,6 +63,7 @@ class TokenStatsQueryServiceRoomTest {
 
     @Before
     fun setUp() {
+        TokenStatSpool.clearPendingStateForTest()
         tempDir = kotlin.io.path.createTempDirectory("query-service-test").toFile()
         context = mockContext(tempDir)
         recordingDriver = RecordingSQLiteDriver()
@@ -76,6 +82,7 @@ class TokenStatsQueryServiceRoomTest {
         TokenStatsQueryService.queryDispatcher = Dispatchers.IO
         TokenStatsQueryService.lifetimeEventPageSize = 1_000
         TokenStatsQueryService.activityEventPageSize = 1_000
+        TokenStatSpool.clearPendingStateForTest()
         database.close()
     }
 
@@ -892,5 +899,60 @@ class TokenStatsQueryServiceRoomTest {
 
         val preset = TokenStatsQueryService.initialPresetWithData(context, shanghai, nowMs)
         assertEquals(TokenStatsPreset.LAST_5H, preset)
+    }
+
+    @Test
+    fun `snapshot waits for an active production query before entering its block`() = runBlocking {
+        val providerEntered = CountDownLatch(1)
+        val providerRelease = CountDownLatch(1)
+        val barrierEntered = CountDownLatch(1)
+        TokenStatsQueryService.databaseProvider = {
+            providerEntered.countDown()
+            check(providerRelease.await(10, TimeUnit.SECONDS))
+            database
+        }
+        val range = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_5H, nowMs, shanghai)
+
+        val queryJob = launch(Dispatchers.IO) {
+            assertFalse(TokenStatsQueryService.rangeHasEvents(context, range))
+        }
+        assertTrue("query must register before resolving Room", providerEntered.await(10, TimeUnit.SECONDS))
+        // UNDISPATCHED 保证 launch 返回前已执行到 accessor 等待的首次挂起点，
+        // 排除 IO 调度延迟导致“200ms 未进入 block”的假通过。
+        val barrierJob = launch(Dispatchers.IO, start = CoroutineStart.UNDISPATCHED) {
+            TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = false) {
+                barrierEntered.countDown()
+            }
+        }
+        assertFalse(
+            "snapshot block must wait for the registered query",
+            barrierEntered.await(200, TimeUnit.MILLISECONDS),
+        )
+        providerRelease.countDown()
+        queryJob.join()
+        assertTrue("snapshot must enter after the query exits", barrierEntered.await(10, TimeUnit.SECONDS))
+        barrierJob.join()
+    }
+
+    @Test
+    fun `production query is rejected before Room resolution while snapshot block is active`() = runBlocking {
+        val providerCalls = AtomicInteger(0)
+        TokenStatsQueryService.databaseProvider = {
+            providerCalls.incrementAndGet()
+            database
+        }
+        val range = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_5H, nowMs, shanghai)
+        var rejected = false
+
+        TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = false) {
+            try {
+                TokenStatsQueryService.rangeHasEvents(context, range)
+            } catch (_: TokenStatsBarrierActiveException) {
+                rejected = true
+            }
+        }
+
+        assertTrue("query must be rejected during the exclusive block", rejected)
+        assertEquals("rejected query must not resolve or reopen Room", 0, providerCalls.get())
     }
 }

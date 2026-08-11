@@ -1,7 +1,9 @@
 package com.ai.assistance.operit.data.stats
 
+import android.content.Context
 import com.ai.assistance.operit.data.collects.PricingCurrency
 import com.ai.assistance.operit.data.dao.TokenStatsDao
+import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.model.BillingMode
 import com.ai.assistance.operit.data.model.PriceOverrideScope
 import com.ai.assistance.operit.data.model.TokenStatPriceOverrideEntity
@@ -32,11 +34,28 @@ data class TokenStatsPriceOverrideDraft(
  *   （REPLACE 会经外键级联删除事件）；展示模型行用 INSERT IGNORE / UPDATE。
  * - 本类只做校验与编排，事务边界在 DAO（@Transaction）保证。
  */
-class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
+class TokenStatsSettingsManager private constructor(
+    private val injectedDao: TokenStatsDao?,
+    private val appContext: Context?,
+) {
+
+    /** DAO 注入仅用于测试；生产入口必须在访问 token 登记后再解析 Room。 */
+    constructor(dao: TokenStatsDao) : this(dao, null)
+
+    constructor(context: Context) : this(null, context.applicationContext)
 
     companion object {
         /** 自定义分组 displayModelId 前缀（与任何规范化模型名天然不冲突）。 */
         const val CUSTOM_GROUP_ID_PREFIX = "custom-group-"
+    }
+
+    private suspend fun <T> withDao(block: suspend (TokenStatsDao) -> T): T {
+        val dao = injectedDao
+        if (dao != null) return block(dao)
+        val context = checkNotNull(appContext)
+        return TokenStatSpool.withStatsDatabaseAccess {
+            block(AppDatabase.getDatabase(context).tokenStatsDao())
+        }
     }
 
     // ==== 价格覆盖 ====
@@ -67,34 +86,36 @@ class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
         outputPricePerMillion: Double?,
         pricePerRequest: Double?,
     ) {
-        dao.upsertPriceOverride(
-            scope = scope.name,
-            provider = provider,
-            model = model,
-            configId = configId,
-            billingMode = billingMode.name,
-            pricingCurrency = pricingCurrency.name,
-            inputPricePerMillion =
-                if (billingMode == BillingMode.TOKEN) {
-                    validatePriceValue("inputPrice", inputPricePerMillion)
-                } else null,
-            cachedInputPricePerMillion =
-                if (billingMode == BillingMode.TOKEN) {
-                    validatePriceValue("cachedInputPrice", cachedInputPricePerMillion)
-                } else null,
-            cacheWritePricePerMillion =
-                if (billingMode == BillingMode.TOKEN) {
-                    validatePriceValue("cacheWritePrice", cacheWritePricePerMillion)
-                } else null,
-            outputPricePerMillion =
-                if (billingMode == BillingMode.TOKEN) {
-                    validatePriceValue("outputPrice", outputPricePerMillion)
-                } else null,
-            pricePerRequest =
-                if (billingMode == BillingMode.COUNT) {
-                    validatePriceValue("pricePerRequest", pricePerRequest)
-                } else null,
-        )
+        withDao { dao ->
+            dao.upsertPriceOverride(
+                scope = scope.name,
+                provider = provider,
+                model = model,
+                configId = configId,
+                billingMode = billingMode.name,
+                pricingCurrency = pricingCurrency.name,
+                inputPricePerMillion =
+                    if (billingMode == BillingMode.TOKEN) {
+                        validatePriceValue("inputPrice", inputPricePerMillion)
+                    } else null,
+                cachedInputPricePerMillion =
+                    if (billingMode == BillingMode.TOKEN) {
+                        validatePriceValue("cachedInputPrice", cachedInputPricePerMillion)
+                    } else null,
+                cacheWritePricePerMillion =
+                    if (billingMode == BillingMode.TOKEN) {
+                        validatePriceValue("cacheWritePrice", cacheWritePricePerMillion)
+                    } else null,
+                outputPricePerMillion =
+                    if (billingMode == BillingMode.TOKEN) {
+                        validatePriceValue("outputPrice", outputPricePerMillion)
+                    } else null,
+                pricePerRequest =
+                    if (billingMode == BillingMode.COUNT) {
+                        validatePriceValue("pricePerRequest", pricePerRequest)
+                    } else null,
+            )
+        }
     }
 
     /** 草稿形态的统一入口（阶段 4 UI 使用）。 */
@@ -142,24 +163,26 @@ class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
 
     /** 全部价格覆盖（管理区展示用；小表，一次读取）。 */
     suspend fun allPriceOverrides(): List<TokenStatPriceOverrideEntity> =
-        dao.getAllPriceOverrides().map { row ->
-            val normalized = row.activeBillingFieldsOnly()
-            if (normalized != row) {
-                dao.upsertPriceOverride(
-                    scope = normalized.scope,
-                    provider = normalized.provider,
-                    model = normalized.model,
-                    configId = normalized.configId,
-                    billingMode = normalized.billingMode,
-                    pricingCurrency = normalized.pricingCurrency,
-                    inputPricePerMillion = normalized.inputPricePerMillion,
-                    cachedInputPricePerMillion = normalized.cachedInputPricePerMillion,
-                    cacheWritePricePerMillion = normalized.cacheWritePricePerMillion,
-                    outputPricePerMillion = normalized.outputPricePerMillion,
-                    pricePerRequest = normalized.pricePerRequest,
-                )
+        withDao { dao ->
+            dao.getAllPriceOverrides().map { row ->
+                val normalized = row.activeBillingFieldsOnly()
+                if (normalized != row) {
+                    dao.upsertPriceOverride(
+                        scope = normalized.scope,
+                        provider = normalized.provider,
+                        model = normalized.model,
+                        configId = normalized.configId,
+                        billingMode = normalized.billingMode,
+                        pricingCurrency = normalized.pricingCurrency,
+                        inputPricePerMillion = normalized.inputPricePerMillion,
+                        cachedInputPricePerMillion = normalized.cachedInputPricePerMillion,
+                        cacheWritePricePerMillion = normalized.cacheWritePricePerMillion,
+                        outputPricePerMillion = normalized.outputPricePerMillion,
+                        pricePerRequest = normalized.pricePerRequest,
+                    )
+                }
+                normalized
             }
-            normalized
         }
 
     private fun TokenStatPriceOverrideEntity.activeBillingFieldsOnly(): TokenStatPriceOverrideEntity =
@@ -181,18 +204,20 @@ class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
         model: String,
         configId: String?,
     ) {
-        dao.deletePriceOverride(
-            scope = scope.name,
-            // 与写入同一规范化：provider trim+小写、model trim+小写+压缩空白
-            provider = provider.trim().lowercase(),
-            model = model.trim().lowercase().replace(Regex("\\s+"), " "),
-            configId =
-                if (scope == PriceOverrideScope.PROVIDER_MODEL) {
-                    ""
-                } else {
-                    configId?.trim().orEmpty()
-                },
-        )
+        withDao { dao ->
+            dao.deletePriceOverride(
+                scope = scope.name,
+                // 与写入同一规范化：provider trim+小写、model trim+小写+压缩空白
+                provider = provider.trim().lowercase(),
+                model = model.trim().lowercase().replace(Regex("\\s+"), " "),
+                configId =
+                    if (scope == PriceOverrideScope.PROVIDER_MODEL) {
+                        ""
+                    } else {
+                        configId?.trim().orEmpty()
+                    },
+            )
+        }
     }
 
     // ==== 展示分组 / 别名 ====
@@ -205,46 +230,48 @@ class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
      * display_models 行，缺失时回退 displayModelId；输出顺序确定。
      */
     suspend fun groupModels(): List<TokenStatsGroupModelInfo> {
-        val snapshot = dao.loadGroupMetadataSnapshot()
-        val displayNames = snapshot.displayModels.associateBy { it.displayModelId }
-        val membersByGroup = LinkedHashMap<String, MutableList<TokenStatsGroupMemberInfo>>()
-        for (identity in snapshot.identities) {
-            membersByGroup.getOrPut(identity.displayModelId) { mutableListOf() }
-                .add(
-                    TokenStatsGroupMemberInfo(
-                        identityId = identity.identityId,
-                        configId = identity.configId,
-                        provider = identity.provider,
-                        model = identity.model,
+        return withDao { dao ->
+            val snapshot = dao.loadGroupMetadataSnapshot()
+            val displayNames = snapshot.displayModels.associateBy { it.displayModelId }
+            val membersByGroup = LinkedHashMap<String, MutableList<TokenStatsGroupMemberInfo>>()
+            for (identity in snapshot.identities) {
+                membersByGroup.getOrPut(identity.displayModelId) { mutableListOf() }
+                    .add(
+                        TokenStatsGroupMemberInfo(
+                            identityId = identity.identityId,
+                            configId = identity.configId,
+                            provider = identity.provider,
+                            model = identity.model,
+                        )
                     )
+            }
+            // 有展示行但无身份的空分组：仍可作为合并目标，必须保留
+            for (display in snapshot.displayModels) {
+                membersByGroup.putIfAbsent(display.displayModelId, mutableListOf())
+            }
+            membersByGroup.map { (displayModelId, members) ->
+                val sortedMembers = members.sortedWith(compareBy({ it.model.lowercase() }, { it.provider.lowercase() }, { it.configId }))
+                TokenStatsGroupModelInfo(
+                    displayModelId = displayModelId,
+                    displayName = displayNames[displayModelId]?.displayName ?: displayModelId,
+                    memberIdentityIds = sortedMembers.map { it.identityId },
+                    members = sortedMembers,
                 )
+            }.sortedWith(compareBy({ it.displayName.lowercase() }, { it.displayModelId }))
         }
-        // 有展示行但无身份的空分组：仍可作为合并目标，必须保留
-        for (display in snapshot.displayModels) {
-            membersByGroup.putIfAbsent(display.displayModelId, mutableListOf())
-        }
-        return membersByGroup.map { (displayModelId, members) ->
-            val sortedMembers = members.sortedWith(compareBy({ it.model.lowercase() }, { it.provider.lowercase() }, { it.configId }))
-            TokenStatsGroupModelInfo(
-                displayModelId = displayModelId,
-                displayName = displayNames[displayModelId]?.displayName ?: displayModelId,
-                memberIdentityIds = sortedMembers.map { it.identityId },
-                members = sortedMembers,
-            )
-        }.sortedWith(compareBy({ it.displayName.lowercase() }, { it.displayModelId }))
     }
 
     /** 重命名展示分组（只改 displayName，不动身份归属）。 */
     suspend fun renameDisplayGroup(displayModelId: String, displayName: String) {
         val trimmed = displayName.trim()
         require(trimmed.isNotBlank()) { "display name must not be blank" }
-        dao.updateDisplayModelName(displayModelId, trimmed)
+        withDao { dao -> dao.updateDisplayModelName(displayModelId, trimmed) }
     }
 
     /** 把指定身份移动到已有展示分组（分组行不存在时自动创建）。 */
     suspend fun moveIdentitiesToGroup(identityIds: List<String>, displayModelId: String) {
         require(identityIds.isNotEmpty()) { "identityIds must not be empty" }
-        dao.moveIdentitiesToDisplayModelTx(identityIds, displayModelId)
+        withDao { dao -> dao.moveIdentitiesToDisplayModelTx(identityIds, displayModelId) }
     }
 
     /**
@@ -256,12 +283,12 @@ class TokenStatsSettingsManager(private val dao: TokenStatsDao) {
         require(trimmed.isNotBlank()) { "group name must not be blank" }
         require(identityIds.isNotEmpty()) { "identityIds must not be empty" }
         val groupId = "$CUSTOM_GROUP_ID_PREFIX${UUID.randomUUID()}"
-        dao.createDisplayGroupTx(groupId, trimmed, identityIds)
+        withDao { dao -> dao.createDisplayGroupTx(groupId, trimmed, identityIds) }
         return groupId
     }
 
     /** 恢复默认规范分组：组内每个身份按其自身模型名归回默认组。 */
     suspend fun restoreDefaultGroups(displayModelId: String) {
-        dao.restoreDefaultGroupsTx(displayModelId)
+        withDao { dao -> dao.restoreDefaultGroupsTx(displayModelId) }
     }
 }
