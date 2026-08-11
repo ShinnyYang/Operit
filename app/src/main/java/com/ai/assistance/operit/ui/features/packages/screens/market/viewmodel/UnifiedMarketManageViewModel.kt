@@ -177,6 +177,13 @@ class UnifiedMarketManageViewModel(
             return
         }
         AppLogger.i(TAG, "revision_gate decision=allowed entryId=${entry.id} next=getMyEntryDetail")
+        openOwnedEntryDetail(entry, onLoaded)
+    }
+
+    fun openOwnedEntryDetail(
+        entry: MarketV2PublisherEntrySummary,
+        onLoaded: (MarketV2Entry) -> Unit
+    ) {
         viewModelScope.launch {
             if (!githubAuth.isLoggedIn()) {
                 _errorMessage.value = context.getString(R.string.skillmarket_github_login_required)
@@ -197,7 +204,7 @@ class UnifiedMarketManageViewModel(
                 onLoaded(fullEntry)
             } catch (e: Exception) {
                 _errorMessage.value = e.message ?: context.getString(R.string.market_error_load_failed)
-                AppLogger.e(TAG, "Failed to load revision detail for managed market entry ${entry.id}", e)
+                AppLogger.e(TAG, "Failed to load owner detail for managed market entry ${entry.id}", e)
             } finally {
                 _isLoading.value = false
             }
