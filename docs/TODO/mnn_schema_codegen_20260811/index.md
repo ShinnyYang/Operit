@@ -26,4 +26,3 @@ MNN 源码和 generated headers 来自同一个 fetched revision，干净 CI 工
 - 分支：`fix/jvm-json-test-runtime`
 - PR：[#926](https://github.com/AAswordman/Operit/pull/926)
 - 保留：`origin/fix/withdrawn-entry-republish`
-
