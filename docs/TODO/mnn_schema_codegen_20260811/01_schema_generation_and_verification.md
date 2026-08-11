@@ -6,7 +6,7 @@
 
 ## 修正意图
 
-在 MNN 子目录加入父构建前，构建 MNN 自带的 FlatBuffers `flatc` 宿主工具，清理并重新生成公共 schema 头文件。生成器与 schema 同源，Android 目标编译器只负责最终 native 库，不会被当作宿主工具执行。
+在 MNN 子目录加入父构建前，构建 MNN 自带的 FlatBuffers `flatc` 宿主工具，清理并重新生成公共 schema 头文件。Linux 使用 `gcc` 与 `g++` 编译该宿主工具，避免旧 FlatBuffers CMake 将 Clang 已知警告提升为错误；Android 目标编译器只负责最终 native 库，不会被当作宿主工具执行。
 
 ## 验证记录
 
