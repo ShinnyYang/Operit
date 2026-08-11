@@ -168,6 +168,7 @@ data class ModelConfigSummary(
         val modelName: String = "",
         val apiEndpoint: String = "",
         val apiProviderType: ApiProviderType = ApiProviderType.DEEPSEEK,
+        val apiProviderTypeId: String = apiProviderType.name,
         val modelIndex: Int = 0 // 当modelName包含多个模型（逗号分隔）时，选择第几个模型（从0开始）
 )
 

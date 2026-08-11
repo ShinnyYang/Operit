@@ -3,6 +3,7 @@ package com.ai.assistance.operit.data.backup
 import android.content.Context
 import android.net.Uri
 import com.ai.assistance.operit.data.db.AppDatabase
+import com.ai.assistance.operit.data.stats.TokenStatSpool
 import com.ai.assistance.operit.util.AppLogger
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -88,15 +89,9 @@ object RoomDatabaseRestoreManager {
         }
     }
 
-    private fun restoreFromBackupFileInternal(context: Context, zipFile: File) {
+    private suspend fun restoreFromBackupFileInternal(context: Context, zipFile: File) {
         if (!zipFile.exists() || !zipFile.isFile) {
             throw IllegalArgumentException("Backup file not found: ${zipFile.absolutePath}")
-        }
-
-        try {
-            AppDatabase.closeDatabase()
-        } catch (e: Exception) {
-            AppLogger.w(TAG, "closeDatabase failed", e)
         }
 
         val targetDb = context.getDatabasePath(DB_NAME)
@@ -113,62 +108,92 @@ object RoomDatabaseRestoreManager {
         tmpWal.delete()
         tmpShm.delete()
 
-        var extractedDb = false
-        var extractedWal = false
-        var extractedShm = false
-
         try {
-            ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
-                while (true) {
-                    val entry = zis.nextEntry ?: break
-                    val name = entry.name
+            // P1 终审：两阶段恢复屏障。prepareBeforeCommit 关闭数据库并完成全部可失败
+            // 的准备工作（解压 ZIP 到 tmp 文件 + 验证必需条目）；commitReplacement 持久化
+            // REPLACING 标记——只有该标记成功落盘后 restore epoch 才递增、恢复前开始的
+            // 旧请求在收尾时被明确拒绝；block 只做目标文件删除/替换（不再有可失败的解压
+            // 步骤）。备份损坏/缺条目/读取失败都在 commit 之前失败：epoch 不变、进程仍
+            // 接受事件，绝不因选择了错误备份文件而锁死当前进程（审计 P1）。
+            TokenStatSpool.withExclusiveRestoreAccess(
+                context = context,
+                prepareBeforeCommit = {
+                    try {
+                        AppDatabase.closeDatabase()
+                    } catch (e: Exception) {
+                        AppLogger.w(TAG, "closeDatabase failed", e)
+                    }
+                    extractAndValidate(zipFile, tmpDb, tmpWal, tmpShm)
+                },
+                commitReplacement = {
+                    RestoreReplacingMarker.persist(context)
+                },
+                block = {
+                    targetWal.delete()
+                    targetShm.delete()
+                    targetDb.delete()
 
-                    when (name) {
-                        DB_NAME -> {
-                            writeStreamToFile(zis, tmpDb)
-                            extractedDb = true
-                        }
-                        "${DB_NAME}-wal" -> {
-                            writeStreamToFile(zis, tmpWal)
-                            extractedWal = true
-                        }
-                        "${DB_NAME}-shm" -> {
-                            writeStreamToFile(zis, tmpShm)
-                            extractedShm = true
-                        }
+                    replaceFile(tmpDb, targetDb)
+                    if (tmpWal.exists()) {
+                        replaceFile(tmpWal, targetWal)
+                    } else {
+                        tmpWal.delete()
+                        targetWal.delete()
                     }
 
-                    zis.closeEntry()
-                }
-            }
-
-            if (!extractedDb) {
-                throw IllegalArgumentException("Invalid backup zip: missing $DB_NAME")
-            }
-
-            targetWal.delete()
-            targetShm.delete()
-            targetDb.delete()
-
-            replaceFile(tmpDb, targetDb)
-            if (extractedWal) {
-                replaceFile(tmpWal, targetWal)
-            } else {
-                tmpWal.delete()
-                targetWal.delete()
-            }
-
-            if (extractedShm) {
-                replaceFile(tmpShm, targetShm)
-            } else {
-                tmpShm.delete()
-                targetShm.delete()
-            }
+                    if (tmpShm.exists()) {
+                        replaceFile(tmpShm, targetShm)
+                    } else {
+                        tmpShm.delete()
+                        targetShm.delete()
+                    }
+                },
+            )
+            RestoreReplacingMarker.delete(context)
         } catch (e: Exception) {
             tmpDb.delete()
             tmpWal.delete()
             tmpShm.delete()
             throw e
+        }
+    }
+
+    /**
+     * 解压 ZIP 到 tmp 文件并验证必需条目（审计 P1：在 commit 之前完成全部可失败工作）。
+     * 缺 [DB_NAME] 抛 [IllegalArgumentException]；读取失败向上传播——调用方处于
+     * prepareBeforeCommit，epoch 未递增、进程仍接受事件。
+     */
+    private fun extractAndValidate(zipFile: File, tmpDb: File, tmpWal: File, tmpShm: File) {
+        var extractedDb = false
+        var extractedWal = false
+        var extractedShm = false
+
+        ZipInputStream(BufferedInputStream(FileInputStream(zipFile))).use { zis ->
+            while (true) {
+                val entry = zis.nextEntry ?: break
+                val name = entry.name
+
+                when (name) {
+                    DB_NAME -> {
+                        writeStreamToFile(zis, tmpDb)
+                        extractedDb = true
+                    }
+                    "${DB_NAME}-wal" -> {
+                        writeStreamToFile(zis, tmpWal)
+                        extractedWal = true
+                    }
+                    "${DB_NAME}-shm" -> {
+                        writeStreamToFile(zis, tmpShm)
+                        extractedShm = true
+                    }
+                }
+
+                zis.closeEntry()
+            }
+        }
+
+        if (!extractedDb) {
+            throw IllegalArgumentException("Invalid backup zip: missing $DB_NAME")
         }
     }
 
