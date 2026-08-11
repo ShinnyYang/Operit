@@ -759,6 +759,8 @@ dependencies {
 
     // Test dependencies
     testImplementation(libs.junit)
+    // JVM tests need a real implementation because Android's org.json methods are throwing stubs.
+    testImplementation(libs.json.jvm)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
