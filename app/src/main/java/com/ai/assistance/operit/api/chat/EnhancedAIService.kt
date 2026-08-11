@@ -1110,7 +1110,13 @@ class EnhancedAIService private constructor(private val context: Context) {
                                         currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
                                         _perRequestTokenCounts.value = Pair(input, output)
                                     },
-                                    onNonFatalError = onNonFatalError
+                                    onNonFatalError = onNonFatalError,
+                                    statsCategory =
+                                        if (isSubTask) {
+                                            com.ai.assistance.operit.data.stats.TokenStatCategory.SUBAGENT
+                                        } else {
+                                            com.ai.assistance.operit.data.stats.TokenStatCategory.CHAT
+                                        }
                             )
                     val revisableStream = responseStream as? TextStreamEventCarrier
 
@@ -1211,10 +1217,6 @@ class EnhancedAIService private constructor(private val context: Context) {
                     currentRequestInputTokenCount = 0L
                     currentRequestOutputTokenCount = 0L
                     currentRequestCachedInputTokenCount = 0L
-                    apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
-                    
-                    // Update request count
-                    apiPreferences.incrementRequestCountForProviderModel(serviceForFunction.providerModel)
 
                     AppLogger.d(
                             TAG,
@@ -2330,7 +2332,13 @@ class EnhancedAIService private constructor(private val context: Context) {
                                     currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
                                     _perRequestTokenCounts.value = Pair(input, output)
                                 },
-                                onNonFatalError = onNonFatalError
+                                onNonFatalError = onNonFatalError,
+                                statsCategory =
+                                    if (isSubTask) {
+                                        com.ai.assistance.operit.data.stats.TokenStatCategory.SUBAGENT
+                                    } else {
+                                        com.ai.assistance.operit.data.stats.TokenStatCategory.CHAT
+                                    }
                         )
 
                 // 更新状态为接收中
@@ -2425,10 +2433,6 @@ class EnhancedAIService private constructor(private val context: Context) {
                 currentRequestInputTokenCount = 0L
                 currentRequestOutputTokenCount = 0L
                 currentRequestCachedInputTokenCount = 0L
-                apiPreferences.updateTokensForProviderModel(serviceForFunction.providerModel, inputTokens, outputTokens, cachedInputTokens)
-                
-                // Update request count
-                apiPreferences.incrementRequestCountForProviderModel(serviceForFunction.providerModel)
 
                 AppLogger.d(
                         TAG,

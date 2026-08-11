@@ -9,6 +9,7 @@ import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.model.ParameterCategory
+import com.ai.assistance.operit.data.stats.ProviderUsageNormalizer
 import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.ChatMarkupRegex
@@ -35,6 +36,7 @@ import java.net.SocketTimeoutException
 import java.net.URL
 import java.net.UnknownHostException
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -1069,8 +1071,10 @@ class GeminiProvider(
             availableTools: List<ToolPrompt>?,
             preserveThinkInHistory: Boolean,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+            onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
             onNonFatalError: suspend (error: String) -> Unit,
-            enableRetry: Boolean
+            enableRetry: Boolean,
+            statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -1174,10 +1178,10 @@ class GeminiProvider(
                         // 根据stream参数处理响应
                         if (stream) {
                             // 处理流式响应
-                            processStreamingResponse(context, response, streamCollector, requestId, onTokensUpdated, receivedContent)
+                            processStreamingResponse(context, response, streamCollector, requestId, onTokensUpdated, receivedContent, onUsageReported, retryCount + 1)
                         } else {
                             // 处理非流式响应并转换为Stream
-                            processNonStreamingResponse(context, response, streamCollector, requestId, onTokensUpdated, receivedContent)
+                            processNonStreamingResponse(context, response, streamCollector, requestId, onTokensUpdated, receivedContent, onUsageReported, retryCount + 1)
                         }
                     } finally {
                         response.close()
@@ -1212,7 +1216,8 @@ class GeminiProvider(
                 R.string.gemini_error_connection_timeout,
                 maxRetries,
                 lastException?.message ?: context.getString(R.string.provider_error_network_interrupted)
-            )
+            ),
+            lastException
         )
         }
         return responseStream.withEventChannel(eventChannel)
@@ -1407,7 +1412,9 @@ class GeminiProvider(
             streamCollector: StreamCollector<String>,
             requestId: String,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-            receivedContent: StringBuilder
+            receivedContent: StringBuilder,
+            onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+            attemptNumber: Int = 1
     ) {
         AppLogger.d(TAG, "开始处理响应流")
         val responseBody = response.body ?: throw IOException(context.getString(R.string.gemini_response_empty))
@@ -1450,7 +1457,7 @@ class GeminiProvider(
                             val json = JSONObject(data)
                             jsonCount++
 
-                            val content = extractContentFromJson(context, json, requestId, onTokensUpdated)
+                            val content = extractContentFromJson(context, json, requestId, onTokensUpdated, onUsageReported, attemptNumber)
                             if (content.isNotEmpty()) {
                                 contentCount++
                                 logDebug("提取SSE内容，长度: ${content.length}")
@@ -1459,6 +1466,8 @@ class GeminiProvider(
                                 // 只发送新增的内容
                                 streamCollector.emit(content)
                             }
+                        } catch (e: CancellationException) {
+                            throw e
                         } catch (e: IOException) {
                             throw e
                         } catch (e: Exception) {
@@ -1515,7 +1524,9 @@ class GeminiProvider(
                                                                     context,
                                                                     jsonObject,
                                                                     requestId,
-                                                                    onTokensUpdated
+                                                                    onTokensUpdated,
+                                                                    onUsageReported,
+                                                                    attemptNumber
                                                             )
                                                     if (content.isNotEmpty()) {
                                                         contentCount++
@@ -1536,6 +1547,8 @@ class GeminiProvider(
                                     isCollectingJson = false
                                     completeJsonBuilder.clear()
                                 }
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: IOException) {
                                 throw e
                             } catch (e: Exception) {
@@ -1575,7 +1588,7 @@ class GeminiProvider(
                             for (i in 0 until jsonContent.length()) {
                                 val jsonObject = jsonContent.optJSONObject(i) ?: continue
                                 jsonCount++
-                                val content = extractContentFromJson(context, jsonObject, requestId, onTokensUpdated)
+                                val content = extractContentFromJson(context, jsonObject, requestId, onTokensUpdated, onUsageReported, attemptNumber)
                                 if (content.isNotEmpty()) {
                                     contentCount++
                                     logDebug("从最终JSON数组[$i]提取内容，长度: ${content.length}")
@@ -1586,7 +1599,7 @@ class GeminiProvider(
                         }
                         is JSONObject -> {
                             jsonCount++
-                            val content = extractContentFromJson(context, jsonContent, requestId, onTokensUpdated)
+                            val content = extractContentFromJson(context, jsonContent, requestId, onTokensUpdated, onUsageReported, attemptNumber)
                             if (content.isNotEmpty()) {
                                 contentCount++
                                 logDebug("从最终JSON对象提取内容，长度: ${content.length}")
@@ -1595,6 +1608,8 @@ class GeminiProvider(
                             }
                         }
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: IOException) {
                     throw e
                 } catch (e: Exception) {
@@ -1614,6 +1629,8 @@ class GeminiProvider(
                 logDebug("未检测到内容，发送空格")
                 streamCollector.emit(" ")
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logError("处理响应时发生异常: ${e.message}", e)
             throw e
@@ -1629,7 +1646,9 @@ class GeminiProvider(
             streamCollector: StreamCollector<String>,
             requestId: String,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-            receivedContent: StringBuilder
+            receivedContent: StringBuilder,
+            onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+            attemptNumber: Int = 1
     ) {
         AppLogger.d(TAG, "开始处理非流式响应")
         val responseBody = response.body ?: throw IOException(context.getString(R.string.gemini_response_empty))
@@ -1642,7 +1661,7 @@ class GeminiProvider(
             val json = JSONObject(responseText)
             
             // 提取内容
-            val content = extractContentFromJson(context, json, requestId, onTokensUpdated)
+            val content = extractContentFromJson(context, json, requestId, onTokensUpdated, onUsageReported, attemptNumber)
             
             if (content.isNotEmpty()) {
                 receivedContent.append(content)
@@ -1662,6 +1681,8 @@ class GeminiProvider(
                 streamCollector.emit("</think>")
                 isInThinkingMode = false
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             logError("处理非流式响应时发生异常: ${e.message}", e)
             throw e
@@ -1675,7 +1696,9 @@ class GeminiProvider(
         context: Context,
         json: JSONObject,
         requestId: String,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ): String {
         val contentBuilder = StringBuilder()
         val searchSourcesBuilder = StringBuilder()
@@ -1683,6 +1706,40 @@ class GeminiProvider(
 
         try {
             throwIfGeminiErrorPayload(context, json)
+
+            // 提取实际的token使用数据：必须先于 candidates/content 的提前返回执行，
+            // 否则“无 candidates 但带 usageMetadata”的响应（如 prompt 被拦截）会漏记用量。
+            var serverUsageApplied = false
+            val usageMetadata = json.optJSONObject("usageMetadata")
+            if (usageMetadata != null) {
+                val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0L)
+                val cachedContentTokenCount = usageMetadata.optLong("cachedContentTokenCount", 0L)
+                val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
+
+                val hasServerUsage =
+                    usageMetadata.has("promptTokenCount") ||
+                        usageMetadata.has("cachedContentTokenCount") ||
+                        usageMetadata.has("candidatesTokenCount")
+                if (hasServerUsage) {
+                    serverUsageApplied = true
+                    // 更新实际的token计数
+                    val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
+                    tokenCacheManager.updateActualTokens(actualInputTokens, cachedContentTokenCount)
+                    tokenCacheManager.setOutputTokens(candidatesTokenCount)
+
+                    logDebug("API实际Token使用: 输入=$actualInputTokens, 缓存=$cachedContentTokenCount, 输出=$candidatesTokenCount")
+
+                    // 更新回调，使用实际的token统计
+                    onTokensUpdated(
+                        tokenCacheManager.totalInputTokenCount,
+                        tokenCacheManager.cachedInputTokenCount,
+                        tokenCacheManager.outputTokenCount
+                    )
+                    onUsageReported?.let { callback ->
+                        ProviderUsageNormalizer.gemini(usageMetadata)?.let { callback(it, attemptNumber) }
+                    }
+                }
+            }
 
             // 提取候选项
             val candidates = json.optJSONArray("candidates")
@@ -1883,45 +1940,23 @@ class GeminiProvider(
                         logDebug("提取文本，长度=${text.length}")
                     }
 
-                    // 估算token
-                    val tokens = ChatUtils.estimateTokenCount(text)
-                    tokenCacheManager.addOutputTokens(tokens)
-                    onTokensUpdated(
-                            tokenCacheManager.totalInputTokenCount,
-                            tokenCacheManager.cachedInputTokenCount,
-                            tokenCacheManager.outputTokenCount
-                    )
+                    // 估算token：本 chunk 已应用服务器累计实际值时不再叠加估算，
+                    // 否则会在 setOutputTokens 的累计实际值之上重复计数（原实现靠
+                    // 末尾覆盖避免重复，usage 提取提前后需显式跳过）
+                    if (!serverUsageApplied) {
+                        val tokens = ChatUtils.estimateTokenCount(text)
+                        tokenCacheManager.addOutputTokens(tokens)
+                        onTokensUpdated(
+                                tokenCacheManager.totalInputTokenCount,
+                                tokenCacheManager.cachedInputTokenCount,
+                                tokenCacheManager.outputTokenCount
+                        )
+                    }
                 }
             }
 
             pendingThoughtSignatures.forEach { signature ->
                 appendGeminiThoughtSignatureMeta(contentBuilder, signature)
-            }
-
-            // 提取实际的token使用数据
-            val usageMetadata = json.optJSONObject("usageMetadata")
-            if (usageMetadata != null) {
-                val promptTokenCount = usageMetadata.optLong("promptTokenCount", 0L)
-                val cachedContentTokenCount = usageMetadata.optLong("cachedContentTokenCount", 0L)
-                val candidatesTokenCount = usageMetadata.optLong("candidatesTokenCount", 0L)
-
-                val hasServerUsage =
-                    promptTokenCount > 0 || cachedContentTokenCount > 0 || candidatesTokenCount > 0
-                if (hasServerUsage) {
-                    // 更新实际的token计数
-                    val actualInputTokens = (promptTokenCount - cachedContentTokenCount).coerceAtLeast(0)
-                    tokenCacheManager.updateActualTokens(actualInputTokens, cachedContentTokenCount)
-                    tokenCacheManager.setOutputTokens(candidatesTokenCount)
-
-                    logDebug("API实际Token使用: 输入=$actualInputTokens, 缓存=$cachedContentTokenCount, 输出=$candidatesTokenCount")
-
-                    // 更新回调，使用实际的token统计
-                    onTokensUpdated(
-                        tokenCacheManager.totalInputTokenCount,
-                        tokenCacheManager.cachedInputTokenCount,
-                        tokenCacheManager.outputTokenCount
-                    )
-                }
             }
 
             // 将搜索来源拼接到内容最前面
@@ -1932,6 +1967,8 @@ class GeminiProvider(
             }
             
             return finalContent
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: IOException) {
             throw e
         } catch (e: Exception) {
@@ -1950,7 +1987,10 @@ class GeminiProvider(
         )
     }
 
-    override suspend fun testConnection(context: Context): Result<String> {
+    override suspend fun testConnection(
+        context: Context,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
+    ): Result<String> {
         return try {
             // 通过发送一条短消息来测试完整的连接、认证和API端点。
             // 这比getModelsList更可靠，因为它直接命中了聊天API。
@@ -1964,6 +2004,7 @@ class GeminiProvider(
                 false,
                 null,
                 onTokensUpdated = { _, _, _ -> },
+                onUsageReported = onUsageReported,
                 onNonFatalError = {},
                 enableRetry = false
             )
@@ -1978,6 +2019,9 @@ class GeminiProvider(
             // 某些情况下，即使连接成功，也可能不会返回任何数据（例如，如果模型只处理了提示而没有生成响应）。
             // 因此，只要不抛出异常，我们就认为连接成功。
             Result.success(context.getString(R.string.gemini_connection_success))
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 取消必须原样传播，不能变成 Result.failure
+            throw e
         } catch (e: Exception) {
             logError("连接测试失败", e)
             Result.failure(IOException(context.getString(R.string.gemini_connection_test_failed, e.message ?: ""), e))

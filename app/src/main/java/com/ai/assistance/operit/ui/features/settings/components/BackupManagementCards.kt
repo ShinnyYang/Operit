@@ -416,7 +416,8 @@ fun ManagementButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isDestructive: Boolean = false,
-    isWarning: Boolean = false
+    isWarning: Boolean = false,
+    enabled: Boolean = true
 ) {
     val colors = if (isDestructive) {
         ButtonDefaults.filledTonalButtonColors(
@@ -436,6 +437,7 @@ fun ManagementButton(
         onClick = onClick,
         modifier = modifier,
         colors = colors,
+        enabled = enabled,
         shape = RoundedCornerShape(14.dp)
     ) {
         Icon(
