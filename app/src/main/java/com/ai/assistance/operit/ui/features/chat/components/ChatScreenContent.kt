@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import com.ai.assistance.operit.util.AppLogger
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -19,7 +20,9 @@ import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -32,7 +35,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -52,6 +58,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
@@ -71,9 +78,13 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.ui.res.stringResource
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.ui.common.markdown.markdownToPlainTextForCopy
 import com.ai.assistance.operit.ui.features.chat.components.MessageEditor
 import com.ai.assistance.operit.ui.main.screens.GestureStateHolder
+import com.ai.assistance.operit.util.LatexMathMlConverter
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -160,6 +171,7 @@ fun ChatScreenContent(
 
     // Export state
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     var showExportPlatformDialog by remember { mutableStateOf(false) }
     var showAndroidExportDialog by remember { mutableStateOf(false) }
     var showWindowsExportDialog by remember { mutableStateOf(false) }
@@ -459,6 +471,7 @@ fun ChatScreenContent(
                 ) {
                     // 显示选中数量
                     Row(
+                        modifier = Modifier.weight(1f),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
@@ -486,11 +499,17 @@ fun ChatScreenContent(
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
                     Row(
+                        modifier = Modifier
+                            .weight(2f)
+                            .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -544,6 +563,57 @@ fun ChatScreenContent(
                             Icon(
                                 imageVector = Icons.Default.CheckCircle,
                                 contentDescription = stringResource(R.string.add_selected_to_memory),
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+
+                        FilledIconButton(
+                            onClick = {
+                                if (selectedMessageIndices.isNotEmpty()) {
+                                    val indicesToCopy = selectedMessageIndices
+                                    coroutineScope.launch {
+                                        val copiedText =
+                                            withContext(Dispatchers.Default) {
+                                                buildSelectedMessagesPlainText(
+                                                    chatHistory = chatHistory,
+                                                    selectedMessageIndices = indicesToCopy,
+                                                ) { markdown ->
+                                                    markdownToPlainTextForCopy(markdown) { formulas ->
+                                                        LatexMathMlConverter.convertAll(context, formulas)
+                                                    }
+                                                }
+                                            }
+                                        if (copiedText.isNotEmpty()) {
+                                            clipboardManager.setText(AnnotatedString(copiedText))
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.message_copied_to_clipboard),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                            isMultiSelectMode = false
+                                            selectedMessageIndices = emptySet()
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                context.getString(R.string.no_text_to_copy),
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                        }
+                                    }
+                                }
+                            },
+                            enabled = selectedMessageIndices.isNotEmpty(),
+                            modifier = Modifier.size(32.dp),
+                            colors = IconButtonDefaults.filledIconButtonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ContentCopy,
+                                contentDescription = stringResource(R.string.copy_text),
                                 modifier = Modifier.size(16.dp)
                             )
                         }
