@@ -80,4 +80,23 @@ class MessageCopyTextTest {
 
         assertEquals("answer\n\nreply", result)
     }
+
+    @Test fun buildSelectedMessagesPlainText_convertsEachMessageOnceForLargeSelection() = runTest {
+        val messageCount = 100
+        val messageContent = "x".repeat(4_096)
+        val chatHistory =
+            List(messageCount) { index ->
+                ChatMessage(sender = if (index % 2 == 0) "user" else "ai", content = messageContent)
+            }
+        var conversionCount = 0
+
+        val result =
+            buildSelectedMessagesPlainText(chatHistory, chatHistory.indices.reversed().toSet()) { content ->
+                conversionCount += 1
+                content
+            }
+
+        assertEquals(messageCount, conversionCount)
+        assertEquals(messageCount * messageContent.length + (messageCount - 1) * 2, result.length)
+    }
 }

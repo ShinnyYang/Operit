@@ -53,7 +53,9 @@ import com.ai.assistance.operit.ui.features.chat.viewmodel.ChatHistoryDisplayMod
 import com.ai.assistance.operit.ui.features.chat.components.style.bubble.BubbleImageStyleConfig
 import com.ai.assistance.operit.ui.features.chat.webview.workspace.WorkspaceBackupManager
 import java.io.File
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
@@ -155,6 +157,9 @@ fun ChatScreenContent(
     // Multi-select mode state
     var isMultiSelectMode by remember { mutableStateOf(false) }
     var selectedMessageIndices by remember { mutableStateOf(setOf<Int>()) }
+    var isCopyingSelectedMessages by remember { mutableStateOf(false) }
+    var selectedMessagesCopyJob by remember { mutableStateOf<Job?>(null) }
+    val messageOrder = chatHistory.map(ChatMessage::timestamp)
     val selectableMessageIndices = remember(chatHistory) {
         chatHistory.mapIndexedNotNull { index, message ->
             if (message.sender == "user" || message.sender == "ai") index else null
@@ -172,12 +177,23 @@ fun ChatScreenContent(
     // Export state
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
+    val selectedMessagesCopyScope = rememberCoroutineScope()
     var showExportPlatformDialog by remember { mutableStateOf(false) }
     var showAndroidExportDialog by remember { mutableStateOf(false) }
     var showWindowsExportDialog by remember { mutableStateOf(false) }
     var showExportProgressDialog by remember { mutableStateOf(false) }
     var showExportCompleteDialog by remember { mutableStateOf(false) }
     var exportProgress by remember { mutableStateOf(0f) }
+
+    LaunchedEffect(currentChatId, messageOrder) {
+        selectedMessagesCopyJob?.cancel()
+        selectedMessagesCopyJob = null
+        isCopyingSelectedMessages = false
+        if (isMultiSelectMode) {
+            isMultiSelectMode = false
+            selectedMessageIndices = emptySet()
+        }
+    }
     var exportStatus by remember { mutableStateOf("") }
     var exportSuccess by remember { mutableStateOf(false) }
     var exportFilePath by remember { mutableStateOf<String?>(null) }
@@ -303,6 +319,9 @@ fun ChatScreenContent(
                         onToggleMultiSelectMode = { initialIndex ->
                             isMultiSelectMode = !isMultiSelectMode
                             if (!isMultiSelectMode) {
+                                selectedMessagesCopyJob?.cancel()
+                                selectedMessagesCopyJob = null
+                                isCopyingSelectedMessages = false
                                 selectedMessageIndices = emptySet()
                             } else if (initialIndex != null) {
                                 // 进入多选模式时，自动选中触发的消息
@@ -420,6 +439,9 @@ fun ChatScreenContent(
                         onToggleMultiSelectMode = { initialIndex ->
                             isMultiSelectMode = !isMultiSelectMode
                             if (!isMultiSelectMode) {
+                                selectedMessagesCopyJob?.cancel()
+                                selectedMessagesCopyJob = null
+                                isCopyingSelectedMessages = false
                                 selectedMessageIndices = emptySet()
                             } else if (initialIndex != null) {
                                 // 进入多选模式时，自动选中触发的消息
@@ -478,6 +500,9 @@ fun ChatScreenContent(
                         // 取消按钮移到左侧
                         IconButton(
                             onClick = {
+                                selectedMessagesCopyJob?.cancel()
+                                selectedMessagesCopyJob = null
+                                isCopyingSelectedMessages = false
                                 isMultiSelectMode = false
                                 selectedMessageIndices = emptySet()
                             },
@@ -569,40 +594,66 @@ fun ChatScreenContent(
 
                         FilledIconButton(
                             onClick = {
-                                if (selectedMessageIndices.isNotEmpty()) {
+                                if (selectedMessageIndices.isNotEmpty() && !isCopyingSelectedMessages) {
                                     val indicesToCopy = selectedMessageIndices
-                                    coroutineScope.launch {
-                                        val copiedText =
-                                            withContext(Dispatchers.Default) {
-                                                buildSelectedMessagesPlainText(
-                                                    chatHistory = chatHistory,
-                                                    selectedMessageIndices = indicesToCopy,
-                                                ) { markdown ->
-                                                    markdownToPlainTextForCopy(markdown) { formulas ->
-                                                        LatexMathMlConverter.convertAll(context, formulas)
+                                    isCopyingSelectedMessages = true
+                                    selectedMessagesCopyJob = selectedMessagesCopyScope.launch {
+                                        val currentCopyJob = coroutineContext[Job]
+                                        try {
+                                            val copiedText =
+                                                withContext(Dispatchers.Default) {
+                                                    buildSelectedMessagesPlainText(
+                                                        chatHistory = chatHistory,
+                                                        selectedMessageIndices = indicesToCopy,
+                                                    ) { markdown ->
+                                                        markdownToPlainTextForCopy(markdown) { formulas ->
+                                                            LatexMathMlConverter.convertAll(context, formulas)
+                                                        }
                                                     }
                                                 }
+                                            if (copiedText.isNotEmpty()) {
+                                                clipboardManager.setText(AnnotatedString(copiedText))
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.message_copied_to_clipboard),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
+                                                isMultiSelectMode = false
+                                                selectedMessageIndices = emptySet()
+                                            } else {
+                                                Toast.makeText(
+                                                    context,
+                                                    context.getString(R.string.no_text_to_copy),
+                                                    Toast.LENGTH_SHORT,
+                                                ).show()
                                             }
-                                        if (copiedText.isNotEmpty()) {
-                                            clipboardManager.setText(AnnotatedString(copiedText))
+                                        } catch (cancellation: CancellationException) {
+                                            throw cancellation
+                                        } catch (error: Exception) {
+                                            AppLogger.e(
+                                                "ChatScreenContent",
+                                                "Failed to copy selected messages",
+                                                error,
+                                            )
                                             Toast.makeText(
                                                 context,
-                                                context.getString(R.string.message_copied_to_clipboard),
+                                                context.getString(
+                                                    R.string.dialog_copy_failed,
+                                                    error.localizedMessage
+                                                        ?: error.javaClass.simpleName,
+                                                ),
                                                 Toast.LENGTH_SHORT,
                                             ).show()
-                                            isMultiSelectMode = false
-                                            selectedMessageIndices = emptySet()
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                context.getString(R.string.no_text_to_copy),
-                                                Toast.LENGTH_SHORT,
-                                            ).show()
+                                        } finally {
+                                            if (selectedMessagesCopyJob === currentCopyJob) {
+                                                selectedMessagesCopyJob = null
+                                                isCopyingSelectedMessages = false
+                                            }
                                         }
                                     }
                                 }
                             },
-                            enabled = selectedMessageIndices.isNotEmpty(),
+                            enabled = selectedMessageIndices.isNotEmpty() && !isCopyingSelectedMessages,
                             modifier = Modifier.size(32.dp),
                             colors = IconButtonDefaults.filledIconButtonColors(
                                 containerColor = MaterialTheme.colorScheme.secondaryContainer,
