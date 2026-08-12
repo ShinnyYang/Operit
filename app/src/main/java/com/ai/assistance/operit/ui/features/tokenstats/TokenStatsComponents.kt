@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.ui.features.tokenstats
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -8,6 +9,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -15,13 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Groups
-import androidx.compose.material.icons.filled.HelpOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -34,15 +32,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,19 +50,32 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.collects.PricingCurrency
+import com.ai.assistance.operit.data.stats.TokenPriceResolver
 import com.ai.assistance.operit.data.stats.TokenStatCategory
 import com.ai.assistance.operit.data.stats.TokenStatStatus
 import com.ai.assistance.operit.data.stats.TokenCostCalculator
-import com.ai.assistance.operit.data.stats.TokenStatsBaselineTotals
-import com.ai.assistance.operit.data.stats.TokenStatsCostMode
 import com.ai.assistance.operit.data.stats.TokenStatsDisplayModelBreakdown
 import com.ai.assistance.operit.data.stats.TokenStatsDurationAggregate
 import com.ai.assistance.operit.data.stats.TokenStatsLifetimeOverview
-import com.ai.assistance.operit.data.stats.TokenStatsPreset
+import com.ai.assistance.operit.data.stats.TokenStatsPriceDraft
+import com.ai.assistance.operit.data.stats.TokenStatsPriceScope
+import com.ai.assistance.operit.data.stats.TokenStatsPriceSetting
 import com.ai.assistance.operit.data.stats.TokenStatsRangeData
+import com.ai.assistance.operit.data.stats.TokenStatsTimeRange
 import com.ai.assistance.operit.data.stats.TokenStatsTokenAggregate
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
 import java.util.Locale
+import kotlin.math.roundToInt
+
+/** Shared spatial scale for the token statistics page. */
+internal object TokenStatsSpacing {
+    val page = 16.dp
+    val section = 16.dp
+    val card = 16.dp
+    val content = 8.dp
+}
 
 // ==== 通用格式 ====
 
@@ -73,42 +83,73 @@ import java.util.Locale
 internal fun formatMoney(amount: Double, currency: PricingCurrency): String =
     "${currency.symbol}${String.format(Locale.US, "%.4f", amount)}"
 
-/** 每百万 token 单价。 */
-internal fun formatPricePerMillion(price: Double, currency: PricingCurrency): String =
-    "${currency.symbol}${String.format(Locale.US, "%.4f", price)}/1M"
-
-/** 按次单价。 */
-internal fun formatPricePerRequest(price: Double, currency: PricingCurrency): String =
-    "${currency.symbol}${String.format(Locale.US, "%.4f", price)}/次"
+/** 累计总览的费用使用紧凑的两位小数，保证三项指标可在一行展示。 */
+private fun formatLifetimeMoney(amount: Double, currency: PricingCurrency): String =
+    "${currency.symbol}${String.format(Locale.US, "%.2f", amount)}"
 
 internal fun formatCount(value: Long): String = String.format(Locale.US, "%,d", value)
 
-/** 统计页统一白色卡片；局部浅色 scheme 保证深色主题下控件与文字仍清晰。 */
+@Composable
+internal fun formatRequestCount(value: Long, unknownContributionCount: Long): String =
+    if (unknownContributionCount > 0L) {
+        stringResource(R.string.token_stats_request_count_minimum, formatCount(value))
+    } else {
+        formatCount(value)
+    }
+
+@Composable
+internal fun formatRequestCountLabel(value: Long, unknownContributionCount: Long): String =
+    if (unknownContributionCount > 0L) {
+        stringResource(R.string.token_stats_request_count_label_minimum, formatCount(value))
+    } else {
+        stringResource(R.string.settings_request_count_label, value)
+    }
+
+@Composable
+internal fun formatCompactRequestCountLabel(value: Long, unknownContributionCount: Long): String =
+    if (unknownContributionCount > 0L) {
+        stringResource(R.string.token_stats_request_count_compact_minimum, formatCompactCount(value))
+    } else {
+        stringResource(R.string.token_stats_request_count_compact, formatCompactCount(value))
+    }
+
+/** Statistics cards follow the application surface and content colors. */
 @Composable
 internal fun TokenStatsWhiteCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    val scheme = MaterialTheme.colorScheme
-    MaterialTheme(
-        colorScheme =
-            scheme.copy(
-                surface = TokenStatsCardContainer,
-                onSurface = TokenStatsCardContent,
-                surfaceVariant = Color(0xFFF5F5F5),
-                onSurfaceVariant = TokenStatsCardMuted,
-                outline = Color(0xFFBDBDBD),
-                outlineVariant = Color(0xFFE0E0E0),
-            ),
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
+        content = content,
+    )
+}
+
+/** Page-level headings stay visually separate from labels inside cards. */
+@Composable
+internal fun TokenStatsSectionHeader(
+    title: String,
+    modifier: Modifier = Modifier,
+    trailing: @Composable RowScope.() -> Unit = {},
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Card(
-            modifier = modifier,
-            colors = CardDefaults.cardColors(
-                containerColor = TokenStatsCardContainer,
-                contentColor = TokenStatsCardContent,
-            ),
-            content = content,
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
+        trailing()
     }
 }
 
@@ -118,60 +159,19 @@ internal fun TokenStatsWhiteCard(
 internal fun TokenStatsLifetimeCard(
     overview: TokenStatsLifetimeOverview,
     currency: PricingCurrency,
-    manualRate: Double,
-    rateIsEstimated: Boolean,
-    includeLegacy: Boolean,
-    onIncludeLegacyChange: (Boolean) -> Unit,
 ) {
     val colors = LocalTokenStatsColors.current
-    TokenStatsWhiteCard(
+    val contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+    Card(
         modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = contentColor,
+        ),
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = stringResource(R.string.token_stats_lifetime_total),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = colors.summaryCardContent,
-                    modifier = Modifier.weight(1f),
-                )
-                if (rateIsEstimated) {
-                    EstimatedBadge(
-                        text = stringResource(R.string.token_stats_rate_default_hint, manualRate),
-                        textColor = colors.summaryCardContent,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(R.string.token_stats_include_legacy),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = colors.summaryCardContent,
-                    modifier = Modifier.weight(1f),
-                )
-                Switch(
-                    checked = includeLegacy,
-                    onCheckedChange = onIncludeLegacyChange,
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            val eventTotals = overview.eventTotals
-            val baseline = overview.baselineTotals
-            val unknownCostContributions =
-                includeLegacyValue(
-                    eventTotals.cost.unknownContributionCount,
-                    baseline.cost.unknownContributionCount,
-                    includeLegacy,
-                )
+        Column(modifier = Modifier.padding(TokenStatsSpacing.card)) {
+            val totals = overview.totals
+            val unknownCostContributions = totals.cost.unknownContributionCount
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -179,25 +179,25 @@ internal fun TokenStatsLifetimeCard(
                 BigNumber(
                     label = stringResource(R.string.settings_total_requests),
                     value =
-                        formatCount(
-                            includeLegacyValue(eventTotals.requests, baseline.requests, includeLegacy)
+                        formatRequestCount(
+                            totals.requests,
+                            totals.requestCountUnknownContributionCount,
                         ),
-                    color = colors.summaryCardContent,
+                    color = contentColor,
                 )
                 BigNumber(
                     label = stringResource(R.string.token_stats_tokens_total),
-                    value = formatCompactCount(knownLifetimeTokenSum(overview, includeLegacy)),
-                    color = colors.summaryCardContent,
+                    value = formatCompactCount(knownTokenSum(totals)),
+                    color = contentColor,
                 )
                 BigNumber(
                     label = stringResource(R.string.settings_total_cost),
                     value =
-                        formatMoney(
-                            eventTotals.cost.knownAmount +
-                                if (includeLegacy) baseline.cost.knownAmount else 0.0,
+                        formatLifetimeMoney(
+                            totals.cost.knownAmount,
                             currency,
                         ),
-                    color = colors.chartAccent,
+                    color = contentColor,
                     alignEnd = true,
                 )
             }
@@ -211,73 +211,9 @@ internal fun TokenStatsLifetimeCard(
                     color = colors.unknownHint,
                 )
             }
-            if (unknownCostContributions == 0L &&
-                eventTotals.cost.rateIsEstimated
-            ) {
-                Text(
-                    text = stringResource(R.string.token_stats_rate_applied_hint, manualRate),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.summaryCardContent.copy(alpha = 0.8f),
-                )
-            }
-
             Spacer(Modifier.height(12.dp))
 
-            TokenComponentLines(totals = eventTotals, textColor = colors.summaryCardContent)
-
-            // 旧数据 baseline（估算口径，明确标注）
-            if (includeLegacy && baseline.identityCount > 0L) {
-                Spacer(Modifier.height(12.dp))
-                HorizontalDivider(color = colors.summaryCardContent.copy(alpha = 0.2f))
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = stringResource(R.string.token_stats_baseline_estimate),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.summaryCardContent,
-                        modifier = Modifier.weight(1f),
-                    )
-                    EstimatedBadge(
-                        text = stringResource(R.string.token_stats_baseline_badge),
-                        textColor = colors.summaryCardContent,
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(
-                        R.string.token_stats_baseline_rows,
-                        baseline.identityCount,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.summaryCardContent.copy(alpha = 0.8f),
-                )
-                Spacer(Modifier.height(8.dp))
-                BaselineLine(
-                    label = stringResource(R.string.token_stats_tokens_total),
-                    value = formatCount(knownBaselineTokenSum(baseline)),
-                    color = colors.summaryCardContent,
-                )
-                BaselineLine(
-                    label = stringResource(R.string.settings_total_requests),
-                    value = formatCount(baseline.requests),
-                    color = colors.summaryCardContent,
-                )
-                BaselineLine(
-                    label = stringResource(R.string.settings_total_cost),
-                    value = formatMoney(baseline.cost.knownAmount, currency),
-                    color = colors.summaryCardContent,
-                )
-                if (baseline.cost.unknownContributionCount > 0L) {
-                    UnknownHint(
-                        text = stringResource(
-                            R.string.token_stats_unknown_cost,
-                            baseline.cost.unknownContributionCount,
-                        ),
-                        color = colors.unknownHint,
-                    )
-                }
-            }
+            TokenComponentLines(totals = totals, textColor = contentColor)
         }
     }
 }
@@ -300,9 +236,12 @@ private fun androidx.compose.foundation.layout.RowScope.BigNumber(
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = color,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
         )
     }
 }
@@ -338,7 +277,7 @@ private fun TokenComponentLines(
     totals: com.ai.assistance.operit.data.stats.TokenStatsTotals,
     textColor: androidx.compose.ui.graphics.Color,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content)) {
         TokenLine(
             label = stringResource(R.string.token_stats_token_uncached),
             aggregate = totals.uncachedInput,
@@ -405,132 +344,209 @@ private fun TokenLine(
     }
 }
 
-@Composable
-private fun BaselineLine(
-    label: String,
-    value: String,
-    color: androidx.compose.ui.graphics.Color,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = color.copy(alpha = 0.85f),
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-            color = color,
-        )
-    }
-}
-
-/**
- * 事件 canonical 总 Token（聚合器逐事件推导，口径见
- * [com.ai.assistance.operit.data.stats.TokenStatsTotals.totalTokens]：
- * 权威 totalInputTokens 优先，fallback 按 cacheWriteSeparateBilling 决定输入口径，
- * 输出按 reasoningIncludedInOutput 决定是否补推理；未知分量保持 unknown 不当作 0）。
- * UI 展示总 Token 的唯一事实来源，不再从原始聚合字段自行重组。
- */
 internal fun knownTokenSum(
     totals: com.ai.assistance.operit.data.stats.TokenStatsTotals,
 ): Long = totals.totalTokens.knownSum
 
-/** 旧累计值没有额外 token 分类：inputTokens 已含缓存命中，只能按总输入和输出合计。 */
-internal fun knownBaselineTokenSum(totals: TokenStatsBaselineTotals): Long =
-    saturatedTokenSum(totals.inputTokens, totals.outputTokens)
-
-/** 生命周期总 Token 必须同时包含新事件与迁移的旧累计 baseline。 */
-internal fun knownLifetimeTokenSum(
-    overview: TokenStatsLifetimeOverview,
-    includeLegacy: Boolean = true,
-): Long =
-    includeLegacyValue(
-        knownTokenSum(overview.eventTotals),
-        knownBaselineTokenSum(overview.baselineTotals),
-        includeLegacy,
-    )
-
-internal fun includeLegacyValue(eventValue: Long, baselineValue: Long, includeLegacy: Boolean): Long =
-    if (includeLegacy) TokenCostCalculator.saturatedAdd(eventValue, baselineValue) else eventValue
-
 internal fun saturatedTokenSum(vararg values: Long): Long =
     values.fold(0L, TokenCostCalculator::saturatedAdd)
 
+// ==== 生命周期模型累计 ====
+
+@Composable
+internal fun TokenStatsLifetimeModelsSection(
+    models: List<TokenStatsDisplayModelBreakdown>,
+    currency: PricingCurrency,
+) {
+    val sortedModels = models.sortedByDescending { knownTokenSum(it.totals) }
+    var showAllModels by rememberSaveable { mutableStateOf(false) }
+    val visibleModels =
+        if (showAllModels) {
+            sortedModels
+        } else {
+            sortedModels.take(LIFETIME_MODELS_COLLAPSED_COUNT)
+        }
+    val totalTokens = sortedModels.fold(0L) { total, model ->
+        TokenCostCalculator.saturatedAdd(total, knownTokenSum(model.totals))
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content)) {
+        TokenStatsSectionHeader(
+            title = stringResource(R.string.token_stats_lifetime_models),
+        ) {
+            Text(
+                text = stringResource(R.string.token_stats_model_count, sortedModels.size),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        TokenStatsWhiteCard(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(TokenStatsSpacing.card),
+                verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
+            ) {
+                if (totalTokens > 0L) {
+                    TokenStatsModelDistributionPie(
+                        models = sortedModels,
+                        totalTokens = totalTokens,
+                    )
+                }
+
+                visibleModels.forEachIndexed { index, model ->
+                    TokenStatsLifetimeModelRow(
+                        model = model,
+                        totalTokens = totalTokens,
+                        color = LocalTokenStatsColors.current.modelPalette[
+                            index % LocalTokenStatsColors.current.modelPalette.size
+                        ],
+                        currency = currency,
+                    )
+                }
+
+                if (sortedModels.size > LIFETIME_MODELS_COLLAPSED_COUNT) {
+                    TextButton(
+                        onClick = { showAllModels = !showAllModels },
+                        modifier = Modifier.align(Alignment.CenterHorizontally),
+                    ) {
+                        Text(
+                            text =
+                                if (showAllModels) {
+                                    stringResource(R.string.token_stats_model_collapse)
+                                } else {
+                                    stringResource(
+                                        R.string.token_stats_model_show_all,
+                                        sortedModels.size,
+                                    )
+                                },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private const val LIFETIME_MODELS_COLLAPSED_COUNT = 5
+
+@Composable
+private fun TokenStatsModelDistributionPie(
+    models: List<TokenStatsDisplayModelBreakdown>,
+    totalTokens: Long,
+) {
+    val palette = LocalTokenStatsColors.current.modelPalette
+    val centerColor = MaterialTheme.colorScheme.surface
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Canvas(modifier = Modifier.size(124.dp)) {
+            var startAngle = -90f
+            models.forEachIndexed { index, model ->
+                val sweepAngle = knownTokenSum(model.totals).toFloat() / totalTokens * 360f
+                if (sweepAngle > 0f) {
+                    drawArc(
+                        color = palette[index % palette.size],
+                        startAngle = startAngle,
+                        sweepAngle = sweepAngle,
+                        useCenter = true,
+                    )
+                    startAngle += sweepAngle
+                }
+            }
+            drawCircle(
+                color = centerColor,
+                radius = size.minDimension * 0.22f,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TokenStatsLifetimeModelRow(
+    model: TokenStatsDisplayModelBreakdown,
+    totalTokens: Long,
+    color: Color,
+    currency: PricingCurrency,
+) {
+    val tokens = knownTokenSum(model.totals)
+    val percentage =
+        if (totalTokens > 0L) {
+            (tokens.toDouble() / totalTokens * 100).roundToInt()
+        } else {
+            0
+        }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Canvas(modifier = Modifier.size(10.dp)) {
+            drawCircle(color = color)
+        }
+        Spacer(Modifier.width(TokenStatsSpacing.content))
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = model.displayName,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = stringResource(
+                    R.string.token_stats_lifetime_model_value,
+                    formatCompactCount(tokens),
+                    percentage,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Text(
+            text = formatMoney(model.totals.cost.knownAmount, currency),
+            style = MaterialTheme.typography.bodySmall,
+            color = LocalTokenStatsColors.current.chartAccent,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
 // ==== 筛选栏 ====
 
-/** 时间预设（10 预设 + 自定义）与模型/分类/状态/口径/币种筛选。 */
+/** 当前日期范围内活动、图表和模型明细共用的查询条件。 */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun TokenStatsFilterBar(
-    selectedPreset: TokenStatsPreset,
     selectedModels: Set<String>,
     availableModels: List<TokenStatsDisplayModelBreakdown>,
     knownModelNames: Map<String, String>,
     selectedCategories: Set<TokenStatCategory>?,
     selectedStatuses: Set<TokenStatStatus>?,
-    costMode: TokenStatsCostMode,
-    targetCurrency: PricingCurrency,
-    onSelectPreset: (TokenStatsPreset) -> Unit,
-    onCustomRange: () -> Unit,
-    onDeleteRange: () -> Unit,
     onToggleModel: (String) -> Unit,
     onSelectAllModels: () -> Unit,
     onToggleCategory: (TokenStatCategory) -> Unit,
     onClearAllCategories: () -> Unit,
     onToggleStatus: (TokenStatStatus) -> Unit,
     onClearAllStatuses: () -> Unit,
-    onSetCostMode: (TokenStatsCostMode) -> Unit,
-    onSetCurrency: (PricingCurrency) -> Unit,
 ) {
     TokenStatsWhiteCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            var showCostModeHelp by remember { mutableStateOf(false) }
-
-            // 时间、展示币种和范围删除属于同一层级。
+        Column(
+            modifier = Modifier.padding(TokenStatsSpacing.card),
+            verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
+        ) {
+            Text(
+                text = stringResource(R.string.token_stats_filters),
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            // 用两列呈现，让每个条件都能完整表达自身含义。
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                TimePresetDropdown(
-                    selectedPreset,
-                    onSelectPreset,
-                    onCustomRange,
-                    Modifier.weight(1f),
-                )
-                CurrencyChip(
-                    currency = PricingCurrency.CNY,
-                    selected = targetCurrency == PricingCurrency.CNY,
-                    onClick = { onSetCurrency(PricingCurrency.CNY) },
-                )
-                CurrencyChip(
-                    currency = PricingCurrency.USD,
-                    selected = targetCurrency == PricingCurrency.USD,
-                    onClick = { onSetCurrency(PricingCurrency.USD) },
-                )
-                // 删除当前时间范围：只删有时间戳的事件，不触碰 baseline（阶段 5）
-                IconButton(onClick = onDeleteRange) {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.token_stats_delete_range),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // 查询维度固定三列，避免重要筛选藏在横向滚动区域。
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
             ) {
                 ModelFilterDropdown(
                     selectedModels,
@@ -546,120 +562,59 @@ internal fun TokenStatsFilterBar(
                     onClearAllCategories,
                     Modifier.weight(1f),
                 )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
+            ) {
                 StatusFilterDropdown(
                     selectedStatuses,
                     onToggleStatus,
                     onClearAllStatuses,
-                    Modifier.weight(1f),
-                )
-            }
-
-            Spacer(Modifier.height(8.dp))
-
-            // 计价口径独占一行，帮助入口解释它只影响费用计算。
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                FilterChip(
-                    selected = costMode == TokenStatsCostMode.HISTORICAL,
-                    onClick = { onSetCostMode(TokenStatsCostMode.HISTORICAL) },
-                    label = { Text(stringResource(R.string.token_stats_mode_historical)) },
-                    modifier = Modifier.weight(1f),
-                )
-                FilterChip(
-                    selected = costMode == TokenStatsCostMode.REVALUED,
-                    onClick = { onSetCostMode(TokenStatsCostMode.REVALUED) },
-                    label = { Text(stringResource(R.string.token_stats_mode_revalued)) },
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = { showCostModeHelp = true }) {
-                    Icon(
-                        imageVector = Icons.Filled.HelpOutline,
-                        contentDescription = stringResource(R.string.token_stats_mode_help_title),
-                        tint = TokenStatsCardMuted,
-                    )
-                }
-            }
-
-            if (showCostModeHelp) {
-                AlertDialog(
-                    onDismissRequest = { showCostModeHelp = false },
-                    title = { Text(stringResource(R.string.token_stats_mode_help_title)) },
-                    text = {
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(stringResource(R.string.token_stats_mode_historical_help))
-                            Text(stringResource(R.string.token_stats_mode_revalued_help))
-                            Text(
-                                text = stringResource(R.string.token_stats_mode_rate_help),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = TokenStatsCardMuted,
-                            )
-                        }
-                    },
-                    confirmButton = {
-                        TextButton(onClick = { showCostModeHelp = false }) {
-                            Text(stringResource(R.string.token_stats_help_got_it))
-                        }
-                    },
+                    Modifier.fillMaxWidth(),
                 )
             }
         }
     }
 }
 
-@Composable
-private fun CurrencyChip(
-    currency: PricingCurrency,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = {
-            Text(currency.code)
-        },
-    )
+internal fun formatDateRangeLabel(range: TokenStatsTimeRange, zone: ZoneId): String {
+    val formatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM).withLocale(Locale.getDefault())
+    val start = java.time.Instant.ofEpochMilli(range.startMs).atZone(zone).toLocalDate()
+    val end = java.time.Instant.ofEpochMilli(range.endMs - 1L).atZone(zone).toLocalDate()
+    return if (start == end) start.format(formatter) else "${start.format(formatter)} - ${end.format(formatter)}"
 }
 
-private fun TokenStatsPreset.labelRes(): Int =
-    when (this) {
-        TokenStatsPreset.LAST_5H -> R.string.token_stats_preset_5h
-        TokenStatsPreset.LAST_12H -> R.string.token_stats_preset_12h
-        TokenStatsPreset.LAST_24H -> R.string.token_stats_preset_24h
-        TokenStatsPreset.TODAY -> R.string.token_stats_preset_today
-        TokenStatsPreset.YESTERDAY -> R.string.token_stats_preset_yesterday
-        TokenStatsPreset.LAST_7D -> R.string.token_stats_preset_7d
-        TokenStatsPreset.LAST_30D -> R.string.token_stats_preset_30d
-        TokenStatsPreset.THIS_MONTH -> R.string.token_stats_preset_this_month
-        TokenStatsPreset.LAST_MONTH -> R.string.token_stats_preset_last_month
-        TokenStatsPreset.CUSTOM -> R.string.token_stats_custom_range
-    }
+internal fun formatCompactDateRangeLabel(range: TokenStatsTimeRange, zone: ZoneId): String {
+    val formatter = DateTimeFormatter.ofPattern("M/d", Locale.getDefault())
+    val start = java.time.Instant.ofEpochMilli(range.startMs).atZone(zone).toLocalDate()
+    val end = java.time.Instant.ofEpochMilli(range.endMs - 1L).atZone(zone).toLocalDate()
+    return if (start == end) start.format(formatter) else "${start.format(formatter)}-${end.format(formatter)}"
+}
 
 @Composable
-private fun TimePresetDropdown(
-    selected: TokenStatsPreset,
-    onSelect: (TokenStatsPreset) -> Unit,
-    onCustomRange: () -> Unit,
+internal fun TokenStatsCurrencyDropdown(
+    selected: PricingCurrency,
+    onSelect: (PricingCurrency) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     FilterDropdown(
-        label = stringResource(selected.labelRes()),
+        label = selected.code,
         modifier = modifier,
     ) { dismiss ->
-        TokenStatsPreset.entries.forEach { preset ->
+        PricingCurrency.entries.forEach { currency ->
             DropdownMenuItem(
                 text = {
                     Text(
-                        text = stringResource(preset.labelRes()),
-                        fontWeight = if (preset == selected) FontWeight.Bold else FontWeight.Normal,
+                        text = currency.code,
+                        fontWeight = if (currency == selected) FontWeight.Bold else FontWeight.Normal,
                     )
                 },
                 onClick = {
                     dismiss()
-                    if (preset == TokenStatsPreset.CUSTOM) onCustomRange() else onSelect(preset)
+                    onSelect(currency)
                 },
             )
         }
@@ -688,9 +643,15 @@ private fun ModelFilterDropdown(
     FilterDropdown(
         modifier = modifier,
         label = if (selectedModels.isEmpty()) {
-            stringResource(R.string.token_stats_filter_all_models)
+            stringResource(
+                R.string.token_stats_filter_model_label,
+                stringResource(R.string.token_stats_filter_all_models),
+            )
         } else {
-            stringResource(R.string.token_stats_filter_models_count, selectedModels.size)
+            stringResource(
+                R.string.token_stats_filter_model_label,
+                stringResource(R.string.token_stats_filter_models_count, selectedModels.size),
+            )
         },
     ) { dismiss ->
         DropdownMenuItem(
@@ -737,9 +698,15 @@ private fun CategoryFilterDropdown(
     FilterDropdown(
         modifier = modifier,
         label = if (selected == null) {
-            stringResource(R.string.token_stats_filter_all_categories)
+            stringResource(
+                R.string.token_stats_filter_category_label,
+                stringResource(R.string.token_stats_filter_all_categories),
+            )
         } else {
-            stringResource(R.string.token_stats_filter_categories_count, selected.size)
+            stringResource(
+                R.string.token_stats_filter_category_label,
+                stringResource(R.string.token_stats_filter_categories_count, selected.size),
+            )
         },
     ) { dismiss ->
         DropdownMenuItem(
@@ -784,9 +751,15 @@ private fun StatusFilterDropdown(
     FilterDropdown(
         modifier = modifier,
         label = if (selected == null) {
-            stringResource(R.string.token_stats_filter_all_statuses)
+            stringResource(
+                R.string.token_stats_filter_status_label,
+                stringResource(R.string.token_stats_filter_all_statuses),
+            )
         } else {
-            stringResource(R.string.token_stats_filter_statuses_count, selected.size)
+            stringResource(
+                R.string.token_stats_filter_status_label,
+                stringResource(R.string.token_stats_filter_statuses_count, selected.size),
+            )
         },
     ) { dismiss ->
         DropdownMenuItem(
@@ -878,270 +851,221 @@ internal fun TokenStatsChartCard(
     headerExtra: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
-    val chartColors =
-        LocalTokenStatsColors.current.copy(
-            chartGrid = Color(0xFFE0E0E0),
-            chartLabel = Color(0xFF5F6368),
-            tooltipContainer = TokenStatsCardContainer,
-            tooltipContent = Color(0xFF202124),
-            unknownHint = Color(0xFF8A4B00),
-        )
-    CompositionLocalProvider(LocalTokenStatsColors provides chartColors) {
-        TokenStatsWhiteCard(
-            modifier = modifier.fillMaxWidth(),
-        ) {
-            Column(modifier = Modifier.padding(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f),
-                    )
-                    Text(
-                        text = summary,
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = chartColors.chartAccent,
-                        modifier = if (onSummaryClick != null) {
-                            Modifier.clickable(onClick = onSummaryClick)
-                        } else {
-                            Modifier
-                        },
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                headerExtra()
-                content()
-            }
-        }
-    }
-}
-
-// ==== 模型卡片 ====
-
-@Composable
-internal fun TokenStatsModelCardsSection(
-    models: List<TokenStatsDisplayModelBreakdown>,
-    currency: PricingCurrency,
-    costMode: TokenStatsCostMode,
-    zone: ZoneId,
-    onGroupManage: (TokenStatsDisplayModelBreakdown) -> Unit,
-    onDelete: (TokenStatsDisplayModelBreakdown) -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        models.forEach { model ->
-            TokenStatsModelCard(
-                model = model,
-                currency = currency,
-                costMode = costMode,
-                zone = zone,
-                onGroupManage = { onGroupManage(model) },
-                onDelete = { onDelete(model) },
-            )
-        }
-    }
-}
-
-@Composable
-internal fun TokenStatsModelCard(
-    model: TokenStatsDisplayModelBreakdown,
-    currency: PricingCurrency,
-    costMode: TokenStatsCostMode,
-    zone: ZoneId,
-    onGroupManage: () -> Unit,
-    onDelete: () -> Unit,
-) {
     val colors = LocalTokenStatsColors.current
-    var expanded by remember(model.displayModelId) { mutableStateOf(false) }
+    TokenStatsWhiteCard(
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Column(modifier = Modifier.padding(TokenStatsSpacing.card)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colors.chartAccent,
+                    modifier = if (onSummaryClick != null) {
+                        Modifier.clickable(onClick = onSummaryClick)
+                    } else {
+                        Modifier
+                    },
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            headerExtra()
+            content()
+        }
+    }
+}
 
+// ==== 配置详情 ====
+
+@Composable
+internal fun TokenStatsConfigurationCardsSection(
+    configurations: List<com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown>,
+    currency: PricingCurrency,
+    configurationNames: Map<String, String>,
+    priceSettings: List<TokenStatsPriceSetting>,
+    onEditPrice: (TokenStatsPriceSetting?, TokenStatsPriceDraft, String?) -> Unit,
+) {
     TokenStatsWhiteCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { expanded = !expanded }) {
-                    Icon(
-                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                        contentDescription = stringResource(R.string.token_stats_model_expand),
+        Column {
+            configurations
+                .sortedByDescending { it.totals.totalTokens.knownSum }
+                .forEachIndexed { index, identity ->
+                    if (index > 0) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                    val configurationName =
+                        identity.configId?.let { configId ->
+                            configurationNames[configId]
+                                ?: stringResource(R.string.token_stats_config_deleted)
+                        } ?: stringResource(R.string.token_stats_legacy_configuration)
+                    TokenStatsConfigurationRow(
+                        identity = identity,
+                        configurationName = configurationName,
+                        currency = currency,
+                        priceSettings = priceSettings,
+                        onEditPrice = onEditPrice,
                     )
                 }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = model.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.token_stats_model_identities_count,
-                            model.identities.size,
-                        ),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TokenStatsCardMuted,
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = formatMoney(model.totals.cost.knownAmount, currency),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = colors.chartAccent,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_request_count_label, model.totals.requests),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = TokenStatsCardMuted,
-                    )
-                }
-                // 阶段 5：删除对完整展示分组生效（可跨 provider/模型合并组），
-                // 不再限制单 provider:model；危险操作在对话框两步确认。
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Filled.Delete,
-                        contentDescription = stringResource(R.string.token_stats_delete_model),
-                        tint = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.size(18.dp),
-                    )
-                }
-                IconButton(onClick = onGroupManage) {
-                    Icon(
-                        imageVector = Icons.Filled.Groups,
-                        contentDescription = stringResource(R.string.token_stats_group_manage),
-                        tint = TokenStatsCardMuted,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-            }
-
-            if (expanded) {
-                Spacer(Modifier.height(8.dp))
-                model.identities.forEach { identity ->
-                    TokenStatsIdentityRow(identity = identity, currency = currency, costMode = costMode)
-                    Spacer(Modifier.height(6.dp))
-                }
-            }
         }
     }
 }
 
 @Composable
-private fun TokenStatsIdentityRow(
+private fun TokenStatsConfigurationRow(
     identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
+    configurationName: String,
     currency: PricingCurrency,
-    costMode: TokenStatsCostMode,
+    priceSettings: List<TokenStatsPriceSetting>,
+    onEditPrice: (TokenStatsPriceSetting?, TokenStatsPriceDraft, String?) -> Unit,
 ) {
     val colors = LocalTokenStatsColors.current
+    var expanded by remember(identity.configId, identity.provider, identity.model) { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 8.dp),
+            .clickable { expanded = !expanded }
+            .padding(horizontal = TokenStatsSpacing.card, vertical = 10.dp),
     ) {
-        Text(
-            text = "${identity.provider} · ${identity.model}",
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-        )
-        if (identity.configId.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.token_stats_config_id, identity.configId),
-                style = MaterialTheme.typography.bodySmall,
-                color = TokenStatsCardMuted,
-            )
-        }
-
         val totals = identity.totals
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = "${stringResource(R.string.token_stats_token_uncached)} ${formatCompactCount(totals.uncachedInput.knownSum)}" +
-                    " · ${stringResource(R.string.token_stats_token_cached)} ${formatCompactCount(totals.cachedInput.knownSum)}" +
-                    " · ${stringResource(R.string.token_stats_token_output)} ${formatCompactCount(totals.output.knownSum)}",
-                style = MaterialTheme.typography.bodySmall,
-                color = TokenStatsCardMuted,
-            )
-            Text(
-                text = formatMoney(totals.cost.knownAmount, currency),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = configurationName,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "${identity.provider} · ${identity.model}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = formatMoney(totals.cost.knownAmount, currency),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = colors.chartAccent,
+                    maxLines = 1,
+                )
+                Text(
+                    text = formatCompactRequestCountLabel(
+                        totals.requests,
+                        totals.requestCountUnknownContributionCount,
+                    ),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = stringResource(R.string.token_stats_model_expand),
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        if (totals.uncachedInput.unknownEventCount > 0L ||
-            totals.cachedInput.unknownEventCount > 0L ||
-            totals.output.unknownEventCount > 0L
-        ) {
-            Text(
-                text = stringResource(
-                    R.string.token_stats_unknown_parts,
-                    totals.uncachedInput.unknownEventCount +
-                        totals.cachedInput.unknownEventCount +
-                        totals.output.unknownEventCount,
-                ),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.unknownHint,
-            )
-        }
-        if (totals.cost.unknownContributionCount > 0L) {
-            Text(
-                text = stringResource(R.string.token_stats_unknown_cost, totals.cost.unknownContributionCount),
-                style = MaterialTheme.typography.bodySmall,
-                color = colors.unknownHint,
-            )
-        }
-
-        // 单价：历史口径 = 事件快照；重估口径 = 当前解析价格
-        identity.pricing?.let { pricing ->
-            val priceText =
-                if (!pricing.known) {
-                    stringResource(R.string.token_stats_unknown_pricing)
+        if (expanded) {
+            FlowRow(
+                modifier = Modifier.padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "${stringResource(R.string.token_stats_token_uncached)} ${formatCompactCount(totals.uncachedInput.knownSum)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${stringResource(R.string.token_stats_token_cached)} ${formatCompactCount(totals.cachedInput.knownSum)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = "${stringResource(R.string.token_stats_token_output)} ${formatCompactCount(totals.output.knownSum)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (totals.uncachedInput.unknownEventCount > 0L ||
+                    totals.cachedInput.unknownEventCount > 0L ||
+                    totals.output.unknownEventCount > 0L
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.token_stats_unknown_parts,
+                            totals.uncachedInput.unknownEventCount +
+                                totals.cachedInput.unknownEventCount +
+                                totals.output.unknownEventCount,
+                        ),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = colors.unknownHint,
+                        modifier = Modifier.weight(1f),
+                    )
                 } else {
-                    buildPricingText(pricing, currency)
+                    Spacer(Modifier.weight(1f))
                 }
-            Text(
-                text = "${stringResource(R.string.token_stats_price_label)} $priceText",
-                style = MaterialTheme.typography.bodySmall,
-                color = TokenStatsCardMuted,
-            )
+                IconButton(
+                    onClick = {
+                        val scope =
+                            if (identity.configId.isNullOrEmpty()) {
+                                TokenStatsPriceScope.PROVIDER_MODEL
+                            } else {
+                                TokenStatsPriceScope.CONFIG
+                            }
+                        val providerModel = "${identity.provider}:${identity.model}"
+                        val existing =
+                            priceSettings.firstOrNull {
+                                it.scope == scope &&
+                                    it.providerModel.equals(providerModel, ignoreCase = true) &&
+                                    (scope == TokenStatsPriceScope.PROVIDER_MODEL ||
+                                        it.configId == identity.configId)
+                            }
+                        onEditPrice(
+                            existing,
+                            priceDraftForConfiguration(identity, priceSettings),
+                            identity.configId?.let { configurationName },
+                        )
+                    },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Edit,
+                        contentDescription = stringResource(R.string.token_stats_pricing_edit),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+            }
+            if (totals.cost.unknownContributionCount > 0L) {
+                Text(
+                    text = stringResource(R.string.token_stats_unknown_cost, totals.cost.unknownContributionCount),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.unknownHint,
+                )
+            }
         }
     }
-}
-
-/** 单价的展示文本（含计费方式与来源标签）。 */
-@Composable
-private fun buildPricingText(
-    pricing: com.ai.assistance.operit.data.stats.TokenStatsPricingInfo,
-    currency: PricingCurrency,
-): String {
-    val displayCurrency = pricing.currency
-    val modeText =
-        if (pricing.billingMode == com.ai.assistance.operit.data.model.BillingMode.TOKEN) {
-            val parts = buildList {
-                pricing.inputPricePerMillion?.let { add(formatPricePerMillion(it, displayCurrency)) }
-                pricing.cachedInputPricePerMillion?.let { add(formatPricePerMillion(it, displayCurrency)) }
-                pricing.cacheWritePricePerMillion?.let { add(formatPricePerMillion(it, displayCurrency)) }
-                pricing.outputPricePerMillion?.let { add(formatPricePerMillion(it, displayCurrency)) }
-            }
-            if (parts.isEmpty()) stringResource(R.string.token_stats_unknown_pricing) else parts.joinToString(" · ")
-        } else {
-            pricing.pricePerRequest?.let { formatPricePerRequest(it, displayCurrency) }
-                ?: stringResource(R.string.token_stats_unknown_pricing)
-        }
-    val sourceText =
-        when (pricing.source) {
-            com.ai.assistance.operit.data.stats.PricingSource.DEFAULT ->
-                stringResource(R.string.token_stats_pricing_source_builtin)
-            com.ai.assistance.operit.data.stats.PricingSource.PROVIDER_MODEL_OVERRIDE ->
-                stringResource(R.string.token_stats_pricing_source_override)
-            com.ai.assistance.operit.data.stats.PricingSource.CONFIG_OVERRIDE ->
-                stringResource(R.string.token_stats_pricing_source_config)
-            com.ai.assistance.operit.data.stats.PricingSource.LEGACY_OVERRIDE ->
-                stringResource(R.string.token_stats_pricing_source_legacy)
-            com.ai.assistance.operit.data.stats.PricingSource.UNKNOWN ->
-                stringResource(R.string.token_stats_unknown_pricing)
-        }
-    return "$modeText（$sourceText）"
 }
 
 // ==== 汇率与币种设置卡 ====
@@ -1163,8 +1087,8 @@ internal fun TokenStatsRateCard(
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.padding(TokenStatsSpacing.card),
+            verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -1176,14 +1100,14 @@ internal fun TokenStatsRateCard(
                 if (rateIsEstimated) {
                     EstimatedBadge(
                         text = stringResource(R.string.token_stats_rate_default_badge),
-                        textColor = TokenStatsCardContent,
+                        textColor = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
             Text(
                 text = stringResource(R.string.settings_exchange_rate_subtitle),
                 style = MaterialTheme.typography.bodySmall,
-                color = TokenStatsCardMuted,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Row(
@@ -1223,6 +1147,76 @@ internal fun TokenStatsRateCard(
         }
     }
 }
+
+private fun priceDraftForConfiguration(
+    identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
+    priceSettings: List<TokenStatsPriceSetting>,
+): TokenStatsPriceDraft {
+    val providerModel = "${identity.provider}:${identity.model}"
+    val providerSettings =
+        priceSettings.firstOrNull {
+            it.scope == TokenStatsPriceScope.PROVIDER_MODEL &&
+                it.providerModel.equals(providerModel, ignoreCase = true)
+        }?.toModelPriceSettings()
+    val configurationSettings =
+        identity.configId?.let { configId ->
+            priceSettings.firstOrNull {
+                it.scope == TokenStatsPriceScope.CONFIG &&
+                    it.providerModel.equals(providerModel, ignoreCase = true) &&
+                    it.configId == configId
+            }
+        }?.toModelPriceSettings()
+    val resolved =
+        TokenPriceResolver.resolve(
+            providerModel,
+            mergePriceSettings(providerSettings, configurationSettings),
+        )
+    return TokenStatsPriceDraft(
+        scope =
+            if (identity.configId.isNullOrEmpty()) {
+                TokenStatsPriceScope.PROVIDER_MODEL
+            } else {
+                TokenStatsPriceScope.CONFIG
+            },
+        provider = identity.provider,
+        model = identity.model,
+        configId = identity.configId,
+        billingMode = resolved.billingMode,
+        currency = resolved.currency,
+        inputPricePerMillion = resolved.inputPricePerMillion,
+        cachedInputPricePerMillion = resolved.cachedInputPricePerMillion,
+        cacheWritePricePerMillion = resolved.cacheWritePricePerMillion,
+        outputPricePerMillion = resolved.outputPricePerMillion,
+        pricePerRequest = resolved.pricePerRequest,
+    )
+}
+
+private fun mergePriceSettings(
+    provider: com.ai.assistance.operit.data.stats.ModelPriceSettings?,
+    configuration: com.ai.assistance.operit.data.stats.ModelPriceSettings?,
+) =
+    com.ai.assistance.operit.data.stats.ModelPriceSettings(
+        billingMode = configuration?.billingMode ?: provider?.billingMode,
+        currency = configuration?.currency ?: provider?.currency,
+        inputPricePerMillion = configuration?.inputPricePerMillion ?: provider?.inputPricePerMillion,
+        cachedInputPricePerMillion =
+            configuration?.cachedInputPricePerMillion ?: provider?.cachedInputPricePerMillion,
+        cacheWritePricePerMillion =
+            configuration?.cacheWritePricePerMillion ?: provider?.cacheWritePricePerMillion,
+        outputPricePerMillion = configuration?.outputPricePerMillion ?: provider?.outputPricePerMillion,
+        pricePerRequest = configuration?.pricePerRequest ?: provider?.pricePerRequest,
+    )
+
+private fun TokenStatsPriceSetting.toModelPriceSettings() =
+    com.ai.assistance.operit.data.stats.ModelPriceSettings(
+        billingMode = billingMode,
+        currency = currency,
+        inputPricePerMillion = inputPricePerMillion,
+        cachedInputPricePerMillion = cachedInputPricePerMillion,
+        cacheWritePricePerMillion = cacheWritePricePerMillion,
+        outputPricePerMillion = outputPricePerMillion,
+        pricePerRequest = pricePerRequest,
+    )
 
 private fun formatRateInput(rate: Double): String =
     String.format(Locale.US, "%.4f", rate).trimEnd('0').trimEnd('.')

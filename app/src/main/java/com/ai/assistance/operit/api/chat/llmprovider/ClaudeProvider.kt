@@ -265,7 +265,7 @@ class ClaudeProvider(
         )
         onUsageReported?.invoke(
             // 流式 start/delta 是部分更新（省略字段保留旧值）；非流式最终响应是
-            // 完整快照（null = 明确未知，覆盖旧值）——见 TokenStatRequestContext 合并
+            // 完整快照中 null 表示明确未知，覆盖该 attempt 的旧值。
             com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.anthropic(
                 usage,
                 completeSnapshot,

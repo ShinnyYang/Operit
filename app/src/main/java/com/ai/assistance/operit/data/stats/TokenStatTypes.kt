@@ -33,25 +33,5 @@ enum class TokenStatStatus {
     }
 }
 
-/** 事件价格快照的来源层级，用于解释单价的取值。 */
-enum class PricingSource {
-    /** 内置模型默认价（可能为 0 的“未知”缺省，见 [TokenPriceResolver]）。 */
-    DEFAULT,
-
-    /** provider/model 覆盖。 */
-    PROVIDER_MODEL_OVERRIDE,
-
-    /** 特定 API 配置覆盖。 */
-    CONFIG_OVERRIDE,
-
-    /** 旧系统（DataStore）中用户保存的 provider/model 价格（阶段 1 桥接）。 */
-    LEGACY_OVERRIDE,
-
-    /** 无法解析出定价（未知，对应成本为 null）。 */
-    UNKNOWN;
-
-    companion object {
-        fun fromName(name: String?): PricingSource =
-            entries.firstOrNull { it.name == name } ?: UNKNOWN
-    }
-}
+/** Price-resolution provenance kept for calculation tests and diagnostics. */
+enum class PricingSource { BUILT_IN, USER, UNKNOWN }

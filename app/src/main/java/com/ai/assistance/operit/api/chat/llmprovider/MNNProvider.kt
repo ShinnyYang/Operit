@@ -67,29 +67,29 @@ class MNNProvider(
     private var cachedModelIsAudio: Boolean? = null
 
     // Token计数
-    private var _inputTokenCount = 0
-    private var _outputTokenCount = 0
-    private var _cachedInputTokenCount = 0
+    private var _inputTokenCount = 0L
+    private var _outputTokenCount = 0L
+    private var _cachedInputTokenCount = 0L
 
     @Volatile
     private var isCancelled = false
 
     override val inputTokenCount: Long
-        get() = _inputTokenCount.toLong()
+        get() = _inputTokenCount
 
     override val outputTokenCount: Long
-        get() = _outputTokenCount.toLong()
+        get() = _outputTokenCount
 
     override val cachedInputTokenCount: Long
-        get() = _cachedInputTokenCount.toLong()
+        get() = _cachedInputTokenCount
 
     override val providerModel: String
         get() = "${providerType.name}:$modelName"
 
     override fun resetTokenCounts() {
-        _inputTokenCount = 0
-        _outputTokenCount = 0
-        _cachedInputTokenCount = 0
+        _inputTokenCount = 0L
+        _outputTokenCount = 0L
+        _cachedInputTokenCount = 0L
     }
 
     override fun cancelStreaming() {
@@ -660,21 +660,21 @@ class MNNProvider(
             val safeHistory = trimHistoryToTokenBudget(session, conversationHistory, maxPromptTokens)
 
             _inputTokenCount =
-                kotlin.runCatching { session.countTokensWithHistory(safeHistory) }
+                kotlin.runCatching { session.countTokensWithHistory(safeHistory).toLong() }
                     .getOrElse { error ->
                         if (useInternalToolCall) {
                             throw error
                         }
-                        countTokens(buildPrompt(conversationHistory))
+                        countTokens(buildPrompt(conversationHistory)).toLong()
                     }
-            onTokensUpdated(_inputTokenCount.toLong(), 0L, 0L)
+            onTokensUpdated(_inputTokenCount, 0L, 0L)
 
             AppLogger.d(
                 TAG,
                 "开始MNN LLM推理，历史消息数: ${conversationHistory.size}, thinking模式: $enableThinking, toolCall=$useInternalToolCall"
             )
 
-            var outputTokenCount = 0
+            var outputTokenCount = 0L
             val toolCallOutputBuffer = StringBuilder()
             val finalOutputBuffer = StringBuilder()
             val emitDirectly = !useInternalToolCall
@@ -687,7 +687,7 @@ class MNNProvider(
                     if (isCancelled) {
                         false
                     } else {
-                        outputTokenCount += 1
+                        outputTokenCount += 1L
                         _outputTokenCount = outputTokenCount
 
                         if (emitDirectly) {
@@ -699,7 +699,7 @@ class MNNProvider(
 
                         kotlin.runCatching {
                             kotlinx.coroutines.runBlocking {
-                                onTokensUpdated(_inputTokenCount.toLong(), 0L, _outputTokenCount.toLong())
+                                onTokensUpdated(_inputTokenCount, 0L, _outputTokenCount)
                             }
                         }
 

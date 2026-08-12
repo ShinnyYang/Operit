@@ -597,7 +597,7 @@ internal class ToolPkgJsAiProviderService(
     /**
      * sendMessage 通道：提取 → 更新 UI 累计计数 → 转发规范化 usage。
      * UI 计数器与账本快照分离（评审 P1-6）：缺省字段只保留 UI 侧全局累计值，
-     * 账本快照保持未知（由 [TokenStatRequestContext] 按 attempt 合并）。
+     * 请求快照保持未知，由外层 request tracker 按 attempt 合并。
      */
     private suspend fun applyAndForwardUsage(
         decoded: ProviderHookValue,

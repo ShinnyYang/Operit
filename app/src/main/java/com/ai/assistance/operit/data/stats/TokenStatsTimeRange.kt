@@ -5,39 +5,6 @@ import java.time.ZoneId
 import java.time.ZonedDateTime
 
 /**
- * 统计时间预设（阶段 3 契约，见计划 §2.5）：
- *
- * - 5h/12h/24h 为**滚动窗口**：`[now - 时长, now)`。
- * - 今天/昨天/7d/30d/本月/上月为**自然日/自然月**：按设备当前时区（[ZoneId]）
- *   的日历边界计算，禁止用固定毫秒加减替代日历运算（DST 与跨月自动正确）。
- * - 7d = 今天往前 7 个自然日（含今天）；30d = 今天往前 30 个自然日（含今天），
- *   与 token 统计参考实现一致。
- * - 自定义范围显式传 [TokenStatsTimeRanges.customRange]。
- *
- * “首次进入自动回退”只选择最近有实际数据的前缀（5h→12h→24h→7d→30d，见
- * [TokenStatsPreset.INITIAL_FALLBACK_ORDER]）；用户手动选择后不再自动跳转是
- * 调用方（阶段 4 UI/ViewModel）的持久化职责，本层只提供纯函数建议。
- */
-enum class TokenStatsPreset {
-    LAST_5H,
-    LAST_12H,
-    LAST_24H,
-    TODAY,
-    YESTERDAY,
-    LAST_7D,
-    LAST_30D,
-    THIS_MONTH,
-    LAST_MONTH,
-    CUSTOM;
-
-    companion object {
-        /** 首次进入的自动回退顺序：依次选择最近有实际事件的范围。 */
-        val INITIAL_FALLBACK_ORDER: List<TokenStatsPreset> =
-            listOf(LAST_5H, LAST_12H, LAST_24H, LAST_7D, LAST_30D)
-    }
-}
-
-/**
  * 时间范围，**半开区间** `[startMs, endMs)`：`startedAtMs == endMs` 的事件
  * 不属于该范围；endMs 是下一边界（如次日 0 点），不是包含式终点。
  */
@@ -58,12 +25,12 @@ enum class TokenStatsGranularity {
 }
 
 /**
- * 时间预设边界与图表桶对齐计算。
+ * 日历范围的图表桶对齐计算。
  *
  * 桶边界在**本地时间**上对齐（10 分钟整点、整点小时、自然日 0 点），并用
  * java.time 的 plusMinutes/plusHours/plusDays 在本地时区上推进：跨 DST 的
  * 小时/日桶自动得到 23/25 小时的正确 epoch 跨度，且相邻桶起点单调递增、
- * 覆盖无空洞（回退重复的小时也会出现两个不同 epoch 的桶）。
+ * 覆盖无空洞（夏令时重复的小时也会出现两个不同 epoch 的桶）。
  */
 object TokenStatsTimeRanges {
 
@@ -74,24 +41,7 @@ object TokenStatsTimeRanges {
     /** 防御：自定义范围过大时限制桶数量，避免病态输入拖垮内存/UI。 */
     private const val MAX_BUCKETS = 10_000
 
-    fun rangeFor(preset: TokenStatsPreset, nowMs: Long, zone: ZoneId): TokenStatsTimeRange {
-        require(preset != TokenStatsPreset.CUSTOM) { "CUSTOM preset requires customRange(startMs, endMs)" }
-        val now = Instant.ofEpochMilli(nowMs).atZone(zone)
-        return when (preset) {
-            TokenStatsPreset.LAST_5H -> rollingRange(now, 5L)
-            TokenStatsPreset.LAST_12H -> rollingRange(now, 12L)
-            TokenStatsPreset.LAST_24H -> rollingRange(now, 24L)
-            TokenStatsPreset.TODAY -> naturalDayRange(now, 0L)
-            TokenStatsPreset.YESTERDAY -> naturalDayRange(now, -1L)
-            TokenStatsPreset.LAST_7D -> naturalDaysRange(now, 7L)
-            TokenStatsPreset.LAST_30D -> naturalDaysRange(now, 30L)
-            TokenStatsPreset.THIS_MONTH -> naturalMonthRange(now, 0L)
-            TokenStatsPreset.LAST_MONTH -> naturalMonthRange(now, -1L)
-            TokenStatsPreset.CUSTOM -> error("unreachable")
-        }
-    }
-
-    /** 自定义范围：调用方提供显式边界，仍强制半开区间 [startMs, endMs)。 */
+    /** 日历选择器提供显式边界，始终使用半开区间 `[startMs, endMs)`。 */
     fun customRange(startMs: Long, endMs: Long): TokenStatsTimeRange =
         TokenStatsTimeRange(startMs, endMs)
 
@@ -159,39 +109,6 @@ object TokenStatsTimeRanges {
         if (floor < 0) return null
         if (bucketEndMs(bucketStarts, floor, granularity, zone) <= ts) return null
         return floor
-    }
-
-    private fun rollingRange(now: ZonedDateTime, hours: Long): TokenStatsTimeRange {
-        val endMs = now.toInstant().toEpochMilli()
-        return TokenStatsTimeRange(endMs - hours * HOUR_MS, endMs)
-    }
-
-    private fun naturalDayRange(now: ZonedDateTime, offsetDays: Long): TokenStatsTimeRange {
-        val start = now.toLocalDate().atStartOfDay(now.zone).plusDays(offsetDays)
-        return TokenStatsTimeRange(
-            start.toInstant().toEpochMilli(),
-            start.plusDays(1).toInstant().toEpochMilli(),
-        )
-    }
-
-    /** 含今天在内往前 [days] 个自然日：`[今天-（days-1）天 0 点, 明天 0 点)`。 */
-    private fun naturalDaysRange(now: ZonedDateTime, days: Long): TokenStatsTimeRange {
-        val todayStart = now.toLocalDate().atStartOfDay(now.zone)
-        val start = todayStart.minusDays(days - 1)
-        return TokenStatsTimeRange(
-            start.toInstant().toEpochMilli(),
-            todayStart.plusDays(1).toInstant().toEpochMilli(),
-        )
-    }
-
-    private fun naturalMonthRange(now: ZonedDateTime, offsetMonths: Long): TokenStatsTimeRange {
-        val month = now.toLocalDate().withDayOfMonth(1).plusMonths(offsetMonths)
-        val start = month.atStartOfDay(now.zone)
-        val end = month.plusMonths(1).atStartOfDay(now.zone)
-        return TokenStatsTimeRange(
-            start.toInstant().toEpochMilli(),
-            end.toInstant().toEpochMilli(),
-        )
     }
 
     private fun truncateToBucket(

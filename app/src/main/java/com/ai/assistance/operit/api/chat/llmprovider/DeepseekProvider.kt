@@ -43,7 +43,7 @@ class DeepseekProvider(
         supportsVision = supportsVision,
         supportsAudio = supportsAudio,
         supportsVideo = supportsVideo,
-        enableToolCall = enableToolCall
+        enableToolCall = enableToolCall,
     ) {
 
     /**
@@ -81,7 +81,9 @@ class DeepseekProvider(
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
-        jsonObject.putStreamUsageOption(stream)
+        if (stream) {
+            jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+        }
 
         // DeepSeek Thinking Mode 默认开启，关闭时也必须显式发送 thinking.type=disabled。
         applyThinkingParamsIfNeeded(jsonObject)

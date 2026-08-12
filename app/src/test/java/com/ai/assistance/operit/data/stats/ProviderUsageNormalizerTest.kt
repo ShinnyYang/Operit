@@ -258,10 +258,6 @@ class ProviderUsageNormalizerTest {
         assertEquals(20L, snapshot.outputTokens)
         assertEquals(80L, snapshot.reasoningTokens)
         assertEquals(false, snapshot.reasoningIncludedInOutput)
-        assertEquals(
-            100L,
-            TokenCostCalculator.billedOutputTokens(snapshot.toTokenUsageInput()),
-        )
     }
 
     @Test
@@ -285,10 +281,6 @@ class ProviderUsageNormalizerTest {
         assertEquals(0L, snapshot.outputTokens)
         assertEquals(0L, snapshot.reasoningTokens)
         assertEquals(false, snapshot.reasoningIncludedInOutput)
-        assertEquals(
-            0L,
-            TokenCostCalculator.billedOutputTokens(snapshot.toTokenUsageInput()),
-        )
     }
 
     @Test
@@ -316,13 +308,15 @@ class ProviderUsageNormalizerTest {
     // ==== 本地模型 ====
 
     @Test
-    fun `local providers report measured counts with explicit zero cache`() {
-        val snapshot = ProviderUsageNormalizer.local(1200, 340, ProviderUsageNormalizer.SOURCE_LLAMA)
-        assertEquals(1200L, snapshot.uncachedInputTokens)
+    fun `local providers preserve long measured counts with explicit zero cache`() {
+        val inputTokens = Int.MAX_VALUE.toLong() + 1L
+        val outputTokens = Int.MAX_VALUE.toLong() + 2L
+        val snapshot = ProviderUsageNormalizer.local(inputTokens, outputTokens, ProviderUsageNormalizer.SOURCE_LLAMA)
+        assertEquals(inputTokens, snapshot.uncachedInputTokens)
         assertEquals(0L, snapshot.cachedInputTokens)
         assertEquals(0L, snapshot.cacheWriteTokens)
-        assertEquals(1200L, snapshot.totalInputTokens)
-        assertEquals(340L, snapshot.outputTokens)
+        assertEquals(inputTokens, snapshot.totalInputTokens)
+        assertEquals(outputTokens, snapshot.outputTokens)
         assertNull(snapshot.reasoningTokens)
         assertNull(snapshot.reasoningIncludedInOutput)
         assertFalse(snapshot.cacheWriteSeparateBilling)
@@ -353,30 +347,6 @@ class ProviderUsageNormalizerTest {
         assertEquals(100L, snapshot.totalInputTokens)
         assertNull(snapshot.uncachedInputTokens)
         assertNull(snapshot.cachedInputTokens)
-        val pricing =
-            ResolvedPricing(
-                billingMode = com.ai.assistance.operit.data.model.BillingMode.TOKEN,
-                currency = com.ai.assistance.operit.data.collects.PricingCurrency.USD,
-                inputPricePerMillion = 1.0,
-                cachedInputPricePerMillion = 0.5,
-                outputPricePerMillion = 1.0,
-                source = PricingSource.DEFAULT,
-                known = true,
-            )
-        assertNull(
-            TokenCostCalculator.computeCost(
-                snapshot.toTokenUsageInput(),
-                pricing,
-            ).amount
-        )
-        assertEquals(
-            120.0 / 1_000_000.0,
-            TokenCostCalculator.computeCost(
-                snapshot.toTokenUsageInput(),
-                pricing.copy(cachedInputPricePerMillion = 1.0),
-            ).amount!!,
-            1e-12,
-        )
     }
 
     @Test

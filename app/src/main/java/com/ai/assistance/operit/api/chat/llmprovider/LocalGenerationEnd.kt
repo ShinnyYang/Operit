@@ -13,7 +13,7 @@ internal class LocalUsageReporter(
 ) {
     private val reported = AtomicBoolean(false)
 
-    suspend fun report(inputTokens: Int, outputTokens: Int) {
+    suspend fun report(inputTokens: Long, outputTokens: Long) {
         val callback = onUsageReported ?: return
         if (!reported.compareAndSet(false, true)) return
         withContext(NonCancellable) {
@@ -33,8 +33,8 @@ internal class LocalUsageReporter(
     }
 
     suspend fun <T> runReportingFinally(
-        inputTokens: () -> Int,
-        outputTokens: () -> Int,
+        inputTokens: () -> Long,
+        outputTokens: () -> Long,
         block: suspend () -> T,
     ): T = try {
         block()
@@ -74,8 +74,8 @@ internal object LocalGenerationEnd {
         cancelled: Boolean,
         success: Boolean,
         usageReporter: LocalUsageReporter,
-        inputTokens: Int,
-        outputTokens: Int,
+        inputTokens: Long,
+        outputTokens: Long,
         cancelMessage: String,
         emitToolResult: suspend () -> Unit,
         failWith: suspend () -> Unit,

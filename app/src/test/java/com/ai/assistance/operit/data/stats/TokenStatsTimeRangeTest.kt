@@ -7,12 +7,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/**
- * 时间预设/范围/桶边界测试（阶段 3）：
- * 所有边界用 java.time 日历运算，覆盖滚动窗口、自然日、自然月、跨月、
- * DST 春令（23 小时日）与冬令（25 小时日/重复小时）、自定义范围校验、
- * [start, end) 半开语义、桶对齐与归属。
- */
+/** 日历范围及桶边界测试，覆盖 DST 和半开区间语义。 */
 class TokenStatsTimeRangeTest {
 
     private val shanghai = ZoneId.of("Asia/Shanghai")
@@ -24,90 +19,7 @@ class TokenStatsTimeRangeTest {
     private fun local(epochMs: Long, zone: ZoneId): LocalDateTime =
         LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(epochMs), zone)
 
-    // ==== 滚动窗口 ====
-
-    @Test
-    fun `rolling presets are now minus duration half-open`() {
-        val now = localMs("2026-08-07T15:00:00", shanghai)
-        val fiveHour = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_5H, now, shanghai)
-        assertEquals(now - 5L * TokenStatsTimeRanges.HOUR_MS, fiveHour.startMs)
-        assertEquals(now, fiveHour.endMs)
-
-        val twelveHour = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_12H, now, shanghai)
-        assertEquals(now - 12L * TokenStatsTimeRanges.HOUR_MS, twelveHour.startMs)
-
-        val twentyFour = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_24H, now, shanghai)
-        assertEquals(now - 24L * TokenStatsTimeRanges.HOUR_MS, twentyFour.startMs)
-    }
-
-    // ==== 自然日 ====
-
-    @Test
-    fun `today is local midnight to next midnight`() {
-        val now = localMs("2026-08-07T15:00:00", shanghai)
-        val today = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.TODAY, now, shanghai)
-        assertEquals(localMs("2026-08-07T00:00:00", shanghai), today.startMs)
-        assertEquals(localMs("2026-08-08T00:00:00", shanghai), today.endMs)
-    }
-
-    @Test
-    fun `yesterday is previous natural day`() {
-        val now = localMs("2026-08-07T02:00:00", shanghai)
-        val yesterday = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.YESTERDAY, now, shanghai)
-        assertEquals(localMs("2026-08-06T00:00:00", shanghai), yesterday.startMs)
-        assertEquals(localMs("2026-08-07T00:00:00", shanghai), yesterday.endMs)
-    }
-
-    @Test
-    fun `last 7 and 30 days are natural days including today`() {
-        val now = localMs("2026-08-07T23:59:00", shanghai)
-        val seven = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_7D, now, shanghai)
-        assertEquals(localMs("2026-08-01T00:00:00", shanghai), seven.startMs)
-        assertEquals(localMs("2026-08-08T00:00:00", shanghai), seven.endMs)
-        assertEquals(7L * TokenStatsTimeRanges.DAY_MS, seven.durationMs)
-
-        val thirty = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_30D, now, shanghai)
-        assertEquals(localMs("2026-07-09T00:00:00", shanghai), thirty.startMs)
-        assertEquals(localMs("2026-08-08T00:00:00", shanghai), thirty.endMs)
-        assertEquals(30L * TokenStatsTimeRanges.DAY_MS, thirty.durationMs)
-    }
-
-    // ==== 自然月 ====
-
-    @Test
-    fun `this and last month use calendar month boundaries`() {
-        val now = localMs("2026-08-07T15:00:00", shanghai)
-        val thisMonth = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.THIS_MONTH, now, shanghai)
-        assertEquals(localMs("2026-08-01T00:00:00", shanghai), thisMonth.startMs)
-        assertEquals(localMs("2026-09-01T00:00:00", shanghai), thisMonth.endMs)
-
-        val lastMonth = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_MONTH, now, shanghai)
-        assertEquals(localMs("2026-07-01T00:00:00", shanghai), lastMonth.startMs)
-        assertEquals(localMs("2026-08-01T00:00:00", shanghai), lastMonth.endMs)
-    }
-
-    @Test
-    fun `february month boundaries handle 28 and leap 29 days`() {
-        // 2026-03-01 时的上月 = 2026 年 2 月（28 天）
-        val nowFeb = localMs("2026-03-01T01:00:00", shanghai)
-        val feb = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_MONTH, nowFeb, shanghai)
-        assertEquals(localMs("2026-02-01T00:00:00", shanghai), feb.startMs)
-        assertEquals(localMs("2026-03-01T00:00:00", shanghai), feb.endMs)
-        assertEquals(28L * TokenStatsTimeRanges.DAY_MS, feb.durationMs)
-
-        // 2028-03-01 时的上月 = 2028 年 2 月（闰年 29 天）
-        val leapNow = localMs("2028-03-01T01:00:00", shanghai)
-        val leapFeb = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.LAST_MONTH, leapNow, shanghai)
-        assertEquals(29L * TokenStatsTimeRanges.DAY_MS, leapFeb.durationMs)
-
-        // 本月 = 3 月（31 天）
-        val march = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.THIS_MONTH, nowFeb, shanghai)
-        assertEquals(localMs("2026-03-01T00:00:00", shanghai), march.startMs)
-        assertEquals(localMs("2026-04-01T00:00:00", shanghai), march.endMs)
-        assertEquals(31L * TokenStatsTimeRanges.DAY_MS, march.durationMs)
-    }
-
-    // ==== 自定义与校验 ====
+    // ==== 日历范围与校验 ====
 
     @Test
     fun `custom range requires end after start`() {
@@ -120,50 +32,6 @@ class TokenStatsTimeRangeTest {
         } catch (expected: IllegalArgumentException) {
             // ok
         }
-        try {
-            TokenStatsTimeRanges.rangeFor(TokenStatsPreset.CUSTOM, 1000L, shanghai)
-            throw AssertionError("expected IllegalArgumentException for CUSTOM preset")
-        } catch (expected: IllegalArgumentException) {
-            // ok
-        }
-    }
-
-    // ==== DST ====
-
-    @Test
-    fun `spring forward day is 23 hours`() {
-        // 美东 2026-03-08 02:00 -> 03:00 拨快 1 小时
-        val now = localMs("2026-03-08T15:00:00", newYork)
-        val today = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.TODAY, now, newYork)
-        assertEquals(localMs("2026-03-08T00:00:00", newYork), today.startMs)
-        assertEquals(localMs("2026-03-09T00:00:00", newYork), today.endMs)
-        assertEquals(23L * TokenStatsTimeRanges.HOUR_MS, today.durationMs)
-
-        val yesterday = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.YESTERDAY, now, newYork)
-        assertEquals(24L * TokenStatsTimeRanges.HOUR_MS, yesterday.durationMs)
-    }
-
-    @Test
-    fun `fall back day is 25 hours`() {
-        // 美东 2026-11-01 02:00 EDT -> 01:00 EST 拨慢 1 小时
-        val now = localMs("2026-11-01T15:00:00", newYork)
-        val today = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.TODAY, now, newYork)
-        assertEquals(localMs("2026-11-01T00:00:00", newYork), today.startMs)
-        assertEquals(localMs("2026-11-02T00:00:00", newYork), today.endMs)
-        assertEquals(25L * TokenStatsTimeRanges.HOUR_MS, today.durationMs)
-    }
-
-    @Test
-    fun `month range across dst transition is exact calendar span`() {
-        // 2026-03 月：包含 23 小时日的自然月
-        val now = localMs("2026-03-15T12:00:00", newYork)
-        val march = TokenStatsTimeRanges.rangeFor(TokenStatsPreset.THIS_MONTH, now, newYork)
-        assertEquals(localMs("2026-03-01T00:00:00", newYork), march.startMs)
-        assertEquals(localMs("2026-04-01T00:00:00", newYork), march.endMs)
-        assertEquals(
-            31L * TokenStatsTimeRanges.DAY_MS - TokenStatsTimeRanges.HOUR_MS,
-            march.durationMs,
-        )
     }
 
     // ==== 粒度选择 ====

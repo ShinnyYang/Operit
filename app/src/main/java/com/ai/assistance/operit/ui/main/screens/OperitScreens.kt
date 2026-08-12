@@ -66,7 +66,6 @@ import com.ai.assistance.operit.ui.features.settings.screens.ToolPermissionSetti
 import com.ai.assistance.operit.ui.features.settings.screens.MnnModelDownloadScreen
 import com.ai.assistance.operit.ui.features.settings.screens.UserPreferencesSettingsScreen
 import com.ai.assistance.operit.ui.features.tokenstats.TokenUsageStatisticsScreen
-import com.ai.assistance.operit.ui.features.tokenstats.TokenStatsManagementScreen
 import com.ai.assistance.operit.ui.features.token.TokenConfigWebViewScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.AppPermissionsToolScreen
 import com.ai.assistance.operit.ui.features.toolbox.screens.FileManagerToolScreen
@@ -1133,49 +1132,7 @@ sealed class Screen(
         ) {
             TokenUsageStatisticsScreen(
                     onBackPressed = onGoBack,
-                    onOpenGroupManagement = { navigateTo(TokenStatsManagement) },
-                    onOpenPricingManagement = { navigateTo(TokenStatsPricingManagement) }
             )
-        }
-    }
-
-    data object TokenStatsManagement :
-            Screen(
-                    navItem = NavItem.Settings,
-                    titleRes = R.string.token_stats_management_title,
-                    usesRouteViewModelStore = true
-            ) {
-        @Composable
-        override fun Content(
-                navController: NavController,
-                navigateTo: ScreenNavigationHandler,
-                onGoBack: () -> Unit,
-                hasBackgroundImage: Boolean,
-                onLoading: (Boolean) -> Unit,
-                onError: (String) -> Unit,
-                onGestureConsumed: (Boolean) -> Unit
-        ) {
-            TokenStatsManagementScreen()
-        }
-    }
-
-    data object TokenStatsPricingManagement :
-            Screen(
-                    navItem = NavItem.Settings,
-                    titleRes = R.string.token_stats_management_title,
-                    usesRouteViewModelStore = true
-            ) {
-        @Composable
-        override fun Content(
-                navController: NavController,
-                navigateTo: ScreenNavigationHandler,
-                onGoBack: () -> Unit,
-                hasBackgroundImage: Boolean,
-                onLoading: (Boolean) -> Unit,
-                onError: (String) -> Unit,
-                onGestureConsumed: (Boolean) -> Unit
-        ) {
-            TokenStatsManagementScreen(initialPricingTab = true)
         }
     }
 

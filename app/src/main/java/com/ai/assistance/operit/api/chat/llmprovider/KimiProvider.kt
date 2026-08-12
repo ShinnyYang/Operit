@@ -40,7 +40,7 @@ open class KimiProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
 ) {
 
     override fun createRequestBody(
@@ -65,6 +65,9 @@ open class KimiProvider(
             val baseRequestBodyJson =
                 super.createRequestBodyInternal(context, chatHistory, modelParameters, stream, availableTools, preserveThinkInHistory)
             val jsonObject = JSONObject(baseRequestBodyJson)
+            if (stream) {
+                jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+            }
             applyThinkingParams(jsonObject)
             return createJsonRequestBody(jsonObject.toString())
         }
@@ -72,7 +75,9 @@ open class KimiProvider(
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
-        jsonObject.putStreamUsageOption(stream)
+        if (stream) {
+            jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+        }
         applyThinkingParams(jsonObject)
 
         for (param in modelParameters) {

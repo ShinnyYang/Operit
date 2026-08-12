@@ -7,7 +7,6 @@ import android.os.Looper
 import android.util.AtomicFile
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.db.ObjectBoxManager
-import com.ai.assistance.operit.data.stats.TokenStatSpool
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.OperitPaths
 import java.io.BufferedInputStream
@@ -35,6 +34,7 @@ object RawSnapshotBackupManager {
 
     private const val TAG = "RawSnapshotBackup"
     private const val FORMAT_VERSION = 1
+    private const val OPERIT_PACKAGE_NAME = "com.ai.assistance.operit"
 
     private const val ZIP_PREFIX = "operit_raw_snapshot_"
 
@@ -126,128 +126,122 @@ object RawSnapshotBackupManager {
             val datastoreDir = File(dataDir, "datastore")
             val databasesDir = File(dataDir, "databases")
 
-            // P1 终审：排他快照屏障——先排空 spool（已 fsync 未入 Room 的统计事件全部进入
-            // Room），再进入排他状态执行 checkpoint + 打包。备份期间没有任何新的 insert
-            // 注册，spool 虽被排除出备份也不丢事件；屏障失败（quarantine 证据未导出、
-            // 活跃 insert 超时等）在打包前明确抛错。
-            TokenStatSpool.withExclusiveSnapshotAccess(context, drainBefore = true) {
-                try {
-                    val sqliteDb = AppDatabase.getDatabase(context).openHelper.writableDatabase
-                    sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
-                } catch (e: Exception) {
-                    AppLogger.w(TAG, "wal_checkpoint failed", e)
+            try {
+                val sqliteDb = AppDatabase.getDatabase(context).openHelper.writableDatabase
+                sqliteDb.query("PRAGMA wal_checkpoint(FULL)").close()
+            } catch (e: Exception) {
+                AppLogger.w(TAG, "wal_checkpoint failed", e)
+            }
+
+            val includes = listOf(
+                ENTRY_FILES,
+                ENTRY_EXTERNAL_FILES,
+                ENTRY_SHARED_PREFS,
+                ENTRY_DATASTORE,
+                ENTRY_DATABASES
+            )
+            val manifest = Manifest(
+                formatVersion = FORMAT_VERSION,
+                packageName = context.packageName,
+                createdAt = System.currentTimeMillis(),
+                includes = includes,
+                includeTerminalData = options.includeTerminalData
+            )
+
+            ZipOutputStream(BufferedOutputStream(FileOutputStream(tmpFile))).use { zos ->
+                zos.putNextEntry(ZipEntry(ENTRY_MANIFEST))
+                zos.write(json.encodeToString(manifest).toByteArray(Charsets.UTF_8))
+                zos.closeEntry()
+
+                val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
+                val excludedNames = if (options.includeTerminalData) {
+                    alwaysExcluded
+                } else {
+                    alwaysExcluded + terminalTopLevelDirNames
                 }
-
-                val includes = listOf(
-                    ENTRY_FILES,
-                    ENTRY_EXTERNAL_FILES,
-                    ENTRY_SHARED_PREFS,
-                    ENTRY_DATASTORE,
-                    ENTRY_DATABASES
-                )
-                val manifest = Manifest(
-                    formatVersion = FORMAT_VERSION,
-                    packageName = context.packageName,
-                    createdAt = System.currentTimeMillis(),
-                    includes = includes,
-                    includeTerminalData = options.includeTerminalData
-                )
-
-                ZipOutputStream(BufferedOutputStream(FileOutputStream(tmpFile))).use { zos ->
-                    zos.putNextEntry(ZipEntry(ENTRY_MANIFEST))
-                    zos.write(json.encodeToString(manifest).toByteArray(Charsets.UTF_8))
-                    zos.closeEntry()
-
-                    val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
-                    val excludedNames = if (options.includeTerminalData) {
-                        alwaysExcluded
-                    } else {
-                        alwaysExcluded + terminalTopLevelDirNames
+                withContext(Dispatchers.Main) {
+                    onProgress?.invoke(ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = 0))
+                }
+                val filesTotalCount = totalFilesForZip(
+                    dir = context.filesDir,
+                    entryPrefix = ENTRY_FILES,
+                    excludedTopLevelDirNames = excludedNames,
+                    onScannedCountChanged = { scanned ->
+                        if (onProgress != null) {
+                            mainHandler.post {
+                                onProgress.invoke(
+                                    ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = scanned)
+                                )
+                            }
+                        }
                     }
-                    withContext(Dispatchers.Main) {
-                        onProgress?.invoke(ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = 0))
-                    }
-                    val filesTotalCount = totalFilesForZip(
+                )
+                withContext(Dispatchers.Main) {
+                    onProgress?.invoke(
+                        ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = filesTotalCount)
+                    )
+                }
+                withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, 0)) }
+                val filesMs = measureTimeMillis {
+                    addDirToZip(
+                        zos = zos,
                         dir = context.filesDir,
                         entryPrefix = ENTRY_FILES,
                         excludedTopLevelDirNames = excludedNames,
-                        onScannedCountChanged = { scanned ->
+                        totalFiles = filesTotalCount,
+                        onPercentChanged = { percent ->
+                            if (onProgress != null) {
+                                mainHandler.post {
+                                    onProgress.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, percent))
+                                }
+                            }
+                        }
+                    )
+                }
+                withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, 100)) }
+                AppLogger.i(TAG, "export add files done in ${filesMs}ms (excludedTopLevel=${excludedNames.size})")
+
+                val externalFilesTotalCount = totalFilesForZip(
+                    dir = externalFilesDir,
+                    entryPrefix = ENTRY_EXTERNAL_FILES,
+                    excludedTopLevelDirNames = emptySet()
+                )
+                withContext(Dispatchers.Main) {
+                    onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, 0))
+                }
+                val externalFilesMs = measureTimeMillis {
+                    addDirToZip(
+                        zos = zos,
+                        dir = externalFilesDir,
+                        entryPrefix = ENTRY_EXTERNAL_FILES,
+                        totalFiles = externalFilesTotalCount,
+                        onPercentChanged = { percent ->
                             if (onProgress != null) {
                                 mainHandler.post {
                                     onProgress.invoke(
-                                        ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = scanned)
+                                        ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, percent)
                                     )
                                 }
                             }
                         }
                     )
-                    withContext(Dispatchers.Main) {
-                        onProgress?.invoke(
-                            ExportProgressInfo(stage = ExportProgress.SCANNING_FILES, scannedFiles = filesTotalCount)
-                        )
-                    }
-                    withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, 0)) }
-                    val filesMs = measureTimeMillis {
-                        addDirToZip(
-                            zos = zos,
-                            dir = context.filesDir,
-                            entryPrefix = ENTRY_FILES,
-                            excludedTopLevelDirNames = excludedNames,
-                            totalFiles = filesTotalCount,
-                            onPercentChanged = { percent ->
-                                if (onProgress != null) {
-                                    mainHandler.post {
-                                        onProgress.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, percent))
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_FILES, 100)) }
-                    AppLogger.i(TAG, "export add files done in ${filesMs}ms (excludedTopLevel=${excludedNames.size})")
-
-                    val externalFilesTotalCount = totalFilesForZip(
-                        dir = externalFilesDir,
-                        entryPrefix = ENTRY_EXTERNAL_FILES,
-                        excludedTopLevelDirNames = emptySet()
-                    )
-                    withContext(Dispatchers.Main) {
-                        onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, 0))
-                    }
-                    val externalFilesMs = measureTimeMillis {
-                        addDirToZip(
-                            zos = zos,
-                            dir = externalFilesDir,
-                            entryPrefix = ENTRY_EXTERNAL_FILES,
-                            totalFiles = externalFilesTotalCount,
-                            onPercentChanged = { percent ->
-                                if (onProgress != null) {
-                                    mainHandler.post {
-                                        onProgress.invoke(
-                                            ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, percent)
-                                        )
-                                    }
-                                }
-                            }
-                        )
-                    }
-                    withContext(Dispatchers.Main) {
-                        onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, 100))
-                    }
-                    AppLogger.i(TAG, "export add external_files done in ${externalFilesMs}ms")
-
-                    withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_SHARED_PREFS)) }
-                    val sharedPrefsMs = measureTimeMillis { addDirToZip(zos, sharedPrefsDir, ENTRY_SHARED_PREFS) }
-                    AppLogger.i(TAG, "export add shared_prefs done in ${sharedPrefsMs}ms")
-
-                    withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_DATASTORE)) }
-                    val datastoreMs = measureTimeMillis { addDirToZip(zos, datastoreDir, ENTRY_DATASTORE) }
-                    AppLogger.i(TAG, "export add datastore done in ${datastoreMs}ms")
-
-                    withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_DATABASES)) }
-                    val databasesMs = measureTimeMillis { addDirToZip(zos, databasesDir, ENTRY_DATABASES) }
-                    AppLogger.i(TAG, "export add databases done in ${databasesMs}ms")
                 }
+                withContext(Dispatchers.Main) {
+                    onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_EXTERNAL_FILES, 100))
+                }
+                AppLogger.i(TAG, "export add external_files done in ${externalFilesMs}ms")
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_SHARED_PREFS)) }
+                val sharedPrefsMs = measureTimeMillis { addDirToZip(zos, sharedPrefsDir, ENTRY_SHARED_PREFS) }
+                AppLogger.i(TAG, "export add shared_prefs done in ${sharedPrefsMs}ms")
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_DATASTORE)) }
+                val datastoreMs = measureTimeMillis { addDirToZip(zos, datastoreDir, ENTRY_DATASTORE) }
+                AppLogger.i(TAG, "export add datastore done in ${datastoreMs}ms")
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.ZIPPING_DATABASES)) }
+                val databasesMs = measureTimeMillis { addDirToZip(zos, databasesDir, ENTRY_DATABASES) }
+                AppLogger.i(TAG, "export add databases done in ${databasesMs}ms")
             }
 
             withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.FINALIZING)) }
@@ -289,85 +283,51 @@ object RawSnapshotBackupManager {
 
                 AppLogger.i(TAG, "restore cached zip: ${cacheZip.absolutePath} (${cacheZip.length()} bytes)")
 
-                // P1 终审：两阶段恢复屏障。prepareBeforeCommit 做全部可失败的非替换准备
-                // （关闭 stores、解压、校验 manifest）；commitReplacement 持久化
-                // REPLACING 标记——只有该标记成功落盘后 restore epoch 才递增、恢复前
-                // 开始的旧请求在收尾时被明确拒绝；block 内做文件替换，成功后屏障自动
-                // 清理旧 spool，旧事件绝不 replay 进恢复后的数据库。替换开始后失败则
-                // 本进程拒绝一切新事件直至重启（isAcceptingEvents() == false）。
-                var preservedNamesForRestore: Set<String> = emptySet()
-                var restoredManifest: Manifest? = null
-                TokenStatSpool.withExclusiveRestoreAccess(
-                    context = context,
-                    prepareBeforeCommit = {
-                        AppDatabase.closeDatabase()
-                        ObjectBoxManager.closeAll()
+                AppDatabase.closeDatabase()
+                ObjectBoxManager.closeAll()
 
-                        AppLogger.i(TAG, "restore closed databases (room + objectbox)")
+                AppLogger.i(TAG, "restore closed databases (room + objectbox)")
 
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.EXTRACTING) }
-                        val manifest = extractZipToWorkDir(cacheZip, workDir, expectedPackageName = context.packageName)
-                        restoredManifest = manifest
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.EXTRACTING) }
+                val manifest = extractZipToWorkDir(cacheZip, workDir)
 
-                        val payloadDir = File(workDir, "payload")
+                val payloadDir = File(workDir, "payload")
+                val externalFilesPayloadDir = File(payloadDir, "external_files")
 
-                        val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
+                val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
 
-                        val preserveTerminal = !manifest.includeTerminalData
-                        val preservedTerminalNames = if (preserveTerminal) terminalTopLevelDirNames else emptySet()
-                        val preservedAlwaysExcludedNames = alwaysExcluded.filterNot { dirName ->
-                            File(payloadDir, "files/$dirName").exists()
-                        }.toSet()
-                        // REPLACING 标记必须留在 filesDir（崩溃后由启动路径消费）；files
-                        // 替换时不得删除它（审计 P1：否则崩溃后连持久化证据都丢失）。
-                        preservedNamesForRestore =
-                            preservedTerminalNames +
-                                preservedAlwaysExcludedNames +
-                                setOf(RestoreReplacingMarker.FILE_NAME)
+                val preserveTerminal = !manifest.includeTerminalData
+                val preservedTerminalNames = if (preserveTerminal) terminalTopLevelDirNames else emptySet()
+                val preservedAlwaysExcludedNames = alwaysExcluded.filterNot { dirName ->
+                    File(payloadDir, "files/$dirName").exists()
+                }.toSet()
+                val preservedNames = preservedTerminalNames + preservedAlwaysExcludedNames
 
-                        AppLogger.i(
-                            TAG,
-                            "restore manifest ok (formatVersion=${manifest.formatVersion}, includeTerminalData=${manifest.includeTerminalData})"
-                        )
-
-                        AppLogger.i(
-                            TAG,
-                            "restore replace dirs (preserveTerminalTopLevel=${preservedNamesForRestore.isNotEmpty()})"
-                        )
-
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_FILES) }
-                    },
-                    commitReplacement = {
-                        RestoreReplacingMarker.persist(context)
-                    },
-                    block = {
-                        val payloadDir = File(workDir, "payload")
-                        val externalFilesPayloadDir = File(payloadDir, "external_files")
-
-                        replaceDirContents(
-                            File(payloadDir, "files"),
-                            context.filesDir,
-                            preservedTopLevelDirNames = preservedNamesForRestore
-                        )
-                        if (externalFilesPayloadDir.exists()) {
-                            val externalFilesDir = requireNotNull(context.getExternalFilesDir(null)) {
-                                "External files dir is unavailable"
-                            }
-                            withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_EXTERNAL_FILES) }
-                            replaceDirContents(externalFilesPayloadDir, externalFilesDir)
-                        }
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_SHARED_PREFS) }
-                        replaceDirContents(File(payloadDir, "shared_prefs"), File(context.dataDir, "shared_prefs"))
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATASTORE) }
-                        replaceDirContents(File(payloadDir, "datastore"), File(context.dataDir, "datastore"))
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATABASES) }
-                        replaceDirContents(File(payloadDir, "databases"), File(context.dataDir, "databases"))
-
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.FINALIZING) }
-                    },
+                AppLogger.i(
+                    TAG,
+                    "restore manifest ok (formatVersion=${manifest.formatVersion}, includeTerminalData=${manifest.includeTerminalData})"
                 )
-                RestoreReplacingMarker.delete(context)
-                AppLogger.i(TAG, "restore done: ${restoredManifest?.packageName}")
+
+                AppLogger.i(TAG, "restore replace dirs (preserveTerminalTopLevel=${preservedNames.isNotEmpty()})")
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_FILES) }
+                replaceDirContents(File(payloadDir, "files"), context.filesDir, preservedTopLevelDirNames = preservedNames)
+                if (externalFilesPayloadDir.exists()) {
+                    val externalFilesDir = requireNotNull(context.getExternalFilesDir(null)) {
+                        "External files dir is unavailable"
+                    }
+                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_EXTERNAL_FILES) }
+                    replaceDirContents(externalFilesPayloadDir, externalFilesDir)
+                }
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_SHARED_PREFS) }
+                replaceDirContents(File(payloadDir, "shared_prefs"), File(context.dataDir, "shared_prefs"))
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATASTORE) }
+                replaceDirContents(File(payloadDir, "datastore"), File(context.dataDir, "datastore"))
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATABASES) }
+                replaceDirContents(File(payloadDir, "databases"), File(context.dataDir, "databases"))
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.FINALIZING) }
+                AppLogger.i(TAG, "restore done: ${manifest.packageName}")
             } catch (e: Exception) {
                 AppLogger.e(TAG, "restore failed", e)
                 throw e
@@ -384,7 +344,7 @@ object RawSnapshotBackupManager {
         }
     }
 
-    private fun extractZipToWorkDir(zipFile: File, workDir: File, expectedPackageName: String): Manifest {
+    private fun extractZipToWorkDir(zipFile: File, workDir: File): Manifest {
         val payloadRoot = File(workDir, "payload")
         payloadRoot.mkdirs()
 
@@ -448,7 +408,11 @@ object RawSnapshotBackupManager {
             throw IllegalArgumentException("Unsupported backup version: ${manifest.formatVersion}")
         }
 
-        if (manifest.packageName != expectedPackageName) {
+        // Released backups must restore across official package variants such as .debug and .clone.
+        if (
+            manifest.packageName != OPERIT_PACKAGE_NAME &&
+                !manifest.packageName.startsWith("$OPERIT_PACKAGE_NAME.")
+        ) {
             throw IllegalArgumentException("Backup package mismatch: ${manifest.packageName}")
         }
 

@@ -1,10 +1,8 @@
 package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
-import com.ai.assistance.operit.util.AppLogger
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -13,13 +11,15 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ai.assistance.operit.data.model.ApiProviderType
+import com.ai.assistance.operit.data.model.BillingMode
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
-import com.ai.assistance.operit.data.stats.LegacyProviderModelKeyDecoder
+import com.ai.assistance.operit.data.collects.PricingCurrency
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKeyDecoder
+import com.ai.assistance.operit.data.stats.ModelPriceSettings
 import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -33,17 +33,8 @@ import kotlinx.serialization.json.Json
 private val Context.apiDataStore: DataStore<Preferences> by
         preferencesDataStore(name = "api_settings")
 
-internal fun usdToCnyStorageValue(rate: Double): Float? =
-    rate.toFloat().takeIf { it.isFinite() && it > 0f }
-
-internal fun validStoredUsdToCnyRate(stored: Float?): Double? =
+private fun validReleasedUsdToCnyRate(stored: Float?): Double? =
     stored?.takeIf { it.isFinite() && it > 0f }?.toDouble()
-
-internal fun resolveUsdToCnyExchangeRate(stored: Float?): Double =
-    validStoredUsdToCnyRate(stored) ?: 7.2
-
-internal fun resolveUsdToCnyRateWithEstimate(stored: Float?): Pair<Double, Boolean> =
-    validStoredUsdToCnyRate(stored)?.let { it to false } ?: (7.0 to true)
 
 class ApiPreferences private constructor(private val context: Context) {
 
@@ -53,7 +44,10 @@ class ApiPreferences private constructor(private val context: Context) {
         private var INSTANCE: ApiPreferences? = null
 
         /** JVM tests can avoid initializing the application-scoped ToolPkg runtime. */
-        internal var toolPkgProviderNamesProvider: (() -> List<String>)? = null
+        internal var toolPkgProviderAliasesProvider: (() -> Map<String, String>)? = null
+
+        /** JVM tests can provide saved ToolPkg provider IDs without reading model-config DataStore. */
+        internal var configuredProviderIdsProvider: (suspend () -> List<String>)? = null
 
         fun getInstance(context: Context): ApiPreferences {
             return INSTANCE ?: synchronized(this) {
@@ -93,51 +87,47 @@ class ApiPreferences private constructor(private val context: Context) {
         }
 
         // 动态生成供应商:模型的Token键
-        fun getTokenInputKey(providerModel: String) =
+        private fun getTokenInputKey(providerModel: String) =
                 longPreferencesKey("token_input_${providerModel.replace(":", "_")}")
 
-        fun getTokenCachedInputKey(providerModel: String) =
+        private fun getTokenCachedInputKey(providerModel: String) =
                 longPreferencesKey("token_cached_input_${providerModel.replace(":", "_")}")
 
-        fun getTokenOutputKey(providerModel: String) =
+        private fun getTokenOutputKey(providerModel: String) =
                 longPreferencesKey("token_output_${providerModel.replace(":", "_")}")
 
         // 模型定价键
-        fun getModelInputPriceKey(providerModel: String) =
+        private fun getModelInputPriceKey(providerModel: String) =
                 floatPreferencesKey("model_input_price_${providerModel.replace(":", "_")}")
 
-        fun getModelCachedInputPriceKey(providerModel: String) =
+        private fun getModelCachedInputPriceKey(providerModel: String) =
                 floatPreferencesKey("model_cached_input_price_${providerModel.replace(":", "_")}")
 
-        fun getModelOutputPriceKey(providerModel: String) =
+        private fun getModelOutputPriceKey(providerModel: String) =
                 floatPreferencesKey("model_output_price_${providerModel.replace(":", "_")}")
 
         // 请求次数统计键
-        fun getRequestCountKey(providerModel: String) =
+        private fun getRequestCountKey(providerModel: String) =
                 intPreferencesKey("request_count_${providerModel.replace(":", "_")}")
 
         // 计费方式键
-        fun getBillingModeKey(providerModel: String) =
+        private fun getBillingModeKey(providerModel: String) =
                 stringPreferencesKey("billing_mode_${providerModel.replace(":", "_")}")
 
         // 按次计费价格键
-        fun getPricePerRequestKey(providerModel: String) =
+        private fun getPricePerRequestKey(providerModel: String) =
                 floatPreferencesKey("price_per_request_${providerModel.replace(":", "_")}")
 
-        /** 旧系统价格/计费方式键前缀（与 [legacyPriceSettingsFrom] 的键构造对应）。 */
-        val LEGACY_PRICE_KEY_PREFIXES =
-                listOf("model_input_price_", "model_cached_input_price_", "model_output_price_",
-                        "billing_mode_", "price_per_request_")
+        private val RELEASED_MODEL_PRICE_KEY_PREFIXES =
+                listOf(
+                        "model_input_price_",
+                        "model_cached_input_price_",
+                        "model_output_price_",
+                        "billing_mode_",
+                        "price_per_request_",
+                )
 
-        val USD_TO_CNY_EXCHANGE_RATE = floatPreferencesKey("usd_to_cny_exchange_rate")
-
-        private val STATS_TARGET_CURRENCY = stringPreferencesKey("stats_target_currency")
-        private val STATS_COST_MODE = stringPreferencesKey("stats_cost_mode")
-        private val STATS_INCLUDE_LEGACY = booleanPreferencesKey("stats_include_legacy")
-        private val STATS_TIME_PRESET = stringPreferencesKey("stats_time_preset")
-        private val STATS_TIME_CUSTOM_START = longPreferencesKey("stats_time_custom_start")
-        private val STATS_TIME_CUSTOM_END = longPreferencesKey("stats_time_custom_end")
-        private val STATS_TIME_MANUAL = booleanPreferencesKey("stats_time_manual")
+        private val USD_TO_CNY_EXCHANGE_RATE = floatPreferencesKey("usd_to_cny_exchange_rate")
 
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val FEATURE_TOGGLES_JSON = stringPreferencesKey("feature_toggles_json")
@@ -222,26 +212,6 @@ class ApiPreferences private constructor(private val context: Context) {
         // API 配置默认值
         const val DEFAULT_API_ENDPOINT = "https://api.deepseek.com/v1/chat/completions"
         const val DEFAULT_MODEL_NAME = "deepseek-v4-flash"
-
-        // legacy cleanup applied marker 键前缀（P1 闭环）：marker 与累计键清理在
-        // 同一次 DataStore.edit 内原子完成；marker 已存在时同 operation 重试为
-        // 幂等 no-op。marker ID 集合与 baseline 快照同一次读取，供导入 fence 校验
-        // （见 legacyStatsSnapshotWithMarkers）。
-        val LEGACY_CLEANUP_MARKER_PREFIX = "legacy_cleanup_applied_"
-
-        fun legacyCleanupMarkerKey(operationId: String): Preferences.Key<Boolean> =
-            booleanPreferencesKey("$LEGACY_CLEANUP_MARKER_PREFIX$operationId")
-
-        /** 移除指定键名的累计计数键（实例方法与 outbox 纯变更函数共用）。 */
-        internal fun removeTokenCountKeysForMutation(
-            preferences: MutablePreferences,
-            vararg keyNames: String,
-        ) {
-            val names = keyNames.toSet()
-            preferences.asMap().keys
-                    .filter { it.name in names }
-                    .forEach { preferences.remove(it) }
-        }
 
         private const val TAG = "ApiPreferences"
     }
@@ -553,123 +523,6 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 
-    // Save Disable Status Tags setting
-    /**
-     * 更新指定供应商:模型的token计数
-     * @param providerModel 供应商:模型标识符，格式如"DEEPSEEK:deepseek-chat"
-     * @param inputTokens 新增的输入token
-     * @param outputTokens 新增的输出token
-     * @param cachedInputTokens 新增的缓存命中token
-     */
-    suspend fun updateTokensForProviderModel(
-            providerModel: String,
-            inputTokens: Long,
-            outputTokens: Long,
-            cachedInputTokens: Long = 0L
-    ) {
-        context.apiDataStore.edit { preferences ->
-            val inputKey = getTokenInputKey(providerModel)
-            val cachedInputKey = getTokenCachedInputKey(providerModel)
-            val outputKey = getTokenOutputKey(providerModel)
-
-            val currentInputTokens = readTokenCount(preferences, inputKey.name)
-            val currentCachedInputTokens = readTokenCount(preferences, cachedInputKey.name)
-            val currentOutputTokens = readTokenCount(preferences, outputKey.name)
-
-            removeTokenCountKeys(
-                    preferences,
-                    inputKey.name,
-                    cachedInputKey.name,
-                    outputKey.name
-            )
-            preferences[inputKey] = currentInputTokens + inputTokens
-            preferences[cachedInputKey] = currentCachedInputTokens + cachedInputTokens
-            preferences[outputKey] = currentOutputTokens + outputTokens
-        }
-    }
-
-    /**
-     * 获取指定供应商:模型的输入token数量
-     */
-    suspend fun getInputTokensForProviderModel(providerModel: String): Long {
-        val preferences = context.apiDataStore.data.first()
-        return readTokenCount(preferences, getTokenInputKey(providerModel).name)
-    }
-
-    /**
-     * 获取指定供应商:模型的缓存输入token数量
-     */
-    suspend fun getCachedInputTokensForProviderModel(providerModel: String): Long {
-        val preferences = context.apiDataStore.data.first()
-        return readTokenCount(preferences, getTokenCachedInputKey(providerModel).name)
-    }
-
-    /**
-     * 获取指定供应商:模型的输出token数量
-     */
-    suspend fun getOutputTokensForProviderModel(providerModel: String): Long {
-        val preferences = context.apiDataStore.data.first()
-        return readTokenCount(preferences, getTokenOutputKey(providerModel).name)
-    }
-
-    /**
-     * 获取所有供应商:模型的token统计
-     * @return Map<供应商:模型, Triple<输入tokens, 输出tokens, 缓存tokens>>
-     */
-    suspend fun getAllProviderModelTokens(): Map<String, Triple<Long, Long, Long>> {
-        val preferences = context.apiDataStore.data.first()
-        val result = mutableMapOf<String, Triple<Long, Long, Long>>()
-        val providerNames = registeredToolPkgProviderNames()
-        
-        // 遍历所有preferences，查找token相关的key
-        preferences.asMap().forEach { (key, value) ->
-            val keyName = key.name
-            if (keyName.startsWith("token_input_")) {
-                val providerModel =
-                        LegacyProviderModelKeyDecoder.decode(
-                                keyName.removePrefix("token_input_"), providerNames)
-                val inputTokens = readTokenCountValue(value)
-                val outputTokens = readTokenCount(preferences, getTokenOutputKey(providerModel).name)
-                val cachedInputTokens =
-                        readTokenCount(preferences, getTokenCachedInputKey(providerModel).name)
-                if (inputTokens > 0L || outputTokens > 0L || cachedInputTokens > 0L) {
-                    result[providerModel] = Triple(inputTokens, outputTokens, cachedInputTokens)
-                }
-            }
-        }
-        
-        return result
-    }
-
-    /**
-     * 获取所有供应商:模型的token统计的Flow
-     * @return Flow<Map<供应商:模型, Triple<输入tokens, 输出tokens, 缓存tokens>>>
-     */
-    val allProviderModelTokensFlow: Flow<Map<String, Triple<Long, Long, Long>>> =
-        context.apiDataStore.data.map { preferences ->
-            val result = mutableMapOf<String, Triple<Long, Long, Long>>()
-            val providerNames = registeredToolPkgProviderNames()
-            
-            // 遍历所有preferences，查找token相关的key
-            preferences.asMap().forEach { (key, value) ->
-                val keyName = key.name
-                if (keyName.startsWith("token_input_")) {
-                    val providerModel =
-                            LegacyProviderModelKeyDecoder.decode(
-                                    keyName.removePrefix("token_input_"), providerNames)
-                    val inputTokens = readTokenCountValue(value)
-                    val outputTokens = readTokenCount(preferences, getTokenOutputKey(providerModel).name)
-                    val cachedInputTokens =
-                            readTokenCount(preferences, getTokenCachedInputKey(providerModel).name)
-                    if (inputTokens > 0L || outputTokens > 0L || cachedInputTokens > 0L) {
-                        result[providerModel] = Triple(inputTokens, outputTokens, cachedInputTokens)
-                    }
-                }
-            }
-            
-            result
-        }
-
     // Save custom system prompt template
     suspend fun saveCustomSystemPromptTemplate(template: String) {
         context.apiDataStore.edit { preferences ->
@@ -684,178 +537,114 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 
-    /**
-     * legacy cleanup applied marker 键前缀（P1 闭环）：marker 与累计键清理在
-     * **同一次** DataStore.edit 内原子完成；marker 已存在时同 operation 重试
-     * 为幂等 no-op。marker ID 集合与 baseline 快照同一次读取，供导入 fence 校验
-     * （见 [legacyStatsSnapshotWithMarkers]）。
-     */
-    val LEGACY_CLEANUP_MARKER_PREFIX = "legacy_cleanup_applied_"
-
-    fun legacyCleanupMarkerKey(operationId: String): Preferences.Key<Boolean> =
-        booleanPreferencesKey("$LEGACY_CLEANUP_MARKER_PREFIX$operationId")
-
-    /** 读取全部已应用的 legacy cleanup marker operationId 集合（导入 fence 用）。 */
-    suspend fun appliedLegacyCleanupMarkerIds(): Set<String> {
+    /** One read of the released main token data before ownership moves to Room. */
+    suspend fun readTokenStatsMigrationSnapshot(): TokenStatsMigrationSnapshot {
         val preferences = context.apiDataStore.data.first()
-        return appliedMarkerIdsFrom(preferences)
-    }
-
-    /**
-     * 应用一次 legacy cleanup（P1 闭环 drain 的 DataStore 侧）：
-     * 单次 DataStore.edit 内，若该 operation 的 applied marker 不存在，则精准清除
-     * 累计键并写入 marker；marker 已存在则幂等 no-op（崩溃后重放不二次清键）。
-     * [providerModels] 为 null 表示 ALL kind：清除全部旧累计键
-     * （token_input_ / token_cached_input_ / token_output_ / request_count_ 前缀），
-     * **绝不触碰价格/计费方式等配置键**与 marker 键。取消向上传播。
-     */
-    suspend fun applyLegacyCleanup(operationId: String, providerModels: List<String>?) {
-        require(operationId.isNotBlank()) { "operationId must not be blank" }
-        context.apiDataStore.edit { preferences ->
-            applyLegacyCleanupMutation(preferences, operationId, providerModels)
+        val counterPrefixes = listOf(
+            "token_input_",
+            "token_cached_input_",
+            "token_output_",
+            "request_count_",
+        )
+        val encodedTotals = linkedSetOf<String>()
+        val encodedPrices = linkedSetOf<String>()
+        preferences.asMap().keys.forEach { key ->
+            counterPrefixes.firstOrNull { key.name.startsWith(it) }?.let { prefix ->
+                encodedTotals += key.name.removePrefix(prefix)
+            }
+            RELEASED_MODEL_PRICE_KEY_PREFIXES
+                .firstOrNull { key.name.startsWith(it) }
+                ?.let { prefix -> encodedPrices += key.name.removePrefix(prefix) }
         }
-    }
-
-    private fun appliedMarkerIdsFrom(preferences: Preferences): Set<String> =
-        preferences.asMap().keys.asSequence()
-            .map { it.name }
-            .filter { it.startsWith(LEGACY_CLEANUP_MARKER_PREFIX) }
-            .map { it.removePrefix(LEGACY_CLEANUP_MARKER_PREFIX) }
-            .toSet()
-
-    /**
-     * 旧累计统计快照 + **同一次读取**的 applied marker ID 集合（P1 闭环导入 fence）：
-     * baseline 快照与 marker 集合来自同一个 DataStore 读取，Room 事务内校验全部
-     * cleanup operation ID 均包含在该 marker 集合（且无 PENDING）后才允许导入，
-     * 杜绝“先读旧快照 → cleanup 完成 → 旧快照写回”复活已删除的 baseline。
-     */
-    suspend fun legacyStatsSnapshotWithMarkers(): LegacyStatsSnapshotRead {
-        val preferences = context.apiDataStore.data.first()
-        return LegacyStatsSnapshotRead(
-            snapshot =
-                com.ai.assistance.operit.data.stats.LegacyTokenStatsSnapshot.parse(
-                    preferences.asMap().mapKeys { it.key.name },
-                    registeredToolPkgProviderNames(),
-                ),
-            cleanupMarkerIds = appliedMarkerIdsFrom(preferences),
+        val providerAliases = releasedTokenProviderAliases()
+        val totals = encodedTotals.mapNotNull { encoded ->
+            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val input = readTokenCount(preferences, getTokenInputKey(key.storedProviderModel).name)
+            val cached = readTokenCount(preferences, getTokenCachedInputKey(key.storedProviderModel).name)
+            val output = readTokenCount(preferences, getTokenOutputKey(key.storedProviderModel).name)
+            val requestCount = preferences.asMap().entries
+                .firstOrNull { it.key.name == getRequestCountKey(key.storedProviderModel).name }
+                ?.value
+                .let { it as? Number }
+                ?.toLong()
+                ?.coerceAtLeast(0L)
+                ?: 0L
+            ReleasedTokenUsageTotal(
+                provider = key.provider,
+                model = key.model,
+                inputTokens = input,
+                cachedInputTokens = cached,
+                outputTokens = output,
+                requestCount = requestCount,
+            ).takeIf { input > 0L || cached > 0L || output > 0L || requestCount > 0L }
+        }.groupBy { it.provider to it.model }
+            .map { (_, totals) -> totals.reduce(ReleasedTokenUsageTotal::plus) }
+        val prices = encodedPrices.mapNotNull { encoded ->
+            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val billingMode = preferences[getBillingModeKey(key.storedProviderModel)]?.let(BillingMode::valueOf)
+            val inputPrice = positivePrice(preferences[getModelInputPriceKey(key.storedProviderModel)])
+            val cachedInputPrice = positivePrice(preferences[getModelCachedInputPriceKey(key.storedProviderModel)])
+            val outputPrice = positivePrice(preferences[getModelOutputPriceKey(key.storedProviderModel)])
+            val pricePerRequest = positivePrice(preferences[getPricePerRequestKey(key.storedProviderModel)])
+            if (
+                billingMode == null &&
+                    inputPrice == null &&
+                    cachedInputPrice == null &&
+                    outputPrice == null &&
+                    pricePerRequest == null
+            ) {
+                return@mapNotNull null
+            }
+            val settings = ModelPriceSettings(
+                billingMode = billingMode,
+                currency = if (billingMode == BillingMode.COUNT) PricingCurrency.CNY else PricingCurrency.USD,
+                inputPricePerMillion = inputPrice,
+                cachedInputPricePerMillion = cachedInputPrice,
+                outputPricePerMillion = outputPrice,
+                pricePerRequest = pricePerRequest,
+            )
+            ReleasedTokenPriceSetting(key.provider, key.model, settings)
+        }.groupBy { it.provider to it.model }
+            .map { (identity, prices) ->
+                val settings = prices.map(ReleasedTokenPriceSetting::settings).distinct()
+                require(settings.size == 1) {
+                    "Conflicting released prices for ${identity.first}:${identity.second}"
+                }
+                ReleasedTokenPriceSetting(identity.first, identity.second, settings.single())
+            }
+        return TokenStatsMigrationSnapshot(
+            totals = totals,
+            prices = prices,
+            usdToCnyRate = validReleasedUsdToCnyRate(preferences[USD_TO_CNY_EXCHANGE_RATE]),
         )
     }
 
-    /**
-     * 重置所有供应商:模型的token计数，并同步清空新统计账本（事件 + baseline）。
-     * P1 闭环：顺序改为 **Room 先删（同一事务写 FULL tombstone + 删除 + 创建
-     * ALL cleanup operation）→ 排空 DataStore 累计键（marker 幂等）**，消除
-     * 旧的“先清 DataStore 再删新账本”跨存储窗口（新账本删除失败时旧计数不会被
-     * 静默清掉；排空失败时 operation 保持 PENDING 由下次启动重试）。
-     * @return true = 旧计数与新账本均清零成功；false = 任一步失败
-     * （已记录错误日志，调用方可据此提示用户重试，不假装成功）。
-     * 协程取消（CancellationException）不在此吞掉，向上传播。
-     */
-    suspend fun resetAllProviderModelTokenCounts(): Boolean {
-        return try {
-            com.ai.assistance.operit.data.stats.TokenStatsResetCoordinator
-                .resetAllStatistics(context)
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "重置全部统计：新账本清理失败", e)
-            false
-        }
-    }
-
-    /**
-     * 重置指定供应商:模型的token计数，并同步清空该模型在新账本中的事件与 baseline
-     * （所有配置实例身份，见 TokenStatsResetCoordinator）。P1 闭环：顺序与
-     * [resetAllProviderModelTokenCounts] 一致（Room 先删 + 创建精确 items 的
-     * cleanup operation → 排空 DataStore 累计键）。
-     * @return true = 旧计数与新账本均清零成功；false = 任一步失败
-     * （已记录错误日志，调用方可据此提示用户重试，不假装成功）。
-     * 协程取消（CancellationException）不在此吞掉，向上传播。
-     */
-    suspend fun resetProviderModelTokenCounts(providerModel: String): Boolean {
-        return try {
-            com.ai.assistance.operit.data.stats.TokenStatsResetCoordinator
-                .resetStatisticsForProviderModel(context, providerModel)
-            true
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            AppLogger.e(TAG, "重置模型统计：新账本清理失败", e)
-            false
-        }
-    }
-
-    /**
-     * 读取指定 provider:model 的旧系统用户价格设置（阶段 2 事件记录用）。
-     * 旧约定：价格键缺失或为 0 视为未设置（0 与“未设置”不可区分），
-     * 只有 > 0 的值才算用户设置；无任何设置时返回 null。
-     */
-    suspend fun legacyPriceSettingsFor(
-        providerModel: String
-    ): com.ai.assistance.operit.data.stats.LegacyPriceSettings? {
-        val preferences = context.apiDataStore.data.first()
-        return legacyPriceSettingsFrom(preferences, providerModel)
-    }
-
-    /**
-     * 旧系统**全部** provider:model 用户价格设置的一次快照读取（阶段 3 统计查询
-     * 重估口径用）：整个偏好文件只读一次（P1-2，杜绝按 identity 逐条读取 DataStore
-     * 的多次挂起）。键约定与 [legacyPriceSettingsFor] 完全一致：价格键缺失或为 0
-     * 视为未设置，只有 > 0 的值才算用户设置；无任何设置的模型不出现。
-     */
-    suspend fun allLegacyPriceSettings(): Map<String, com.ai.assistance.operit.data.stats.LegacyPriceSettings?> {
-        val preferences = context.apiDataStore.data.first()
-        val candidates = linkedSetOf<String>()
-        val providerNames = registeredToolPkgProviderNames()
-        preferences.asMap().keys.forEach { key ->
-            val name = key.name
-            for (prefix in LEGACY_PRICE_KEY_PREFIXES) {
-                if (name.startsWith(prefix) && name.length > prefix.length) {
-                    candidates += LegacyProviderModelKeyDecoder.decode(
-                            name.substring(prefix.length), providerNames)
-                    break
-                }
+    /** Remove released keys and every unpublished token-statistics key after import. */
+    suspend fun clearMigratedTokenStatsData() {
+        context.apiDataStore.edit { preferences ->
+            val keyPrefixes = listOf(
+                "token_input_",
+                "token_cached_input_",
+                "token_output_",
+                "request_count_",
+                "model_input_price_",
+                "model_cached_input_price_",
+                "model_cache_write_price_",
+                "model_output_price_",
+                "model_pricing_currency_",
+                "billing_mode_",
+                "price_per_request_",
+                "stats_",
+            )
+            val keys = preferences.asMap().keys.filter { key ->
+                key == USD_TO_CNY_EXCHANGE_RATE || keyPrefixes.any(key.name::startsWith)
+            }
+            keys.forEach { key ->
+                @Suppress("UNCHECKED_CAST")
+                preferences.remove(key as Preferences.Key<Any>)
             }
         }
-        return candidates.associateWith { providerModel ->
-            legacyPriceSettingsFrom(preferences, providerModel)
-        }
     }
-
-    /** 恢复内置定价时清除旧系统遗留的 provider:model 价格层。 */
-    suspend fun clearLegacyPriceSettings(providerModel: String) {
-        context.apiDataStore.edit { preferences ->
-            preferences.remove(getModelInputPriceKey(providerModel))
-            preferences.remove(getModelCachedInputPriceKey(providerModel))
-            preferences.remove(getModelOutputPriceKey(providerModel))
-            preferences.remove(getBillingModeKey(providerModel))
-            preferences.remove(getPricePerRequestKey(providerModel))
-        }
-    }
-
-    private fun legacyPriceSettingsFrom(
-        preferences: Preferences,
-        providerModel: String
-    ): com.ai.assistance.operit.data.stats.LegacyPriceSettings? {
-        val billingRaw = preferences[getBillingModeKey(providerModel)]
-        val settings =
-            com.ai.assistance.operit.data.stats.LegacyPriceSettings(
-                billingMode = billingRaw?.let { com.ai.assistance.operit.data.model.BillingMode.fromString(it) },
-                inputPricePerMillion =
-                    preferences[getModelInputPriceKey(providerModel)]?.toDouble()?.takeIf { it > 0.0 },
-                cachedInputPricePerMillion =
-                    preferences[getModelCachedInputPriceKey(providerModel)]?.toDouble()?.takeIf { it > 0.0 },
-                outputPricePerMillion =
-                    preferences[getModelOutputPriceKey(providerModel)]?.toDouble()?.takeIf { it > 0.0 },
-                pricePerRequest =
-                    preferences[getPricePerRequestKey(providerModel)]?.toDouble()?.takeIf { it > 0.0 },
-            )
-        return settings.takeIf { it.hasAnyUserSetting() }
-    }
-
-    private fun removeTokenCountKeys(preferences: MutablePreferences, vararg keyNames: String) =
-        removeTokenCountKeysForMutation(preferences, *keyNames)
 
     private fun readTokenCount(preferences: Preferences, keyName: String): Long {
         val values = preferences.asMap().entries
@@ -873,283 +662,35 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 
-    // 获取模型输入价格（每百万tokens的美元价格）
-    suspend fun getModelInputPrice(providerModel: String): Double {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[getModelInputPriceKey(providerModel)]?.toDouble() ?: 0.0
-    }
-
-    // 获取模型缓存输入价格（每百万tokens的美元价格）
-    suspend fun getModelCachedInputPrice(providerModel: String): Double {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[getModelCachedInputPriceKey(providerModel)]?.toDouble() ?: 0.0
-    }
-
-    // 获取模型输出价格（每百万tokens的美元价格）
-    suspend fun getModelOutputPrice(providerModel: String): Double {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[getModelOutputPriceKey(providerModel)]?.toDouble() ?: 0.0
-    }
-
-    // 设置模型输入价格（每百万tokens的美元价格）
-    suspend fun setModelInputPrice(providerModel: String, price: Double) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getModelInputPriceKey(providerModel)] = price.toFloat()
-        }
-    }
-
-    // 设置模型缓存输入价格（每百万tokens的美元价格）
-    suspend fun setModelCachedInputPrice(providerModel: String, price: Double) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getModelCachedInputPriceKey(providerModel)] = price.toFloat()
-        }
-    }
-
-    // 设置模型输出价格（每百万tokens的美元价格）
-    suspend fun setModelOutputPrice(providerModel: String, price: Double) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getModelOutputPriceKey(providerModel)] = price.toFloat()
-        }
-    }
-
-    // ===== Request Count Statistics 请求次数统计相关方法 =====
-
-    /**
-     * 增加指定供应商:模型的请求次数
-     * @param providerModel 供应商:模型标识符，格式如"DEEPSEEK:deepseek-chat"
-     */
-    suspend fun incrementRequestCountForProviderModel(providerModel: String) {
-        context.apiDataStore.edit { preferences ->
-            val countKey = getRequestCountKey(providerModel)
-            val currentCount = preferences[countKey] ?: 0
-            preferences[countKey] = currentCount + 1
-        }
-    }
-
-    /**
-     * 获取指定供应商:模型的请求次数
-     * @param providerModel 供应商:模型标识符
-     * @return 请求次数
-     */
-    suspend fun getRequestCountForProviderModel(providerModel: String): Int {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[getRequestCountKey(providerModel)] ?: 0
-    }
-
-    /**
-     * 获取所有供应商:模型的请求次数统计
-     * @return Map<供应商:模型, 请求次数>
-     */
-    suspend fun getAllProviderModelRequestCounts(): Map<String, Int> {
-        val preferences = context.apiDataStore.data.first()
-        val result = mutableMapOf<String, Int>()
-        val providerNames = registeredToolPkgProviderNames()
-        
-        // 遍历所有preferences，查找请求次数相关的key
-        preferences.asMap().forEach { (key, value) ->
-            val keyName = key.name
-            if (keyName.startsWith("request_count_")) {
-                val providerModel =
-                        LegacyProviderModelKeyDecoder.decode(
-                                keyName.removePrefix("request_count_"), providerNames)
-                val count = value as? Int ?: 0
-                if (count > 0) {
-                    result[providerModel] = count
-                }
+    private suspend fun releasedTokenProviderAliases(): Map<String, String> {
+        val registered = toolPkgProviderAliasesProvider?.invoke()
+            ?: ToolPkgAiProviderRegistry.releasedTokenProviderAliases()
+        val configured = configuredProviderIdsProvider?.invoke()
+            ?: ModelConfigManager(context).getAllConfigSummaries().map { it.apiProviderTypeId }
+        val configuredAliases =
+            configured
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .filter { ApiProviderType.fromProviderTypeId(it) == null }
+                .associateWith { it }
+        return buildMap {
+            configuredAliases.forEach { (providerId, identity) ->
+                put(providerId, identity)
+                put("TOOLPKG_${providerId.lowercase()}", identity)
             }
-        }
-        
-        return result
-    }
-
-    /**
-     * 重置指定供应商:模型的请求次数
-     * @param providerModel 供应商:模型标识符
-     */
-    suspend fun resetProviderModelRequestCount(providerModel: String) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getRequestCountKey(providerModel)] = 0
+            // The active registration supplies the display identity used by new requests.
+            putAll(registered)
         }
     }
 
-    // ===== Billing Mode 计费方式相关方法 =====
-
-    /**
-     * 获取指定供应商:模型的计费方式
-     * @param providerModel 供应商:模型标识符
-     * @return 计费方式，默认为TOKEN
-     */
-    suspend fun getBillingModeForProviderModel(providerModel: String): com.ai.assistance.operit.data.model.BillingMode {
-        val preferences = context.apiDataStore.data.first()
-        val modeString = preferences[getBillingModeKey(providerModel)]
-        return com.ai.assistance.operit.data.model.BillingMode.fromString(modeString)
+    private fun splitProviderModel(providerModel: String): Pair<String, String>? {
+        val separator = providerModel.indexOf(':')
+        if (separator <= 0 || separator == providerModel.lastIndex) return null
+        return providerModel.substring(0, separator) to providerModel.substring(separator + 1)
     }
 
-    /**
-     * 设置指定供应商:模型的计费方式
-     * @param providerModel 供应商:模型标识符
-     * @param mode 计费方式
-     */
-    suspend fun setBillingModeForProviderModel(providerModel: String, mode: com.ai.assistance.operit.data.model.BillingMode) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getBillingModeKey(providerModel)] = mode.name
-        }
-    }
-
-    // ===== Price Per Request 按次计费价格相关方法 =====
-
-    /**
-     * 获取指定供应商:模型的按次计费价格
-     * @param providerModel 供应商:模型标识符
-     * @return 每次请求的价格，未设置时返回0.0
-     */
-    suspend fun getPricePerRequestForProviderModel(providerModel: String): Double {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[getPricePerRequestKey(providerModel)]?.toDouble() ?: 0.0
-    }
-
-    /**
-     * 设置指定供应商:模型的按次计费价格（人民币）
-     * @param providerModel 供应商:模型标识符
-     * @param price 每次请求的价格
-     */
-    suspend fun setPricePerRequestForProviderModel(providerModel: String, price: Double) {
-        context.apiDataStore.edit { preferences ->
-            preferences[getPricePerRequestKey(providerModel)] = price.toFloat()
-        }
-    }
-
-    suspend fun getUsdToCnyExchangeRate(): Double {
-        val preferences = context.apiDataStore.data.first()
-        return resolveUsdToCnyExchangeRate(preferences[USD_TO_CNY_EXCHANGE_RATE])
-    }
-
-    /**
-     * 统计页汇率读取（阶段 4）：区分“用户手动设置”与“未设置”。
-     * 未设置时返回默认估算 7.0（[com.ai.assistance.operit.data.stats.TokenCostCurrency]
-     * 契约）并标记 estimated = true，界面必须显示估算提示；不联网获取汇率。
-     */
-    suspend fun usdToCnyRateWithEstimate(): Pair<Double, Boolean> {
-        val preferences = context.apiDataStore.data.first()
-        return resolveUsdToCnyRateWithEstimate(preferences[USD_TO_CNY_EXCHANGE_RATE])
-    }
-
-    suspend fun setUsdToCnyExchangeRate(rate: Double) {
-        val stored = requireNotNull(usdToCnyStorageValue(rate)) {
-            "USD to CNY exchange rate must remain finite and positive as Float"
-        }
-        context.apiDataStore.edit { preferences ->
-            preferences[USD_TO_CNY_EXCHANGE_RATE] = stored
-        }
-    }
-
-    // ===== 统计页偏好（阶段 4；与汇率共用 api_settings 文件，备份自动覆盖） =====
-
-    suspend fun getStatsTargetCurrency(): com.ai.assistance.operit.data.collects.PricingCurrency {
-        val preferences = context.apiDataStore.data.first()
-        val raw = preferences[STATS_TARGET_CURRENCY]
-        return if (raw.equals(com.ai.assistance.operit.data.collects.PricingCurrency.USD.name, ignoreCase = true)) {
-            com.ai.assistance.operit.data.collects.PricingCurrency.USD
-        } else {
-            com.ai.assistance.operit.data.collects.PricingCurrency.CNY
-        }
-    }
-
-    suspend fun setStatsTargetCurrency(
-        currency: com.ai.assistance.operit.data.collects.PricingCurrency
-    ) {
-        context.apiDataStore.edit { preferences ->
-            preferences[STATS_TARGET_CURRENCY] = currency.name
-        }
-    }
-
-    suspend fun getStatsCostMode(): com.ai.assistance.operit.data.stats.TokenStatsCostMode {
-        val preferences = context.apiDataStore.data.first()
-        val raw = preferences[STATS_COST_MODE]
-        return com.ai.assistance.operit.data.stats.TokenStatsCostMode.entries
-            .firstOrNull { it.name == raw }
-            ?: com.ai.assistance.operit.data.stats.TokenStatsCostMode.HISTORICAL
-    }
-
-    suspend fun setStatsCostMode(mode: com.ai.assistance.operit.data.stats.TokenStatsCostMode) {
-        context.apiDataStore.edit { preferences ->
-            preferences[STATS_COST_MODE] = mode.name
-        }
-    }
-
-    private fun registeredToolPkgProviderNames(): List<String> =
-            toolPkgProviderNamesProvider?.invoke()
-                ?: ToolPkgAiProviderRegistry.list().map { it.displayName }
-
-    /** 旧版累计 baseline 是否加入生命周期累计；缺省开启以保持升级前后的总计连续。 */
-    suspend fun getStatsIncludeLegacy(): Boolean {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[STATS_INCLUDE_LEGACY] ?: true
-    }
-
-    suspend fun setStatsIncludeLegacy(include: Boolean) {
-        context.apiDataStore.edit { preferences ->
-            preferences[STATS_INCLUDE_LEGACY] = include
-        }
-    }
-
-    /**
-     * 统计页时间选择（阶段 4）：null = 从未有任何选择（首次进入，允许自动回退）。
-     * CUSTOM 预设必须同时存在合法自定义边界，否则视为未选择（防御损坏状态）。
-     */
-    suspend fun getStatsTimeSelection(): com.ai.assistance.operit.data.stats.TokenStatsTimeSelection? {
-        val preferences = context.apiDataStore.data.first()
-        val presetRaw = preferences[STATS_TIME_PRESET] ?: return null
-        val preset = com.ai.assistance.operit.data.stats.TokenStatsPreset.entries
-            .firstOrNull { it.name == presetRaw }
-            ?: return null
-        if (preset != com.ai.assistance.operit.data.stats.TokenStatsPreset.CUSTOM) {
-            return com.ai.assistance.operit.data.stats.TokenStatsTimeSelection(preset)
-        }
-        val start = preferences[STATS_TIME_CUSTOM_START] ?: return null
-        val end = preferences[STATS_TIME_CUSTOM_END] ?: return null
-        if (end <= start) return null
-        return com.ai.assistance.operit.data.stats.TokenStatsTimeSelection(preset, start, end)
-    }
-
-    /**
-     * 统计页时间选择是否由用户手动做出（阶段 4）。
-     * false = 首次自动回退结果；旧版本持久化的选择没有该键，按 false 处理
-     * （选择本身仍被复用，只是不再区分来源，迁移合理）。
-     */
-    suspend fun getStatsSelectionWasManual(): Boolean {
-        val preferences = context.apiDataStore.data.first()
-        return preferences[STATS_TIME_MANUAL] ?: false
-    }
-
-    /**
-     * 统计页时间选择保存（阶段 4）：[manual] = 用户手动选择（true）或首次
-     * 自动回退（false）。清除时（[selection] = null）一并移除 manual 键，
-     * 回到“从未选择”的首次回退语义。
-     */
-    suspend fun setStatsTimeSelection(
-        selection: com.ai.assistance.operit.data.stats.TokenStatsTimeSelection?,
-        manual: Boolean,
-    ) {
-        context.apiDataStore.edit { preferences ->
-            if (selection == null) {
-                preferences.remove(STATS_TIME_PRESET)
-                preferences.remove(STATS_TIME_CUSTOM_START)
-                preferences.remove(STATS_TIME_CUSTOM_END)
-                preferences.remove(STATS_TIME_MANUAL)
-                return@edit
-            }
-            preferences[STATS_TIME_PRESET] = selection.preset.name
-            preferences[STATS_TIME_MANUAL] = manual
-            if (selection.preset == com.ai.assistance.operit.data.stats.TokenStatsPreset.CUSTOM) {
-                preferences[STATS_TIME_CUSTOM_START] = selection.customStartMs ?: 0L
-                preferences[STATS_TIME_CUSTOM_END] = selection.customEndMs ?: 0L
-            } else {
-                preferences.remove(STATS_TIME_CUSTOM_START)
-                preferences.remove(STATS_TIME_CUSTOM_END)
-            }
-        }
-    }
+    private fun positivePrice(value: Float?): Double? =
+        value?.toDouble()?.takeIf { it.isFinite() && it > 0.0 }
 
     suspend fun saveMaxImageHistoryUserTurns(turns: Int) {
         context.apiDataStore.edit { preferences ->
@@ -1181,51 +722,33 @@ class ApiPreferences private constructor(private val context: Context) {
     }
 }
 
-/**
- * 单次 DataStore.edit 内的 legacy cleanup 变更（P1 闭环，纯函数）：
- * - marker 已存在 → 严格 no-op（崩溃后重放不二次清键，也不写任何值）；
- * - [providerModels] == null（ALL kind）→ 清除全部旧累计键
- *   （token_input_/token_cached_input_/token_output_/request_count_ 前缀），
- *   价格/计费方式等配置键与 marker 键一律保留；
- * - 否则只清除这些 provider:model 的累计键与 request_count；
- * 之后写入 operation marker（与清理同一次 edit 原子提交）。
- * 独立为纯函数以便 Windows JVM 测试直接验证键级语义（DataStore.edit 只是薄壳）。
- */
-internal fun applyLegacyCleanupMutation(
-    preferences: MutablePreferences,
-    operationId: String,
-    providerModels: List<String>?,
+data class TokenStatsMigrationSnapshot(
+    val totals: List<ReleasedTokenUsageTotal>,
+    val prices: List<ReleasedTokenPriceSetting>,
+    val usdToCnyRate: Double?,
+)
+
+data class ReleasedTokenUsageTotal(
+    val provider: String,
+    val model: String,
+    val inputTokens: Long,
+    val cachedInputTokens: Long,
+    val outputTokens: Long,
+    val requestCount: Long,
 ) {
-    require(operationId.isNotBlank()) { "operationId must not be blank" }
-    val markerKey = ApiPreferences.legacyCleanupMarkerKey(operationId)
-    if (preferences[markerKey] == true) return
-    if (providerModels == null) {
-        val keysToRemove =
-            preferences.asMap().keys.filter { key ->
-                key.name.startsWith("token_input_") ||
-                    key.name.startsWith("token_cached_input_") ||
-                    key.name.startsWith("token_output_") ||
-                    key.name.startsWith("request_count_")
-            }
-        keysToRemove.forEach { preferences.remove(it) }
-    } else {
-        providerModels.distinct().forEach { providerModel ->
-            ApiPreferences.removeTokenCountKeysForMutation(
-                preferences,
-                ApiPreferences.getTokenInputKey(providerModel).name,
-                ApiPreferences.getTokenCachedInputKey(providerModel).name,
-                ApiPreferences.getTokenOutputKey(providerModel).name,
-            )
-            preferences.remove(ApiPreferences.getRequestCountKey(providerModel))
-        }
+    operator fun plus(other: ReleasedTokenUsageTotal): ReleasedTokenUsageTotal {
+        require(provider == other.provider && model == other.model)
+        return copy(
+            inputTokens = Math.addExact(inputTokens, other.inputTokens),
+            cachedInputTokens = Math.addExact(cachedInputTokens, other.cachedInputTokens),
+            outputTokens = Math.addExact(outputTokens, other.outputTokens),
+            requestCount = Math.addExact(requestCount, other.requestCount),
+        )
     }
-    preferences[markerKey] = true
 }
 
-/**
- * baseline 快照 + 同一次 DataStore 读取的 applied marker ID 集合（导入 fence 用）。
- */
-data class LegacyStatsSnapshotRead(
-    val snapshot: com.ai.assistance.operit.data.stats.LegacyTokenStatsSnapshot,
-    val cleanupMarkerIds: Set<String>,
+data class ReleasedTokenPriceSetting(
+    val provider: String,
+    val model: String,
+    val settings: ModelPriceSettings,
 )

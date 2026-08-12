@@ -49,20 +49,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 
-internal fun JSONObject.applyChatCompletionsStreamUsageOption(
-    stream: Boolean,
-    providerType: ApiProviderType,
-    useResponsesApi: Boolean,
-) {
-    val supportsIncludeUsage =
-        providerType == ApiProviderType.OPENAI ||
-            providerType == ApiProviderType.DEEPSEEK ||
-            providerType == ApiProviderType.MOONSHOT
-    if (stream && !useResponsesApi && supportsIncludeUsage) {
-        put("stream_options", JSONObject().put("include_usage", true))
-    }
-}
-
 /**
  * OpenAI API格式的实现，支持标准OpenAI接口和兼容此格式的其他提供商
  *
@@ -112,7 +98,8 @@ open class OpenAIProvider(
     protected val supportsVision: Boolean = false, // 是否支持图片处理
     protected val supportsAudio: Boolean = false, // 是否支持音频输入
     protected val supportsVideo: Boolean = false, // 是否支持视频输入
-    val enableToolCall: Boolean = false // 是否启用Tool Call接口
+    val enableToolCall: Boolean = false, // 是否启用Tool Call接口
+    private val includeUsageInStream: Boolean = false,
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -649,16 +636,6 @@ open class OpenAIProvider(
     }
 
     /**
-     * 流式 Chat Completions 请求体附加 usage 返回选项：OpenAI 只在显式请求时于
-     * 末块返回 usage；Responses API 始终自带 usage（response.completed），不需要
-     * 也不接受 stream_options。仅对明确支持 include_usage 的服务发送，避免通用或
-     * 本地兼容端点因未知字段拒绝请求。DeepSeek/Kimi 自建请求体复用本方法。
-     */
-    protected fun JSONObject.putStreamUsageOption(stream: Boolean) {
-        applyChatCompletionsStreamUsageOption(stream, providerType, useResponsesApi)
-    }
-
-    /**
      * 内部方法，用于构建请求体的JSON字符串，以便子类可以重用和扩展。
      */
     protected fun createRequestBodyInternal(
@@ -672,7 +649,9 @@ open class OpenAIProvider(
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream) // 根据stream参数设置
-        jsonObject.putStreamUsageOption(stream)
+        if (stream && includeUsageInStream) {
+            jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+        }
 
         // 添加已启用的模型参数
         for (param in modelParameters) {

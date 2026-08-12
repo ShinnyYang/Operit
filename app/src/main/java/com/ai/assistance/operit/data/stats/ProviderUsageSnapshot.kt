@@ -42,19 +42,6 @@ data class ProviderUsageSnapshot(
     val completeSnapshot: Boolean = false,
     val source: String,
 ) {
-    /** 转换为阶段 1 费用计算输入。 */
-    fun toTokenUsageInput(): TokenUsageInput =
-        TokenUsageInput(
-            uncachedInputTokens = uncachedInputTokens,
-            cachedInputTokens = cachedInputTokens,
-            cacheWriteTokens = cacheWriteTokens,
-            totalInputTokens = totalInputTokens,
-            outputTokens = outputTokens,
-            reasoningTokens = reasoningTokens,
-            reasoningIncludedInOutput = reasoningIncludedInOutput,
-            cacheWriteSeparateBilling = cacheWriteSeparateBilling,
-        )
-
     /** 是否有任何已知用量分量（含明确 0；完全无已知字段才为 false）。 */
     fun hasKnownFields(): Boolean =
         uncachedInputTokens != null ||
@@ -221,11 +208,7 @@ object ProviderUsageNormalizer {
                     ?.let { sumNumericFields(it) }
                     ?.takeIf { it >= 0 }
         val output = usage.optLong("output_tokens", -1).takeIf { it >= 0 }
-        val fallbackInput = usage.optLong("prompt_tokens", -1).takeIf { it >= 0 }
-
-        val uncached = input ?: fallbackInput?.let { total ->
-            if (cached != null) (total - cached).coerceAtLeast(0) else total
-        }
+        val uncached = input
         // 总输入 = input + cache_read + cache_creation（官方文档语义）；
         // 全部已知才确定总量；无任何缓存分量时总输入即 input_tokens。
         val totalInput =
@@ -298,16 +281,16 @@ object ProviderUsageNormalizer {
 
     /** 本地模型（llama.cpp/MNN）：本地实测计数，缓存分量明确为 0；单次完整上报。 */
     fun local(
-        uncachedInputTokens: Int,
-        outputTokens: Int,
+        uncachedInputTokens: Long,
+        outputTokens: Long,
         source: String,
     ): ProviderUsageSnapshot =
         ProviderUsageSnapshot(
-            uncachedInputTokens = uncachedInputTokens.coerceAtLeast(0).toLong(),
+            uncachedInputTokens = uncachedInputTokens.coerceAtLeast(0L),
             cachedInputTokens = 0L,
             cacheWriteTokens = 0L,
-            totalInputTokens = uncachedInputTokens.coerceAtLeast(0).toLong(),
-            outputTokens = outputTokens.coerceAtLeast(0).toLong(),
+            totalInputTokens = uncachedInputTokens.coerceAtLeast(0L),
+            outputTokens = outputTokens.coerceAtLeast(0L),
             reasoningTokens = null,
             reasoningIncludedInOutput = null,
             cacheWriteSeparateBilling = false,

@@ -317,7 +317,21 @@ object AIServiceFactory {
         
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
-            ApiProviderType.OPENAI,
+            ApiProviderType.OPENAI ->
+                OpenAIProvider(
+                    apiEndpoint = config.apiEndpoint,
+                    apiKeyProvider = apiKeyProvider,
+                    modelName = config.modelName,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    providerType = providerType,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall,
+                    includeUsageInStream = true,
+                )
+
             ApiProviderType.OPENAI_GENERIC,
             ApiProviderType.OPENAI_LOCAL ->
                 OpenAIProvider(
