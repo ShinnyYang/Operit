@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.AtomicFile
 import com.ai.assistance.operit.data.db.AppDatabase
 import com.ai.assistance.operit.data.db.ObjectBoxManager
+import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.OperitPaths
 import java.io.BufferedInputStream
@@ -22,8 +23,6 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -39,7 +38,6 @@ object RawSnapshotBackupManager {
 
     private const val TAG = "RawSnapshotBackup"
     private const val FORMAT_VERSION = 1
-
     private const val ZIP_PREFIX = "operit_raw_snapshot_"
 
     private const val ENTRY_MANIFEST = "manifest.json"
@@ -53,7 +51,6 @@ object RawSnapshotBackupManager {
 
     private val terminalTopLevelDirNames = setOf("usr", "tmp", "bin")
 
-    private val mutex = Mutex()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @Serializable
@@ -110,7 +107,7 @@ object RawSnapshotBackupManager {
         options: SnapshotOptions = SnapshotOptions(),
         onProgress: ((ExportProgressInfo) -> Unit)? = null
     ): File = withContext(Dispatchers.IO) {
-        mutex.withLock {
+        TokenUsageRepository.withDatabaseAccess {
             AppLogger.i(TAG, "export start (includeTerminalData=${options.includeTerminalData})")
             withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.PREPARING)) }
             val exportDir = OperitBackupDirs.rawSnapshotDir()
@@ -268,7 +265,7 @@ object RawSnapshotBackupManager {
         uri: Uri,
         onProgress: ((RestoreProgress) -> Unit)? = null
     ) = withContext(Dispatchers.IO) {
-        mutex.withLock {
+        TokenUsageRepository.withDatabaseRestore {
             val cacheZip = File.createTempFile("raw_snapshot_restore_", ".zip", context.cacheDir)
             val workDir = File(context.cacheDir, "raw_snapshot_restore_work").apply {
                 if (exists()) deleteRecursively()

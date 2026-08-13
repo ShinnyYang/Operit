@@ -98,7 +98,8 @@ open class OpenAIProvider(
     protected val supportsVision: Boolean = false, // 是否支持图片处理
     protected val supportsAudio: Boolean = false, // 是否支持音频输入
     protected val supportsVideo: Boolean = false, // 是否支持视频输入
-    val enableToolCall: Boolean = false // 是否启用Tool Call接口
+    val enableToolCall: Boolean = false, // 是否启用Tool Call接口
+    private val includeUsageInStream: Boolean = false,
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -141,15 +142,25 @@ open class OpenAIProvider(
 
     private suspend fun applyUsageToCounters(
         usage: JSONObject?,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
-        tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
-        tokenCacheManager.setOutputTokens(parsed.outputTokens)
+        tokenCacheManager.updateActualTokens(parsed.actualInputTokens.toLong(), parsed.cachedInputTokens.toLong())
+        tokenCacheManager.setOutputTokens(parsed.outputTokens.toLong())
         onTokensUpdated(
-            parsed.totalInputTokens,
-            parsed.cachedInputTokens,
+            parsed.totalInputTokens.toLong(),
+            parsed.cachedInputTokens.toLong(),
             tokenCacheManager.outputTokenCount
+        )
+        onUsageReported?.invoke(
+            if (useResponsesApi) {
+                com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.openAiResponses(usage)
+            } else {
+                com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.openAiChatCompletions(usage)
+            } ?: return,
+            attemptNumber
         )
     }
 
@@ -232,7 +243,10 @@ open class OpenAIProvider(
          )
      }
 
-     override suspend fun testConnection(context: Context): Result<String> {
+     override suspend fun testConnection(
+         context: Context,
+         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
+     ): Result<String> {
          return try {
              val testHistory =
                  listOf(
@@ -246,12 +260,16 @@ open class OpenAIProvider(
                      emptyList(),
                      false,
                      onTokensUpdated = { _, _, _ -> },
+                     onUsageReported = onUsageReported,
                      onNonFatalError = {},
                      enableRetry = false
                  )
 
              stream.collect { _ -> }
              Result.success(context.getString(R.string.openai_connection_success))
+         } catch (e: kotlinx.coroutines.CancellationException) {
+             // 取消必须原样传播，不能变成 Result.failure
+             throw e
          } catch (e: Exception) {
              AppLogger.e("AIService", "连接测试失败", e)
              Result.failure(IOException(context.getString(R.string.openai_connection_test_failed, e.message ?: ""), e))
@@ -631,6 +649,9 @@ open class OpenAIProvider(
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream) // 根据stream参数设置
+        if (stream && includeUsageInStream) {
+            jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+        }
 
         // 添加已启用的模型参数
         for (param in modelParameters) {
@@ -2007,7 +2028,9 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val eventType = jsonResponse.optString("type", "")
 
@@ -2176,7 +2199,7 @@ open class OpenAIProvider(
                 }
 
                 closeAllOpenToolCalls(state, emitter)
-                applyUsageToCounters(usage, onTokensUpdated)
+                applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
             }
 
             "response.failed", "response.error" -> {
@@ -2298,12 +2321,14 @@ open class OpenAIProvider(
         jsonResponse: JSONObject,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit
+        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val usage = jsonResponse.optJSONObject("usage")
         val choices = jsonResponse.optJSONArray("choices")
         if (choices == null || choices.length() == 0) {
-            applyUsageToCounters(usage, onTokensUpdated)
+            applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
             return
         }
 
@@ -2358,17 +2383,19 @@ open class OpenAIProvider(
             }
         }
 
-        applyUsageToCounters(usage, onTokensUpdated)
+        applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
     }
 
     /**
-     * 处理流式响应
+     * 处理 OpenAI 流式响应
      */
     private suspend fun processStreamingResponse(
         reader: java.io.BufferedReader,
         emitter: StreamEmitter,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-        context: Context
+        context: Context,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
+        attemptNumber: Int = 1
     ) {
         val state = StreamingState()
 
@@ -2406,7 +2433,7 @@ open class OpenAIProvider(
                     throwIfOpenAiErrorPayload(context, jsonResponse)
 
                     if (useResponsesApi) {
-                        processResponsesStreamingEvent(context, jsonResponse, state, emitter, onTokensUpdated)
+                        processResponsesStreamingEvent(context, jsonResponse, state, emitter, onTokensUpdated, onUsageReported, attemptNumber)
                         continue
                     }
 
@@ -2416,7 +2443,9 @@ open class OpenAIProvider(
                             continue
                         }
                     }
-                    processResponseChunk(jsonResponse, state, emitter, onTokensUpdated)
+                    processResponseChunk(jsonResponse, state, emitter, onTokensUpdated, onUsageReported, attemptNumber)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: IOException) {
                     throw e
                 } catch (e: Exception) {
@@ -2464,8 +2493,10 @@ open class OpenAIProvider(
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
-        enableRetry: Boolean
+        enableRetry: Boolean,
+        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -2588,7 +2619,9 @@ open class OpenAIProvider(
                                 reader,
                                 emitter,
                                 onTokensUpdated,
-                                context
+                                context,
+                                onUsageReported,
+                                attemptNumber
                             )
                         } else {
                             AppLogger.d("AIService", "[req=$requestTraceId] 【发送消息】开始读取非流式响应")
@@ -2672,9 +2705,11 @@ open class OpenAIProvider(
                                     }
                                 }
 
-                                applyUsageToCounters(jsonResponse.optJSONObject("usage"), onTokensUpdated)
+                                applyUsageToCounters(jsonResponse.optJSONObject("usage"), onTokensUpdated, onUsageReported, attemptNumber)
 
                                 AppLogger.d("AIService", "[req=$requestTraceId] 【发送消息】非流式响应处理完成")
+                            } catch (e: CancellationException) {
+                                throw e
                             } catch (e: IOException) {
                                 throw e
                             } catch (e: Exception) {
@@ -2732,7 +2767,8 @@ open class OpenAIProvider(
                     R.string.openai_error_connection_timeout,
                     maxRetries,
                     lastException?.message ?: context.getString(R.string.openai_error_network_interrupted)
-                )
+                ),
+                lastException
             )
         }
         return responseStream.withEventChannel(eventChannel)

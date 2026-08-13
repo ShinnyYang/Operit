@@ -87,7 +87,22 @@ internal data class ToolPkgAiProviderRegistration(
     val testConnectionFunctionSource: String? = null,
     val calculateInputTokensFunctionName: String,
     val calculateInputTokensFunctionSource: String? = null
-)
+) {
+    /** Historical counters use the full provider ID while new requests use the display name. */
+    val releasedTokenProviderAliases: Map<String, String>
+        get() {
+            val id = providerId.trim()
+            require(id.isNotEmpty()) { "ToolPkg AI provider id must not be blank" }
+            val display = displayName.trim()
+            require(display.isNotEmpty()) { "ToolPkg AI provider display name must not be blank" }
+            return mapOf(
+                id to display,
+                "TOOLPKG_$id" to display,
+                "TOOLPKG_${id.lowercase()}" to display,
+                display to display,
+            )
+        }
+}
 
 internal fun toolPkgPackageManager(): PackageManager {
     val application = OperitApplication.instance.applicationContext

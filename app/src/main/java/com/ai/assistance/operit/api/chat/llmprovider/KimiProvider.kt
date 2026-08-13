@@ -40,7 +40,7 @@ open class KimiProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
 ) {
 
     override fun createRequestBody(
@@ -65,6 +65,9 @@ open class KimiProvider(
             val baseRequestBodyJson =
                 super.createRequestBodyInternal(context, chatHistory, modelParameters, stream, availableTools, preserveThinkInHistory)
             val jsonObject = JSONObject(baseRequestBodyJson)
+            if (stream) {
+                jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+            }
             applyThinkingParams(jsonObject)
             return createJsonRequestBody(jsonObject.toString())
         }
@@ -72,6 +75,9 @@ open class KimiProvider(
         val jsonObject = JSONObject()
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
+        if (stream) {
+            jsonObject.put("stream_options", JSONObject().put("include_usage", true))
+        }
         applyThinkingParams(jsonObject)
 
         for (param in modelParameters) {
@@ -426,8 +432,10 @@ open class KimiProvider(
         availableTools: List<ToolPrompt>?,
         preserveThinkInHistory: Boolean,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
+        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
-        enableRetry: Boolean
+        enableRetry: Boolean,
+        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
     ): Stream<String> {
         return super.sendMessage(
             context,
@@ -438,8 +446,10 @@ open class KimiProvider(
             availableTools,
             preserveThinkInHistory,
             onTokensUpdated,
+            onUsageReported,
             onNonFatalError,
-            enableRetry
+            enableRetry,
+            statsCategory
         )
     }
 }

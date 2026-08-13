@@ -256,22 +256,12 @@ object MemoryLibrary {
             val stream =
                 aiService.sendMessage(
                     context = context,
-                    chatHistory = messages
+                    chatHistory = messages,
+                    statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.MEMORY
                 )
             stream.collect { content -> result.append(content) }
         }
-        
-        // 更新 token 统计
-        apiPreferences?.updateTokensForProviderModel(
-            aiService.providerModel,
-            aiService.inputTokenCount,
-            aiService.outputTokenCount,
-            aiService.cachedInputTokenCount
-        )
-        
-        // Update request count
-        apiPreferences?.incrementRequestCountForProviderModel(aiService.providerModel)
-        
+
         // 解析 AI 返回的 JSON 并更新记忆
         parseAndApplyCategorization(result.toString(), memories, repository)
     }
@@ -670,20 +660,11 @@ object MemoryLibrary {
                 val stream =
                     aiService.sendMessage(
                         context = context,
-                        chatHistory = messages
+                        chatHistory = messages,
+                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.MEMORY
                     )
                 stream.collect { content -> result.append(content) }
             }
-
-            apiPreferences?.updateTokensForProviderModel(
-                    aiService.providerModel,
-                    aiService.inputTokenCount,
-                    aiService.outputTokenCount,
-                    aiService.cachedInputTokenCount
-            )
-            
-            // Update request count
-            apiPreferences?.incrementRequestCountForProviderModel(aiService.providerModel)
 
             return parseAnalysisResult(ChatUtils.removeThinkingContent(result.toString()))
         } catch (e: CancellationException) {

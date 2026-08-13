@@ -3,15 +3,19 @@ package com.ai.assistance.operit.data.backup
 import android.content.Context
 import android.net.Uri
 import com.ai.assistance.operit.data.db.AppDatabase
+import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.util.AppLogger
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.zip.ZipInputStream
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 object RoomDatabaseRestoreManager {
@@ -63,26 +67,26 @@ object RoomDatabaseRestoreManager {
 
     suspend fun restoreFromBackupUri(context: Context, uri: Uri) {
         withContext(Dispatchers.IO) {
-            RoomDatabaseBackupRestoreLock.mutex.withLock {
-                val cacheFile = File.createTempFile("room_db_restore_", ".zip", context.cacheDir)
-                try {
-                    context.contentResolver.openInputStream(uri)?.use { input ->
-                        FileOutputStream(cacheFile).use { output ->
-                            input.copyTo(output)
-                        }
-                    } ?: throw IllegalStateException("Failed to open uri")
+            val cacheFile = File.createTempFile("room_db_restore_", ".zip", context.cacheDir)
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(cacheFile).use { output ->
+                        input.copyTo(output)
+                    }
+                } ?: throw IllegalStateException("Failed to open uri")
 
+                TokenUsageRepository.withDatabaseRestore {
                     restoreFromBackupFileInternal(context, cacheFile)
-                } finally {
-                    cacheFile.delete()
                 }
+            } finally {
+                cacheFile.delete()
             }
         }
     }
 
     suspend fun restoreFromBackupFile(context: Context, zipFile: File) {
         withContext(Dispatchers.IO) {
-            RoomDatabaseBackupRestoreLock.mutex.withLock {
+            TokenUsageRepository.withDatabaseRestore {
                 restoreFromBackupFileInternal(context, zipFile)
             }
         }
@@ -146,23 +150,20 @@ object RoomDatabaseRestoreManager {
                 throw IllegalArgumentException("Invalid backup zip: missing $DB_NAME")
             }
 
-            targetWal.delete()
-            targetShm.delete()
-            targetDb.delete()
+            if (targetWal.exists() && !extractedWal) {
+                throw IOException("Backup does not contain ${targetWal.name}")
+            }
+            if (targetShm.exists() && !extractedShm) {
+                throw IOException("Backup does not contain ${targetShm.name}")
+            }
 
-            replaceFile(tmpDb, targetDb)
+            atomicallyReplace(tmpDb, targetDb)
             if (extractedWal) {
-                replaceFile(tmpWal, targetWal)
-            } else {
-                tmpWal.delete()
-                targetWal.delete()
+                atomicallyReplace(tmpWal, targetWal)
             }
 
             if (extractedShm) {
-                replaceFile(tmpShm, targetShm)
-            } else {
-                tmpShm.delete()
-                targetShm.delete()
+                atomicallyReplace(tmpShm, targetShm)
             }
         } catch (e: Exception) {
             tmpDb.delete()
@@ -183,13 +184,16 @@ object RoomDatabaseRestoreManager {
         }
     }
 
-    private fun replaceFile(from: File, to: File) {
-        if (to.exists()) {
-            to.delete()
-        }
-        if (!from.renameTo(to)) {
-            from.copyTo(to, overwrite = true)
-            from.delete()
+    private fun atomicallyReplace(from: File, to: File) {
+        try {
+            Files.move(
+                from.toPath(),
+                to.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
+        } catch (e: AtomicMoveNotSupportedException) {
+            throw IOException("Atomic database replacement is unavailable: ${from.name}", e)
         }
     }
 }

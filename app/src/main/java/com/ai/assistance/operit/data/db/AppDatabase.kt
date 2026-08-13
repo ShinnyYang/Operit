@@ -10,27 +10,33 @@ import com.ai.assistance.operit.data.dao.ChatContentDao
 import com.ai.assistance.operit.data.dao.ChatDao
 import com.ai.assistance.operit.data.dao.MessageDao
 import com.ai.assistance.operit.data.dao.MessageVariantDao
+import com.ai.assistance.operit.data.dao.TokenUsageDao
 import com.ai.assistance.operit.data.model.ChatEntity
 import com.ai.assistance.operit.data.model.MessageEntity
 import com.ai.assistance.operit.data.model.MessageVariantEntity
-
+import com.ai.assistance.operit.data.model.TokenStatsModelEntity
+import com.ai.assistance.operit.data.model.TokenUsageRecordEntity
 /** 应用数据库，包含聊天表和消息表 */
 @Database(
-    entities = [ChatEntity::class, MessageEntity::class, MessageVariantEntity::class],
-    version = 20,
+    entities = [
+        ChatEntity::class,
+        MessageEntity::class,
+        MessageVariantEntity::class,
+        TokenUsageRecordEntity::class,
+        TokenStatsModelEntity::class,
+    ],
+    version = 21,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
-
     /** 获取聊天DAO */
     abstract fun chatDao(): ChatDao
 
     /** 获取消息DAO */
     abstract fun messageDao(): MessageDao
-
     abstract fun messageVariantDao(): MessageVariantDao
-
     abstract fun chatContentDao(): ChatContentDao
+    abstract fun tokenUsageDao(): TokenUsageDao
 
     companion object {
         @Volatile
@@ -221,6 +227,141 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
+        /** v20 -> v21: final two-table token statistics schema. Intermediate v21 was unpublished. */
+        internal val MIGRATION_20_21 =
+            object : Migration(20, 21) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    runSql { db.execSQL(it) }
+                }
+
+                override fun migrate(connection: androidx.sqlite.SQLiteConnection) {
+                    runSql { sql ->
+                        val stmt = connection.prepare(sql)
+                        try {
+                            stmt.step()
+                        } finally {
+                            stmt.close()
+                        }
+                    }
+                }
+
+                private fun runSql(exec: (String) -> Unit) {
+                    exec(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_usage_records` (
+                            `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                            `importKey` TEXT,
+                            `occurredAtMs` INTEGER,
+                            `source` TEXT NOT NULL,
+                            `configId` TEXT,
+                            `provider` TEXT NOT NULL,
+                            `model` TEXT NOT NULL,
+                            `category` TEXT,
+                            `status` TEXT,
+                            `requestCount` INTEGER,
+                            `uncachedInputTokens` INTEGER,
+                            `cachedInputTokens` INTEGER,
+                            `cacheWriteTokens` INTEGER,
+                            `totalInputTokens` INTEGER,
+                            `outputTokens` INTEGER,
+                            `reasoningTokens` INTEGER,
+                            `ttftMs` INTEGER,
+                            `durationMs` INTEGER
+                        )
+                        """.trimIndent()
+                    )
+                    exec(
+                        "CREATE INDEX IF NOT EXISTS `index_token_usage_records_occurredAtMs` " +
+                            "ON `token_usage_records` (`occurredAtMs`)"
+                    )
+                    exec(
+                        "CREATE INDEX IF NOT EXISTS " +
+                            "`index_token_usage_records_provider_model_configId_occurredAtMs` " +
+                            "ON `token_usage_records` " +
+                            "(`provider`, `model`, `configId`, `occurredAtMs`)"
+                    )
+                    exec(
+                        "CREATE INDEX IF NOT EXISTS `index_token_usage_records_source_occurredAtMs` " +
+                            "ON `token_usage_records` (`source`, `occurredAtMs`)"
+                    )
+                    exec(
+                        "CREATE INDEX IF NOT EXISTS " +
+                            "`index_token_usage_records_category_status_occurredAtMs` " +
+                            "ON `token_usage_records` (`category`, `status`, `occurredAtMs`)"
+                    )
+                    exec(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
+                            "`index_token_usage_records_importKey` " +
+                            "ON `token_usage_records` (`importKey`)"
+                    )
+                    exec(
+                        """
+                        CREATE TABLE IF NOT EXISTS `token_stats_models` (
+                            `configId` TEXT NOT NULL,
+                            `provider` TEXT NOT NULL,
+                            `model` TEXT NOT NULL,
+                            `billingMode` TEXT,
+                            `currency` TEXT,
+                            `inputPricePerMillion` REAL,
+                            `cachedInputPricePerMillion` REAL,
+                            `cacheWritePricePerMillion` REAL,
+                            `outputPricePerMillion` REAL,
+                            `pricePerRequest` REAL,
+                            PRIMARY KEY(`configId`, `provider`, `model`)
+                        )
+                        """.trimIndent()
+                    )
+                    // Copy history once so statistics deletion remains independent from chat storage.
+                    exec(
+                        """
+                        INSERT INTO `token_usage_records` (
+                            `occurredAtMs`, `source`, `configId`, `provider`, `model`,
+                            `category`, `status`, `requestCount`, `uncachedInputTokens`,
+                            `cachedInputTokens`, `cacheWriteTokens`, `totalInputTokens`,
+                            `outputTokens`, `reasoningTokens`, `ttftMs`, `durationMs`
+                        )
+                        SELECT
+                            `timestamp`, 'CONVERSATION', NULL, `provider`, `modelName`,
+                            'CHAT', 'COMPLETED', NULL, MAX(`inputTokens` - `cachedInputTokens`, 0),
+                            `cachedInputTokens`, NULL, `inputTokens`, `outputTokens`, NULL,
+                            NULLIF(`waitDurationMs`, 0), NULLIF(`outputDurationMs`, 0)
+                        FROM `messages`
+                        WHERE `sender` = 'ai'
+                            AND TRIM(`provider`) <> ''
+                            AND TRIM(`modelName`) <> ''
+                            AND (`inputTokens` > 0 OR `cachedInputTokens` > 0 OR `outputTokens` > 0)
+                        """.trimIndent()
+                    )
+                    exec(
+                        """
+                        INSERT INTO `token_usage_records` (
+                            `occurredAtMs`, `source`, `configId`, `provider`, `model`,
+                            `category`, `status`, `requestCount`, `uncachedInputTokens`,
+                            `cachedInputTokens`, `cacheWriteTokens`, `totalInputTokens`,
+                            `outputTokens`, `reasoningTokens`, `ttftMs`, `durationMs`
+                        )
+                        SELECT
+                            variants.`messageTimestamp`, 'CONVERSATION', NULL,
+                            variants.`provider`, variants.`modelName`, 'CHAT', 'COMPLETED', NULL,
+                            MAX(variants.`inputTokens` - variants.`cachedInputTokens`, 0),
+                            variants.`cachedInputTokens`, NULL, variants.`inputTokens`,
+                            variants.`outputTokens`, NULL, NULLIF(variants.`waitDurationMs`, 0),
+                            NULLIF(variants.`outputDurationMs`, 0)
+                        FROM `message_variants` AS variants
+                        WHERE TRIM(variants.`provider`) <> ''
+                            AND TRIM(variants.`modelName`) <> ''
+                            AND (
+                                variants.`inputTokens` > 0
+                                OR variants.`cachedInputTokens` > 0
+                                OR variants.`outputTokens` > 0
+                            )
+                        """.trimIndent()
+                    )
+                }
+            }
+
+
+
         // 定义从版本2到3的迁移
         private val MIGRATION_2_3 =
             object : Migration(2, 3) {
@@ -337,7 +478,8 @@ abstract class AppDatabase : RoomDatabase() {
                                 MIGRATION_16_17,
                                 MIGRATION_17_18,
                                 MIGRATION_18_19,
-                                MIGRATION_19_20
+                                MIGRATION_19_20,
+                                MIGRATION_20_21
                             ) // 添加新的迁移
                             .build()
                     INSTANCE = instance

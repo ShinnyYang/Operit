@@ -765,6 +765,10 @@ dependencies {
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
 
+    // 单元测试中真实 org.json（Android 桩在 JVM 测试里会抛 Stub! 异常）；
+    // 统计 usage 归一化测试需要解析 JSONObject。
+    testImplementation("org.json:json:20240303")
+
     // Apache POI - for Document processing (DOC, DOCX, etc.)
     implementation(libs.poi)
     implementation(libs.poi.ooxml)

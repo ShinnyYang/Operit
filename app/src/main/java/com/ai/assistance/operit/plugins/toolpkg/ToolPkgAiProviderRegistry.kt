@@ -33,6 +33,18 @@ internal object ToolPkgAiProviderRegistry {
         return providersById.values.sortedBy(ToolPkgAiProviderRegistration::providerId)
     }
 
+    fun releasedTokenProviderAliases(): Map<String, String> =
+        buildMap {
+            list().forEach { registration ->
+                registration.releasedTokenProviderAliases.forEach { (alias, identity) ->
+                    val previous = put(alias, identity)
+                    require(previous == null || previous == identity) {
+                        "Conflicting ToolPkg token provider alias: $alias"
+                    }
+                }
+            }
+        }
+
     private fun syncToolPkgRegistrations(activeContainers: List<ToolPkgContainerRuntime>) {
         providersById =
             activeContainers
