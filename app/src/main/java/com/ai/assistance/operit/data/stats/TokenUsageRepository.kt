@@ -31,8 +31,11 @@ class TokenUsageRepository private constructor(context: Context) {
          * Prevent token-statistics operations from opening or using Room while a restore replaces
          * its database files. The initialization state must be reset before Room is closed.
          */
+        suspend fun <T> withDatabaseAccess(block: suspend () -> T): T =
+            databaseAccessMutex.withLock { block() }
+
         suspend fun <T> withDatabaseRestore(block: suspend () -> T): T =
-            databaseAccessMutex.withLock {
+            withDatabaseAccess {
                 instance?.initializationComplete = false
                 block()
             }
@@ -43,13 +46,13 @@ class TokenUsageRepository private constructor(context: Context) {
     private val statsPreferences = TokenStatsPreferences(appContext)
     private var initializationComplete = false
 
-    suspend fun ensureInitialized() = databaseAccessMutex.withLock {
+    suspend fun ensureInitialized() = withDatabaseAccess {
         ensureInitializedLocked()
     }
 
     /** Resolves the DAO only after the restore barrier and initialization have completed. */
     internal suspend fun <T> withDao(block: suspend (TokenUsageDao) -> T): T =
-        databaseAccessMutex.withLock {
+        withDatabaseAccess {
             ensureInitializedLocked()
             block(AppDatabase.getDatabase(appContext).tokenUsageDao())
         }

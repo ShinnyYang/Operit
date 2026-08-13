@@ -23,8 +23,6 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlin.system.measureTimeMillis
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -53,7 +51,6 @@ object RawSnapshotBackupManager {
 
     private val terminalTopLevelDirNames = setOf("usr", "tmp", "bin")
 
-    private val mutex = Mutex()
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @Serializable
@@ -110,7 +107,7 @@ object RawSnapshotBackupManager {
         options: SnapshotOptions = SnapshotOptions(),
         onProgress: ((ExportProgressInfo) -> Unit)? = null
     ): File = withContext(Dispatchers.IO) {
-        mutex.withLock {
+        TokenUsageRepository.withDatabaseAccess {
             AppLogger.i(TAG, "export start (includeTerminalData=${options.includeTerminalData})")
             withContext(Dispatchers.Main) { onProgress?.invoke(ExportProgressInfo(ExportProgress.PREPARING)) }
             val exportDir = OperitBackupDirs.rawSnapshotDir()
@@ -268,7 +265,7 @@ object RawSnapshotBackupManager {
         uri: Uri,
         onProgress: ((RestoreProgress) -> Unit)? = null
     ) = withContext(Dispatchers.IO) {
-        mutex.withLock {
+        TokenUsageRepository.withDatabaseRestore {
             val cacheZip = File.createTempFile("raw_snapshot_restore_", ".zip", context.cacheDir)
             val workDir = File(context.cacheDir, "raw_snapshot_restore_work").apply {
                 if (exists()) deleteRecursively()
@@ -287,53 +284,51 @@ object RawSnapshotBackupManager {
 
                 AppLogger.i(TAG, "restore cached zip: ${cacheZip.absolutePath} (${cacheZip.length()} bytes)")
 
-                TokenUsageRepository.withDatabaseRestore {
-                    AppDatabase.closeDatabase()
-                    ObjectBoxManager.closeAll()
+                AppDatabase.closeDatabase()
+                ObjectBoxManager.closeAll()
 
-                    AppLogger.i(TAG, "restore closed databases (room + objectbox)")
+                AppLogger.i(TAG, "restore closed databases (room + objectbox)")
 
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.EXTRACTING) }
-                    val manifest = extractZipToWorkDir(cacheZip, workDir)
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.EXTRACTING) }
+                val manifest = extractZipToWorkDir(cacheZip, workDir)
 
-                    val payloadDir = File(workDir, "payload")
-                    val externalFilesPayloadDir = File(payloadDir, "external_files")
+                val payloadDir = File(workDir, "payload")
+                val externalFilesPayloadDir = File(payloadDir, "external_files")
 
-                    val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
+                val alwaysExcluded = OperitPaths.rawSnapshotExcludedFilesTopLevelDirNames()
 
-                    val preserveTerminal = !manifest.includeTerminalData
-                    val preservedTerminalNames = if (preserveTerminal) terminalTopLevelDirNames else emptySet()
-                    val preservedAlwaysExcludedNames = alwaysExcluded.filterNot { dirName ->
-                        File(payloadDir, "files/$dirName").exists()
-                    }.toSet()
-                    val preservedNames = preservedTerminalNames + preservedAlwaysExcludedNames
+                val preserveTerminal = !manifest.includeTerminalData
+                val preservedTerminalNames = if (preserveTerminal) terminalTopLevelDirNames else emptySet()
+                val preservedAlwaysExcludedNames = alwaysExcluded.filterNot { dirName ->
+                    File(payloadDir, "files/$dirName").exists()
+                }.toSet()
+                val preservedNames = preservedTerminalNames + preservedAlwaysExcludedNames
 
-                    AppLogger.i(
-                        TAG,
-                        "restore manifest ok (formatVersion=${manifest.formatVersion}, includeTerminalData=${manifest.includeTerminalData})"
-                    )
+                AppLogger.i(
+                    TAG,
+                    "restore manifest ok (formatVersion=${manifest.formatVersion}, includeTerminalData=${manifest.includeTerminalData})"
+                )
 
-                    AppLogger.i(TAG, "restore replace dirs (preserveTerminalTopLevel=${preservedNames.isNotEmpty()})")
+                AppLogger.i(TAG, "restore replace dirs (preserveTerminalTopLevel=${preservedNames.isNotEmpty()})")
 
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_FILES) }
-                    replaceDirContents(File(payloadDir, "files"), context.filesDir, preservedTopLevelDirNames = preservedNames)
-                    if (externalFilesPayloadDir.exists()) {
-                        val externalFilesDir = requireNotNull(context.getExternalFilesDir(null)) {
-                            "External files dir is unavailable"
-                        }
-                        withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_EXTERNAL_FILES) }
-                        replaceDirContents(externalFilesPayloadDir, externalFilesDir)
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_FILES) }
+                replaceDirContents(File(payloadDir, "files"), context.filesDir, preservedTopLevelDirNames = preservedNames)
+                if (externalFilesPayloadDir.exists()) {
+                    val externalFilesDir = requireNotNull(context.getExternalFilesDir(null)) {
+                        "External files dir is unavailable"
                     }
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_SHARED_PREFS) }
-                    replaceDirContents(File(payloadDir, "shared_prefs"), File(context.dataDir, "shared_prefs"))
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATASTORE) }
-                    replaceDirContents(File(payloadDir, "datastore"), File(context.dataDir, "datastore"))
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATABASES) }
-                    replaceDirContents(File(payloadDir, "databases"), File(context.dataDir, "databases"))
-
-                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.FINALIZING) }
-                    AppLogger.i(TAG, "restore done: ${manifest.packageName}")
+                    withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_EXTERNAL_FILES) }
+                    replaceDirContents(externalFilesPayloadDir, externalFilesDir)
                 }
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_SHARED_PREFS) }
+                replaceDirContents(File(payloadDir, "shared_prefs"), File(context.dataDir, "shared_prefs"))
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATASTORE) }
+                replaceDirContents(File(payloadDir, "datastore"), File(context.dataDir, "datastore"))
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.REPLACING_DATABASES) }
+                replaceDirContents(File(payloadDir, "databases"), File(context.dataDir, "databases"))
+
+                withContext(Dispatchers.Main) { onProgress?.invoke(RestoreProgress.FINALIZING) }
+                AppLogger.i(TAG, "restore done: ${manifest.packageName}")
             } catch (e: Exception) {
                 AppLogger.e(TAG, "restore failed", e)
                 throw e

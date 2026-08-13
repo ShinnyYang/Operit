@@ -666,7 +666,7 @@ object MemoryLibrary {
                 stream.collect { content -> result.append(content) }
             }
 
-            return parseAnalysisResult(context, ChatUtils.removeThinkingContent(result.toString()))
+            return parseAnalysisResult(ChatUtils.removeThinkingContent(result.toString()))
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
