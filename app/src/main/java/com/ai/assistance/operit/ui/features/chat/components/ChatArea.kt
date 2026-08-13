@@ -147,6 +147,21 @@ internal fun cleanMessageContentForCopy(content: String): String {
         .trim()
 }
 
+internal suspend fun buildSelectedMessagesPlainText(
+    messages: List<ChatMessage>,
+    markdownToPlainText: suspend (String) -> String,
+): String {
+    return messages
+        .filter { message -> message.sender == "user" || message.sender == "ai" }
+        .filterNot(::isHiddenUserPlaceholder)
+        .mapNotNull { message ->
+            markdownToPlainText(cleanMessageContentForCopy(message.content))
+                .trim()
+                .takeIf(String::isNotEmpty)
+        }
+        .joinToString("\n\n")
+}
+
 private fun isHiddenUserPlaceholder(message: ChatMessage): Boolean {
     return message.sender == "user" &&
         message.displayMode == ChatMessageDisplayMode.HIDDEN_PLACEHOLDER
