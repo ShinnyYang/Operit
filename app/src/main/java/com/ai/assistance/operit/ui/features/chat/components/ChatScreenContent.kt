@@ -542,7 +542,7 @@ fun ChatScreenContent(
                             selectableMessageIndices.isNotEmpty() &&
                                     selectableMessageIndices.all { selectedMessageIndices.contains(it) }
 
-                        TextButton(
+                        IconButton(
                             onClick = {
                                 selectedMessageIndices =
                                         if (allSelectableSelected) {
@@ -552,7 +552,7 @@ fun ChatScreenContent(
                                         }
                             },
                             enabled = selectableMessageIndices.isNotEmpty(),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.SelectAll,
@@ -562,23 +562,20 @@ fun ChatScreenContent(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(16.dp)
                             )
-                            Text(
-                                text = stringResource(R.string.select_all_messages)
-                            )
                         }
 
                         Box {
-                            TextButton(
+                            IconButton(
                                 onClick = { showMultiSelectActionsMenu = true },
                                 enabled = selectedMessageIndices.isNotEmpty(),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                modifier = Modifier.size(32.dp)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.MoreVert,
                                     contentDescription = stringResource(R.string.multi_select_actions),
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Text(stringResource(R.string.multi_select_actions))
                             }
 
                             DropdownMenu(
