@@ -40,7 +40,6 @@ data class TokenStatsPriceSetting(
 class TokenStatsSettingsManager(context: Context) {
     private val appContext = context.applicationContext
     private val repository = TokenUsageRepository.getInstance(appContext)
-    private val dao = repository.dao
 
     fun validatePriceValue(name: String, value: Double?): Double? {
         if (value == null) return null
@@ -51,7 +50,6 @@ class TokenStatsSettingsManager(context: Context) {
     }
 
     suspend fun savePrice(draft: TokenStatsPriceDraft) {
-        repository.ensureInitialized()
         val provider = draft.provider.trim()
         val model = draft.model.trim()
         val configId = draft.configId?.trim().orEmpty()
@@ -62,74 +60,79 @@ class TokenStatsSettingsManager(context: Context) {
         }
         val storageConfigId =
             if (draft.scope == TokenStatsPriceScope.PROVIDER_MODEL) "" else configId
-        val current =
-            dao.getStatsModel(storageConfigId, provider, model)
-                ?: TokenStatsModelEntity(storageConfigId, provider, model)
-        dao.upsertStatsModel(
-            current.copy(
-                billingMode = draft.billingMode.name,
-                currency = draft.currency.name,
-                inputPricePerMillion =
-                    if (draft.billingMode == BillingMode.TOKEN) {
-                        validatePriceValue("inputPrice", draft.inputPricePerMillion)
-                    } else {
-                        null
-                    },
-                cachedInputPricePerMillion =
-                    if (draft.billingMode == BillingMode.TOKEN) {
-                        validatePriceValue("cachedInputPrice", draft.cachedInputPricePerMillion)
-                    } else {
-                        null
-                    },
-                cacheWritePricePerMillion =
-                    if (draft.billingMode == BillingMode.TOKEN) {
-                        validatePriceValue("cacheWritePrice", draft.cacheWritePricePerMillion)
-                    } else {
-                        null
-                    },
-                outputPricePerMillion =
-                    if (draft.billingMode == BillingMode.TOKEN) {
-                        validatePriceValue("outputPrice", draft.outputPricePerMillion)
-                    } else {
-                        null
-                    },
-                pricePerRequest =
-                    if (draft.billingMode == BillingMode.COUNT) {
-                        validatePriceValue("pricePerRequest", draft.pricePerRequest)
-                    } else {
-                        null
-                    },
+        repository.withDao { dao ->
+            val current =
+                dao.getStatsModel(storageConfigId, provider, model)
+                    ?: TokenStatsModelEntity(storageConfigId, provider, model)
+            dao.upsertStatsModel(
+                current.copy(
+                    billingMode = draft.billingMode.name,
+                    currency = draft.currency.name,
+                    inputPricePerMillion =
+                        if (draft.billingMode == BillingMode.TOKEN) {
+                            validatePriceValue("inputPrice", draft.inputPricePerMillion)
+                        } else {
+                            null
+                        },
+                    cachedInputPricePerMillion =
+                        if (draft.billingMode == BillingMode.TOKEN) {
+                            validatePriceValue("cachedInputPrice", draft.cachedInputPricePerMillion)
+                        } else {
+                            null
+                        },
+                    cacheWritePricePerMillion =
+                        if (draft.billingMode == BillingMode.TOKEN) {
+                            validatePriceValue("cacheWritePrice", draft.cacheWritePricePerMillion)
+                        } else {
+                            null
+                        },
+                    outputPricePerMillion =
+                        if (draft.billingMode == BillingMode.TOKEN) {
+                            validatePriceValue("outputPrice", draft.outputPricePerMillion)
+                        } else {
+                            null
+                        },
+                    pricePerRequest =
+                        if (draft.billingMode == BillingMode.COUNT) {
+                            validatePriceValue("pricePerRequest", draft.pricePerRequest)
+                        } else {
+                            null
+                        },
+                )
             )
-        )
+        }
     }
 
     suspend fun allPriceSettings(): List<TokenStatsPriceSetting> {
-        repository.ensureInitialized()
-        return dao.getAllStatsModels()
-            .filter(TokenStatsModelEntity::hasPriceSetting)
-            .map(TokenStatsModelEntity::toPriceSetting)
-            .sortedWith(
-                compareBy(
-                    { it.providerModel.lowercase() },
-                    { it.scope.ordinal },
-                    { it.configId.orEmpty().lowercase() },
+        return repository.withDao { dao ->
+            dao.getAllStatsModels()
+                .filter(TokenStatsModelEntity::hasPriceSetting)
+                .map(TokenStatsModelEntity::toPriceSetting)
+                .sortedWith(
+                    compareBy(
+                        { it.providerModel.lowercase() },
+                        { it.scope.ordinal },
+                        { it.configId.orEmpty().lowercase() },
+                    )
                 )
-            )
+        }
     }
 
     suspend fun restoreBuiltInPrice(providerModel: String) {
-        repository.ensureInitialized()
         val (provider, model) = splitProviderModel(providerModel)
-        dao.clearPricing("", provider, model)
-        dao.deleteEmptyStatsModels()
+        repository.withDao { dao ->
+            dao.clearPricing("", provider, model)
+            dao.deleteEmptyStatsModels()
+        }
     }
 
     suspend fun resetConfigPrice(providerModel: String, configId: String) {
-        repository.ensureInitialized()
         require(configId.isNotBlank()) { "configId must not be blank" }
         val (provider, model) = splitProviderModel(providerModel)
-        dao.clearPricing(configId, provider, model)
-        dao.deleteEmptyStatsModels()
+        repository.withDao { dao ->
+            dao.clearPricing(configId, provider, model)
+            dao.deleteEmptyStatsModels()
+        }
     }
 
     private fun splitProviderModel(providerModel: String): Pair<String, String> {

@@ -81,3 +81,14 @@
   Range controls, activity summaries, and the selected visualization share one card;
   the card-level labels do not compete with page-section headings.
 - No compilation, build, or test was run, per user instruction.
+
+## 2026-08-13 Mainline Merge And Restore Lifecycle
+
+- [DONE] Merged current `main`; resolved `MemoryLibrary` by retaining windowed
+  analysis semantics while keeping memory requests categorized for token statistics.
+- [DONE] Retained the current snapshot package-prefix validation.
+- [DONE] Statically traced both database restore entry points and all Room-backed
+  token-statistics reads and writes. They share one mutex which holds from
+  initialization through DAO use, or from clearing initialization through database
+  file replacement, so no statistics operation can retain or use a closed DAO.
+- No compilation, build, or test was run, per user instruction.

@@ -25,7 +25,6 @@ import com.ai.assistance.operit.data.stats.TokenStatsSettingsManager
 import com.ai.assistance.operit.data.stats.TokenStatsSettingsStore
 import com.ai.assistance.operit.data.stats.TokenStatsTimeRange
 import com.ai.assistance.operit.data.stats.TokenStatsTimeRanges
-import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.util.AppLogger
 import java.time.ZoneId
 import kotlinx.coroutines.CancellationException
@@ -81,7 +80,6 @@ class TokenUsageStatisticsViewModel(
     private val dispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
 ) : ViewModel() {
     private val appContext = context.applicationContext
-    private val repository = TokenUsageRepository.getInstance(appContext)
     private val manager = TokenStatsSettingsManager(appContext)
     private val modelConfigManager = ModelConfigManager(appContext)
     private val tag = "TokenUsageStatisticsViewModel"

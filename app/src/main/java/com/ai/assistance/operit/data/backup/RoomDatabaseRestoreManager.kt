@@ -3,6 +3,7 @@ package com.ai.assistance.operit.data.backup
 import android.content.Context
 import android.net.Uri
 import com.ai.assistance.operit.data.db.AppDatabase
+import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.util.AppLogger
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
@@ -72,7 +73,9 @@ object RoomDatabaseRestoreManager {
                         }
                     } ?: throw IllegalStateException("Failed to open uri")
 
-                    restoreFromBackupFileInternal(context, cacheFile)
+                    TokenUsageRepository.withDatabaseRestore {
+                        restoreFromBackupFileInternal(context, cacheFile)
+                    }
                 } finally {
                     cacheFile.delete()
                 }
@@ -83,7 +86,9 @@ object RoomDatabaseRestoreManager {
     suspend fun restoreFromBackupFile(context: Context, zipFile: File) {
         withContext(Dispatchers.IO) {
             RoomDatabaseBackupRestoreLock.mutex.withLock {
-                restoreFromBackupFileInternal(context, zipFile)
+                TokenUsageRepository.withDatabaseRestore {
+                    restoreFromBackupFileInternal(context, zipFile)
+                }
             }
         }
     }

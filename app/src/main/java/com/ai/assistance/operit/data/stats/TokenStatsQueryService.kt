@@ -16,22 +16,22 @@ object TokenStatsQueryService {
         params: TokenStatsQueryParams,
     ): TokenStatsLifetimeOverview {
         val repository = TokenUsageRepository.getInstance(context)
-        repository.ensureInitialized()
-        val dao = repository.dao
-        val requestRows = dao.aggregateRequestModelsForLifetime(
-            providerModels = params.providerModels.queryValues(),
-            allModels = params.providerModels == null,
-            categories = params.categories.namesForQuery(),
-            allCategories = params.categories == null,
-            statuses = params.statuses.namesForQuery(),
-            allStatuses = params.statuses == null,
-        )
-        val modelSettings = dao.getAllStatsModels()
-        val prices = modelSettings.toPriceSnapshot()
-        return TokenStatsLifetimeOverview(
-            totals = combineTotals(requestRows.map { it.toTotals(prices, params) }, params),
-            displayModels = buildDisplayModels(requestRows, prices, params),
-        )
+        return repository.withDao { dao ->
+            val requestRows = dao.aggregateRequestModelsForLifetime(
+                providerModels = params.providerModels.queryValues(),
+                allModels = params.providerModels == null,
+                categories = params.categories.namesForQuery(),
+                allCategories = params.categories == null,
+                statuses = params.statuses.namesForQuery(),
+                allStatuses = params.statuses == null,
+            )
+            val modelSettings = dao.getAllStatsModels()
+            val prices = modelSettings.toPriceSnapshot()
+            TokenStatsLifetimeOverview(
+                totals = combineTotals(requestRows.map { it.toTotals(prices, params) }, params),
+                displayModels = buildDisplayModels(requestRows, prices, params),
+            )
+        }
     }
 
     suspend fun rangeData(
@@ -41,32 +41,12 @@ object TokenStatsQueryService {
         zone: ZoneId,
     ): TokenStatsRangeData {
         val repository = TokenUsageRepository.getInstance(context)
-        repository.ensureInitialized()
-        val dao = repository.dao
-        val modelSettings = dao.getAllStatsModels()
-        val prices = modelSettings.toPriceSnapshot()
-        val modelRows = dao.aggregateModelsInRange(
-            startMs = range.startMs,
-            endMs = range.endMs,
-            providerModels = params.providerModels.queryValues(),
-            allModels = params.providerModels == null,
-            categories = params.categories.namesForQuery(),
-            allCategories = params.categories == null,
-            statuses = params.statuses.namesForQuery(),
-            allStatuses = params.statuses == null,
-        )
-        val displayModels = buildDisplayModels(modelRows, prices, params)
-        val summary = combineTotals(displayModels.map(TokenStatsDisplayModelBreakdown::totals), params)
-        val granularity = TokenStatsTimeRanges.granularityFor(range)
-        val starts = TokenStatsTimeRanges.bucketStarts(range, granularity, zone)
-        val buckets = starts.mapIndexed { index, bucketStart ->
-            val bucketEnd = minOf(
-                range.endMs,
-                TokenStatsTimeRanges.bucketEndMs(starts, index, granularity, zone),
-            )
-            val bucketRows = dao.aggregateModelsInRange(
-                startMs = maxOf(range.startMs, bucketStart),
-                endMs = bucketEnd,
+        return repository.withDao { dao ->
+            val modelSettings = dao.getAllStatsModels()
+            val prices = modelSettings.toPriceSnapshot()
+            val modelRows = dao.aggregateModelsInRange(
+                startMs = range.startMs,
+                endMs = range.endMs,
                 providerModels = params.providerModels.queryValues(),
                 allModels = params.providerModels == null,
                 categories = params.categories.namesForQuery(),
@@ -74,56 +54,76 @@ object TokenStatsQueryService {
                 statuses = params.statuses.namesForQuery(),
                 allStatuses = params.statuses == null,
             )
-            val models = buildDisplayModels(bucketRows, prices, params)
-            TokenStatsTrendBucket(
-                bucketStartMs = bucketStart,
-                bucketEndMs = bucketEnd,
-                totals = combineTotals(models.map(TokenStatsDisplayModelBreakdown::totals), params),
-                byModel = models.associate { it.displayModelId to it.totals.toModelBucket() },
-                performance = performanceOf(bucketRows),
+            val displayModels = buildDisplayModels(modelRows, prices, params)
+            val summary = combineTotals(displayModels.map(TokenStatsDisplayModelBreakdown::totals), params)
+            val granularity = TokenStatsTimeRanges.granularityFor(range)
+            val starts = TokenStatsTimeRanges.bucketStarts(range, granularity, zone)
+            val buckets = starts.mapIndexed { index, bucketStart ->
+                val bucketEnd = minOf(
+                    range.endMs,
+                    TokenStatsTimeRanges.bucketEndMs(starts, index, granularity, zone),
+                )
+                val bucketRows = dao.aggregateModelsInRange(
+                    startMs = maxOf(range.startMs, bucketStart),
+                    endMs = bucketEnd,
+                    providerModels = params.providerModels.queryValues(),
+                    allModels = params.providerModels == null,
+                    categories = params.categories.namesForQuery(),
+                    allCategories = params.categories == null,
+                    statuses = params.statuses.namesForQuery(),
+                    allStatuses = params.statuses == null,
+                )
+                val models = buildDisplayModels(bucketRows, prices, params)
+                TokenStatsTrendBucket(
+                    bucketStartMs = bucketStart,
+                    bucketEndMs = bucketEnd,
+                    totals = combineTotals(models.map(TokenStatsDisplayModelBreakdown::totals), params),
+                    byModel = models.associate { it.displayModelId to it.totals.toModelBucket() },
+                    performance = performanceOf(bucketRows),
+                )
+            }
+            val categoryRows = dao.aggregateCategoriesInRange(
+                startMs = range.startMs,
+                endMs = range.endMs,
+                providerModels = params.providerModels.queryValues(),
+                allModels = params.providerModels == null,
+                categories = params.categories.namesForQuery(),
+                allCategories = params.categories == null,
+                statuses = params.statuses.namesForQuery(),
+                allStatuses = params.statuses == null,
+            )
+            val statusRows = dao.aggregateStatusesInRange(
+                startMs = range.startMs,
+                endMs = range.endMs,
+                providerModels = params.providerModels.queryValues(),
+                allModels = params.providerModels == null,
+                categories = params.categories.namesForQuery(),
+                allCategories = params.categories == null,
+                statuses = params.statuses.namesForQuery(),
+                allStatuses = params.statuses == null,
+            )
+            TokenStatsRangeData(
+                range = range,
+                granularity = granularity,
+                eventCount = summary.totalTokens.totalEventCount,
+                summary = summary,
+                performance = performanceOf(modelRows),
+                buckets = buckets,
+                displayModels = displayModels,
+                categories = categoryRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
+                    TokenStatsCategoryBreakdown(
+                        TokenStatCategory.fromName(key),
+                        combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
+                    )
+                },
+                statuses = statusRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
+                    TokenStatsStatusBreakdown(
+                        TokenStatStatus.fromName(key),
+                        combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
+                    )
+                },
             )
         }
-        val categoryRows = dao.aggregateCategoriesInRange(
-            startMs = range.startMs,
-            endMs = range.endMs,
-            providerModels = params.providerModels.queryValues(),
-            allModels = params.providerModels == null,
-            categories = params.categories.namesForQuery(),
-            allCategories = params.categories == null,
-            statuses = params.statuses.namesForQuery(),
-            allStatuses = params.statuses == null,
-        )
-        val statusRows = dao.aggregateStatusesInRange(
-            startMs = range.startMs,
-            endMs = range.endMs,
-            providerModels = params.providerModels.queryValues(),
-            allModels = params.providerModels == null,
-            categories = params.categories.namesForQuery(),
-            allCategories = params.categories == null,
-            statuses = params.statuses.namesForQuery(),
-            allStatuses = params.statuses == null,
-        )
-        return TokenStatsRangeData(
-            range = range,
-            granularity = granularity,
-            eventCount = summary.totalTokens.totalEventCount,
-            summary = summary,
-            performance = performanceOf(modelRows),
-            buckets = buckets,
-            displayModels = displayModels,
-            categories = categoryRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
-                TokenStatsCategoryBreakdown(
-                    TokenStatCategory.fromName(key),
-                    combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
-                )
-            },
-            statuses = statusRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
-                TokenStatsStatusBreakdown(
-                    TokenStatStatus.fromName(key),
-                    combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
-                )
-            },
-        )
     }
 
     internal suspend fun activitySnapshot(
@@ -133,24 +133,25 @@ object TokenStatsQueryService {
         zone: ZoneId,
     ): TokenActivitySnapshot {
         val repository = TokenUsageRepository.getInstance(context)
-        repository.ensureInitialized()
-        val days = repository.dao.getActivityDaysInRange(
-            startMs = range.startMs,
-            endMs = range.endMs,
-            providerModels = params.providerModels.queryValues(),
-            allModels = params.providerModels == null,
-            categories = params.categories.namesForQuery(),
-            allCategories = params.categories == null,
-            statuses = params.statuses.namesForQuery(),
-            allStatuses = params.statuses == null,
-        )
-        return TokenActivitySnapshot(
-            zone = zone,
-            dayTotals =
-                days.groupBy(TokenUsageActivityDayRow::localDate).mapValues { (_, rows) ->
-                    rows.fold(0L) { total, row -> TokenCostCalculator.saturatedAdd(total, row.tokens) }
-                }.mapKeys { (date, _) -> LocalDate.parse(date) },
-        )
+        return repository.withDao { dao ->
+            val days = dao.getActivityDaysInRange(
+                startMs = range.startMs,
+                endMs = range.endMs,
+                providerModels = params.providerModels.queryValues(),
+                allModels = params.providerModels == null,
+                categories = params.categories.namesForQuery(),
+                allCategories = params.categories == null,
+                statuses = params.statuses.namesForQuery(),
+                allStatuses = params.statuses == null,
+            )
+            TokenActivitySnapshot(
+                zone = zone,
+                dayTotals =
+                    days.groupBy(TokenUsageActivityDayRow::localDate).mapValues { (_, rows) ->
+                        rows.fold(0L) { total, row -> TokenCostCalculator.saturatedAdd(total, row.tokens) }
+                    }.mapKeys { (date, _) -> LocalDate.parse(date) },
+            )
+        }
     }
 
     private fun buildDisplayModels(
