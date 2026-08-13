@@ -52,11 +52,11 @@ writeEnvironmentVariable(key: string, value?: string): Promise<StringResultData>
 
 ### `getSpeechServicesConfig()`
 
-读取当前 TTS / STT 配置，返回 `SpeechServicesConfigResultData`。
+读取当前 TTS / STT 档案的配置，返回 `SpeechServicesConfigResultData`。语音配置现在由独立的 TTS/STT 档案管理；该 API 为保持兼容，仍然读写当前档案，不改变原有字段。
 
 ### `setSpeechServicesConfig(updates?)`
 
-更新 TTS / STT 配置，返回 `SpeechServicesUpdateResultData`。
+更新当前 TTS / STT 档案，返回 `SpeechServicesUpdateResultData`。创建、切换和删除档案需要在语音服务设置页完成。
 
 可更新字段包括：
 
