@@ -40,7 +40,7 @@ class MessageCopyTextTest {
         assertEquals("<meta charset=\"utf-8\">visibleanswer", cleanMessageContentForCopy(content))
     }
 
-    @Test fun buildSelectedMessagesPlainText_usesChatIndexOrderAndPlainTextConversion() = runTest {
+    @Test fun buildSelectedMessagesPlainText_usesMessageOrderAndPlainTextConversion() = runTest {
         val chatHistory =
             listOf(
                 ChatMessage(sender = "user", content = "**first**", timestamp = 30L),
@@ -49,7 +49,7 @@ class MessageCopyTextTest {
             )
 
         val result =
-            buildSelectedMessagesPlainText(chatHistory, setOf(2, 0, 1)) { markdown ->
+            buildSelectedMessagesPlainText(chatHistory) { markdown ->
                 markdown.replace("**", "")
             }
 
@@ -76,7 +76,7 @@ class MessageCopyTextTest {
             )
 
         val result =
-            buildSelectedMessagesPlainText(chatHistory, setOf(0, 1, 2, 3, 4, 99)) { content -> content }
+            buildSelectedMessagesPlainText(chatHistory) { content -> content }
 
         assertEquals("answer\n\nreply", result)
     }
@@ -91,7 +91,7 @@ class MessageCopyTextTest {
         var conversionCount = 0
 
         val result =
-            buildSelectedMessagesPlainText(chatHistory, chatHistory.indices.reversed().toSet()) { content ->
+            buildSelectedMessagesPlainText(chatHistory) { content ->
                 conversionCount += 1
                 content
             }

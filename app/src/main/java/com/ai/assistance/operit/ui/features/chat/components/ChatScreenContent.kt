@@ -595,7 +595,10 @@ fun ChatScreenContent(
                         FilledIconButton(
                             onClick = {
                                 if (selectedMessageIndices.isNotEmpty() && !isCopyingSelectedMessages) {
-                                    val indicesToCopy = selectedMessageIndices
+                                    val messagesToCopy =
+                                        selectedMessageIndices
+                                            .sorted()
+                                            .mapNotNull(chatHistory::getOrNull)
                                     isCopyingSelectedMessages = true
                                     selectedMessagesCopyJob = selectedMessagesCopyScope.launch {
                                         val currentCopyJob = coroutineContext[Job]
@@ -603,8 +606,7 @@ fun ChatScreenContent(
                                             val copiedText =
                                                 withContext(Dispatchers.Default) {
                                                     buildSelectedMessagesPlainText(
-                                                        chatHistory = chatHistory,
-                                                        selectedMessageIndices = indicesToCopy,
+                                                        messages = messagesToCopy,
                                                     ) { markdown ->
                                                         markdownToPlainTextForCopy(markdown) { formulas ->
                                                             LatexMathMlConverter.convertAll(context, formulas)

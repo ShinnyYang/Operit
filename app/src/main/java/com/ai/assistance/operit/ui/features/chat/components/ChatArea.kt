@@ -148,13 +148,10 @@ internal fun cleanMessageContentForCopy(content: String): String {
 }
 
 internal suspend fun buildSelectedMessagesPlainText(
-    chatHistory: List<ChatMessage>,
-    selectedMessageIndices: Set<Int>,
+    messages: List<ChatMessage>,
     markdownToPlainText: suspend (String) -> String,
 ): String {
-    return selectedMessageIndices
-        .sorted()
-        .mapNotNull(chatHistory::getOrNull)
+    return messages
         .filter { message -> message.sender == "user" || message.sender == "ai" }
         .filterNot(::isHiddenUserPlaceholder)
         .mapNotNull { message ->
