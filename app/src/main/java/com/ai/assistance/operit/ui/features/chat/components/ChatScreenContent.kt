@@ -492,7 +492,7 @@ fun ChatScreenContent(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -510,7 +510,8 @@ fun ChatScreenContent(
                                 isMultiSelectMode = false
                                 selectedMessageIndices = emptySet()
                                 showMultiSelectActionsMenu = false
-                            }
+                            },
+                            modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
