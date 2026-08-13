@@ -30,12 +30,15 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+private const val SNAPSHOT_PACKAGE_NAME_PREFIX = "com.ai.assistance.operit"
+
+internal fun isSupportedSnapshotPackageName(packageName: String): Boolean =
+    packageName.startsWith(SNAPSHOT_PACKAGE_NAME_PREFIX)
+
 object RawSnapshotBackupManager {
 
     private const val TAG = "RawSnapshotBackup"
     private const val FORMAT_VERSION = 1
-    private const val OPERIT_PACKAGE_NAME = "com.ai.assistance.operit"
-
     private const val ZIP_PREFIX = "operit_raw_snapshot_"
 
     private const val ENTRY_MANIFEST = "manifest.json"
@@ -408,11 +411,7 @@ object RawSnapshotBackupManager {
             throw IllegalArgumentException("Unsupported backup version: ${manifest.formatVersion}")
         }
 
-        // Released backups must restore across official package variants such as .debug and .clone.
-        if (
-            manifest.packageName != OPERIT_PACKAGE_NAME &&
-                !manifest.packageName.startsWith("$OPERIT_PACKAGE_NAME.")
-        ) {
+        if (!isSupportedSnapshotPackageName(manifest.packageName)) {
             throw IllegalArgumentException("Backup package mismatch: ${manifest.packageName}")
         }
 
