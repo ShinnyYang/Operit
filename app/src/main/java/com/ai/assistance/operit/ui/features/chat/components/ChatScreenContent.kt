@@ -40,6 +40,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ChatMessage
@@ -75,6 +76,7 @@ import androidx.compose.material3.InputChip
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.ui.res.stringResource
@@ -534,7 +536,7 @@ fun ChatScreenContent(
                     }
 
                     Row(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier.wrapContentWidth(),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -580,12 +582,37 @@ fun ChatScreenContent(
 
                             DropdownMenu(
                                 expanded = showMultiSelectActionsMenu,
-                                onDismissRequest = { showMultiSelectActionsMenu = false }
+                                onDismissRequest = { showMultiSelectActionsMenu = false },
+                                modifier = Modifier
+                                    .width(180.dp)
+                                    .background(
+                                        MaterialTheme.colorScheme.surface,
+                                        shape = RoundedCornerShape(6.dp)
+                                    ),
+                                properties = PopupProperties(
+                                    focusable = true,
+                                    dismissOnBackPress = true,
+                                    dismissOnClickOutside = true
+                                )
                             ) {
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.copy_text)) },
-                                    leadingIcon = { Icon(Icons.Default.ContentCopy, contentDescription = null) },
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.copy_text),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.ContentCopy,
+                                            contentDescription = stringResource(R.string.copy_text),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     enabled = !isCopyingSelectedMessages,
+                                    modifier = Modifier.height(36.dp),
                                     onClick = {
                                         showMultiSelectActionsMenu = false
                                         val messagesToCopy = selectedMessageIndices
@@ -625,9 +652,23 @@ fun ChatScreenContent(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.add_selected_to_memory)) },
-                                    leadingIcon = { Icon(Icons.Default.CheckCircle, contentDescription = null) },
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.add_selected_to_memory),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.CheckCircle,
+                                            contentDescription = stringResource(R.string.add_selected_to_memory),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     enabled = selectedMessageIndices.isNotEmpty(),
+                                    modifier = Modifier.height(36.dp),
                                     onClick = {
                                         showMultiSelectActionsMenu = false
                                         val selectedMessages = selectedMessageIndices
@@ -637,9 +678,23 @@ fun ChatScreenContent(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.share_selected)) },
-                                    leadingIcon = { Icon(Icons.Default.Share, contentDescription = null) },
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.share_selected),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Share,
+                                            contentDescription = stringResource(R.string.share_selected),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     enabled = selectedMessageIndices.isNotEmpty() && !isGeneratingImage,
+                                    modifier = Modifier.height(36.dp),
                                     onClick = {
                                         showMultiSelectActionsMenu = false
                                         sharePreviewUri = null
@@ -651,9 +706,23 @@ fun ChatScreenContent(
                                     }
                                 )
                                 DropdownMenuItem(
-                                    text = { Text(stringResource(R.string.delete_selected)) },
-                                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                                    text = {
+                                        Text(
+                                            stringResource(R.string.delete_selected),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontSize = 13.sp
+                                        )
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            Icons.Default.Delete,
+                                            contentDescription = stringResource(R.string.delete_selected),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    },
                                     enabled = selectedMessageIndices.isNotEmpty(),
+                                    modifier = Modifier.height(36.dp),
                                     onClick = {
                                         showMultiSelectActionsMenu = false
                                         showDeleteSelectedConfirmDialog = true
