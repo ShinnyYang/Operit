@@ -57,6 +57,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
@@ -499,7 +500,7 @@ fun ChatScreenContent(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        TextButton(
+                        IconButton(
                             onClick = {
                                 selectedMessagesCopyJob?.cancel()
                                 selectedMessagesCopyJob = null
@@ -508,7 +509,14 @@ fun ChatScreenContent(
                                 selectedMessageIndices = emptySet()
                                 showMultiSelectActionsMenu = false
                             }
-                        ) { Text(stringResource(R.string.common_cancel)) }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.exit_multi_select),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                         
                         Text(
                             text = if (selectedMessageIndices.isEmpty()) {
