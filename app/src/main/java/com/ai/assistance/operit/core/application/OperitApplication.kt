@@ -573,15 +573,13 @@ class OperitApplication : Application(), ImageLoaderFactory, WorkConfiguration.P
         try {
             val code = LocaleUtils.getCurrentLanguage(base)
             val locale = LocaleUtils.getLocaleForLanguageCode(code, base)
-            val config = Configuration(base.resources.configuration)
+            val config = LocaleUtils.createLocaleOverrideConfiguration(locale)
 
             // 设置语言配置
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
                 val localeList = LocaleList(locale)
                 LocaleList.setDefault(localeList)
-                config.setLocales(localeList)
             } else {
-                config.locale = locale
                 Locale.setDefault(locale)
             }
 
