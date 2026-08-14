@@ -337,7 +337,6 @@ class StandardHttpTools(private val context: Context) {
                     )
             ToolResult(toolName = tool.name, success = true, result = httpResponseData, error = "")
         } catch (e: Exception) {
-            AppLogger.e(TAG, "执行HTTP请求时出错", e)
             errorResult(tool.name, "Error executing HTTP request: ${e.message}")
         }
     }
@@ -418,7 +417,6 @@ class StandardHttpTools(private val context: Context) {
                     )
             emit(ToolResult(toolName = tool.name, success = true, result = finalResponseData, error = ""))
         } catch (e: Exception) {
-            AppLogger.e(TAG, "执行流式HTTP请求时出错", e)
             emit(errorResult(tool.name, "Error executing streaming HTTP request: ${e.message}"))
         }
     }

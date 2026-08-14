@@ -820,6 +820,8 @@ python tools/example_packages/sync_example_packages.py --delete-extra
 3. 将整个文件夹打包成 `.toolpkg` ZIP 文件
 4. 输出到 `app/src/main/assets/packages/` 目录
 
+脚本启用设备热更新时，会按 Debug、Release 顺序识别已安装的 applicationId，并把包推送到对应的 `Android/data/<applicationId>/files/packages/` 目录。两种 APK 同时安装时，可传 `--app-package <applicationId>` 或设置 `OPERIT_APP_PACKAGE` 明确目标。
+
 ## 5. 子包脚本开发
 
 ### 5.1 基本结构
@@ -1229,7 +1231,7 @@ const iconPath = await ToolPkg.readResource('icon');
 ### 8.2 外部包
 
 用户可以通过以下方式导入外部包：
-1. 将 `.toolpkg` 文件复制到设备的 `Android/data/com.ai.assistance.operit/files/packages/` 目录
+1. 将 `.toolpkg` 文件复制到设备的 `Android/data/<applicationId>/files/packages/` 目录，其中 `<applicationId>` 是 `com.ai.assistance.operit.debug` 或 `com.ai.assistance.operit`
 2. 在应用中使用"导入包"功能
 
 ### 8.3 版本管理
@@ -1368,7 +1370,7 @@ my_toolpkg/
 1. 从 ToolPkg 目录或现成 `.toolpkg` 中读取 `manifest`
 2. 解析 `toolpkg_id` 与 `main`
 3. 如果输入是目录，则先临时打包成 `.toolpkg`
-4. 通过 `adb push` 将包推送到手机的 `Android/data/com.ai.assistance.operit/files/packages/`
+4. 通过 `adb push` 将包推送到手机的 `Android/data/<applicationId>/files/packages/`；调试脚本会自动选择已安装的 Debug/Release applicationId
 5. 发送调试广播，让 App 重新扫描外部 packages 目录
 6. 按 `toolpkg_id` 启用该 ToolPkg 容器
 7. 按 manifest 默认值重新应用 subpackage 启用状态（可选关闭）
@@ -1421,6 +1423,7 @@ bash tools/toolpkg/debug_toolpkg.sh examples/windows_control/manifest.json
 #### 10.3.2 常用参数
 
 - `--device <serial>`：指定 adb 设备；不传时，若只连了一台设备则自动选中
+- `--app-package <applicationId>`：指定 `com.ai.assistance.operit.debug` 或 `com.ai.assistance.operit`；不传时优先选择已安装的 Debug 包，也可以使用环境变量 `OPERIT_APP_PACKAGE`
 - `--no-reset-subpackage-states`：保留本机已有的 subpackage 开关状态，而不是按 manifest 默认值重置
 - `--log-wait-seconds <n>`：发送广播后等待多少秒再抓取日志；默认读取 `OPERIT_LOG_WAIT_SECONDS`，否则为 `6`
 
