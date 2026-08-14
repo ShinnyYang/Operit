@@ -5339,6 +5339,9 @@
     <string name="backup_raw_snapshot_restore_confirm_action">Confirm restore</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Cancel</string>
     <string name="backup_chat_history">Chat History</string>
+    <string name="backup_select_chat_records">Select chat records</string>
+    <string name="backup_select_chat_records_hint">Choose the chat records to export.</string>
+    <string name="backup_clear_selection">Clear selection</string>
     <string name="backup_chat_history_subtitle">Cross-format backup, export and recovery</string>
     <string name="backup_chat_current_count">Currently %1$d chat record(s).</string>
     

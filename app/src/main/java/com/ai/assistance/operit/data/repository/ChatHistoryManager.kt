@@ -79,6 +79,11 @@ data class ChatExportProgress(
     val totalCharacters: Long,
 )
 
+data class ChatExportResult(
+    val filePath: String,
+    val chatCount: Int,
+)
+
 class ChatHistoryManager private constructor(private val context: Context) {
     companion object {
         private const val TAG = "ChatHistoryManager"
@@ -1831,37 +1836,32 @@ class ChatHistoryManager private constructor(private val context: Context) {
     }
 
     /**
-     * 导出所有聊天记录到「下载/Operit」目录（默认 JSON 格式）
-     * @return 生成的文件绝对路径，失败时返回null
-     */
-    suspend fun exportChatHistoriesToDownloads(): String? =
-        exportChatHistoriesToDownloads(ExportFormat.JSON)
-
-    /**
-     * 导出所有聊天记录到「下载/Operit」目录（支持多种格式）
-     * @param format 导出格式
-     * @return 生成的文件绝对路径，失败时返回null
-     */
-    suspend fun exportChatHistoriesToDownloads(format: ExportFormat): String? =
-        exportChatHistoriesToDownloads(format, null)
-
-    /**
-     * 导出所有聊天记录到「下载/Operit」目录（支持进度回调）。
+     * 导出指定聊天记录到「下载/Operit」目录。
+     * @param selectedChatIds 要导出的聊天记录 ID，不能为空
      * @param format 导出格式
      * @param onProgress 超长文本导出进度回调
-     * @return 生成的文件绝对路径，失败时返回null
+     * @return 导出结果，失败时返回null
      */
     suspend fun exportChatHistoriesToDownloads(
+        selectedChatIds: Set<String>,
         format: ExportFormat,
         onProgress: ((ChatExportProgress) -> Unit)?,
-    ): String? =
+    ): ChatExportResult? =
         withContext(Dispatchers.IO) {
             var pendingExportFile: File? = null
             try {
-                val chatHistoriesBasic = chatHistoriesFlow.first()
+                require(selectedChatIds.isNotEmpty()) { "At least one chat must be selected for export." }
+                val chatHistoriesBasic = chatHistoriesFlow.first().filter { it.id in selectedChatIds }
+                if (chatHistoriesBasic.isEmpty()) {
+                    AppLogger.w(TAG, "所选聊天记录已不存在，取消导出")
+                    return@withContext null
+                }
+                val exportedChatIds = chatHistoriesBasic.map { it.id }.toSet()
                 val isTextExportFormat = format == ExportFormat.HTML || format == ExportFormat.TXT
                 val textCharacterCountsByChat = if (isTextExportFormat) {
-                    chatContentDao.getSelectedContentCharacterCountsByChat()
+                    chatContentDao.getSelectedContentCharacterCountsByChat().filter {
+                        it.chatId in exportedChatIds
+                    }
                 } else {
                     emptyList()
                 }
@@ -1869,6 +1869,13 @@ class ChatHistoryManager private constructor(private val context: Context) {
                 val useStreamingTextExport =
                     isTextExportFormat &&
                         totalTextCharacters >= TEXT_EXPORT_STREAMING_THRESHOLD_CHARACTER_COUNT
+                val totalMessageCount = if (useStreamingTextExport) {
+                    messageDao.getMessageCountsByChatId()
+                        .filter { it.chatId in exportedChatIds }
+                        .sumOf { it.count }
+                } else {
+                    0
+                }
 
                 if (useStreamingTextExport) {
                     onProgress?.invoke(
@@ -1935,7 +1942,7 @@ class ChatHistoryManager private constructor(private val context: Context) {
                                 file = file,
                                 format = format,
                                 chatHistories = chatHistoriesBasic,
-                                totalMessageCount = messageDao.getTotalMessageCount(),
+                                totalMessageCount = totalMessageCount,
                                 totalTextCharacters = totalTextCharacters,
                                 onProgress = onProgress,
                             )
@@ -1954,7 +1961,7 @@ class ChatHistoryManager private constructor(private val context: Context) {
                                 file = file,
                                 format = format,
                                 chatHistories = chatHistoriesBasic,
-                                totalMessageCount = messageDao.getTotalMessageCount(),
+                                totalMessageCount = totalMessageCount,
                                 totalTextCharacters = totalTextCharacters,
                                 onProgress = onProgress,
                             )
@@ -1974,7 +1981,10 @@ class ChatHistoryManager private constructor(private val context: Context) {
                 }
 
                 pendingExportFile = null
-                exportFile.absolutePath
+                ChatExportResult(
+                    filePath = exportFile.absolutePath,
+                    chatCount = chatHistoriesBasic.size,
+                )
             } catch (e: Exception) {
                 pendingExportFile?.let { incompleteFile ->
                     if (incompleteFile.exists() && !incompleteFile.delete()) {

@@ -4826,6 +4826,9 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Konfirmasi Pemulihan</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Batal</string>
     <string name="backup_chat_history">Riwayat Obrolan</string>
+    <string name="backup_select_chat_records">Pilih riwayat chat</string>
+    <string name="backup_select_chat_records_hint">Pilih riwayat chat yang akan diekspor.</string>
+    <string name="backup_clear_selection">Hapus pilihan</string>
     <string name="backup_chat_history_subtitle">Cadangan, ekspor, dan pemulihan lintas format</string>
     <string name="backup_chat_current_count">Saat ini ada %1$d riwayat obrolan.</string>
     <string name="backup_export">Ekspor</string>

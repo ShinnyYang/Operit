@@ -67,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.data.model.ChatHistory
 import com.ai.assistance.operit.data.model.ImportStrategy
 import com.ai.assistance.operit.data.model.MemorySpace
 import com.ai.assistance.operit.data.backup.OperitBackupDirs
@@ -84,6 +85,7 @@ import com.ai.assistance.operit.data.converter.ExportFormat
 import com.ai.assistance.operit.data.converter.ChatFormat
 import com.ai.assistance.operit.ui.features.settings.components.BackupFilesStatisticsCard
 import com.ai.assistance.operit.ui.features.settings.components.CharacterCardManagementCard
+import com.ai.assistance.operit.ui.features.settings.components.ChatHistoryExportSelectionDialog
 import com.ai.assistance.operit.ui.features.settings.components.ChatHistoryOperation
 import com.ai.assistance.operit.ui.features.settings.components.DataManagementCard
 import com.ai.assistance.operit.ui.features.settings.components.DeleteConfirmationDialog
@@ -151,6 +153,7 @@ fun ChatBackupSettingsScreen() {
     var memoryRepo by remember { mutableStateOf<MemoryRepository?>(null) }
 
     var totalChatCount by remember { mutableStateOf(0) }
+    var chatHistories by remember { mutableStateOf<List<ChatHistory>>(emptyList()) }
     var totalCharacterCardCount by remember { mutableStateOf(0) }
     var totalMemoryCount by remember { mutableStateOf(0) }
     var totalMemoryLinkCount by remember { mutableStateOf(0) }
@@ -212,6 +215,8 @@ fun ChatBackupSettingsScreen() {
     var showImportProfileDialog by remember { mutableStateOf(false) }
 
     // 导出格式选择
+    var showChatExportSelectionDialog by remember { mutableStateOf(false) }
+    var selectedExportChatIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var showExportFormatDialog by remember { mutableStateOf(false) }
     var selectedExportFormat by remember { mutableStateOf(ExportFormat.JSON) }
 
@@ -238,8 +243,10 @@ fun ChatBackupSettingsScreen() {
     }
 
     LaunchedEffect(Unit) {
-        chatHistoryManager.chatHistoriesFlow.collect { chatHistories ->
-            totalChatCount = chatHistories.size
+        chatHistoryManager.chatHistoriesFlow.collect { histories ->
+            totalChatCount = histories.size
+            chatHistories = histories
+            selectedExportChatIds = selectedExportChatIds.intersect(histories.map { it.id }.toSet())
         }
     }
 
@@ -552,8 +559,8 @@ fun ChatBackupSettingsScreen() {
                 longTextExportProcessedCharacters = longTextExportProcessedCharacters,
                 longTextExportTotalCharacters = longTextExportTotalCharacters,
                 onExport = {
-                    // 显示格式选择对话框
-                    showExportFormatDialog = true
+                    selectedExportChatIds = emptySet()
+                    showChatExportSelectionDialog = true
                 },
                 onImport = {
                     val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -1227,6 +1234,22 @@ fun ChatBackupSettingsScreen() {
         )
     }
 
+    if (showChatExportSelectionDialog) {
+        ChatHistoryExportSelectionDialog(
+            chatHistories = chatHistories,
+            selectedChatIds = selectedExportChatIds,
+            onSelectionChanged = { selectedExportChatIds = it },
+            onDismiss = {
+                showChatExportSelectionDialog = false
+                selectedExportChatIds = emptySet()
+            },
+            onConfirm = {
+                showChatExportSelectionDialog = false
+                showExportFormatDialog = true
+            },
+        )
+    }
+
     if (showExportFormatDialog) {
         ExportFormatDialog(
             selectedFormat = selectedExportFormat,
@@ -1241,7 +1264,8 @@ fun ChatBackupSettingsScreen() {
                     longTextExportProcessedCharacters = 0L
                     longTextExportTotalCharacters = 0L
                     try {
-                        val filePath = chatHistoryManager.exportChatHistoriesToDownloads(
+                        val exportResult = chatHistoryManager.exportChatHistoriesToDownloads(
+                            selectedChatIds = selectedExportChatIds,
                             format = selectedExportFormat,
                             onProgress = { progress ->
                                 isLongTextExport = progress.isLongText
@@ -1250,9 +1274,8 @@ fun ChatBackupSettingsScreen() {
                                 longTextExportTotalCharacters = progress.totalCharacters
                             },
                         )
-                        if (filePath != null) {
+                        if (exportResult != null) {
                             operationState = ChatHistoryOperation.EXPORTED
-                            val chatCount = chatHistoryManager.chatHistoriesFlow.first().size
                             val formatName = when (selectedExportFormat) {
                                 ExportFormat.JSON -> context.getString(R.string.backup_format_json)
                                 ExportFormat.MARKDOWN -> context.getString(R.string.backup_format_markdown)
@@ -1262,9 +1285,9 @@ fun ChatBackupSettingsScreen() {
                             }
                             operationMessage = context.getString(
                                 R.string.backup_chat_export_result_success,
-                                chatCount,
+                                exportResult.chatCount,
                                 formatName,
-                                filePath
+                                exportResult.filePath
                             )
                         } else {
                             operationState = ChatHistoryOperation.FAILED

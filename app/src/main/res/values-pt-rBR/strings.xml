@@ -4526,6 +4526,9 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Confirmar recuperação</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Cancelar</string>
     <string name="backup_chat_history">Histórico de bate-papo</string>
+    <string name="backup_select_chat_records">Selecionar históricos de conversa</string>
+    <string name="backup_select_chat_records_hint">Selecione os históricos de conversa para exportar.</string>
+    <string name="backup_clear_selection">Limpar seleção</string>
     <string name="backup_chat_history_subtitle">Backup, exportação e recuperação em vários formatos</string>
     <string name="backup_chat_current_count">Atualmente existem %1$d registros de bate-papo.</string>
     <string name="backup_export">Exportar</string>
