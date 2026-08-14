@@ -2,13 +2,16 @@ package com.ai.assistance.operit.ui.common.markdown
 
 import android.graphics.Typeface
 import android.os.SystemClock
+import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
+import android.text.style.URLSpan
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -29,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
@@ -88,7 +92,8 @@ private data class TableRenderLayout(
 fun EnhancedTableBlock(
     tableContent: String,
     modifier: Modifier = Modifier,
-    textColor: Color = MaterialTheme.colorScheme.onSurface
+    textColor: Color = MaterialTheme.colorScheme.onSurface,
+    onLinkClick: ((String) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     val typography = MaterialTheme.typography
@@ -246,6 +251,72 @@ fun EnhancedTableBlock(
                                 }
                             lastDragEventTimeMs = nowMs
                             scrollOffsetPx = (scrollOffsetPx - dragAmount).coerceIn(0f, maxScrollPx)
+                        }
+                    }
+                    .pointerInput(renderLayout, onLinkClick, scrollOffsetPx) {
+                        if (onLinkClick == null) return@pointerInput
+                        awaitEachGesture {
+                            val down = awaitPointerEvent(PointerEventPass.Initial).changes.first()
+                            val downTime = System.currentTimeMillis()
+                            val downPosition = down.position
+
+                            val up = awaitPointerEvent(PointerEventPass.Initial).changes.first()
+                            val upTime = System.currentTimeMillis()
+                            val upPosition = up.position
+
+                            val isTap =
+                                (upTime - downTime) < 500 &&
+                                    (upPosition - downPosition).getDistance() < 10f
+
+                            if (!isTap) return@awaitEachGesture
+
+                            var clickedLink = false
+                            outer@ for (rowIndex in renderLayout.cells.indices) {
+                                var cellY = 0f
+                                for (r in 0 until rowIndex) {
+                                    cellY += renderLayout.rowHeightsPx[r]
+                                }
+                                for (colIndex in renderLayout.cells[rowIndex].indices) {
+                                    var cellX = 0f
+                                    for (c in 0 until colIndex) {
+                                        cellX += renderLayout.columnWidthsPx[c]
+                                    }
+                                    val screenX = cellX - scrollOffsetPx
+                                    val cellWidth = renderLayout.columnWidthsPx[colIndex].toFloat()
+                                    val cellHeight = renderLayout.rowHeightsPx[rowIndex].toFloat()
+                                    if (
+                                        upPosition.x >= screenX &&
+                                        upPosition.x <= screenX + cellWidth &&
+                                        upPosition.y >= cellY &&
+                                        upPosition.y <= cellY + cellHeight
+                                    ) {
+                                        val cell = renderLayout.cells[rowIndex][colIndex]
+                                        val text = cell.layout.text
+                                        if (text is Spanned) {
+                                            val relativeX =
+                                                upPosition.x - screenX - cellHorizontalPaddingPx
+                                            val relativeY =
+                                                upPosition.y - cellY - cellVerticalPaddingPx
+                                            if (relativeX >= 0f && relativeY >= 0f) {
+                                                val line =
+                                                    cell.layout.getLineForVertical(relativeY.toInt())
+                                                val offset =
+                                                    cell.layout.getOffsetForHorizontal(line, relativeX)
+                                                val spans =
+                                                    text.getSpans(offset, offset, URLSpan::class.java)
+                                                spans.firstOrNull()?.let { span ->
+                                                    onLinkClick?.invoke(span.url)
+                                                    clickedLink = true
+                                                }
+                                            }
+                                        }
+                                        break@outer
+                                    }
+                                }
+                            }
+                            if (clickedLink) {
+                                up.consume()
+                            }
                         }
                     }
         ) {
