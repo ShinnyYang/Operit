@@ -27,7 +27,7 @@ function registerToolPkg() {
             zh: "DeepSeek Harness",
             en: "DeepSeek Harness",
         },
-        icon: "Code",
+        icon: Icons.Code,
         order: 131,
     });
     return true;

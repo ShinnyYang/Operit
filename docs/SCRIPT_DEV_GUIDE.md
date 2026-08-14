@@ -852,7 +852,21 @@ TypeScript 脚本 (`.ts`) 需要被编译成 JavaScript (`.js`)才能被执行�
 
 - **Android SDK (ADB)**: 确保你已经安装了 Android SDK，并且 `adb` 命令在你的系统路径中可用。
 - **安卓设备**: 连接一台开启了“USB调试”功能的安卓设备，并已授权电脑进行调试。
-- **Operit 应用程序**: 确保 `com.ai.assistance.operit` 应用程序已经安装并在目标设备上运行。脚本的执行依赖于应用内的 `ScriptExecutionReceiver` 来接收和处理来自 ADB 的命令。
+- **Operit 应用程序**: 确保 `com.ai.assistance.operit.debug` 或 `com.ai.assistance.operit` 已经安装并在目标设备上运行。脚本会优先选择已安装的 Debug 包；也可以通过 `OPERIT_APP_PACKAGE` 指定其中一个。脚本的执行依赖于应用内的 `ScriptExecutionReceiver` 来接收和处理来自 ADB 的命令。
+
+如果 Debug 和 Release APK 同时安装，默认使用 `com.ai.assistance.operit.debug`。想调试 Release APK 时，在启动脚本前设置：
+
+```cmd
+set OPERIT_APP_PACKAGE=com.ai.assistance.operit
+```
+
+Linux/macOS 使用：
+
+```bash
+export OPERIT_APP_PACKAGE=com.ai.assistance.operit
+```
+
+脚本会输出实际选择的 applicationId，并据此生成临时目录、广播 action 和 receiver。
 
 ### 9.2. 执行脚本函数
 
