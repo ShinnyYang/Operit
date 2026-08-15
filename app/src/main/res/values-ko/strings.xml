@@ -4942,6 +4942,9 @@
     <string name="backup_raw_snapshot_restore_confirm_action">복원 확인</string>
     <string name="backup_raw_snapshot_restore_cancel_action">취소</string>
     <string name="backup_chat_history">채팅 기록</string>
+    <string name="backup_select_chat_records">채팅 기록 선택</string>
+    <string name="backup_select_chat_records_hint">내보낼 채팅 기록을 선택하세요.</string>
+    <string name="backup_clear_selection">선택 해제</string>
     <string name="backup_chat_history_subtitle">교차 형식 백업, 내보내기 및 복구</string>
     <string name="backup_chat_current_count">현재 채팅 기록 %1$d개입니다.</string>
     <string name="backup_export">내보내기</string>

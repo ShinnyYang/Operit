@@ -4948,6 +4948,9 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Sahkan Pemulihan</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Batal</string>
     <string name="backup_chat_history">Sejarah Sembang</string>
+    <string name="backup_select_chat_records">Pilih rekod sembang</string>
+    <string name="backup_select_chat_records_hint">Pilih rekod sembang untuk dieksport.</string>
+    <string name="backup_clear_selection">Kosongkan pilihan</string>
     <string name="backup_chat_history_subtitle">Sandaran, eksport dan pemulihan merentas format</string>
     <string name="backup_chat_current_count">Terdapat %1$d catatan sejarah sembang semasa.</string>
     <string name="backup_export">Eksport</string>

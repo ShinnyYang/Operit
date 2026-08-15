@@ -4981,6 +4981,9 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="backup_raw_snapshot_restore_confirm_action">Confirmar restauración</string>
     <string name="backup_raw_snapshot_restore_cancel_action">Cancelar</string>
     <string name="backup_chat_history">Historial de chat</string>
+    <string name="backup_select_chat_records">Seleccionar registros de chat</string>
+    <string name="backup_select_chat_records_hint">Selecciona los registros de chat que quieres exportar.</string>
+    <string name="backup_clear_selection">Borrar selección</string>
     <string name="backup_chat_history_subtitle">Respaldo, exportación y restauración entre formatos</string>
     <string name="backup_chat_current_count">Actualmente hay %1$d registros de chat.</string>
     <string name="backup_export">Exportar</string>

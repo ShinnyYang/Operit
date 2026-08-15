@@ -5637,6 +5637,9 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="backup_raw_snapshot_restore_cancel_action">Anulare</string>
 
     <string name="backup_chat_history">Istoric de conversații</string>
+    <string name="backup_select_chat_records">Selectează istoricul conversațiilor</string>
+    <string name="backup_select_chat_records_hint">Selectează istoricul conversațiilor de exportat.</string>
+    <string name="backup_clear_selection">Golește selecția</string>
     <string name="backup_chat_history_subtitle">Copiere de rezervă, export și recuperare între formate</string>
     <string name="backup_chat_current_count">În prezent, există în total %1$d Istoric de conversație.</string>
     <string name="backup_export">Exportare</string>
