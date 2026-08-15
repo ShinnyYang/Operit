@@ -276,6 +276,21 @@ class CanvasCodeEditorView @JvmOverloads constructor(
             }
         )
 
+    // Steps the fling on the main thread, one Choreographer frame at a time. OverScroller is a
+    // UI-thread helper: it is not thread-safe, and some OEM frameworks (e.g. HONOR) call
+    // Choreographer.getInstance() inside computeScrollOffset(), which throws
+    // "The current thread must have a looper!" when it runs on the render thread (#798).
+    // The render thread only draws whatever scroll offsets this runnable publishes.
+    private val flingRunnable = object : Runnable {
+        override fun run() {
+            if (!scroller.computeScrollOffset()) {
+                return
+            }
+            setScrollOffsets(scroller.currX.toFloat(), scroller.currY.toFloat())
+            postOnAnimation(this)
+        }
+    }
+
     init {
         setZOrderOnTop(false)
         setZOrderMediaOverlay(false)
@@ -295,6 +310,7 @@ class CanvasCodeEditorView @JvmOverloads constructor(
             return
         }
         isReleased = true
+        removeCallbacks(flingRunnable)
         stopRenderThread()
         actionMode?.finish()
         actionMode = null
@@ -816,7 +832,10 @@ class CanvasCodeEditorView @JvmOverloads constructor(
             0,
             maxScrollY().roundToInt()
         )
-        requestRender()
+        // A MOVE that stopped the previous fling and the UP that starts this one can land in
+        // the same frame, leaving the previous step still posted; drop it so only one runs.
+        removeCallbacks(flingRunnable)
+        postOnAnimation(flingRunnable)
     }
 
     private fun setScrollOffsets(x: Float, y: Float, request: Boolean = true) {
@@ -1881,16 +1900,7 @@ class CanvasCodeEditorView @JvmOverloads constructor(
 
         override fun run() {
             while (running) {
-                var needsDraw = false
-                if (scroller.computeScrollOffset()) {
-                    scrollOffsetX = scroller.currX.toFloat()
-                    scrollOffsetY = scroller.currY.toFloat()
-                    needsDraw = true
-                } else if (isDirty) {
-                    needsDraw = true
-                }
-
-                if (!needsDraw) {
+                if (!isDirty) {
                     synchronized(renderSignal) {
                         if (!running && !isDirty) {
                             return
@@ -1925,23 +1935,15 @@ class CanvasCodeEditorView @JvmOverloads constructor(
                     }.getOrNull()
 
                 if (canvas != null) {
+                    // Clear the flag before drawing: fling steps now arrive from the main thread
+                    // while a frame may be in flight, and a request that lands mid-draw must
+                    // survive to trigger the next frame instead of being wiped after the draw.
+                    isDirty = false
                     try {
                         drawEditor(canvas)
-                        isDirty = false
                     } finally {
                         runCatching {
                             holder.unlockCanvasAndPost(canvas)
-                        }
-                    }
-                }
-
-                if (scroller.computeScrollOffset()) {
-                    isDirty = true
-                    try {
-                        sleep(16L)
-                    } catch (_: InterruptedException) {
-                        if (!running) {
-                            return
                         }
                     }
                 }
