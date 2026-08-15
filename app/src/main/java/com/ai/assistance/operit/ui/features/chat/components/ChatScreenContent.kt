@@ -79,6 +79,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.PopupProperties
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.common.markdown.markdownToPlainTextForCopy
@@ -859,7 +860,15 @@ fun ChatScreenContent(
             AlertDialog(
                 onDismissRequest = { showDeleteSelectedConfirmDialog = false },
                 title = { Text(stringResource(R.string.confirm_delete)) },
-                text = { Text("Delete ${selectedMessageIndices.size} selected messages? This cannot be undone.") },
+                text = {
+                    Text(
+                        pluralStringResource(
+                            R.plurals.chat_delete_selected_messages_confirm,
+                            selectedMessageIndices.size,
+                            selectedMessageIndices.size,
+                        )
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
