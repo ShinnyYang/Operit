@@ -733,8 +733,10 @@ val actualViewModel: ChatViewModel = viewModel ?: viewModel { ChatViewModel(cont
     val showWebView by actualViewModel.showWebView.collectAsState()
     // 收集AI电脑显示状态
     val showAiComputer by actualViewModel.showAiComputer.collectAsState()
+    // AppContent owns the primary chat IME layout; embedded chat retains its local translation.
     val shouldUseChatLocalImeHandling =
-        inputStyle == UserPreferencesManager.INPUT_STYLE_AGENT &&
+        embedded &&
+            inputStyle == UserPreferencesManager.INPUT_STYLE_AGENT &&
             !showWebView &&
             !showAiComputer
     var hasEverShownWebView by remember { mutableStateOf(false) }
