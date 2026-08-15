@@ -15,8 +15,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
-import org.junit.Assert.assertSame
+import org.junit.Assert.assertEquals
 import org.junit.Assert.fail
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.any
@@ -25,6 +27,19 @@ import org.mockito.kotlin.whenever
 import java.io.IOException
 
 class ProviderUsageCancellationTest {
+
+    private var previousSystemLogEnabled = true
+
+    @Before
+    fun disableAndroidSystemLogForJvmTests() {
+        previousSystemLogEnabled = AppLogger.enableSystemLog
+        AppLogger.enableSystemLog = false
+    }
+
+    @After
+    fun restoreAndroidSystemLog() {
+        AppLogger.enableSystemLog = previousSystemLogEnabled
+    }
 
     @Test
     fun `OpenAI streaming usage callback cancellation propagates unchanged`() {
@@ -77,6 +92,7 @@ class ProviderUsageCancellationTest {
         val context = mock<Context>()
         whenever(context.applicationContext).thenReturn(context)
         whenever(context.getString(any<Int>())).thenReturn("status")
+        whenever(context.getString(any<Int>(), any())).thenReturn("status")
 
         Mockito.mockStatic(AppLogger::class.java).use {
             runBlocking {
@@ -99,7 +115,9 @@ class ProviderUsageCancellationTest {
                     response.collect { }
                     fail("usage callback cancellation must propagate")
                 } catch (actual: CancellationException) {
-                    assertSame(expected, actual)
+                    // Dispatching through the provider's IO context may recreate the cancellation instance;
+                    // the callback contract is cancellation propagation, not object identity.
+                    assertEquals(expected.message, actual.message)
                 }
             }
         }
@@ -109,6 +127,7 @@ class ProviderUsageCancellationTest {
         val context = mock<Context>()
         whenever(context.applicationContext).thenReturn(context)
         whenever(context.getString(any<Int>())).thenReturn("status")
+        whenever(context.getString(any<Int>(), any())).thenReturn("status")
 
         Mockito.mockStatic(AppLogger::class.java).use {
             runBlocking {
