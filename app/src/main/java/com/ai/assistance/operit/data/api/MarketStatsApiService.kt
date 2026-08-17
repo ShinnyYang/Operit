@@ -437,10 +437,19 @@ data class MarketV2PublishRequest(
 
 @Serializable
 data class MarketV2NewVersionRequest(
-    val entry: MarketV2EntryUpdateRequest? = null,
+    val entry: MarketV2NewVersionEntryPatch? = null,
     val version: MarketV2PublishVersion,
     val repoVersion: MarketV2PublishRepoVersion? = null,
     val asset: MarketV2PublishAsset? = null
+)
+
+@Serializable
+data class MarketV2NewVersionEntryPatch(
+    val title: String? = null,
+    val description: String? = null,
+    val detail: String? = null,
+    val categoryId: String? = null,
+    val allowPublicUpdates: Boolean? = null
 )
 
 @Serializable
@@ -956,7 +965,7 @@ class MarketStatsApiService {
     suspend fun publishNewVersion(
         entryId: String,
         request: MarketV2PublishRequest,
-        includeEntryPatch: Boolean = false
+        entryPatch: MarketV2NewVersionEntryPatch? = null
     ): Result<MarketV2NewVersionResponse> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -967,18 +976,7 @@ class MarketStatsApiService {
                     body =
                         json.encodeToString(
                             MarketV2NewVersionRequest(
-                                entry =
-                                    if (includeEntryPatch) {
-                                        MarketV2EntryUpdateRequest(
-                                            title = request.title,
-                                            description = request.description,
-                                            detail = request.detail,
-                                            categoryId = request.categoryId,
-                                            allowPublicUpdates = request.allowPublicUpdates
-                                        )
-                                    } else {
-                                        null
-                                    },
+                                entry = entryPatch,
                                 version = request.version,
                                 repoVersion = request.repoVersion,
                                 asset = request.asset
