@@ -278,12 +278,54 @@ object AIServiceFactory {
             configId = config.id,
         )
     }
+    internal fun buildRoutedService(
+        config: ModelConfigData,
+        modelConfigManager: ModelConfigManager,
+        context: Context,
+        client: OkHttpClient,
+        customHeaders: Map<String, String>,
+        apiKeyProvider: ApiKeyProvider,
+        supportsVision: Boolean,
+        supportsAudio: Boolean,
+        supportsVideo: Boolean,
+        enableToolCall: Boolean
+    ): AIService = buildServiceInternal(
+        config, modelConfigManager, context, client, customHeaders, apiKeyProvider,
+        supportsVision, supportsAudio, supportsVideo, enableToolCall
+    )
 
     private fun buildService(
         config: ModelConfigData,
         modelConfigManager: ModelConfigManager,
         context: Context
     ): AIService {
+        val httpClient = SharedHttpClient.instance
+        val customHeaders = parseCustomHeaders(config.customHeaders)
+        val apiKeyProvider = if (config.useMultipleApiKeys) {
+            MultiApiKeyProvider(config.id, modelConfigManager)
+        } else {
+            SingleApiKeyProvider(config.apiKey)
+        }
+        return buildServiceInternal(
+            config, modelConfigManager, context, httpClient, customHeaders, apiKeyProvider,
+            config.enableDirectImageProcessing, config.enableDirectAudioProcessing,
+            config.enableDirectVideoProcessing, config.enableToolCall
+        )
+    }
+
+    private fun buildServiceInternal(
+        config: ModelConfigData,
+        modelConfigManager: ModelConfigManager,
+        context: Context,
+        httpClient: OkHttpClient,
+        customHeaders: Map<String, String>,
+        apiKeyProvider: ApiKeyProvider,
+        supportsVision: Boolean,
+        supportsAudio: Boolean,
+        supportsVideo: Boolean,
+        enableToolCall: Boolean
+    ): AIService {
+
         val providerTypeId = config.apiProviderTypeId.trim()
         ToolPkgAiProviderRegistry.get(providerTypeId)?.let { provider ->
             return ToolPkgJsAiProviderService(
@@ -292,29 +334,13 @@ object AIServiceFactory {
             )
         }
 
-        val httpClient = SharedHttpClient.instance
-        val customHeaders = parseCustomHeaders(config.customHeaders)
         val providerType =
+
             ApiProviderType.fromProviderTypeId(providerTypeId)
                 ?: throw IllegalArgumentException(
                     "AI provider type not found or not enabled: $providerTypeId"
                 )
 
-        // 根据配置决定使用单个API Key还是多API Key轮询
-        val apiKeyProvider = if (config.useMultipleApiKeys) {
-            MultiApiKeyProvider(config.id, modelConfigManager)
-        } else {
-            SingleApiKeyProvider(config.apiKey)
-        }
-
-        // 图片处理支持标志
-        val supportsVision = config.enableDirectImageProcessing
-        // 音频/视频输入支持标志（OpenAI兼容的多模态content数组）
-        val supportsAudio = config.enableDirectAudioProcessing
-        val supportsVideo = config.enableDirectVideoProcessing
-        // Tool Call支持标志
-        val enableToolCall = config.enableToolCall
-        
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
             ApiProviderType.OPENAI ->
@@ -543,6 +569,19 @@ object AIServiceFactory {
                     client = httpClient,
                     customHeaders = customHeaders,
                     qwenProviderType = providerType,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall
+                )
+            ApiProviderType.OPENCODE ->
+                OpenCodeProvider.create(
+                    config = config,
+                    modelConfigManager = modelConfigManager,
+                    context = context,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    apiKeyProvider = apiKeyProvider,
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,

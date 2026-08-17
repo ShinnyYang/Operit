@@ -1369,10 +1369,15 @@ class GeminiProvider(
             isStreaming: Boolean,
             requestId: String
     ): Request {
-        // 确定请求URL
-        val baseUrl = determineBaseUrl(apiEndpoint)
+        // OpenCode already provides a model-specific endpoint; Google endpoints use the standard path.
         val method = if (isStreaming) "streamGenerateContent" else "generateContent"
-        val requestUrl = "$baseUrl/v1beta/models/$modelName:$method"
+        val requestUrl =
+            if (apiEndpoint.contains("/models/", ignoreCase = true)) {
+                "${apiEndpoint.trim().removeSuffix("/")}:$method"
+            } else {
+                val baseUrl = determineBaseUrl(apiEndpoint)
+                "$baseUrl/v1beta/models/$modelName:$method"
+            }
 
         AppLogger.d(TAG, "请求URL: $requestUrl")
 
@@ -1386,17 +1391,23 @@ class GeminiProvider(
 
         // 添加API密钥
         val currentApiKey = apiKeyProvider.getApiKey()
-        val finalUrl =
+        val requestBuilder = builder
+            .url(requestUrl)
+            .post(requestBody)
+            .addHeader("Content-Type", "application/json")
+        if (apiEndpoint.contains("/models/", ignoreCase = true)) {
+            requestBuilder.addHeader("Authorization", "Bearer $currentApiKey")
+        } else {
+            requestBuilder.url(
                 if (requestUrl.contains("?")) {
                     "$requestUrl&key=$currentApiKey"
                 } else {
                     "$requestUrl?key=$currentApiKey"
                 }
+            )
+        }
 
-        val request = builder.url(finalUrl)
-                .post(requestBody)
-                .addHeader("Content-Type", "application/json")
-                .build()
+        val request = requestBuilder.build()
 
         logLargeString(TAG, context.getString(R.string.gemini_request_headers, HttpLogSanitizer.headersForLog(request.headers)))
         return request

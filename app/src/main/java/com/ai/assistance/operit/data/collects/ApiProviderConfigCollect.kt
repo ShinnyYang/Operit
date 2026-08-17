@@ -151,6 +151,21 @@ object ApiProviderConfigs {
             defaultApiEndpoint = "https://openrouter.ai/api/v1/chat/completions"
         ),
         ProviderApiConfig(
+            providerType = ApiProviderType.OPENCODE,
+            defaultModelName = "",
+            defaultApiEndpoint = "https://opencode.ai/zen",
+            endpointOptions = listOf(
+                ProviderEndpointOption(
+                    endpoint = "https://opencode.ai/zen",
+                    label = "Zen"
+                ),
+                ProviderEndpointOption(
+                    endpoint = "https://opencode.ai/zen/go",
+                    label = "Go"
+                )
+            )
+        ),
+        ProviderApiConfig(
             providerType = ApiProviderType.FOUR_ROUTER,
             defaultModelName = "gpt-5.4-mini",
             defaultApiEndpoint = "https://4router.net/v1/chat/completions"
