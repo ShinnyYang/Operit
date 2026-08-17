@@ -11,6 +11,7 @@ import com.ai.assistance.operit.data.api.GitHubApiService
 import com.ai.assistance.operit.data.api.MarketStatsApiService
 import com.ai.assistance.operit.data.api.MarketV2EntryUpdateRequest
 import com.ai.assistance.operit.data.api.MarketV2Entry
+import com.ai.assistance.operit.data.api.MarketV2NewVersionEntryPatch
 import com.ai.assistance.operit.data.api.MarketV2PublishRepoVersion
 import com.ai.assistance.operit.data.api.MarketV2PublishRequest
 import com.ai.assistance.operit.data.api.MarketV2PublishSource
@@ -150,13 +151,23 @@ class RepoMarketPublishViewModel(
         canEditEntry: Boolean = false
     ): Result<Unit> {
         validateNewVersion(entry, version)
-        val hasEntryPatch = canEditEntry && (
-            title != entry.title ||
-                description != entry.description ||
-                detail != entry.detail ||
-                category != entry.categoryId ||
-                allowPublicUpdates != entry.allowPublicUpdates
-            )
+        val entryPatch =
+            (
+                if (canEditEntry) {
+                    MarketV2NewVersionEntryPatch(
+                        title = title.takeIf { it != entry.title },
+                        description = description.takeIf { it != entry.description },
+                        detail = detail.takeIf { it != entry.detail },
+                        categoryId = category.takeIf { it != entry.categoryId },
+                        allowPublicUpdates = allowPublicUpdates.takeIf { it != entry.allowPublicUpdates }
+                    )
+                } else {
+                    MarketV2NewVersionEntryPatch(
+                        description = description.takeIf { it != entry.description },
+                        detail = detail.takeIf { it != entry.detail }
+                    )
+                }
+            ).takeIf { it.hasChanges() }
         return submit(
             entryId = entry.id,
             title = title,
@@ -167,7 +178,7 @@ class RepoMarketPublishViewModel(
             installConfig = installConfig,
             category = category,
             allowPublicUpdates = allowPublicUpdates,
-            includeEntryPatch = hasEntryPatch
+            entryPatch = entryPatch
         )
     }
 
@@ -214,7 +225,7 @@ class RepoMarketPublishViewModel(
         installConfig: String,
         category: String,
         allowPublicUpdates: Boolean,
-        includeEntryPatch: Boolean = false
+        entryPatch: MarketV2NewVersionEntryPatch? = null
     ): Result<Unit> {
         if (!githubAuth.isLoggedIn()) {
             return Result.failure(IllegalStateException(loginRequiredMessage()))
@@ -239,7 +250,7 @@ class RepoMarketPublishViewModel(
                 if (entryId == null) {
                     marketStatsApiService.publish(request).map { Unit }
                 } else {
-                    marketStatsApiService.publishNewVersion(entryId = entryId, request = request, includeEntryPatch = includeEntryPatch).map { Unit }
+                    marketStatsApiService.publishNewVersion(entryId = entryId, request = request, entryPatch = entryPatch).map { Unit }
                 }
             result
         } catch (e: Exception) {
@@ -376,6 +387,13 @@ class RepoMarketPublishViewModel(
         val refType: String,
         val refName: String
     )
+
+    private fun MarketV2NewVersionEntryPatch.hasChanges(): Boolean =
+        title != null ||
+            description != null ||
+            detail != null ||
+            categoryId != null ||
+            allowPublicUpdates != null
 
     private fun validateNewVersion(entry: MarketV2Entry, version: String) {
         val requestedVersion = version.trim().removePrefix("v").removePrefix("V").ifBlank { "1.0.0" }

@@ -112,6 +112,8 @@ fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishClusterCont
         lockedDisplayName = title,
         projectDisplayName = title,
         projectDescription = detail.ifBlank { description },
+        marketDescription = description,
+        marketDetail = detail,
         categoryId = categoryId,
         canEditEntry = canEditEntry
     )
@@ -154,6 +156,7 @@ fun ArtifactPublishScreen(
     val lockedDisplayName = activePublishContext?.lockedDisplayName?.trim().orEmpty()
     val canEditContinuationEntry = activePublishContext?.canEditEntry ?: true
     val isDisplayNameLocked = !isEditMode && lockedDisplayName.isNotBlank() && !canEditContinuationEntry
+    val isContinuationCategoryLocked = isContinuationMode && !canEditContinuationEntry
     val continuationDescription =
         stringResource(R.string.artifact_publish_continuation_description)
 
@@ -180,11 +183,11 @@ fun ArtifactPublishScreen(
             initialInfo?.title.orEmpty().ifBlank { lockedDisplayName }
         )
     }
-    var description by rememberSaveable(activePublishContext?.projectDescription) {
-        mutableStateOf(initialInfo?.description.orEmpty().ifBlank { activePublishContext?.projectDescription.orEmpty() })
+    var description by rememberSaveable(activePublishContext?.marketDescription) {
+        mutableStateOf(initialInfo?.description.orEmpty().ifBlank { activePublishContext?.marketDescription.orEmpty() })
     }
-    var detail by rememberSaveable(activePublishContext?.projectDescription) {
-        mutableStateOf(initialInfo?.detail.orEmpty().ifBlank { activePublishContext?.projectDescription.orEmpty() })
+    var detail by rememberSaveable(activePublishContext?.marketDetail) {
+        mutableStateOf(initialInfo?.detail.orEmpty().ifBlank { activePublishContext?.marketDetail.orEmpty() })
     }
     var categoryId by rememberSaveable(activePublishContext?.categoryId) {
         mutableStateOf(initialInfo?.categoryId.orEmpty().ifBlank { activePublishContext?.categoryId.orEmpty() })
@@ -725,7 +728,7 @@ fun ArtifactPublishScreen(
         ExposedDropdownMenuBox(
             expanded = categoryExpanded,
             onExpandedChange = {
-                if (categories.isNotEmpty()) {
+                if (categories.isNotEmpty() && !isContinuationCategoryLocked) {
                     categoryExpanded = !categoryExpanded
                 }
             }
@@ -743,7 +746,7 @@ fun ArtifactPublishScreen(
                     .fillMaxWidth()
                     .menuAnchor(),
                 readOnly = true,
-                enabled = categories.isNotEmpty(),
+                enabled = categories.isNotEmpty() && !isContinuationCategoryLocked,
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded)
                 },
