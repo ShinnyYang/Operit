@@ -51,32 +51,32 @@ import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 /** Keeps Gemini thinking mapping testable without invoking Android's JVM JSON stubs. */
 internal data class GeminiThinkingConfig(
     val includeThoughts: Boolean,
-    val thinkingBudget: Int
+    val thinkingLevel: String
 ) {
     fun toJsonObject(): JSONObject =
         JSONObject()
             .put(INCLUDE_THOUGHTS, includeThoughts)
-            .put(THINKING_BUDGET, thinkingBudget)
+            .put(THINKING_LEVEL, thinkingLevel)
 
     companion object {
         private const val INCLUDE_THOUGHTS = "includeThoughts"
-        private const val THINKING_BUDGET = "thinkingBudget"
-        private val thinkingBudgetsByGlobalQuality =
+        private const val THINKING_LEVEL = "thinkingLevel"
+        private val thinkingLevelsByGlobalQuality =
             mapOf(
-                1 to 1_024,
-                2 to 4_096,
-                3 to 8_192,
-                4 to 16_384,
-                5 to 32_768
+                1 to "MINIMAL",
+                2 to "LOW",
+                3 to "MEDIUM",
+                4 to "HIGH",
+                5 to "HIGH"
             )
 
         fun fromGlobalQuality(qualityLevel: Int): GeminiThinkingConfig {
-            val thinkingBudget =
-                thinkingBudgetsByGlobalQuality[qualityLevel]
+            val thinkingLevel =
+                thinkingLevelsByGlobalQuality[qualityLevel]
                     ?: throw IllegalArgumentException(
                         "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
                     )
-            return GeminiThinkingConfig(includeThoughts = true, thinkingBudget = thinkingBudget)
+            return GeminiThinkingConfig(includeThoughts = true, thinkingLevel = thinkingLevel)
         }
     }
 }
@@ -1242,6 +1242,7 @@ class GeminiProvider(
             preserveThinkInHistory: Boolean = false
     ): RequestBody {
         val json = JSONObject()
+        val isOpenCode = OpenCodeReasoningParameters.isMarked(modelParameters)
 
         // 添加工具定义
         val tools = JSONArray()
@@ -1286,7 +1287,7 @@ class GeminiProvider(
 
         // 添加模型参数
         for (param in modelParameters) {
-            if (param.isEnabled) {
+            if (param.isEnabled && !OpenCodeReasoningParameters.isInternal(param)) {
                 when (param.apiName) {
                     "temperature" ->
                             generationConfig.put(
@@ -1336,7 +1337,7 @@ class GeminiProvider(
             }
         }
 
-        if (enableThinking) {
+        if (enableThinking && !isOpenCode) {
             val thinkingQualityLevel =
                 runBlocking {
                     ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
