@@ -51,32 +51,32 @@ import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 /** Keeps Gemini thinking mapping testable without invoking Android's JVM JSON stubs. */
 internal data class GeminiThinkingConfig(
     val includeThoughts: Boolean,
-    val thinkingLevel: String
+    val thinkingBudget: Int
 ) {
     fun toJsonObject(): JSONObject =
         JSONObject()
             .put(INCLUDE_THOUGHTS, includeThoughts)
-            .put(THINKING_LEVEL, thinkingLevel)
+            .put(THINKING_BUDGET, thinkingBudget)
 
     companion object {
         private const val INCLUDE_THOUGHTS = "includeThoughts"
-        private const val THINKING_LEVEL = "thinkingLevel"
-        private val thinkingLevelsByGlobalQuality =
+        private const val THINKING_BUDGET = "thinkingBudget"
+        private val thinkingBudgetsByGlobalQuality =
             mapOf(
-                1 to "MINIMAL",
-                2 to "LOW",
-                3 to "MEDIUM",
-                4 to "HIGH",
-                5 to "HIGH"
+                1 to 1_024,
+                2 to 4_096,
+                3 to 8_192,
+                4 to 16_384,
+                5 to 32_768
             )
 
         fun fromGlobalQuality(qualityLevel: Int): GeminiThinkingConfig {
-            val thinkingLevel =
-                thinkingLevelsByGlobalQuality[qualityLevel]
+            val thinkingBudget =
+                thinkingBudgetsByGlobalQuality[qualityLevel]
                     ?: throw IllegalArgumentException(
                         "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
                     )
-            return GeminiThinkingConfig(includeThoughts = true, thinkingLevel = thinkingLevel)
+            return GeminiThinkingConfig(includeThoughts = true, thinkingBudget = thinkingBudget)
         }
     }
 }

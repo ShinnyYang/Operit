@@ -1078,8 +1078,14 @@ class ClaudeProvider(
             jsonObject.put("system", systemBlocks)
         }
 
-        // 添加extended thinking支持
-        if (enableThinking) {
+        // OpenCode Anthropic routes lower the effort option to output_config.effort.
+        if (enableThinking && apiEndpoint.contains("opencode.ai/zen", ignoreCase = true)) {
+            val thinkingQualityLevel = runBlocking {
+                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+            }
+            jsonObject.put("output_config", JSONObject().put("effort", mapThinkingQualityToEffort(thinkingQualityLevel)))
+        } else if (enableThinking) {
+            // 添加extended thinking支持
             val format = getThinkingFormat()
             when (format) {
                 ThinkingFormat.ADAPTIVE -> {
