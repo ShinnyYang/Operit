@@ -241,6 +241,21 @@ object ApiProviderConfigs {
             )
         ),
         ProviderApiConfig(
+            providerType = ApiProviderType.MINIMAX,
+            defaultModelName = "MiniMax-M2.7",
+            defaultApiEndpoint = "https://api.minimaxi.com/v1/chat/completions",
+            endpointOptions = listOf(
+                ProviderEndpointOption(
+                    endpoint = "https://api.minimaxi.com/v1/chat/completions",
+                    label = "China (minimaxi.com)"
+                ),
+                ProviderEndpointOption(
+                    endpoint = "https://api.minimax.io/v1/chat/completions",
+                    label = "International (minimax.io)"
+                )
+            )
+        ),
+        ProviderApiConfig(
             providerType = ApiProviderType.OTHER,
             defaultModelName = "",
             defaultApiEndpoint = ""

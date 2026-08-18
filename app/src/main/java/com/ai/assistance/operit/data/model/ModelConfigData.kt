@@ -38,6 +38,7 @@ enum class ApiProviderType {
         LLAMA_CPP, // llama.cpp 本地推理引擎
         PPINFRA, // 派欧云
         NOVITA, // Novita AI
+        MINIMAX, // MiniMax
         OTHER; // 其他提供商（自定义端点）
 
         companion object {

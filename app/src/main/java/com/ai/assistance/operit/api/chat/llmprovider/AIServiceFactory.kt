@@ -469,6 +469,7 @@ object AIServiceFactory {
             ApiProviderType.ALIPAY_BAILING,
             ApiProviderType.PPINFRA,
             ApiProviderType.NOVITA,
+            ApiProviderType.MINIMAX,
             ApiProviderType.OTHER ->
                 OpenAIProvider(
                     apiEndpoint = config.apiEndpoint,
