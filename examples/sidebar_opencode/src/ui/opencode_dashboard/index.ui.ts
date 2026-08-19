@@ -184,6 +184,16 @@ export default function Screen(ctx: ComposeDslContext): ComposeNode {
             overflow: "ellipsis",
           })
         ),
+        errorText
+          ? UI.Button({
+              text: "重试",
+              enabled: !loading,
+              onClick: async () => {
+                await ensureServer();
+              },
+              contentPadding: { horizontal: 18, vertical: 10 },
+            })
+          : UI.Spacer({ width: 0, height: 0 }),
       ]
     )
   );
