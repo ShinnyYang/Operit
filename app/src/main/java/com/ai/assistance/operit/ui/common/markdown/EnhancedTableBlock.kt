@@ -6,13 +6,15 @@ import android.text.Spanned
 import android.text.StaticLayout
 import android.text.TextPaint
 import android.text.style.URLSpan
+import android.view.ViewConfiguration
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
@@ -33,9 +35,11 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFontFamilyResolver
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -96,6 +100,11 @@ fun EnhancedTableBlock(
     onLinkClick: ((String) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
+    val hostView = LocalView.current
+    val touchSlop =
+        remember(hostView) {
+            ViewConfiguration.get(hostView.context).scaledTouchSlop.toFloat()
+        }
     val typography = MaterialTheme.typography
     val textLayoutSettings = LocalAiMarkdownTextLayoutSettings.current
     val fontFamily = typography.bodyMedium.fontFamily
@@ -253,34 +262,53 @@ fun EnhancedTableBlock(
                             scrollOffsetPx = (scrollOffsetPx - dragAmount).coerceIn(0f, maxScrollPx)
                         }
                     }
-                    .pointerInput(renderLayout, onLinkClick, scrollOffsetPx) {
+                    .pointerInput(renderLayout, onLinkClick, scrollOffsetPx, touchSlop) {
                         if (onLinkClick == null) return@pointerInput
                         awaitEachGesture {
-                            val down = awaitPointerEvent(PointerEventPass.Initial).changes.first()
-                            val downTime = System.currentTimeMillis()
+                            val down =
+                                awaitFirstDown(
+                                    requireUnconsumed = false,
+                                    pass = PointerEventPass.Initial,
+                                )
+                            val pointerId = down.id
                             val downPosition = down.position
+                            var exceededTouchSlop = false
+                            var cancelled = false
+                            var releaseChange: PointerInputChange? = null
 
-                            val up = awaitPointerEvent(PointerEventPass.Initial).changes.first()
-                            val upTime = System.currentTimeMillis()
+                            while (true) {
+                                val event = awaitPointerEvent(PointerEventPass.Final)
+                                if (event.changes.any { it.id != pointerId && it.pressed }) {
+                                    cancelled = true
+                                }
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                if (change == null) {
+                                    cancelled = true
+                                    break
+                                }
+                                if ((change.position - downPosition).getDistance() > touchSlop) {
+                                    exceededTouchSlop = true
+                                }
+                                if (change.isConsumed && change.pressed) {
+                                    cancelled = true
+                                }
+                                if (!change.pressed) {
+                                    releaseChange = change
+                                    break
+                                }
+                            }
+
+                            val up = releaseChange
+                            if (cancelled || exceededTouchSlop || up == null) {
+                                return@awaitEachGesture
+                            }
                             val upPosition = up.position
 
-                            val isTap =
-                                (upTime - downTime) < 500 &&
-                                    (upPosition - downPosition).getDistance() < 10f
-
-                            if (!isTap) return@awaitEachGesture
-
                             var clickedLink = false
+                            var cellY = 0f
                             outer@ for (rowIndex in renderLayout.cells.indices) {
-                                var cellY = 0f
-                                for (r in 0 until rowIndex) {
-                                    cellY += renderLayout.rowHeightsPx[r]
-                                }
+                                var cellX = 0f
                                 for (colIndex in renderLayout.cells[rowIndex].indices) {
-                                    var cellX = 0f
-                                    for (c in 0 until colIndex) {
-                                        cellX += renderLayout.columnWidthsPx[c]
-                                    }
                                     val screenX = cellX - scrollOffsetPx
                                     val cellWidth = renderLayout.columnWidthsPx[colIndex].toFloat()
                                     val cellHeight = renderLayout.rowHeightsPx[rowIndex].toFloat()
@@ -297,7 +325,12 @@ fun EnhancedTableBlock(
                                                 upPosition.x - screenX - cellHorizontalPaddingPx
                                             val relativeY =
                                                 upPosition.y - cellY - cellVerticalPaddingPx
-                                            if (relativeX >= 0f && relativeY >= 0f) {
+                                            if (
+                                                relativeX >= 0f &&
+                                                relativeX <= cell.layout.width.toFloat() &&
+                                                relativeY >= 0f &&
+                                                relativeY < cell.layout.height.toFloat()
+                                            ) {
                                                 val line =
                                                     cell.layout.getLineForVertical(relativeY.toInt())
                                                 val offset =
@@ -305,14 +338,16 @@ fun EnhancedTableBlock(
                                                 val spans =
                                                     text.getSpans(offset, offset, URLSpan::class.java)
                                                 spans.firstOrNull()?.let { span ->
-                                                    onLinkClick?.invoke(span.url)
+                                                    onLinkClick(span.url)
                                                     clickedLink = true
                                                 }
                                             }
                                         }
                                         break@outer
                                     }
+                                    cellX += cellWidth
                                 }
+                                cellY += renderLayout.rowHeightsPx[rowIndex]
                             }
                             if (clickedLink) {
                                 up.consume()
