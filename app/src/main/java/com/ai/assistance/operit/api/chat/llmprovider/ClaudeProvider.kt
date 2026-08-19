@@ -10,7 +10,6 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -42,7 +41,7 @@ import org.json.JSONObject
 internal fun shouldPropagateClaudeCancellation(isManuallyCancelled: Boolean): Boolean =
     isManuallyCancelled
 
-class ClaudeProvider(
+open class ClaudeProvider(
     private val apiEndpoint: String,
     private val apiKeyProvider: ApiKeyProvider,
     private val modelName: String,
@@ -1044,10 +1043,8 @@ class ClaudeProvider(
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
 
-        val isOpenCode = OpenCodeReasoningParameters.isMarked(modelParameters)
-
         // 添加已启用的模型参数
-        addParameters(jsonObject, modelParameters, allowOpenCodeThinking = isOpenCode)
+        addParameters(jsonObject, modelParameters)
 
         val maxTokensFromParams = modelParameters
             .firstOrNull { it.apiName == "max_tokens" }
@@ -1080,7 +1077,7 @@ class ClaudeProvider(
             jsonObject.put("system", systemBlocks)
         }
 
-        if (enableThinking && !isOpenCode) {
+        if (enableThinking) {
             // 添加extended thinking支持
             val format = getThinkingFormat()
             when (format) {
@@ -1262,13 +1259,9 @@ class ClaudeProvider(
     }
 
     // 添加模型参数
-    private fun addParameters(
-        jsonObject: JSONObject,
-        modelParameters: List<ModelParameter<*>>,
-        allowOpenCodeThinking: Boolean = false
-    ) {
+    protected open fun addParameters(jsonObject: JSONObject, modelParameters: List<ModelParameter<*>>) {
         for (param in modelParameters) {
-            if (param.isEnabled && !OpenCodeReasoningParameters.isInternal(param)) {
+            if (param.isEnabled) {
                 when (param.apiName) {
                     "temperature" ->
                             jsonObject.put("temperature", (param.currentValue as Number).toFloat())
@@ -1290,40 +1283,10 @@ class ClaudeProvider(
                             jsonObject.put("stop_sequences", stopArray)
                         }
                     }
-                    // OpenCode supplies these fields as request-level variant bodies.
                     "thinking",
                     "budget_tokens",
                     "output_config" -> {
-                        if (allowOpenCodeThinking) {
-                            when (param.valueType) {
-                                com.ai.assistance.operit.data.model.ParameterValueType.INT ->
-                                    jsonObject.put(param.apiName, param.currentValue as Int)
-                                com.ai.assistance.operit.data.model.ParameterValueType.FLOAT ->
-                                    jsonObject.put(param.apiName, param.currentValue as Float)
-                                com.ai.assistance.operit.data.model.ParameterValueType.STRING -> {
-                                    val raw = param.currentValue.toString().trim()
-                                    val parsed = runCatching {
-                                        if (raw.startsWith("{")) JSONObject(raw)
-                                        else if (raw.startsWith("[")) JSONArray(raw)
-                                        else null
-                                    }.getOrNull()
-                                    jsonObject.put(param.apiName, parsed ?: raw)
-                                }
-                                com.ai.assistance.operit.data.model.ParameterValueType.BOOLEAN ->
-                                    jsonObject.put(param.apiName, param.currentValue as Boolean)
-                                com.ai.assistance.operit.data.model.ParameterValueType.OBJECT -> {
-                                    val raw = param.currentValue.toString().trim()
-                                    val parsed: Any? = runCatching {
-                                        when {
-                                            raw.startsWith("{") -> JSONObject(raw)
-                                            raw.startsWith("[") -> JSONArray(raw)
-                                            else -> null
-                                        }
-                                    }.getOrNull()
-                                    jsonObject.put(param.apiName, parsed ?: raw)
-                                }
-                            }
-                        }
+                        // 忽略，在特定部分处理
                     }
                     else -> {
                         // 添加其他Claude特定参数

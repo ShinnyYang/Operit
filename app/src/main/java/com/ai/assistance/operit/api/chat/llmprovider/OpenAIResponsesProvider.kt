@@ -68,12 +68,7 @@ class OpenAIResponsesProvider(
         )
         val jsonObject = JSONObject(baseRequestBodyJson)
 
-        applyResponsesReasoningEffort(
-            context = context,
-            requestJson = jsonObject,
-            enableThinking = enableThinking,
-            allowAutomatic = !OpenCodeReasoningParameters.isMarked(modelParameters)
-        )
+        applyResponsesReasoningEffort(context, jsonObject, enableThinking)
 
         val logJson = JSONObject(jsonObject.toString())
         if (logJson.has("tools")) {
@@ -111,12 +106,8 @@ class OpenAIResponsesProvider(
     private fun applyResponsesReasoningEffort(
         context: Context,
         requestJson: JSONObject,
-        enableThinking: Boolean,
-        allowAutomatic: Boolean
+        enableThinking: Boolean
     ) {
-        if (!allowAutomatic) {
-            return
-        }
         val reasoningObject = requestJson.optJSONObject("reasoning")
 
         if (!enableThinking && reasoningObject == null) {

@@ -572,22 +572,16 @@ open class OpenAIProvider(
             return createJsonRequestBody(jsonString)
         }
         val requestJson = JSONObject(jsonString)
-        applyOpenAiChatReasoning(
-            context = context,
-            requestJson = requestJson,
-            enableThinking = enableThinking,
-            allowAutomatic = !OpenCodeReasoningParameters.isMarked(modelParameters)
-        )
+        applyOpenAiChatReasoning(context, requestJson, enableThinking)
         return createJsonRequestBody(requestJson.toString())
     }
 
     private fun applyOpenAiChatReasoning(
         context: Context,
         requestJson: JSONObject,
-        enableThinking: Boolean,
-        allowAutomatic: Boolean
+        enableThinking: Boolean
     ) {
-        if (!supportsOpenAiChatReasoningEffort() || !allowAutomatic) {
+        if (!supportsOpenAiChatReasoningEffort()) {
             return
         }
 
@@ -661,7 +655,7 @@ open class OpenAIProvider(
 
         // 添加已启用的模型参数
         for (param in modelParameters) {
-            if (param.isEnabled && !OpenCodeReasoningParameters.isInternal(param)) {
+            if (param.isEnabled) {
                 val mappedApiName =
                     if (useResponsesApi) {
                         OpenAIResponsesPayloadAdapter.mapParameterNameForResponses(param.apiName)
