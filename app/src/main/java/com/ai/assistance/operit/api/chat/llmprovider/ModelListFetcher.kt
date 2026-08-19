@@ -105,6 +105,7 @@ object ModelListFetcher {
                     ApiProviderType.ZHIPU -> "${extractBaseUrl(apiEndpoint)}/v4/models"
                     ApiProviderType.DEEPSEEK -> "${extractBaseUrl(apiEndpoint)}/v1/models"
                     ApiProviderType.OPENROUTER -> "${extractBaseUrl(apiEndpoint)}/v1/models"
+                    ApiProviderType.OPENCODE -> OpenCodeRouting.modelsEndpoint(apiEndpoint)
                     ApiProviderType.FOUR_ROUTER -> "${extractBaseUrl(apiEndpoint)}/v1/models"
                     ApiProviderType.NOUS_PORTAL -> "${extractBaseUrl(apiEndpoint)}/v1/models"
                     ApiProviderType.MOONSHOT -> "${extractBaseUrl(apiEndpoint)}/v1/models"
@@ -357,8 +358,9 @@ object ModelListFetcher {
                                     ApiProviderType.DOUBAO,
                                     ApiProviderType.NVIDIA,
                                     ApiProviderType.BAICHUAN,
-                                    ApiProviderType.OPENROUTER,
-                                    ApiProviderType.FOUR_ROUTER,
+                                     ApiProviderType.OPENROUTER,
+                                     ApiProviderType.OPENCODE,
+                                     ApiProviderType.FOUR_ROUTER,
                                     ApiProviderType.NOUS_PORTAL,
                                     ApiProviderType.INFINIAI,
                                     ApiProviderType.ALIPAY_BAILING,

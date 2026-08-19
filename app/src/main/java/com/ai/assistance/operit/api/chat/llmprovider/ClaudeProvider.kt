@@ -1044,8 +1044,10 @@ class ClaudeProvider(
         jsonObject.put("model", modelName)
         jsonObject.put("stream", stream)
 
+        val isOpenCode = OpenCodeReasoningParameters.isMarked(modelParameters)
+
         // 添加已启用的模型参数
-        addParameters(jsonObject, modelParameters)
+        addParameters(jsonObject, modelParameters, allowOpenCodeThinking = isOpenCode)
 
         val maxTokensFromParams = modelParameters
             .firstOrNull { it.apiName == "max_tokens" }
@@ -1078,8 +1080,8 @@ class ClaudeProvider(
             jsonObject.put("system", systemBlocks)
         }
 
-        // 添加extended thinking支持
-        if (enableThinking) {
+        if (enableThinking && !isOpenCode) {
+            // 添加extended thinking支持
             val format = getThinkingFormat()
             when (format) {
                 ThinkingFormat.ADAPTIVE -> {
@@ -1259,18 +1261,14 @@ class ClaudeProvider(
         )
     }
 
-    private fun mapThinkingQualityToEffort(qualityLevel: Int): String =
-        listOf("low", "medium", "high", "max", "max")[
-            qualityLevel.coerceIn(
-                ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-                ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-            ) - 1
-        ]
-
     // 添加模型参数
-    private fun addParameters(jsonObject: JSONObject, modelParameters: List<ModelParameter<*>>) {
+    private fun addParameters(
+        jsonObject: JSONObject,
+        modelParameters: List<ModelParameter<*>>,
+        allowOpenCodeThinking: Boolean = false
+    ) {
         for (param in modelParameters) {
-            if (param.isEnabled) {
+            if (param.isEnabled && !OpenCodeReasoningParameters.isInternal(param)) {
                 when (param.apiName) {
                     "temperature" ->
                             jsonObject.put("temperature", (param.currentValue as Number).toFloat())
@@ -1292,11 +1290,40 @@ class ClaudeProvider(
                             jsonObject.put("stop_sequences", stopArray)
                         }
                     }
-                    // 忽略thinking相关参数，因为它们会在单独的部分处理
+                    // OpenCode supplies these fields as request-level variant bodies.
                     "thinking",
                     "budget_tokens",
                     "output_config" -> {
-                        // 忽略，在特定部分处理
+                        if (allowOpenCodeThinking) {
+                            when (param.valueType) {
+                                com.ai.assistance.operit.data.model.ParameterValueType.INT ->
+                                    jsonObject.put(param.apiName, param.currentValue as Int)
+                                com.ai.assistance.operit.data.model.ParameterValueType.FLOAT ->
+                                    jsonObject.put(param.apiName, param.currentValue as Float)
+                                com.ai.assistance.operit.data.model.ParameterValueType.STRING -> {
+                                    val raw = param.currentValue.toString().trim()
+                                    val parsed = runCatching {
+                                        if (raw.startsWith("{")) JSONObject(raw)
+                                        else if (raw.startsWith("[")) JSONArray(raw)
+                                        else null
+                                    }.getOrNull()
+                                    jsonObject.put(param.apiName, parsed ?: raw)
+                                }
+                                com.ai.assistance.operit.data.model.ParameterValueType.BOOLEAN ->
+                                    jsonObject.put(param.apiName, param.currentValue as Boolean)
+                                com.ai.assistance.operit.data.model.ParameterValueType.OBJECT -> {
+                                    val raw = param.currentValue.toString().trim()
+                                    val parsed: Any? = runCatching {
+                                        when {
+                                            raw.startsWith("{") -> JSONObject(raw)
+                                            raw.startsWith("[") -> JSONArray(raw)
+                                            else -> null
+                                        }
+                                    }.getOrNull()
+                                    jsonObject.put(param.apiName, parsed ?: raw)
+                                }
+                            }
+                        }
                     }
                     else -> {
                         // 添加其他Claude特定参数

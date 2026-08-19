@@ -113,6 +113,7 @@ object EndpointCompleter {
 
             ApiProviderType.GOOGLE,
             ApiProviderType.GEMINI_GENERIC,
+            ApiProviderType.OPENCODE,
             ApiProviderType.MNN -> {
                 return endpoint
             }
