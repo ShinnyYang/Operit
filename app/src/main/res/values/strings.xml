@@ -2943,6 +2943,7 @@
     <string name="functional_model_config_desc">为不同功能设置单独的模型配置，使每个功能都能使用最适合的API设置。</string>
     <string name="manage_all_model_configs">管理所有模型配置</string>
     <string name="manage_model_configs_desc">管理模型配置</string>
+    <string name="follow_chat_model_for_all_functions">全部跟随当前对话模型</string>
     <string name="reset_all_functions_to_default">重置所有功能至默认配置</string>
     <string name="current_config_label">当前配置: %1$s</string>
     <string name="default_config">默认配置</string>
@@ -4000,6 +4001,7 @@
     <string name="provider_siliconflow">硅基流动</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (多模型聚合)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_4router">4Router</string>
     <string name="provider_nous_portal">Nous Portal</string>
     <string name="provider_infiniai">无问芯穹</string>
@@ -4011,6 +4013,7 @@
     <string name="provider_llama_cpp">llama.cpp 本地推理</string>
     <string name="provider_ppinfra">派欧云</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAI通用</string>
     <string name="provider_other">其他供应商</string>
     <string name="select_api_provider_title">选择API提供商</string>
@@ -8226,5 +8229,6 @@
     <string name="token_stats_detail_tokens">Token 明细</string>
     <string name="token_stats_detail_close">关闭</string>
     <string name="token_stats_detail_open">点击查看详细数据</string>
+    <string name="markdown_link_not_openable">该链接指向文档内部的引用，无法打开</string>
 
 </resources>

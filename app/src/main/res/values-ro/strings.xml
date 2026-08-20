@@ -2905,6 +2905,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="functional_model_config_desc">Configurarea unor setări separate pentru fiecare funcție, astfel încât fiecare funcție să poată utiliza cea mai potrivităAPISetări.</string>
     <string name="manage_all_model_configs">Gestionarea tuturor configurațiilor modelelor</string>
     <string name="manage_model_configs_desc">Configurarea modelului de gestionare</string>
+    <string name="follow_chat_model_for_all_functions">Sincronizarea tuturor funcțiilor cu modelul de conversație curent</string>
     <string name="reset_all_functions_to_default">Resetarea tuturor funcțiilor la setările implicite</string>
     <string name="current_config_label">Configurația actuală: %1$s</string>
     <string name="default_config">Configurația implicită</string>
@@ -3885,6 +3886,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="provider_siliconflow">Fluxul pe bază de siliciu</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (Agregarea mai multor modele)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_4router">4Router</string>
     <string name="provider_nous_portal">Nous Portal</string>
     <string name="provider_infiniai">Fără întrebări despre cerul stelar</string>
@@ -3896,6 +3898,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="provider_llama_cpp">llama.cpp Raționament local</string>
     <string name="provider_ppinfra">Paiou Cloud</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAIGeneralități</string>
     <string name="provider_other">Alți furnizori</string>
     <string name="select_api_provider_title">AlegereAPIFurnizor</string>
@@ -8002,5 +8005,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="notification_kind_review_rejected">Nu a fost aprobat</string>
     <string name="notification_kind_review_changes">Trebuie modificat</string>
     <string name="notification_kind_entry_curated">Selectat în selecția de top</string>
+    <string name="markdown_link_not_openable">Acest link indică o referință din interiorul documentului și nu poate fi deschis</string>
 
 </resources>

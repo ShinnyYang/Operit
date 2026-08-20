@@ -2510,6 +2510,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="functional_model_config_desc">Defina configurações de modelo separadas para funções diferentes para que cada função possa usar as configurações de API mais apropriadas.</string>
     <string name="manage_all_model_configs">Gerencie todas as configurações do modelo</string>
     <string name="manage_model_configs_desc">Gerenciar configuração do modelo</string>
+    <string name="follow_chat_model_for_all_functions">Sincronizar todas as funções com o modelo de conversa atual</string>
     <string name="reset_all_functions_to_default">Redefinir todas as funções para a configuração padrão</string>
     <string name="current_config_label">Configuração atual: %1$s</string>
     <string name="default_config">Configuração padrão</string>
@@ -3370,6 +3371,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="provider_siliconflow">fluxo baseado em silício</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (agregação multimodelo)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_infiniai">Wuwen Xinqiong</string>
     <string name="provider_alipay_bailing">Alipay Bailing modelo grande</string>
     <string name="provider_lmstudio">Estúdio LM (modelo local)</string>
@@ -3379,6 +3381,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="provider_llama_cpp">inferência local llama.cpp</string>
     <string name="provider_ppinfra">Pai Ouyun</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAI Geral</string>
     <string name="provider_other">Outros fornecedores</string>
     <string name="select_api_provider_title">Escolha o provedor de API</string>
@@ -7246,4 +7249,5 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="artifact_publish_load_github_releases">Carregar Releases</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Ativo do Release</string>
+    <string name="markdown_link_not_openable">Este link aponta para uma referência dentro do documento e não pode ser aberto</string>
 </resources>

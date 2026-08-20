@@ -2698,6 +2698,7 @@
     <string name="functional_model_config_desc">Tetapkan konfigurasi model berasingan untuk fungsi yang berbeza, membolehkan setiap fungsi menggunakan tetapan API yang paling sesuai.</string>
     <string name="manage_all_model_configs">Urus semua konfigurasi model</string>
     <string name="manage_model_configs_desc">Urus konfigurasi model</string>
+    <string name="follow_chat_model_for_all_functions">Samakan semua fungsi dengan model sembang semasa</string>
     <string name="reset_all_functions_to_default">Tetapkan semula semua fungsi kepada konfigurasi lalai</string>
     <string name="current_config_label">Konfigurasi semasa: %1$s</string>
     <string name="default_config">Konfigurasi lalai</string>
@@ -3280,6 +3281,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="provider_siliconflow">SiliconFlow</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (agregasi pelbagai model)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_infiniai">Infinigence-AI</string>
     <string name="provider_alipay_bailing">Model Bailing Alipay</string>
     <string name="provider_lmstudio">LM Studio (model tempatan)</string>
@@ -3537,6 +3539,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="provider_llama_cpp">Inferens Tempatan llama.cpp</string>
     <string name="provider_ppinfra">Pai Ou Yun</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAI Generik</string>
     <string name="provider_other">Pembekal Lain</string>
     <string name="select_api_provider_title">Pilih Pembekal API</string>
@@ -7405,4 +7408,5 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="artifact_publish_load_github_releases">Muat Siaran</string>
     <string name="artifact_publish_github_release">Siaran GitHub</string>
     <string name="artifact_publish_github_release_asset">Aset Siaran</string>
+    <string name="markdown_link_not_openable">Pautan ini menghala ke rujukan dalam dokumen dan tidak boleh dibuka</string>
 </resources>

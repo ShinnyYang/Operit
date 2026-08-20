@@ -82,7 +82,7 @@ internal data class GeminiThinkingConfig(
 }
 
 /** Google Gemini API的实现 支持标准Gemini接口流式传输 */
-class GeminiProvider(
+open class GeminiProvider(
     private val apiEndpoint: String,
     private val apiKeyProvider: ApiKeyProvider,
     private val modelName: String,
@@ -1276,7 +1276,6 @@ class GeminiProvider(
             preserveThinkInHistory: Boolean = false
     ): RequestBody {
         val json = JSONObject()
-
         // 添加工具定义
         val tools = JSONArray()
         
@@ -1397,7 +1396,7 @@ class GeminiProvider(
     }
 
     /** 创建HTTP请求 */
-    private suspend fun createRequest(
+    protected open suspend fun createRequest(
             context: Context,
             requestBody: RequestBody,
             isStreaming: Boolean,
@@ -1421,11 +1420,11 @@ class GeminiProvider(
         // 添加API密钥
         val currentApiKey = apiKeyProvider.getApiKey()
         val finalUrl =
-                if (requestUrl.contains("?")) {
-                    "$requestUrl&key=$currentApiKey"
-                } else {
-                    "$requestUrl?key=$currentApiKey"
-                }
+            if (requestUrl.contains("?")) {
+                "$requestUrl&key=$currentApiKey"
+            } else {
+                "$requestUrl?key=$currentApiKey"
+            }
 
         val request = builder.url(finalUrl)
                 .post(requestBody)

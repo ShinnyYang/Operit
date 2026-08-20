@@ -2622,6 +2622,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="functional_model_config_desc">Atur konfigurasi model terpisah untuk fungsi yang berbeda, sehingga setiap fungsi dapat menggunakan pengaturan API yang paling sesuai.</string>
     <string name="manage_all_model_configs">Kelola semua konfigurasi model</string>
     <string name="manage_model_configs_desc">Kelola konfigurasi model</string>
+    <string name="follow_chat_model_for_all_functions">Samakan semua fungsi dengan model obrolan saat ini</string>
     <string name="reset_all_functions_to_default">Setel ulang semua fungsi ke konfigurasi default</string>
 
     <string name="speech_services_openai_models_fetch_failed">Gagal mengambil daftar model: %1$s</string>
@@ -3280,6 +3281,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="provider_siliconflow">SiliconFlow</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (Agregasi Multi-Model)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_infiniai">Infiniai</string>
     <string name="provider_alipay_bailing">Model Bailing Alipay</string>
     <string name="provider_lmstudio">LM Studio (model lokal)</string>
@@ -3289,6 +3291,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="provider_llama_cpp">Inferensi Lokal llama.cpp</string>
     <string name="provider_ppinfra">Paiouyun</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAI Umum</string>
     <string name="provider_other">Penyedia Lainnya</string>
     <string name="select_api_provider_title">Pilih Penyedia API</string>
@@ -7408,4 +7411,5 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="artifact_publish_load_github_releases">Muat Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Aset Release</string>
+    <string name="markdown_link_not_openable">Tautan ini menunjuk ke referensi di dalam dokumen dan tidak dapat dibuka</string>
 </resources>

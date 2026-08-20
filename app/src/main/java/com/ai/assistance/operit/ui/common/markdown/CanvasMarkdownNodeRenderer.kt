@@ -614,7 +614,8 @@ private fun renderNodeContent(
             EnhancedTableBlock(
                 tableContent = content,
                 textColor = textColor,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                onLinkClick = onLinkClick,
             )
         }
         

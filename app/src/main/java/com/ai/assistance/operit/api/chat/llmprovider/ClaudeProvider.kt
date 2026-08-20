@@ -10,7 +10,6 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -42,7 +41,7 @@ import org.json.JSONObject
 internal fun shouldPropagateClaudeCancellation(isManuallyCancelled: Boolean): Boolean =
     isManuallyCancelled
 
-class ClaudeProvider(
+open class ClaudeProvider(
     private val apiEndpoint: String,
     private val apiKeyProvider: ApiKeyProvider,
     private val modelName: String,
@@ -1113,8 +1112,8 @@ class ClaudeProvider(
             jsonObject.put("system", systemBlocks)
         }
 
-        // 添加extended thinking支持
         if (enableThinking) {
+            // 添加extended thinking支持
             val format = getThinkingFormat()
             when (format) {
                 ThinkingFormat.ADAPTIVE -> {
@@ -1294,16 +1293,8 @@ class ClaudeProvider(
         )
     }
 
-    private fun mapThinkingQualityToEffort(qualityLevel: Int): String =
-        listOf("low", "medium", "high", "max", "max")[
-            qualityLevel.coerceIn(
-                ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-                ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-            ) - 1
-        ]
-
     // 添加模型参数
-    private fun addParameters(jsonObject: JSONObject, modelParameters: List<ModelParameter<*>>) {
+    protected open fun addParameters(jsonObject: JSONObject, modelParameters: List<ModelParameter<*>>) {
         for (param in modelParameters) {
             if (param.isEnabled) {
                 when (param.apiName) {
@@ -1327,7 +1318,6 @@ class ClaudeProvider(
                             jsonObject.put("stop_sequences", stopArray)
                         }
                     }
-                    // 忽略thinking相关参数，因为它们会在单独的部分处理
                     "thinking",
                     "budget_tokens",
                     "output_config" -> {

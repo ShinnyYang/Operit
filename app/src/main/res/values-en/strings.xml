@@ -2862,6 +2862,7 @@
     <string name="functional_model_config_desc">Set separate model configurations for different functions, allowing each function to use the most suitable API settings.</string>
     <string name="manage_all_model_configs">Manage All Model Configurations</string>
     <string name="manage_model_configs_desc">Manage Model Configurations</string>
+    <string name="follow_chat_model_for_all_functions">Sync All Functions to Current Chat Model</string>
     <string name="reset_all_functions_to_default">Reset All Functions to Default Configuration</string>
     <string name="current_config_label">Current Configuration: %1$s</string>
     <string name="default_config">Default Configuration</string>
@@ -4046,6 +4047,7 @@
     <string name="provider_siliconflow">SiliconFlow</string>
     <string name="provider_iflow">iFlow</string>
     <string name="provider_openrouter">OpenRouter (Multi-model Hub)</string>
+    <string name="provider_opencode">OpenCode</string>
     <string name="provider_4router">4Router</string>
     <string name="provider_nous_portal">Nous Portal</string>
     <string name="provider_infiniai">InfiniAI</string>
@@ -4055,6 +4057,7 @@
     <string name="provider_openai_local">OpenAI-Compatible (Local Model)</string>
     <string name="provider_ppinfra">PPInfra Cloud</string>
     <string name="provider_novita">Novita AI</string>
+    <string name="provider_minimax">MiniMax</string>
     <string name="provider_openai_generic">OpenAI (Generic)</string>
     <string name="provider_other">Other Providers</string>
     <string name="provider_doubao">Doubao</string>
@@ -8237,5 +8240,6 @@
     <string name="token_stats_detail_tokens">Token breakdown</string>
     <string name="token_stats_detail_close">Close</string>
     <string name="token_stats_detail_open">Tap to view details</string>
+    <string name="markdown_link_not_openable">This link points to a reference inside the document and cannot be opened</string>
 
 </resources>

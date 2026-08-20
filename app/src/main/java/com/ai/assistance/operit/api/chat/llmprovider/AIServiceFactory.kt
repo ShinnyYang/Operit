@@ -278,7 +278,6 @@ object AIServiceFactory {
             configId = config.id,
         )
     }
-
     private fun buildService(
         config: ModelConfigData,
         modelConfigManager: ModelConfigManager,
@@ -314,7 +313,7 @@ object AIServiceFactory {
         val supportsVideo = config.enableDirectVideoProcessing
         // Tool Call支持标志
         val enableToolCall = config.enableToolCall
-        
+
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
             ApiProviderType.OPENAI ->
@@ -469,6 +468,7 @@ object AIServiceFactory {
             ApiProviderType.ALIPAY_BAILING,
             ApiProviderType.PPINFRA,
             ApiProviderType.NOVITA,
+            ApiProviderType.MINIMAX,
             ApiProviderType.OTHER ->
                 OpenAIProvider(
                     apiEndpoint = config.apiEndpoint,
@@ -543,6 +543,19 @@ object AIServiceFactory {
                     client = httpClient,
                     customHeaders = customHeaders,
                     qwenProviderType = providerType,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall
+                )
+            ApiProviderType.OPENCODE ->
+                OpenCodeProvider.create(
+                    config = config,
+                    modelConfigManager = modelConfigManager,
+                    context = context,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    apiKeyProvider = apiKeyProvider,
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,

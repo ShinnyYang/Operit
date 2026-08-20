@@ -1075,6 +1075,7 @@ private fun getBuiltInProviderDisplayName(provider: ApiProviderType, context: an
         ApiProviderType.SILICONFLOW -> context.getString(R.string.provider_siliconflow)
         ApiProviderType.IFLOW -> context.getString(R.string.provider_iflow)
         ApiProviderType.OPENROUTER -> context.getString(R.string.provider_openrouter)
+        ApiProviderType.OPENCODE -> context.getString(R.string.provider_opencode)
         ApiProviderType.FOUR_ROUTER -> context.getString(R.string.provider_4router)
         ApiProviderType.NOUS_PORTAL -> context.getString(R.string.provider_nous_portal)
         ApiProviderType.INFINIAI -> context.getString(R.string.provider_infiniai)
@@ -1088,6 +1089,7 @@ private fun getBuiltInProviderDisplayName(provider: ApiProviderType, context: an
         ApiProviderType.LLAMA_CPP -> context.getString(R.string.provider_llama_cpp)
         ApiProviderType.PPINFRA -> context.getString(R.string.provider_ppinfra)
         ApiProviderType.NOVITA -> context.getString(R.string.provider_novita)
+        ApiProviderType.MINIMAX -> context.getString(R.string.provider_minimax)
         ApiProviderType.OTHER -> context.getString(R.string.provider_other)
     }
 }
@@ -1752,6 +1754,7 @@ private fun getProviderColor(providerTypeId: String): androidx.compose.ui.graphi
         ApiProviderType.SILICONFLOW -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.6f)
         ApiProviderType.IFLOW -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.55f)
         ApiProviderType.OPENROUTER -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.6f)
+        ApiProviderType.OPENCODE -> MaterialTheme.colorScheme.primary.copy(alpha = 0.68f)
         ApiProviderType.FOUR_ROUTER -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.56f)
         ApiProviderType.NOUS_PORTAL -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.52f)
         ApiProviderType.INFINIAI -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
@@ -1765,6 +1768,7 @@ private fun getProviderColor(providerTypeId: String): androidx.compose.ui.graphi
         ApiProviderType.LLAMA_CPP -> MaterialTheme.colorScheme.secondary.copy(alpha = 0.9f)
         ApiProviderType.PPINFRA -> MaterialTheme.colorScheme.primaryContainer
         ApiProviderType.NOVITA -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.75f)
+        ApiProviderType.MINIMAX -> MaterialTheme.colorScheme.primary.copy(alpha = 0.78f)
         ApiProviderType.OTHER -> MaterialTheme.colorScheme.surfaceVariant
     }
 }
