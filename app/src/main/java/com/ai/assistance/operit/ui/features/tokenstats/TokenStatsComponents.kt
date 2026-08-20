@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.ui.features.tokenstats
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +75,8 @@ import com.ai.assistance.operit.data.stats.TokenStatsTimeRange
 import com.ai.assistance.operit.data.stats.TokenStatsTokenAggregate
 import com.ai.assistance.operit.data.stats.TokenStatsTotals
 import com.ai.assistance.operit.data.stats.TokenStatsTrendBucket
+import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
+import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -967,12 +970,22 @@ private fun TokenStatsConfigurationRow(
                     .background(colors.innerContainer),
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Memory,
-                    contentDescription = null,
-                    tint = colors.cardAccent,
-                    modifier = Modifier.size(18.dp),
-                )
+                val providerLogo = rememberProviderLogoPainter(identity.provider, 20.dp)
+                if (providerLogo != null) {
+                    Image(
+                        painter = providerLogo,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp),
+                        colorFilter = providerLogoColorFilter(),
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Memory,
+                        contentDescription = null,
+                        tint = colors.cardAccent,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(

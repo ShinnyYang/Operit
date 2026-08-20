@@ -77,6 +77,7 @@ import com.ai.assistance.operit.data.model.getValidModelIndex
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.repository.MemoryAutoSaveCandidateRepository
 import com.ai.assistance.operit.ui.common.icons.MaterialIconNameResolver
+import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
 import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import com.ai.assistance.operit.ui.features.chat.components.style.input.common.InputMenuToggleHookParams
 import com.ai.assistance.operit.ui.features.chat.components.style.input.common.InputMenuToggleDefinition
@@ -1617,7 +1618,8 @@ private fun ModelSelectorItem(
                     contentDescription = null,
                     modifier = Modifier
                         .size(16.dp)
-                        .clearAndSetSemantics {}
+                        .clearAndSetSemantics {},
+                    colorFilter = providerLogoColorFilter()
                 )
             } else {
                 Icon(
@@ -1738,7 +1740,8 @@ private fun ModelSelectorItem(
                                     Image(
                                         painter = configProviderLogo,
                                         contentDescription = null,
-                                        modifier = Modifier.size(14.dp)
+                                        modifier = Modifier.size(14.dp),
+                                        colorFilter = providerLogoColorFilter()
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
                                 }

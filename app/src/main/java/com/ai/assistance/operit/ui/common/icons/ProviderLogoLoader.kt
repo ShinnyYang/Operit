@@ -7,8 +7,11 @@ import android.graphics.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.platform.LocalContext
@@ -130,4 +133,15 @@ fun rememberProviderLogoPainter(providerTypeId: String?, size: Dp = 24.dp): Pain
                 }
         }
     return bitmap?.let { BitmapPainter(it) }
+}
+
+/** 深色表面下将黑色品牌素材染亮，浅色模式保留 logo 原色。 */
+@Composable
+fun providerLogoColorFilter(): ColorFilter? {
+    val scheme = MaterialTheme.colorScheme
+    return if (scheme.surface.luminance() < 0.5f) {
+        ColorFilter.tint(scheme.onSurface)
+    } else {
+        null
+    }
 }
