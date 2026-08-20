@@ -2,6 +2,7 @@ package com.ai.assistance.operit.ui.features.chat.components.style.input.classic
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -76,6 +77,7 @@ import com.ai.assistance.operit.data.model.getValidModelIndex
 import com.ai.assistance.operit.data.preferences.UserPreferencesManager
 import com.ai.assistance.operit.data.repository.MemoryAutoSaveCandidateRepository
 import com.ai.assistance.operit.ui.common.icons.MaterialIconNameResolver
+import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import com.ai.assistance.operit.ui.features.chat.components.style.input.common.InputMenuToggleHookParams
 import com.ai.assistance.operit.ui.features.chat.components.style.input.common.InputMenuToggleDefinition
 import com.ai.assistance.operit.ui.features.chat.components.style.input.common.InputMenuTogglePluginRegistry
@@ -1606,14 +1608,27 @@ private fun ModelSelectorItem(
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Outlined.DataObject,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-                modifier = Modifier
-                    .size(16.dp)
-                    .clearAndSetSemantics {}
-            )
+            // 当前配置对应的 Provider Logo（无素材时回退到通用图标）
+            val currentProviderLogo =
+                    rememberProviderLogoPainter(currentConfig?.apiProviderTypeId, 16.dp)
+            if (currentProviderLogo != null) {
+                Image(
+                    painter = currentProviderLogo,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clearAndSetSemantics {}
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Outlined.DataObject,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    modifier = Modifier
+                        .size(16.dp)
+                        .clearAndSetSemantics {}
+                )
+            }
             // 详情按钮（左侧）
             IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
                 Icon(
@@ -1716,6 +1731,17 @@ private fun ModelSelectorItem(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                // 配置对应的 Provider Logo（无素材时跳过）
+                                val configProviderLogo =
+                                        rememberProviderLogoPainter(config.apiProviderTypeId, 14.dp)
+                                if (configProviderLogo != null) {
+                                    Image(
+                                        painter = configProviderLogo,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                }
                                 Text(
                                     text = config.name,
                                         fontWeight =
