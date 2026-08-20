@@ -122,9 +122,11 @@ internal class ToolPkgJsAiProviderService(
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
-        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+        recordTokenUsage: Boolean,
+        onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> = com.ai.assistance.operit.util.stream.stream {
         var hasIntermediateTextChunk = false
+        var hasLegacyUsage = false
         val decoded =
             invokeProviderFunction(
                 functionName = provider.sendMessageFunctionName,
@@ -144,11 +146,10 @@ internal class ToolPkgJsAiProviderService(
                         put("enableRetry", enableRetry)
                     },
                 onIntermediateResult = { intermediateDecoded ->
-                    applyAndForwardUsage(
-                        intermediateDecoded,
-                        onTokensUpdated,
-                        onUsageReported,
-                    )
+                    applyAndForwardUsage(intermediateDecoded, onTokensUpdated, onUsageReported)
+                        ?.let { usage ->
+                            if (!usage.attemptPresent) hasLegacyUsage = true
+                        }
                     extractNonFatalError(intermediateDecoded)?.let { error ->
                         onNonFatalError(error)
                     }
@@ -159,10 +160,8 @@ internal class ToolPkgJsAiProviderService(
                 }
             )
 
-        // 最终结果先 apply/forward usage，再检查致命错误：失败结果里的 usage
-        // 不能丢（与 intermediate 同一通道、同一 attempt 合并语义）；fatal
-        // 抛出后不会执行下方最终 chunk 发射，因此失败结果不产生最终文本。
-        applyAndForwardUsage(decoded, onTokensUpdated, onUsageReported)
+        // 最终结果的 usage 必须和明确的成功完成信号属于同一个 attempt。
+        val finalUsage = applyAndForwardUsage(decoded, onTokensUpdated, onUsageReported)
         ensureNoFatalError(decoded)
         extractNonFatalError(decoded)?.let { error ->
             onNonFatalError(error)
@@ -172,14 +171,11 @@ internal class ToolPkgJsAiProviderService(
                 emit(chunk)
             }
         }
+        val finalAttempt = finalUsage?.attempt ?: extractAttemptNumber(decoded)
+        onUsageFinalized?.invoke(finalAttempt ?: if (hasLegacyUsage) 1 else null)
     }
 
-    override suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
-    ): Result<String> {
-        // 评审 P1-7：中间结果 + 最终结果与普通请求走同一 usage 提取/attempt 转发；
-        // 取消必须原样传播，不能被 runCatching 吞成 Result.failure
+    override suspend fun testConnection(context: Context): Result<String> {
         val decoded =
             try {
                 invokeProviderFunction(
@@ -187,19 +183,10 @@ internal class ToolPkgJsAiProviderService(
                     functionSource = provider.testConnectionFunctionSource,
                     event = TOOLPKG_EVENT_AI_PROVIDER_TEST_CONNECTION,
                     eventPayload = buildBasePayload(context),
-                    onIntermediateResult = { intermediateDecoded ->
-                        extractUsage(intermediateDecoded)?.let { usage ->
-                            forwardUsage(usage, onUsageReported)
-                        }
-                    }
                 )
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e
             }
-        // 失败结果里的 usage 同样先转发（不丢），再走致命检查
-        extractUsage(decoded)?.let { usage ->
-            forwardUsage(usage, onUsageReported)
-        }
         return runCatching {
             ensureNoFatalError(decoded)
             parseConnectionMessage(decoded)
@@ -557,8 +544,8 @@ internal class ToolPkgJsAiProviderService(
     /**
      * 提取 usage。usage 协议（评审 P1-6/P2-1，**不猜测 attempt、不继承全局计数**）：
      * - **新协议**：usage 对象（或顶层）携带 `attempt` / `attemptNumber`
-     *   （provider 内部第几次尝试，从 1 开始）。同 attempt 的多次上报是流式
-     *   部分更新（省略字段保留旧值）；不同 attempt 分别记账，聚合时累加。
+      *   （provider 内部第几次尝试，从 1 开始）。同 attempt 的多次上报是流式
+      *   部分更新（省略字段保留旧值）；统计层仅保留最终成功 attempt 的快照。
      * - **旧协议**：不携带 attempt 字段。语义为**整个逻辑请求的累计快照**
      *   （跨内部重试累计的最终数字），固定按 attempt 1 完整快照记账（后报覆盖
      *   先报，绝不把多个无 attempt 上报误累加）。内部按 attempt 逐次上报的
@@ -571,6 +558,13 @@ internal class ToolPkgJsAiProviderService(
             is ProviderHookValue.ObjectValue -> extractUsageFromJson(decoded.value)
             else -> null
         }
+    }
+
+    private fun extractAttemptNumber(decoded: ProviderHookValue): Int? {
+        val json = (decoded as? ProviderHookValue.ObjectValue)?.value ?: return null
+        val source = json.optJSONObject("usage") ?: json
+        if (!source.has("attempt") && !source.has("attemptNumber")) return null
+        return source.optTokenCountLong("attempt", "attemptNumber")?.coerceAtLeast(1)?.toInt()
     }
 
     private fun extractUsageFromJson(json: JSONObject): TokenUsage? {
@@ -603,16 +597,16 @@ internal class ToolPkgJsAiProviderService(
         decoded: ProviderHookValue,
         onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
-    ) {
-        extractUsage(decoded)?.let { usage ->
-            applyUsage(usage)
-            onTokensUpdated(
-                currentInputTokenCount,
-                currentCachedInputTokenCount,
-                currentOutputTokenCount
-            )
-            forwardUsage(usage, onUsageReported)
-        }
+    ): TokenUsage? {
+        val usage = extractUsage(decoded) ?: return null
+        applyUsage(usage)
+        onTokensUpdated(
+            currentInputTokenCount,
+            currentCachedInputTokenCount,
+            currentOutputTokenCount
+        )
+        forwardUsage(usage, onUsageReported)
+        return usage
     }
 
     /** 只转发规范化 usage（testConnection 等无 UI 计数通道的场景共用）；接收已解析的 usage，避免重复解析。 */

@@ -4,8 +4,7 @@ import com.ai.assistance.operit.data.stats.ProviderUsageNormalizer
 import com.ai.assistance.operit.data.stats.ProviderUsageSnapshot
 import com.ai.assistance.operit.util.exceptions.UserCancellationException
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 
 internal class LocalUsageReporter(
     private val source: String,
@@ -16,30 +15,20 @@ internal class LocalUsageReporter(
     suspend fun report(inputTokens: Long, outputTokens: Long) {
         val callback = onUsageReported ?: return
         if (!reported.compareAndSet(false, true)) return
-        withContext(NonCancellable) {
-            try {
-                callback(
-                    ProviderUsageNormalizer.local(
-                        uncachedInputTokens = inputTokens,
-                        outputTokens = outputTokens,
-                        source = source,
-                    ),
-                    1,
-                )
-            } catch (_: Exception) {
-                // Usage accounting must not replace the generation result or cancellation cause.
-            }
+        try {
+            callback(
+                ProviderUsageNormalizer.local(
+                    uncachedInputTokens = inputTokens,
+                    outputTokens = outputTokens,
+                    source = source,
+                ),
+                1,
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // Usage accounting must not replace a successful generation result.
         }
-    }
-
-    suspend fun <T> runReportingFinally(
-        inputTokens: () -> Long,
-        outputTokens: () -> Long,
-        block: suspend () -> T,
-    ): T = try {
-        block()
-    } finally {
-        report(inputTokens(), outputTokens())
     }
 }
 
@@ -47,11 +36,10 @@ internal class LocalUsageReporter(
  * 本地 provider（Llama/MNN）生成结束的统一顺序契约（评审 P2-3 修复）。
  *
  * 顺序即契约，供两个 provider 共用并单独测试：
- * 1. **取消优先**：native 生成返回后，先判定 [cancelled]——取消时先上报已实测的
- *    usage，再抛 [UserCancellationException]，**绝不**转换/emit 不完整的工具 XML；
- * 2. **失败次之**：未取消但 [success] = false 时，先上报已实测 usage，再由
- *    [failWith] 终止（保留用户可见错误文本并以失败异常结束），失败路径同样
- *    **绝不**转换/emit 工具缓冲；
+ * 1. **取消优先**：native 生成返回后，先判定 [cancelled]——取消时直接抛
+ *    [UserCancellationException]，**绝不**转换/emit 不完整的工具 XML 或上报 usage；
+ * 2. **失败次之**：未取消但 [success] = false 时，由 [failWith] 终止（保留用户可见
+ *    错误文本并以失败异常结束），失败路径同样**绝不**转换/emit 工具缓冲或上报 usage；
  * 3. **成功最后**：仅成功路径（[success] = true）由 [emitToolResult] 处理工具
  *    缓冲（解析 + emit），随后上报 usage。
  *
@@ -81,13 +69,11 @@ internal object LocalGenerationEnd {
         failWith: suspend () -> Unit,
     ) {
         if (cancelled) {
-            // 取消优先：先保留已实测 usage，再以取消异常结束——不 emit 工具缓冲
-            usageReporter.report(inputTokens, outputTokens)
+            // 取消绝不生成账本 usage，也不 emit 不完整的工具缓冲。
             throw UserCancellationException(cancelMessage)
         }
         if (!success) {
-            // 失败次之：不转换/emit 不完整的工具缓冲，先上报已实测 usage 再终止
-            usageReporter.report(inputTokens, outputTokens)
+            // 失败绝不生成账本 usage，也不转换/emit 不完整的工具缓冲。
             failWith()
             return
         }

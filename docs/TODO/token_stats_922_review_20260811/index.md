@@ -36,7 +36,7 @@ the statistics domain remains self-contained after the schema migration.
   totals. Copy messages and all message variants as recoverable historical
   conversation history without adding them to lifetime totals again.
 - Keep existing `chats` and `messages` token columns unchanged.
-- Query totals, trends, categories, statuses, performance, and activity with SQL.
+- Query totals, trends, categories, statuses, and activity with SQL.
 - Store billing mode and price overrides in structured Room rows.
 - Store currency, exchange rate, time selection, and `importedAtMs` in the dedicated
   Preferences DataStore.

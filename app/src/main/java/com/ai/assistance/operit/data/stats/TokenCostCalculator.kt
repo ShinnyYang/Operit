@@ -20,9 +20,9 @@ object TokenCostCalculator {
             nativeAmount = pricing.pricePerRequest * row.requests
             unknown =
                 if (pricing.pricePerRequest > 0.0) {
-                    (row.usageRows - row.requestCountKnown).coerceAtLeast(0L)
+                    0L
                 } else {
-                    row.usageRows
+                    row.requests
                 }
         } else {
             var amount = 0.0
@@ -30,7 +30,7 @@ object TokenCostCalculator {
             fun add(tokens: Long, known: Long, price: Double) {
                 if (price > 0.0) {
                     amount += tokens.toDouble() * price / 1_000_000.0
-                    unknownRequests = maxOf(unknownRequests, row.usageRows - known)
+                    unknownRequests = maxOf(unknownRequests, row.requests - known)
                 }
             }
             if (
@@ -52,7 +52,7 @@ object TokenCostCalculator {
                     pricing.cacheWritePricePerMillion <= 0.0 &&
                     pricing.outputPricePerMillion <= 0.0
                 ) {
-                    row.usageRows
+                    row.requests
                 } else {
                     unknownRequests
                 }
@@ -67,7 +67,7 @@ object TokenCostCalculator {
             currency = targetCurrency,
             knownAmount = converted,
             unknownContributionCount = unknown,
-            totalContributionCount = row.usageRows,
+            totalContributionCount = row.requests,
             rateUsed = usdToCnyRate,
             originalCurrencyAmounts =
                 if (nativeAmount > 0.0) mapOf(pricing.currency to nativeAmount) else emptyMap(),

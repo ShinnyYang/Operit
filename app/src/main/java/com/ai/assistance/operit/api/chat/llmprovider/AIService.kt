@@ -6,7 +6,6 @@ import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.stats.ProviderUsageSnapshot
-import com.ai.assistance.operit.data.stats.TokenStatCategory
 import com.ai.assistance.operit.util.stream.Stream
 
 /** AI服务接口，定义与不同AI提供商进行交互的标准方法 */
@@ -50,10 +49,12 @@ interface AIService {
      * @param onUsageReported 规范化 usage 上报回调（统计账本通道；只在解析到
      *   provider 真实 usage/本地实测计数时回调，估算值不上报；可被多次调用，
      *   第二次参数为 provider 内部尝试序号 attempt（从 1 开始，内部重试递增），
-     *   记录方按 attempt 聚合：同一 attempt 取最后一次，不同 attempt 累加）
+     *   同一 attempt 的后续上报覆盖先前部分上报）
+     * @param onUsageFinalized 仅在请求正常完成时回调最终成功 attempt。无法确定 attempt
+     *   时传 null，统计层不得将较早 attempt 的 usage 当作成功结果。
      * @param onNonFatalError 非致命错误回调
      * @param enableRetry 是否允许内部重试
-     * @param statsCategory 业务分类（统计账本）；null 表示调用方未声明（按 OTHER 记录）
+     * @param recordTokenUsage 是否将成功的真实 usage 写入 Token 统计；测试和探测调用传 false
      * @return 流式响应内容的Stream（无论stream参数如何，都返回Stream）
      */
     suspend fun sendMessage(
@@ -68,21 +69,17 @@ interface AIService {
             onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
             onNonFatalError: suspend (error: String) -> Unit = {},
             enableRetry: Boolean = true,
-            statsCategory: TokenStatCategory? = null
+            recordTokenUsage: Boolean = true,
+            onUsageFinalized: (suspend (attempt: Int?) -> Unit)? = null,
     ): Stream<String>
 
     /**
      * 测试与AI服务的连接
      *
      * @param context Android Context
-     * @param onUsageReported 与 [sendMessage] 相同的 usage 上报回调；实现内部
-     *   通过 sendMessage 发起测试模型调用时必须透传，使探测用量进入统计账本。
      * @return 成功时返回成功信息，失败时返回包含错误的Result
      */
-    suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)? = null
-    ): Result<String>
+    suspend fun testConnection(context: Context): Result<String>
 
     /**
      * 精确计算下一次请求的输入Token数量

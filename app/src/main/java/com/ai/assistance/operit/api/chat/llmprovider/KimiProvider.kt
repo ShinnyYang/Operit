@@ -435,7 +435,8 @@ open class KimiProvider(
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
-        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+        recordTokenUsage: Boolean,
+        onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
         return super.sendMessage(
             context,
@@ -449,7 +450,8 @@ open class KimiProvider(
             onUsageReported,
             onNonFatalError,
             enableRetry,
-            statsCategory
+            recordTokenUsage,
+            onUsageFinalized,
         )
     }
 }

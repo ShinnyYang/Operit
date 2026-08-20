@@ -3146,7 +3146,6 @@
     <string name="settings_pricing_description_with_currency">백만 토큰당 가격 설정(%1$s)</string>
     <string name="settings_token_price_description_with_currency">API 요청당 가격 설정(%1$s)</string>
     <string name="settings_exchange_rate_title">환율</string>
-    <string name="settings_exchange_rate_subtitle">USD 가격 모델은 이 환율을 사용하여 CNY 기준 총비용으로 환산됩니다.</string>
     <string name="settings_usd_to_cny_rate_label">USD → CNY 환율</string>
     <string name="settings_rate_applied_hint">총 비용은 1 USD = %1$.4f CNY 환율로 변환됩니다.</string>
     <string name="settings_input_price_per_million">입력 가격(백만 토큰당)</string>

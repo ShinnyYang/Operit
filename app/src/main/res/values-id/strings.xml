@@ -3158,7 +3158,6 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="settings_pricing_description_with_currency">Atur harga per juta Token (%1$s)</string>
     <string name="settings_token_price_description_with_currency">Atur harga per permintaan API (%1$s)</string>
     <string name="settings_exchange_rate_title">Pengaturan Nilai Tukar</string>
-    <string name="settings_exchange_rate_subtitle">Model penagihan USD akan dikonversi ke total biaya RMB menggunakan nilai tukar ini</string>
     <string name="settings_usd_to_cny_rate_label">Nilai Tukar USD → CNY</string>
     <string name="settings_rate_applied_hint">Total biaya dikonversi dengan 1 USD = %1$.4f CNY</string>
     <string name="settings_input_price_per_million">Harga Input (per juta Token)</string>

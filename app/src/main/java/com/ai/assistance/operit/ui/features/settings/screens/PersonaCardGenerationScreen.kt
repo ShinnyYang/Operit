@@ -379,7 +379,6 @@ fun PersonaCardGenerationScreen(
         val stream = aiService.sendMessage(
             context = context,
             chatHistory = (fullHistory + ("user" to prompt)).toPromptTurns(),
-            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CHARACTER_GENERATION
         )
         Pair(stream, aiService)
     }

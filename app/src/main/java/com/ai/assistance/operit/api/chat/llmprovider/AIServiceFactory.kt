@@ -258,8 +258,8 @@ object AIServiceFactory {
      * 创建AI服务实例（统一统计记录边界）。
      *
      * 所有服务（包括连接测试器直接创建的探测服务）都在这里统一包装
-     * [TokenTrackingAIService]：任何 sendMessage/testConnection 调用都会落入
-     * 统计账本，业务分类由调用方通过 sendMessage 的 statsCategory 声明。
+      * [TokenTrackingAIService]：正式 sendMessage 调用完成且提供真实 usage 时才会
+      * 写入统计账本；测试和探测调用显式跳过记录。
      *
      * @param config 模型配置数据
      * @param modelConfigManager 模型配置管理器，用于多API Key模式
