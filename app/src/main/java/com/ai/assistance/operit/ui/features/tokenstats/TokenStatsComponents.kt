@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
@@ -34,6 +36,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
@@ -861,9 +864,11 @@ internal fun TokenStatsConfigurationCardsSection(
     configurationNames: Map<String, String>,
     priceSettings: List<TokenStatsPriceSetting>,
     onEditPrice: (TokenStatsPriceSetting?, TokenStatsPriceDraft, String?) -> Unit,
+    onResetConfigurationPrice: (TokenStatsPriceSetting) -> Unit,
 ) {
     val colors = LocalTokenStatsColors.current
-    var expandedConfigId by remember { mutableStateOf<String?>(null) }
+    var configurationsExpanded by rememberSaveable { mutableStateOf(false) }
+    var expandedConfigId by rememberSaveable { mutableStateOf<String?>(null) }
     val sortedConfigurations =
         configurations.sortedByDescending { it.totals.totalTokens.knownSum }
     TokenStatsCard(modifier = Modifier.fillMaxWidth()) {
@@ -880,26 +885,52 @@ internal fun TokenStatsConfigurationCardsSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = colors.cardSupportingContent,
                 )
-            }
-            sortedConfigurations.forEachIndexed { index, identity ->
-                if (index > 0) {
-                    HorizontalDivider(color = colors.cardBorder)
-                }
-                val configurationName =
-                    configurationNames[identity.configId]
-                        ?: stringResource(R.string.token_stats_config_deleted)
-                TokenStatsConfigurationRow(
-                    identity = identity,
-                    configurationName = configurationName,
-                    currency = currency,
-                    priceSettings = priceSettings,
-                    expanded = expandedConfigId == identity.configId,
-                    onToggleExpanded = {
-                        expandedConfigId =
-                            if (expandedConfigId == identity.configId) null else identity.configId
+                IconButton(
+                    onClick = {
+                        configurationsExpanded = !configurationsExpanded
+                        if (!configurationsExpanded) expandedConfigId = null
                     },
-                    onEditPrice = onEditPrice,
-                )
+                ) {
+                    Icon(
+                        imageVector =
+                            if (configurationsExpanded) {
+                                Icons.Filled.ExpandLess
+                            } else {
+                                Icons.Filled.ExpandMore
+                            },
+                        contentDescription = stringResource(
+                            if (configurationsExpanded) {
+                                R.string.token_stats_model_collapse
+                            } else {
+                                R.string.token_stats_model_expand
+                            },
+                        ),
+                        tint = colors.cardSupportingContent,
+                    )
+                }
+            }
+            if (configurationsExpanded) {
+                sortedConfigurations.forEachIndexed { index, identity ->
+                    if (index > 0) {
+                        HorizontalDivider(color = colors.cardBorder)
+                    }
+                    val configurationName =
+                        configurationNames[identity.configId]
+                            ?: stringResource(R.string.token_stats_config_deleted)
+                    TokenStatsConfigurationRow(
+                        identity = identity,
+                        configurationName = configurationName,
+                        currency = currency,
+                        priceSettings = priceSettings,
+                        expanded = expandedConfigId == identity.configId,
+                        onToggleExpanded = {
+                            expandedConfigId =
+                                if (expandedConfigId == identity.configId) null else identity.configId
+                        },
+                        onEditPrice = onEditPrice,
+                        onResetConfigurationPrice = onResetConfigurationPrice,
+                    )
+                }
             }
         }
     }
@@ -914,6 +945,7 @@ private fun TokenStatsConfigurationRow(
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
     onEditPrice: (TokenStatsPriceSetting?, TokenStatsPriceDraft, String?) -> Unit,
+    onResetConfigurationPrice: (TokenStatsPriceSetting) -> Unit,
 ) {
     val colors = LocalTokenStatsColors.current
     Column(
@@ -951,11 +983,10 @@ private fun TokenStatsConfigurationRow(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = "${identity.provider} · ${identity.model}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colors.cardSupportingContent,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    text = identity.model,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colors.cardContent,
+                    softWrap = true,
                 )
             }
             Row(
@@ -993,12 +1024,26 @@ private fun TokenStatsConfigurationRow(
             )
         }
         if (expanded) {
+            val providerModel = "${identity.provider}:${identity.model}"
+            val configurationPrice =
+                priceSettings.firstOrNull {
+                    it.scope == TokenStatsPriceScope.CONFIG &&
+                        it.providerModel.equals(providerModel, ignoreCase = true) &&
+                        it.configId == identity.configId
+                }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 42.dp, top = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // 收起态优先展示 model；provider 放入展开区域，避免长 provider 挤掉 model。
+                Text(
+                    text = identity.provider,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colors.cardSupportingContent,
+                    softWrap = true,
+                )
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1076,15 +1121,8 @@ private fun TokenStatsConfigurationRow(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     TextButton(
                         onClick = {
-                            val providerModel = "${identity.provider}:${identity.model}"
-                            val existing =
-                                priceSettings.firstOrNull {
-                                    it.scope == TokenStatsPriceScope.CONFIG &&
-                                        it.providerModel.equals(providerModel, ignoreCase = true) &&
-                                        it.configId == identity.configId
-                                }
                             onEditPrice(
-                                existing,
+                                configurationPrice,
                                 priceDraftForConfiguration(identity, priceSettings),
                                 configurationName,
                             )
@@ -1096,22 +1134,11 @@ private fun TokenStatsConfigurationRow(
                         )
                     }
                     TextButton(
-                        onClick = {
-                            val providerModel = "${identity.provider}:${identity.model}"
-                            val existing =
-                                priceSettings.firstOrNull {
-                                    it.scope == TokenStatsPriceScope.PROVIDER_MODEL &&
-                                        it.providerModel.equals(providerModel, ignoreCase = true)
-                                }
-                            onEditPrice(
-                                existing,
-                                priceDraftForProviderModel(identity, priceSettings),
-                                null,
-                            )
-                        },
+                        enabled = configurationPrice != null,
+                        onClick = { configurationPrice?.let(onResetConfigurationPrice) },
                     ) {
                         Text(
-                            text = stringResource(R.string.token_stats_pricing_model_default),
+                            text = stringResource(R.string.reset_to_default),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
@@ -1124,7 +1151,7 @@ private fun TokenStatsConfigurationRow(
 // ==== 统计设置 ====
 
 /**
- * 统计设置卡：标题、币种行、紧凑汇率编辑行和当前汇率状态。
+ * 统计设置卡：币种常驻，CNY 汇率默认以摘要展示，按需进入行内编辑。
  */
 @Composable
 internal fun TokenStatsSettingsCard(
@@ -1136,9 +1163,20 @@ internal fun TokenStatsSettingsCard(
 ) {
     val colors = LocalTokenStatsColors.current
     var rateInput by remember { mutableStateOf(formatRateInput(manualRate)) }
+    var rateEditing by rememberSaveable { mutableStateOf(false) }
+    val rateStatus = stringResource(
+        if (rateIsEstimated) {
+            R.string.token_stats_rate_estimated
+        } else {
+            R.string.token_stats_rate_manual
+        },
+    )
     // 汇率外部变化（如从 DataStore 重新加载）时同步输入框
     LaunchedEffect(manualRate) {
         rateInput = formatRateInput(manualRate)
+    }
+    LaunchedEffect(targetCurrency) {
+        if (targetCurrency != PricingCurrency.CNY) rateEditing = false
     }
 
     TokenStatsCard(modifier = Modifier.fillMaxWidth()) {
@@ -1158,66 +1196,116 @@ internal fun TokenStatsSettingsCard(
                 )
                 TokenStatsCurrencyDropdown(
                     selected = targetCurrency,
-                    onSelect = onSelectCurrency,
+                    onSelect = {
+                        rateEditing = false
+                        onSelectCurrency(it)
+                    },
                     modifier = Modifier.width(88.dp),
                 )
             }
-            HorizontalDivider(color = colors.cardBorder)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.settings_exchange_rate_title),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                    Text(
-                        text = stringResource(R.string.settings_usd_to_cny_rate_label),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = colors.cardSupportingContent,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                OutlinedTextField(
-                    value = rateInput,
-                    onValueChange = { rateInput = it },
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier
-                        .width(104.dp)
-                        .height(52.dp),
-                    textStyle = MaterialTheme.typography.bodyMedium,
-                )
-                TextButton(
-                    onClick = {
-                        val parsed = rateInput.toDoubleOrNull()
-                        if (parsed == null || !onSaveRate(parsed)) {
-                            // 非法输入保持原值并提示（Toast 由调用方统一处理）
-                            rateInput = formatRateInput(manualRate)
+            if (targetCurrency == PricingCurrency.CNY) {
+                HorizontalDivider(color = colors.cardBorder)
+                if (rateEditing) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Text(
+                                text = stringResource(R.string.settings_exchange_rate_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = rateStatus,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.cardSupportingContent,
+                            )
                         }
-                    },
-                    modifier = Modifier.height(48.dp),
-                ) {
-                    Text(stringResource(R.string.settings_save))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.token_stats_rate_input_prefix),
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                            )
+                            OutlinedTextField(
+                                value = rateInput,
+                                onValueChange = { rateInput = it },
+                                singleLine = true,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                modifier = Modifier
+                                    .width(88.dp)
+                                    .height(52.dp),
+                                textStyle = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text(
+                                text = PricingCurrency.CNY.code,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                            )
+                            Spacer(Modifier.weight(1f))
+                            IconButton(
+                                onClick = {
+                                    val parsed = rateInput.toDoubleOrNull()
+                                    if (parsed == null || !onSaveRate(parsed)) {
+                                        // 非法输入保持原值并提示（Toast 由调用方统一处理）
+                                        rateInput = formatRateInput(manualRate)
+                                    } else {
+                                        rateEditing = false
+                                    }
+                                },
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = stringResource(R.string.settings_save),
+                                    tint = colors.cardAccent,
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.settings_exchange_rate_title),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.token_stats_rate_summary,
+                                    formatRateInput(manualRate),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = colors.cardSupportingContent,
+                                maxLines = 1,
+                            )
+                        }
+                        Text(
+                            text = rateStatus,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = colors.cardSupportingContent,
+                            maxLines = 1,
+                        )
+                        IconButton(onClick = { rateEditing = true }) {
+                            Icon(
+                                imageVector = Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.token_stats_rate_edit),
+                                tint = colors.cardSupportingContent,
+                            )
+                        }
+                    }
                 }
             }
-            Text(
-                text = stringResource(
-                    if (rateIsEstimated) R.string.token_stats_rate_default_hint
-                    else R.string.token_stats_rate_applied_hint,
-                    manualRate,
-                ),
-                style = MaterialTheme.typography.labelSmall,
-                color = colors.cardSupportingContent,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
     }
 }
@@ -1250,31 +1338,6 @@ private fun priceDraftForConfiguration(
         provider = identity.provider,
         model = identity.model,
         configId = identity.configId,
-        billingMode = resolved.billingMode,
-        currency = resolved.currency,
-        inputPricePerMillion = resolved.inputPricePerMillion,
-        cachedInputPricePerMillion = resolved.cachedInputPricePerMillion,
-        cacheWritePricePerMillion = resolved.cacheWritePricePerMillion,
-        outputPricePerMillion = resolved.outputPricePerMillion,
-        pricePerRequest = resolved.pricePerRequest,
-    )
-}
-
-private fun priceDraftForProviderModel(
-    identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
-    priceSettings: List<TokenStatsPriceSetting>,
-): TokenStatsPriceDraft {
-    val providerModel = "${identity.provider}:${identity.model}"
-    val providerSettings =
-        priceSettings.firstOrNull {
-            it.scope == TokenStatsPriceScope.PROVIDER_MODEL &&
-                it.providerModel.equals(providerModel, ignoreCase = true)
-        }?.toModelPriceSettings()
-    val resolved = TokenPriceResolver.resolve(providerModel, providerSettings)
-    return TokenStatsPriceDraft(
-        scope = TokenStatsPriceScope.PROVIDER_MODEL,
-        provider = identity.provider,
-        model = identity.model,
         billingMode = resolved.billingMode,
         currency = resolved.currency,
         inputPricePerMillion = resolved.inputPricePerMillion,

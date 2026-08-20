@@ -3657,6 +3657,11 @@
     <string name="token_stats_rate_default_hint">Default estimate: 1 USD = %1$s CNY (not set manually)</string>
     <string name="token_stats_rate_applied_hint">Converted at 1 USD = %1$s CNY</string>
     <string name="token_stats_rate_invalid">Rate must be a positive finite number</string>
+    <string name="token_stats_rate_summary">1 USD = %1$s CNY</string>
+    <string name="token_stats_rate_input_prefix">1 USD =</string>
+    <string name="token_stats_rate_estimated">Default estimate</string>
+    <string name="token_stats_rate_manual">Manual rate</string>
+    <string name="token_stats_rate_edit">Edit exchange rate</string>
     <string name="token_stats_unknown_cost">%1$d request(s) with unknown cost</string>
     <string name="token_stats_unknown_parts">%1$d request(s) with partially unknown data</string>
     <string name="token_stats_request_count_compact">%1$s requests</string>
@@ -3698,7 +3703,6 @@
     <string name="token_stats_configuration_count">%1$d configurations</string>
     <string name="token_stats_model_expand">Expand or collapse details</string>
     <string name="token_stats_pricing_configuration">Configuration price</string>
-    <string name="token_stats_pricing_model_default">Model default price</string>
     <string name="token_stats_price_label">Price</string>
     <string name="token_stats_unknown_pricing">Pricing unknown</string>
     <string name="token_stats_config_deleted">Deleted configuration</string>
@@ -8214,8 +8218,8 @@
     <string name="token_activity_weekly">Weekly</string>
     <string name="token_activity_cumulative">Cumulative</string>
     <string name="token_activity_title">Activity</string>
-    <string name="token_activity_current_streak_badge">🔥 %1$d-day streak</string>
-    <string name="token_activity_longest_streak_badge">★ Longest %1$d days</string>
+    <string name="token_activity_current_streak_badge">%1$d-day streak</string>
+    <string name="token_activity_longest_streak_badge">Longest %1$d days</string>
     <string name="token_activity_chart_tap_hint">Tap the chart to view details</string>
     <string name="token_activity_total_tokens">Total tokens</string>
     <string name="token_activity_peak_tokens">Peak tokens</string>

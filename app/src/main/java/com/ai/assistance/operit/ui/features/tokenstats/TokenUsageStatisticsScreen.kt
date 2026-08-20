@@ -362,6 +362,7 @@ private fun TokenStatsModelDetailsSection(
         onEditPrice = { existing, draft, configurationName ->
             priceEditor = PriceEditorTarget(existing, draft, configurationName)
         },
+        onResetConfigurationPrice = onDeletePrice,
     )
     priceEditor?.let { target ->
         PriceSettingsDialog(

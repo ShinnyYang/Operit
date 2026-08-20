@@ -3575,6 +3575,11 @@
     <string name="token_stats_rate_default_hint">默认估算：1 USD = %1$s CNY（未手动设置）</string>
     <string name="token_stats_rate_applied_hint">按 1 USD = %1$s CNY 换算</string>
     <string name="token_stats_rate_invalid">汇率必须为正的有限数值</string>
+    <string name="token_stats_rate_summary">1 USD = %1$s CNY</string>
+    <string name="token_stats_rate_input_prefix">1 USD =</string>
+    <string name="token_stats_rate_estimated">默认估算</string>
+    <string name="token_stats_rate_manual">已手动设置</string>
+    <string name="token_stats_rate_edit">编辑汇率</string>
     <string name="token_stats_unknown_cost">其中 %1$d 个请求费用未知</string>
     <string name="token_stats_unknown_parts">%1$d 个请求部分数据未知</string>
     <string name="token_stats_request_count_compact">%1$s 次请求</string>
@@ -3616,7 +3621,6 @@
     <string name="token_stats_model_show_all">展开全部（%1$d）</string>
     <string name="token_stats_model_collapse">收起</string>
     <string name="token_stats_pricing_configuration">配置价格</string>
-    <string name="token_stats_pricing_model_default">模型默认价格</string>
     <string name="token_stats_price_label">单价</string>
     <string name="token_stats_unknown_pricing">定价未知</string>
     <string name="token_stats_config_deleted">已删除的配置</string>
@@ -8203,8 +8207,8 @@
     <string name="token_activity_weekly">每周</string>
     <string name="token_activity_cumulative">累计</string>
     <string name="token_activity_title">活跃记录</string>
-    <string name="token_activity_current_streak_badge">🔥 当前连续 %1$d 天</string>
-    <string name="token_activity_longest_streak_badge">★ 最长连续 %1$d 天</string>
+    <string name="token_activity_current_streak_badge">当前连续 %1$d 天</string>
+    <string name="token_activity_longest_streak_badge">最长连续 %1$d 天</string>
     <string name="token_activity_chart_tap_hint">点击图表查看详细数据</string>
     <string name="token_activity_total_tokens">累计 Token</string>
     <string name="token_activity_peak_tokens">峰值 Token</string>
