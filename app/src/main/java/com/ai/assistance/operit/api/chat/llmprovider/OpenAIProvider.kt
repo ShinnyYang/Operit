@@ -243,10 +243,7 @@ open class OpenAIProvider(
          )
      }
 
-     override suspend fun testConnection(
-         context: Context,
-         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
-     ): Result<String> {
+      override suspend fun testConnection(context: Context): Result<String> {
          return try {
              val testHistory =
                  listOf(
@@ -260,9 +257,10 @@ open class OpenAIProvider(
                      emptyList(),
                      false,
                      onTokensUpdated = { _, _, _ -> },
-                     onUsageReported = onUsageReported,
-                     onNonFatalError = {},
-                     enableRetry = false
+                      onUsageReported = null,
+                      onNonFatalError = {},
+                      enableRetry = false,
+                      recordTokenUsage = false,
                  )
 
              stream.collect { _ -> }
@@ -1745,6 +1743,7 @@ open class OpenAIProvider(
         var streamedReasoningContentLength: Int = 0,
         var reasoningObserved: Boolean = false,
         var isFirstResponse: Boolean = true,
+        var streamCompletionConfirmed: Boolean = false,
         val accumulatedToolCalls: MutableMap<Int, JSONObject> = mutableMapOf(),
         val toolCallState: ToolCallState = ToolCallState(),
         var lastProcessedToolIndex: Int? = null,
@@ -2203,6 +2202,7 @@ open class OpenAIProvider(
 
                 closeAllOpenToolCalls(state, emitter)
                 applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
+                state.streamCompletionConfirmed = true
             }
 
             "response.failed", "response.error" -> {
@@ -2241,6 +2241,7 @@ open class OpenAIProvider(
         ) {
             return
         }
+        state.streamCompletionConfirmed = true
 
         if (hasOpenToolCalls(state)) {
             closeAllOpenToolCalls(state, emitter)
@@ -2420,6 +2421,7 @@ open class OpenAIProvider(
                         emitter.emitTag("</think>")
                         state.hasEmittedThinkStart = false
                     }
+                    state.streamCompletionConfirmed = true
                     AppLogger.d("AIService", "【发送消息】收到流结束标记[DONE]")
                     break
                 }
@@ -2457,6 +2459,10 @@ open class OpenAIProvider(
                 }
             }
             
+            if (!state.streamCompletionConfirmed) {
+                throw IOException(context.getString(R.string.openai_error_network_interrupted))
+            }
+
             closeAllOpenToolCalls(state, emitter)
 
             AppLogger.d(
@@ -2499,7 +2505,8 @@ open class OpenAIProvider(
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
-        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+        recordTokenUsage: Boolean,
+        onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -2733,6 +2740,8 @@ open class OpenAIProvider(
                 logFinalOutput("AIService", receivedContent, "Final output summary: ")
 
                 // 成功处理后返回
+                checkCancellation(context)
+                onUsageFinalized?.invoke(attemptNumber)
                 AppLogger.d(
                     "AIService",
                     "【发送消息】请求成功完成，输入token: ${tokenCacheManager.totalInputTokenCount}(缓存:${tokenCacheManager.cachedInputTokenCount})，输出token: ${tokenCacheManager.outputTokenCount}"

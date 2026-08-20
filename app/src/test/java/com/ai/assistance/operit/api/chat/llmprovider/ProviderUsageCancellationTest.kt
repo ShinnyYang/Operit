@@ -87,6 +87,84 @@ class ProviderUsageCancellationTest {
         )
     }
 
+    @Test
+    fun `OpenAI EOF without a terminal signal does not finalize usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = openAiProvider(OPENAI_INCOMPLETE_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `OpenAI finish reason confirms stream completion`() {
+        assertStreamFinalizes(
+            provider = openAiProvider(OPENAI_FINISHED_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Gemini EOF without a terminal signal does not finalize usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = geminiProvider(GEMINI_INCOMPLETE_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Gemini unspecified finish reason does not finalize usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = geminiProvider(GEMINI_UNSPECIFIED_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Gemini prompt feedback does not finalize streamed usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = geminiProvider(GEMINI_PROMPT_BLOCKED_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Gemini prompt feedback does not finalize non streaming usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = geminiProvider(GEMINI_PROMPT_BLOCKED_RESPONSE, "application/json"),
+            stream = false,
+        )
+    }
+
+    @Test
+    fun `Gemini finish reason confirms stream completion`() {
+        assertStreamFinalizes(
+            provider = geminiProvider(GEMINI_FINISHED_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Claude message stop confirms stream completion`() {
+        assertStreamFinalizes(
+            provider = claudeProvider(CLAUDE_FINISHED_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Claude EOF without a terminal signal does not finalize usage`() {
+        assertIncompleteStreamDoesNotFinalize(
+            provider = claudeProvider(CLAUDE_INCOMPLETE_STREAM_RESPONSE, "text/event-stream"),
+        )
+    }
+
+    @Test
+    fun `Claude compatible finish reason confirms stream completion`() {
+        val provider = claudeProvider(OPENAI_FINISHED_STREAM_RESPONSE, "text/event-stream")
+        assertStreamFinalizes(provider)
+        assertEquals(2L, provider.outputTokenCount)
+    }
+
+    @Test
+    fun `Claude compatible JSONL finish reason confirms stream completion`() {
+        val provider = claudeProvider(CLAUDE_COMPATIBLE_JSONL_RESPONSE, "application/json")
+        assertStreamFinalizes(provider)
+        assertEquals(2L, provider.outputTokenCount)
+    }
+
     private fun assertUsageCancellationPropagates(provider: AIService, stream: Boolean) {
         val expected = CancellationException("usage observer cancelled")
         val context = mock<Context>()
@@ -109,7 +187,6 @@ class ProviderUsageCancellationTest {
                         onUsageReported = { _, _ -> throw expected },
                         onNonFatalError = {},
                         enableRetry = false,
-                        statsCategory = null,
                     )
                 try {
                     response.collect { }
@@ -144,7 +221,6 @@ class ProviderUsageCancellationTest {
                         onUsageReported = { _, _ -> throw IOException("network interrupted") },
                         onNonFatalError = {},
                         enableRetry = false,
-                        statsCategory = null,
                     )
                 val received = StringBuilder()
                 try {
@@ -159,6 +235,73 @@ class ProviderUsageCancellationTest {
                 assertEquals(listOf(TextStreamEventType.SAVEPOINT), events.map { it.eventType })
             }
         }
+    }
+
+    private fun assertIncompleteStreamDoesNotFinalize(provider: AIService, stream: Boolean = true) {
+        val context = mock<Context>()
+        whenever(context.applicationContext).thenReturn(context)
+        whenever(context.getString(any<Int>())).thenReturn("status")
+        whenever(context.getString(any<Int>(), any())).thenReturn("status")
+        val finalizedAttempts = mutableListOf<Int?>()
+
+        Mockito.mockStatic(AppLogger::class.java).use {
+            runBlocking {
+                val response =
+                    provider.sendMessage(
+                        context = context,
+                        chatHistory = listOf(PromptTurn(PromptTurnKind.USER, "Hi")),
+                        modelParameters = emptyList(),
+                        enableThinking = false,
+                        stream = stream,
+                        availableTools = null,
+                        preserveThinkInHistory = false,
+                        onTokensUpdated = { _, _, _ -> },
+                        onUsageReported = null,
+                        onNonFatalError = {},
+                        enableRetry = false,
+                        onUsageFinalized = { attempt -> finalizedAttempts += attempt },
+                    )
+                try {
+                    response.collect { }
+                    fail("incomplete stream must fail")
+                } catch (_: IOException) {
+                    // A bare EOF must reach the retry/error path instead of finalizing usage.
+                }
+            }
+        }
+
+        assertEquals(emptyList<Int?>(), finalizedAttempts)
+    }
+
+    private fun assertStreamFinalizes(provider: AIService) {
+        val context = mock<Context>()
+        whenever(context.applicationContext).thenReturn(context)
+        whenever(context.getString(any<Int>())).thenReturn("status")
+        whenever(context.getString(any<Int>(), any())).thenReturn("status")
+        val finalizedAttempts = mutableListOf<Int?>()
+
+        Mockito.mockStatic(AppLogger::class.java).use {
+            runBlocking {
+                val response =
+                    provider.sendMessage(
+                        context = context,
+                        chatHistory = listOf(PromptTurn(PromptTurnKind.USER, "Hi")),
+                        modelParameters = emptyList(),
+                        enableThinking = false,
+                        stream = true,
+                        availableTools = null,
+                        preserveThinkInHistory = false,
+                        onTokensUpdated = { _, _, _ -> },
+                        onUsageReported = null,
+                        onNonFatalError = {},
+                        enableRetry = false,
+                        onUsageFinalized = { attempt -> finalizedAttempts += attempt },
+                    )
+                response.collect { }
+            }
+        }
+
+        assertEquals(listOf(1), finalizedAttempts)
     }
 
     private fun openAiProvider(body: String, contentType: String): OpenAIProvider =
@@ -176,6 +319,15 @@ class ProviderUsageCancellationTest {
             apiKeyProvider = SingleApiKeyProvider("test-key"),
             modelName = "gemini-test",
             client = respondingClient(body, contentType),
+        )
+
+    private fun claudeProvider(body: String, contentType: String): ClaudeProvider =
+        ClaudeProvider(
+            apiEndpoint = "https://example.test/v1/messages",
+            apiKeyProvider = SingleApiKeyProvider("test-key"),
+            modelName = "claude-test",
+            client = respondingClient(body, contentType),
+            providerType = ApiProviderType.ANTHROPIC,
         )
 
     private fun respondingClient(body: String, contentType: String): OkHttpClient {
@@ -215,6 +367,16 @@ class ProviderUsageCancellationTest {
 
             """.trimIndent()
 
+        private val OPENAI_FINISHED_STREAM_RESPONSE =
+            """
+            data: {"choices":[{"delta":{"content":"answer"},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}
+            """.trimIndent()
+
+        private val OPENAI_INCOMPLETE_STREAM_RESPONSE =
+            """
+            data: {"choices":[{"delta":{"content":"answer"},"finish_reason":null}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}
+            """.trimIndent()
+
         private val GEMINI_RESPONSE =
             """
             {
@@ -232,5 +394,80 @@ class ProviderUsageCancellationTest {
 
         private val GEMINI_STREAM_RESPONSE =
             "data: ${GEMINI_RESPONSE.replace("\n", "")}" + "\n\n" + "data: [DONE]\n\n"
+
+        private val GEMINI_FINISHED_STREAM_RESPONSE = "data: ".plus(GEMINI_RESPONSE.replace("\n", ""))
+
+        private val GEMINI_INCOMPLETE_STREAM_RESPONSE =
+            """
+            data: {
+              "usageMetadata": {
+                "promptTokenCount": 3,
+                "cachedContentTokenCount": 0,
+                "candidatesTokenCount": 2
+              },
+              "candidates": [{
+                "content": {"parts": [{"text": "answer"}]}
+              }]
+            }
+            """.trimIndent().replace("\n", "")
+
+        private val GEMINI_UNSPECIFIED_STREAM_RESPONSE =
+            """
+            data: {
+              "usageMetadata": {
+                "promptTokenCount": 3,
+                "cachedContentTokenCount": 0,
+                "candidatesTokenCount": 2
+              },
+              "candidates": [{
+                "finishReason": "FINISH_REASON_UNSPECIFIED",
+                "content": {"parts": [{"text": "answer"}]}
+              }]
+            }
+            """.trimIndent().replace("\n", "")
+
+        private val GEMINI_PROMPT_BLOCKED_RESPONSE =
+            """
+            {
+              "promptFeedback": {
+                "blockReason": "SAFETY",
+                "blockReasonMessage": "blocked"
+              },
+              "usageMetadata": {
+                "promptTokenCount": 3,
+                "cachedContentTokenCount": 0,
+                "candidatesTokenCount": 0
+              }
+            }
+            """.trimIndent()
+
+        private val GEMINI_PROMPT_BLOCKED_STREAM_RESPONSE =
+            "data: ".plus(GEMINI_PROMPT_BLOCKED_RESPONSE.replace("\n", ""))
+
+        private val CLAUDE_FINISHED_STREAM_RESPONSE =
+            """
+            data: {"type":"message_start","message":{"usage":{"input_tokens":3,"cache_read_input_tokens":0}}}
+
+            data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"answer"}}
+
+            data: {"type":"message_delta","usage":{"output_tokens":2}}
+
+            data: {"type":"message_stop"}
+            """.trimIndent()
+
+        private val CLAUDE_INCOMPLETE_STREAM_RESPONSE =
+            """
+            data: {"type":"message_start","message":{"usage":{"input_tokens":3,"cache_read_input_tokens":0}}}
+
+            data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"answer"}}
+
+            data: {"type":"message_delta","usage":{"output_tokens":2}}
+            """.trimIndent()
+
+        private val CLAUDE_COMPATIBLE_JSONL_RESPONSE =
+            """
+            {"choices":[{"delta":{"content":"answer"},"finish_reason":null}]}
+            {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":3,"completion_tokens":2,"total_tokens":5}}
+            """.trimIndent()
     }
 }

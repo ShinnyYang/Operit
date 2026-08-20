@@ -2,7 +2,6 @@ package com.ai.assistance.operit.data.stats
 
 import android.content.Context
 import com.ai.assistance.operit.data.collects.PricingCurrency
-import com.ai.assistance.operit.data.dao.TokenUsageBreakdownRow
 import com.ai.assistance.operit.data.dao.TokenUsageActivityDayRow
 import com.ai.assistance.operit.data.dao.TokenUsageModelAggregateRow
 import com.ai.assistance.operit.data.model.TokenStatsModelEntity
@@ -17,16 +16,11 @@ object TokenStatsQueryService {
     ): TokenStatsLifetimeOverview {
         val repository = TokenUsageRepository.getInstance(context)
         return repository.withDao { dao ->
-            val requestRows = dao.aggregateRequestModelsForLifetime(
+            val requestRows = dao.aggregateModelsForLifetime(
                 providerModels = params.providerModels.queryValues(),
                 allModels = params.providerModels == null,
-                categories = params.categories.namesForQuery(),
-                allCategories = params.categories == null,
-                statuses = params.statuses.namesForQuery(),
-                allStatuses = params.statuses == null,
             )
-            val modelSettings = dao.getAllStatsModels()
-            val prices = modelSettings.toPriceSnapshot()
+            val prices = dao.getAllStatsModels().toPriceSnapshot()
             TokenStatsLifetimeOverview(
                 totals = combineTotals(requestRows.map { it.toTotals(prices, params) }, params),
                 displayModels = buildDisplayModels(requestRows, prices, params),
@@ -42,17 +36,12 @@ object TokenStatsQueryService {
     ): TokenStatsRangeData {
         val repository = TokenUsageRepository.getInstance(context)
         return repository.withDao { dao ->
-            val modelSettings = dao.getAllStatsModels()
-            val prices = modelSettings.toPriceSnapshot()
+            val prices = dao.getAllStatsModels().toPriceSnapshot()
             val modelRows = dao.aggregateModelsInRange(
                 startMs = range.startMs,
                 endMs = range.endMs,
                 providerModels = params.providerModels.queryValues(),
                 allModels = params.providerModels == null,
-                categories = params.categories.namesForQuery(),
-                allCategories = params.categories == null,
-                statuses = params.statuses.namesForQuery(),
-                allStatuses = params.statuses == null,
             )
             val displayModels = buildDisplayModels(modelRows, prices, params)
             val summary = combineTotals(displayModels.map(TokenStatsDisplayModelBreakdown::totals), params)
@@ -68,10 +57,6 @@ object TokenStatsQueryService {
                     endMs = bucketEnd,
                     providerModels = params.providerModels.queryValues(),
                     allModels = params.providerModels == null,
-                    categories = params.categories.namesForQuery(),
-                    allCategories = params.categories == null,
-                    statuses = params.statuses.namesForQuery(),
-                    allStatuses = params.statuses == null,
                 )
                 val models = buildDisplayModels(bucketRows, prices, params)
                 TokenStatsTrendBucket(
@@ -79,49 +64,15 @@ object TokenStatsQueryService {
                     bucketEndMs = bucketEnd,
                     totals = combineTotals(models.map(TokenStatsDisplayModelBreakdown::totals), params),
                     byModel = models.associate { it.displayModelId to it.totals.toModelBucket() },
-                    performance = performanceOf(bucketRows),
                 )
             }
-            val categoryRows = dao.aggregateCategoriesInRange(
-                startMs = range.startMs,
-                endMs = range.endMs,
-                providerModels = params.providerModels.queryValues(),
-                allModels = params.providerModels == null,
-                categories = params.categories.namesForQuery(),
-                allCategories = params.categories == null,
-                statuses = params.statuses.namesForQuery(),
-                allStatuses = params.statuses == null,
-            )
-            val statusRows = dao.aggregateStatusesInRange(
-                startMs = range.startMs,
-                endMs = range.endMs,
-                providerModels = params.providerModels.queryValues(),
-                allModels = params.providerModels == null,
-                categories = params.categories.namesForQuery(),
-                allCategories = params.categories == null,
-                statuses = params.statuses.namesForQuery(),
-                allStatuses = params.statuses == null,
-            )
             TokenStatsRangeData(
                 range = range,
                 granularity = granularity,
                 eventCount = summary.totalTokens.totalEventCount,
                 summary = summary,
-                performance = performanceOf(modelRows),
                 buckets = buckets,
                 displayModels = displayModels,
-                categories = categoryRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
-                    TokenStatsCategoryBreakdown(
-                        TokenStatCategory.fromName(key),
-                        combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
-                    )
-                },
-                statuses = statusRows.groupBy(TokenUsageBreakdownRow::key).map { (key, rows) ->
-                    TokenStatsStatusBreakdown(
-                        TokenStatStatus.fromName(key),
-                        combineTotals(rows.map { it.asModelRow().toTotals(prices, params) }, params),
-                    )
-                },
             )
         }
     }
@@ -139,10 +90,6 @@ object TokenStatsQueryService {
                 endMs = range.endMs,
                 providerModels = params.providerModels.queryValues(),
                 allModels = params.providerModels == null,
-                categories = params.categories.namesForQuery(),
-                allCategories = params.categories == null,
-                statuses = params.statuses.namesForQuery(),
-                allStatuses = params.statuses == null,
             )
             TokenActivitySnapshot(
                 zone = zone,
@@ -185,57 +132,26 @@ object TokenStatsQueryService {
         params: TokenStatsQueryParams,
     ): TokenStatsTotals {
         val pricing = TokenPriceResolver.resolve(providerModel, prices.settingFor(providerModel, configId))
-        val input = component(uncachedInputTokens, uncachedInputKnown, usageRows)
-        val cached = component(cachedInputTokens, cachedInputKnown, usageRows)
-        val cacheWrite = component(cacheWriteTokens, cacheWriteKnown, usageRows)
+        val input = component(uncachedInputTokens, uncachedInputKnown, requests)
+        val cached = component(cachedInputTokens, cachedInputKnown, requests)
+        val cacheWrite = component(cacheWriteTokens, cacheWriteKnown, requests)
         val totalInput =
             if (totalInputKnown > 0L) {
-                component(totalInputTokens, totalInputKnown, usageRows)
+                component(totalInputTokens, totalInputKnown, requests)
             } else {
-                combineComponents(listOf(input, cached, cacheWrite), usageRows)
+                combineComponents(listOf(input, cached, cacheWrite), requests)
             }
-        val output = component(outputTokens, outputKnown, usageRows)
-        val reasoning = component(reasoningTokens, reasoningKnown, usageRows)
-        val totalTokens = combineComponents(listOf(totalInput, output), usageRows)
+        val output = component(outputTokens, outputKnown, requests)
         return TokenStatsTotals(
             requests = requests,
-            requestCountUnknownContributionCount =
-                (usageRows - requestCountKnown).coerceAtLeast(0L),
             uncachedInput = input,
             cachedInput = cached,
-            cacheWrite = cacheWrite,
             totalInput = totalInput,
             output = output,
-            reasoning = reasoning,
-            totalTokens = totalTokens,
+            totalTokens = combineComponents(listOf(totalInput, output), requests),
             cost = TokenCostCalculator.currentCost(this, pricing, params.targetCurrency, params.manualRate),
         )
     }
-
-    private fun TokenUsageBreakdownRow.asModelRow() = TokenUsageModelAggregateRow(
-        provider = provider,
-        model = model,
-        configId = configId,
-        requests = requests,
-        requestCountKnown = requestCountKnown,
-        usageRows = usageRows,
-        uncachedInputTokens = uncachedInputTokens,
-        uncachedInputKnown = uncachedInputKnown,
-        cachedInputTokens = cachedInputTokens,
-        cachedInputKnown = cachedInputKnown,
-        cacheWriteTokens = cacheWriteTokens,
-        cacheWriteKnown = cacheWriteKnown,
-        totalInputTokens = totalInputTokens,
-        totalInputKnown = totalInputKnown,
-        outputTokens = outputTokens,
-        outputKnown = outputKnown,
-        reasoningTokens = reasoningTokens,
-        reasoningKnown = reasoningKnown,
-        ttftTotalMs = ttftTotalMs,
-        ttftSamples = ttftSamples,
-        durationTotalMs = durationTotalMs,
-        durationSamples = durationSamples,
-    )
 
     private fun combineTotals(
         values: List<TokenStatsTotals>,
@@ -244,14 +160,10 @@ object TokenStatsQueryService {
         if (values.isEmpty()) return emptyTotals(params)
         return TokenStatsTotals(
             requests = values.sumLong(TokenStatsTotals::requests),
-            requestCountUnknownContributionCount =
-                values.sumLong(TokenStatsTotals::requestCountUnknownContributionCount),
             uncachedInput = values.combineComponents(TokenStatsTotals::uncachedInput),
             cachedInput = values.combineComponents(TokenStatsTotals::cachedInput),
-            cacheWrite = values.combineComponents(TokenStatsTotals::cacheWrite),
             totalInput = values.combineComponents(TokenStatsTotals::totalInput),
             output = values.combineComponents(TokenStatsTotals::output),
-            reasoning = values.combineComponents(TokenStatsTotals::reasoning),
             totalTokens = values.combineComponents(TokenStatsTotals::totalTokens),
             cost = TokenStatsCostSummary(
                 currency = params.targetCurrency,
@@ -267,55 +179,37 @@ object TokenStatsQueryService {
         )
     }
 
-    private fun performanceOf(rows: List<TokenUsageModelAggregateRow>): TokenStatsPerformance {
-        val usageRows = rows.sumLong(TokenUsageModelAggregateRow::usageRows)
-        val ttftSamples = rows.sumLong(TokenUsageModelAggregateRow::ttftSamples)
-        val ttftTotal = rows.sumLong(TokenUsageModelAggregateRow::ttftTotalMs)
-        val durationSamples = rows.sumLong(TokenUsageModelAggregateRow::durationSamples)
-        val durationTotal = rows.sumLong(TokenUsageModelAggregateRow::durationTotalMs)
-        return TokenStatsPerformance(
-            ttft = duration(ttftTotal, ttftSamples, usageRows),
-            generationDuration = duration(durationTotal, durationSamples, usageRows),
-        )
-    }
-
     private fun TokenStatsTotals.toModelBucket() = TokenStatsModelBucket(
-        requests,
-        requestCountUnknownContributionCount,
-        uncachedInput.knownSum,
-        cachedInput.knownSum,
-        cacheWrite.knownSum,
-        output.knownSum,
-        reasoning.knownSum,
-        totalTokens.knownSum,
-        totalTokens.unknownEventCount,
-        maxOf(
+        requests = requests,
+        uncachedInput = uncachedInput.knownSum,
+        cachedInput = cachedInput.knownSum,
+        output = output.knownSum,
+        totalTokens = totalTokens.knownSum,
+        totalTokensUnknownEventCount = totalTokens.unknownEventCount,
+        unknownTokenEventCount = maxOf(
             uncachedInput.unknownEventCount,
             cachedInput.unknownEventCount,
             output.unknownEventCount,
         ),
-        cost,
+        cost = cost,
     )
 
     private fun emptyTotals(params: TokenStatsQueryParams): TokenStatsTotals {
         val empty = component(0L, 0L, 0L)
         return TokenStatsTotals(
-            0L,
-            0L,
-            empty,
-            empty,
-            empty,
-            empty,
-            empty,
-            empty,
-            empty,
-            TokenStatsCostSummary(
-                params.targetCurrency,
-                0.0,
-                0L,
-                0L,
-                params.manualRate,
-                emptyMap(),
+            requests = 0L,
+            uncachedInput = empty,
+            cachedInput = empty,
+            totalInput = empty,
+            output = empty,
+            totalTokens = empty,
+            cost = TokenStatsCostSummary(
+                currency = params.targetCurrency,
+                knownAmount = 0.0,
+                unknownContributionCount = 0L,
+                totalContributionCount = 0L,
+                rateUsed = params.manualRate,
+                originalCurrencyAmounts = emptyMap(),
             ),
         )
     }
@@ -348,22 +242,11 @@ object TokenStatsQueryService {
         )
     }
 
-    private fun duration(totalMs: Long, samples: Long, contributionCount: Long) =
-        TokenStatsDurationAggregate(
-            knownCount = samples,
-            unknownCount = (contributionCount - samples).coerceAtLeast(0L),
-            totalMs = totalMs,
-            averageMs = if (samples > 0L) totalMs.toDouble() / samples else 0.0,
-        )
-
     private fun <T> Iterable<T>.sumLong(selector: (T) -> Long): Long =
         fold(0L) { sum, item -> TokenCostCalculator.saturatedAdd(sum, selector(item)) }
 
     private fun Set<String>?.queryValues(): List<String> =
         if (this == null || isEmpty()) listOf("__none__") else toList()
-
-    private fun <T : Enum<T>> Set<T>?.namesForQuery(): List<String> =
-        if (this == null || isEmpty()) listOf("__none__") else map { it.name }
 
     private fun displayModelIdFor(model: String): String = "model:${model.trim().lowercase()}"
 

@@ -6,8 +6,6 @@ data class TokenStatsQueryParams(
     val targetCurrency: PricingCurrency = PricingCurrency.CNY,
     val manualRate: Double = TokenCostCurrency.DEFAULT_USD_TO_CNY_RATE,
     val providerModels: Set<String>? = null,
-    val categories: Set<TokenStatCategory>? = null,
-    val statuses: Set<TokenStatStatus>? = null,
 )
 
 data class TokenStatsCostSummary(
@@ -28,29 +26,12 @@ data class TokenStatsTokenAggregate(
     val isFullyKnown: Boolean get() = unknownEventCount == 0L
 }
 
-data class TokenStatsDurationAggregate(
-    val knownCount: Long,
-    val unknownCount: Long,
-    val totalMs: Long,
-    val averageMs: Double,
-) {
-    val hasData: Boolean get() = knownCount > 0L
-}
-
-data class TokenStatsPerformance(
-    val ttft: TokenStatsDurationAggregate,
-    val generationDuration: TokenStatsDurationAggregate,
-)
-
 data class TokenStatsTotals(
     val requests: Long,
-    val requestCountUnknownContributionCount: Long,
     val uncachedInput: TokenStatsTokenAggregate,
     val cachedInput: TokenStatsTokenAggregate,
-    val cacheWrite: TokenStatsTokenAggregate,
     val totalInput: TokenStatsTokenAggregate,
     val output: TokenStatsTokenAggregate,
-    val reasoning: TokenStatsTokenAggregate,
     val totalTokens: TokenStatsTokenAggregate,
     val cost: TokenStatsCostSummary,
 )
@@ -65,17 +46,13 @@ data class TokenStatsTrendBucket(
     val bucketEndMs: Long,
     val totals: TokenStatsTotals,
     val byModel: Map<String, TokenStatsModelBucket>,
-    val performance: TokenStatsPerformance,
 )
 
 data class TokenStatsModelBucket(
     val requests: Long,
-    val requestCountUnknownContributionCount: Long,
     val uncachedInput: Long,
     val cachedInput: Long,
-    val cacheWrite: Long,
     val output: Long,
-    val reasoning: Long,
     val totalTokens: Long,
     val totalTokensUnknownEventCount: Long,
     val unknownTokenEventCount: Long,
@@ -83,7 +60,7 @@ data class TokenStatsModelBucket(
 )
 
 data class TokenStatsIdentityBreakdown(
-    val configId: String?,
+    val configId: String,
     val provider: String,
     val model: String,
     val totals: TokenStatsTotals,
@@ -98,24 +75,24 @@ data class TokenStatsDisplayModelBreakdown(
     val providerModels: List<String>,
 )
 
-data class TokenStatsCategoryBreakdown(
-    val category: TokenStatCategory,
-    val totals: TokenStatsTotals,
-)
-
-data class TokenStatsStatusBreakdown(
-    val status: TokenStatStatus,
-    val totals: TokenStatsTotals,
-)
-
 data class TokenStatsRangeData(
     val range: TokenStatsTimeRange,
     val granularity: TokenStatsGranularity,
     val eventCount: Long,
     val summary: TokenStatsTotals,
-    val performance: TokenStatsPerformance,
     val buckets: List<TokenStatsTrendBucket>,
     val displayModels: List<TokenStatsDisplayModelBreakdown>,
-    val categories: List<TokenStatsCategoryBreakdown>,
-    val statuses: List<TokenStatsStatusBreakdown>,
 )
+
+internal val TokenStatsTotals.cacheRate: Double?
+    get() {
+        if (
+            !cachedInput.isFullyKnown ||
+                !totalInput.isFullyKnown ||
+                totalInput.knownSum <= 0L ||
+                cachedInput.knownSum !in 0L..totalInput.knownSum
+        ) {
+            return null
+        }
+        return cachedInput.knownSum.toDouble() / totalInput.knownSum.toDouble()
+    }

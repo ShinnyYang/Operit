@@ -8,7 +8,7 @@ modes, baseline rows, cutoff rows, quarantine management, and event pagination.
 ## Intended Change
 
 - Provide SQL projections for lifetime totals, range totals, trend buckets, models,
-  categories, statuses, TTFT, duration, and activity data.
+  categories, statuses, and activity data.
 - Treat imported cumulative counters as timestamp-free `REQUEST` rows. Lifetime
   aggregation includes them; time-range SQL excludes them through its timestamp bounds.
 - Use copied `CONVERSATION` rows from `messages` and every `message_variants` row as
