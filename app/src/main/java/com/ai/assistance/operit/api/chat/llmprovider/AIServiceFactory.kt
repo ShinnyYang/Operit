@@ -316,6 +316,20 @@ object AIServiceFactory {
 
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
+            // xAI uses the OpenAI-compatible Chat Completions protocol.
+            ApiProviderType.XAI ->
+                XaiProvider(
+                    apiEndpoint = config.apiEndpoint,
+                    apiKeyProvider = apiKeyProvider,
+                    modelName = config.modelName,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall
+                )
+
             ApiProviderType.OPENAI ->
                 OpenAIProvider(
                     apiEndpoint = config.apiEndpoint,

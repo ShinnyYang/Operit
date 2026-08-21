@@ -24,6 +24,11 @@ object ApiProviderConfigs {
             defaultApiEndpoint = "https://api.openai.com/v1/chat/completions"
         ),
         ProviderApiConfig(
+            providerType = ApiProviderType.XAI,
+            defaultModelName = "grok-4.6",
+            defaultApiEndpoint = "https://api.x.ai/v1/chat/completions"
+        ),
+        ProviderApiConfig(
             providerType = ApiProviderType.OPENAI_RESPONSES,
             defaultModelName = "gpt-4o",
             defaultApiEndpoint = "https://api.openai.com/v1/responses"

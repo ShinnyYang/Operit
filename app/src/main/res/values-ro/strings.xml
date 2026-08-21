@@ -3867,6 +3867,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="auto_save_failed">Salvarea automată a eșuat</string>
     <!-- API Provider names -->
     <string name="provider_openai">OpenAI (GPTSerie)</string>
+    <string name="provider_xai">xAI (Grok)</string>
     <string name="provider_openai_responses">OpenAI (Responses API)</string>
     <string name="provider_openai_responses_generic">OpenAI ResponsesGeneralități</string>
     <string name="provider_anthropic">Anthropic (ClaudeSerie)</string>

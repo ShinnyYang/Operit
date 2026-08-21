@@ -285,6 +285,7 @@ fun ModelApiSettingsSection(
         AppLogger.d("ModelApiSettingsSection", "API提供商改变")
         if (
             selectedApiProvider == ApiProviderType.OPENAI ||
+                selectedApiProvider == ApiProviderType.XAI ||
                 selectedApiProvider == ApiProviderType.OPENAI_RESPONSES ||
                 selectedApiProvider == ApiProviderType.OPENAI_RESPONSES_GENERIC ||
                 selectedApiProvider == ApiProviderType.OPENAI_GENERIC ||
@@ -1056,6 +1057,7 @@ fun ModelApiSettingsSection(
 private fun getBuiltInProviderDisplayName(provider: ApiProviderType, context: android.content.Context): String {
     return when (provider) {
         ApiProviderType.OPENAI -> context.getString(R.string.provider_openai)
+        ApiProviderType.XAI -> context.getString(R.string.provider_xai)
         ApiProviderType.OPENAI_RESPONSES -> context.getString(R.string.provider_openai_responses)
         ApiProviderType.OPENAI_RESPONSES_GENERIC -> context.getString(R.string.provider_openai_responses_generic)
         ApiProviderType.OPENAI_GENERIC -> context.getString(R.string.provider_openai_generic)
@@ -1735,6 +1737,7 @@ private fun getProviderColor(providerTypeId: String): androidx.compose.ui.graphi
     }
     return when (provider) {
         ApiProviderType.OPENAI -> MaterialTheme.colorScheme.primary
+        ApiProviderType.XAI -> MaterialTheme.colorScheme.primary.copy(alpha = 0.94f)
         ApiProviderType.OPENAI_RESPONSES -> MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)
         ApiProviderType.OPENAI_RESPONSES_GENERIC -> MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
         ApiProviderType.OPENAI_GENERIC -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
