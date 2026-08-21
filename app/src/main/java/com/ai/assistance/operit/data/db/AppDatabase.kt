@@ -250,10 +250,12 @@ abstract class AppDatabase : RoomDatabase() {
                         """
                         CREATE TABLE IF NOT EXISTS `token_usage_records` (
                             `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-                            `occurredAtMs` INTEGER NOT NULL,
+                            `importKey` TEXT,
+                            `occurredAtMs` INTEGER,
                             `configId` TEXT NOT NULL,
                             `provider` TEXT NOT NULL,
                             `model` TEXT NOT NULL,
+                            `requestCount` INTEGER NOT NULL DEFAULT 1,
                             `uncachedInputTokens` INTEGER,
                             `cachedInputTokens` INTEGER,
                             `cacheWriteTokens` INTEGER,
@@ -287,6 +289,44 @@ abstract class AppDatabase : RoomDatabase() {
                             `pricePerRequest` REAL,
                             PRIMARY KEY(`configId`, `provider`, `model`)
                         )
+                        """.trimIndent()
+                    )
+                    exec(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS `index_token_usage_records_importKey` " +
+                            "ON `token_usage_records` (`importKey`)"
+                    )
+                    // Preserve token-bearing history before the new ledger starts recording requests.
+                    exec(
+                        """
+                        INSERT INTO `token_usage_records` (
+                            `occurredAtMs`, `configId`, `provider`, `model`,
+                            `requestCount`, `uncachedInputTokens`, `cachedInputTokens`, `totalInputTokens`, `outputTokens`
+                        )
+                        SELECT
+                            `timestamp`, '', `provider`, `modelName`, 1,
+                            MAX(`inputTokens` - `cachedInputTokens`, 0), `cachedInputTokens`,
+                            `inputTokens`, `outputTokens`
+                        FROM `messages`
+                        WHERE `sender` = 'ai'
+                            AND TRIM(`provider`) <> ''
+                            AND TRIM(`modelName`) <> ''
+                            AND (`inputTokens` > 0 OR `cachedInputTokens` > 0 OR `outputTokens` > 0)
+                        """.trimIndent()
+                    )
+                    exec(
+                        """
+                        INSERT INTO `token_usage_records` (
+                            `occurredAtMs`, `configId`, `provider`, `model`,
+                            `requestCount`, `uncachedInputTokens`, `cachedInputTokens`, `totalInputTokens`, `outputTokens`
+                        )
+                        SELECT
+                            `messageTimestamp`, '', `provider`, `modelName`, 1,
+                            MAX(`inputTokens` - `cachedInputTokens`, 0), `cachedInputTokens`,
+                            `inputTokens`, `outputTokens`
+                        FROM `message_variants`
+                        WHERE TRIM(`provider`) <> ''
+                            AND TRIM(`modelName`) <> ''
+                            AND (`inputTokens` > 0 OR `cachedInputTokens` > 0 OR `outputTokens` > 0)
                         """.trimIndent()
                     )
                 }

@@ -8,15 +8,15 @@ imports legacy cumulative totals.
 
 ## Intended Behavior
 
-Range analysis retains model filtering only. The ledger contains direct formal
-inference facts rather than copied conversations or cumulative counters.
+Range analysis retains model filtering only. The ledger records direct formal
+inference facts and preserves historical data through one-time upgrade imports.
 
 ## Work
 
 - Delete category and status types, UI controls, strings, query parameters, SQL
   clauses, breakdown queries, entity columns, and indexes.
-- Delete legacy usage-row import code and the historical conversation copy from
-  the unpublished schema creation.
+- Keep the one-time legacy usage-row import and historical conversation copy;
+  removing them would discard user-visible statistics during upgrade.
 - Keep current pricing settings and their storage because normal-request cost
   calculations still need them.
 
@@ -25,9 +25,9 @@ inference facts rather than copied conversations or cumulative counters.
 [DONE]
 
 - Category and status types, UI controls, strings, query parameters, SQL
-  clauses, entity columns, indexes, and the historical chat-copy and cumulative
-  usage imports are deleted; range analysis keeps model filtering only.
+  clauses, entity columns, and indexes are deleted; range analysis keeps model
+  filtering only. Historical chat-copy and cumulative usage imports remain as
+  one-time upgrade paths.
 - Pricing decision: released `api_settings` custom prices and the legacy
-  `usd_to_cny_exchange_rate` are NOT migrated. The unpublished v21 storage
-  starts fresh with built-in model prices and the estimated default rate, so
-  `ReleasedProviderModelKeyDecoder` and its bridge stay deleted.
+  `usd_to_cny_exchange_rate` are migrated once into Room and token-stat
+  preferences.
