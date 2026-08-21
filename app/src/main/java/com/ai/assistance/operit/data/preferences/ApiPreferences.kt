@@ -18,8 +18,10 @@ import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
 import com.ai.assistance.operit.data.stats.ModelPriceSettings
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKey
 import com.ai.assistance.operit.data.stats.ReleasedProviderModelKeyDecoder
 import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
+import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -532,8 +534,23 @@ class ApiPreferences private constructor(private val context: Context) {
                 ?.let { prefix -> encodedPrices += key.name.removePrefix(prefix) }
         }
         val providerAliases = releasedTokenProviderAliases()
+        val skippedLegacyKeys = linkedSetOf<String>()
+
+        // These keys are from the pre-provider/model format. They cannot be assigned
+        // accurately, so skip them while allowing the rest of the migration to finish.
+        fun decodeReleasedKeyOrSkip(encoded: String): ReleasedProviderModelKey? {
+            val decoded = ReleasedProviderModelKeyDecoder.decodeOrNull(encoded, providerAliases)
+            if (decoded == null && skippedLegacyKeys.add(encoded)) {
+                AppLogger.w(
+                    "ApiPreferences",
+                    "Skipping legacy token statistics key without provider/model: $encoded",
+                )
+            }
+            return decoded
+        }
+
         val totals = encodedTotals.mapNotNull { encoded ->
-            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
             val input = readTokenCount(preferences, getTokenInputKey(key.storedProviderModel).name)
             val cached = readTokenCount(preferences, getTokenCachedInputKey(key.storedProviderModel).name)
             val output = readTokenCount(preferences, getTokenOutputKey(key.storedProviderModel).name)
@@ -549,7 +566,7 @@ class ApiPreferences private constructor(private val context: Context) {
         }.groupBy { it.provider to it.model }
             .map { (_, values) -> values.reduce(ReleasedTokenUsageTotal::plus) }
         val prices = encodedPrices.mapNotNull { encoded ->
-            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
             val billingMode = preferences[getBillingModeKey(key.storedProviderModel)]?.let(BillingMode::valueOf)
             val inputPrice = positivePrice(preferences[getModelInputPriceKey(key.storedProviderModel)])
             val cachedInputPrice = positivePrice(preferences[getModelCachedInputPriceKey(key.storedProviderModel)])

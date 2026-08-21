@@ -40,4 +40,15 @@ internal object ReleasedProviderModelKeyDecoder {
             model = model,
         )
     }
+
+    /** Used by migration code for released keys from before provider/model identities existed. */
+    fun decodeOrNull(
+        encoded: String,
+        additionalProviderAliases: Map<String, String> = emptyMap(),
+    ): ReleasedProviderModelKey? =
+        try {
+            decode(encoded, additionalProviderAliases)
+        } catch (_: IllegalArgumentException) {
+            null
+        }
 }
