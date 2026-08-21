@@ -4475,6 +4475,14 @@
     <string name="artifact_publish_logo_preview">Logo 预览</string>
     <string name="artifact_publish_logo_invalid">无法读取 Logo，请选择有效的 SVG、PNG、JPEG 或 WebP 文件</string>
     <string name="artifact_publish_logo_too_large">Logo 文件不能超过 512 KiB</string>
+    <string name="artifact_publish_logo_market_preview">预览市场效果</string>
+    <string name="artifact_publish_logo_market_preview_title">市场效果预览</string>
+    <string name="artifact_publish_logo_market_list">列表</string>
+    <string name="artifact_publish_logo_market_detail">详情</string>
+    <string name="artifact_publish_logo_market_preview_action">安装插件（预览）</string>
+    <string name="artifact_publish_logo_market_preview_account">当前账号</string>
+    <string name="artifact_publish_logo_market_preview_untitled">未命名工具包</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">暂无描述</string>
     <string name="artifact_publish_github_repository_url">作者 GitHub 仓库链接</string>
     <string name="artifact_publish_load_github_releases">加载 Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

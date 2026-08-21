@@ -8137,6 +8137,14 @@
     <string name="artifact_publish_logo_preview">Logo preview</string>
     <string name="artifact_publish_logo_invalid">Could not read the logo. Choose a valid SVG, PNG, JPEG, or WebP file.</string>
     <string name="artifact_publish_logo_too_large">The logo file must be 512 KiB or smaller.</string>
+    <string name="artifact_publish_logo_market_preview">Preview Market Effect</string>
+    <string name="artifact_publish_logo_market_preview_title">Market Preview</string>
+    <string name="artifact_publish_logo_market_list">List</string>
+    <string name="artifact_publish_logo_market_detail">Details</string>
+    <string name="artifact_publish_logo_market_preview_action">Install Package (Preview)</string>
+    <string name="artifact_publish_logo_market_preview_account">Current account</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Untitled package</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">No description</string>
     <string name="artifact_publish_github_repository_url">Author GitHub repository link</string>
     <string name="artifact_publish_load_github_releases">Load Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

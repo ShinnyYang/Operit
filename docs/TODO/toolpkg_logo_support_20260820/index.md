@@ -48,6 +48,8 @@ manifest field is optional and `schema_version` remains unchanged.
 - Static review only in this change; no build or test command is run by default
 - The ToolPkg publish screen accepts a local SVG or bitmap logo, previews the selected
   image, and writes it only into the temporary direct-upload archive when needed.
+- The publish screen also previews the logo in the real market list-card and detail-header
+  layouts without uploading or publishing the artifact.
 
 Android client implementation is complete. The market Worker/API remains an
 external dependency because it is not part of this repository.

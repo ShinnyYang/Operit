@@ -51,6 +51,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -342,10 +343,18 @@ fun MarketBrowseCard(
     model: MarketBrowseCardModel,
     onViewDetails: () -> Unit,
     onInstall: () -> Unit,
+    logoPainter: Painter? = null,
+    interactive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
+    val cardModifier =
+        if (interactive) {
+            Modifier.clickable { onViewDetails() }
+        } else {
+            Modifier
+        }
     Card(
-        modifier = modifier.fillMaxWidth().clickable { onViewDetails() },
+        modifier = modifier.fillMaxWidth().then(cardModifier),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -354,7 +363,11 @@ fun MarketBrowseCard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            MarketBrowseLeadingIcon(title = model.title, logoUrl = model.logoUrl)
+            MarketBrowseLeadingIcon(
+                title = model.title,
+                logoUrl = model.logoUrl,
+                logoPainter = logoPainter
+            )
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -396,7 +409,11 @@ fun MarketBrowseCard(
 }
 
 @Composable
-private fun MarketBrowseLeadingIcon(title: String, logoUrl: String?) {
+private fun MarketBrowseLeadingIcon(
+    title: String,
+    logoUrl: String?,
+    logoPainter: Painter?
+) {
     val initial =
         title
             .trim()
@@ -409,14 +426,19 @@ private fun MarketBrowseLeadingIcon(title: String, logoUrl: String?) {
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.primaryContainer
     ) {
-        val logoPainter = rememberRemoteLogoPainter(logoUrl = logoUrl, size = 48.dp)
+        val remoteLogoPainter =
+            rememberRemoteLogoPainter(
+                logoUrl = logoUrl.takeIf { logoPainter == null },
+                size = 48.dp
+            )
+        val resolvedLogoPainter = logoPainter ?: remoteLogoPainter
         Box(
             modifier = Modifier.size(48.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (logoPainter != null) {
+            if (resolvedLogoPainter != null) {
                 Image(
-                    painter = logoPainter,
+                    painter = resolvedLogoPainter,
                     contentDescription = title,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.size(40.dp)

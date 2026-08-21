@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -238,6 +239,7 @@ fun ArtifactPublishScreen(
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var showOperit2WarningDialog by remember { mutableStateOf(false) }
     var showSecondForgeConfirm by remember { mutableStateOf(false) }
+    var showMarketPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshPublishableArtifacts()
@@ -356,6 +358,7 @@ fun ArtifactPublishScreen(
         selectedLogoAsset = null
         logoSelectionError = null
         isLoadingLogo = false
+        showMarketPreview = false
     }
     val selectorDisplayName =
         if (isEditMode) {
@@ -795,6 +798,7 @@ fun ArtifactPublishScreen(
                 packageLogo = packageLogo,
                 isLoading = isLoadingLogo,
                 errorMessage = logoSelectionError,
+                onPreview = { showMarketPreview = true },
                 onChoose = {
                     logoPickerLauncher.launch(arrayOf("image/*", "image/svg+xml"))
                 },
@@ -1354,6 +1358,18 @@ fun ArtifactPublishScreen(
             }
         )
     }
+
+    if (showMarketPreview && canSelectLogo) {
+        MarketPublishPreviewDialog(
+            title = displayName,
+            description = description,
+            detail = detail,
+            version = version,
+            author = selectedArtifact?.author?.firstOrNull().orEmpty(),
+            logoAsset = displayedLogo,
+            onDismiss = { showMarketPreview = false }
+        )
+    }
 }
 
 @Composable
@@ -1363,6 +1379,7 @@ private fun ArtifactPublishLogoCard(
     packageLogo: PublishLogoAsset?,
     isLoading: Boolean,
     errorMessage: String?,
+    onPreview: () -> Unit,
     onChoose: () -> Unit,
     onUsePackageLogo: () -> Unit
 ) {
@@ -1472,6 +1489,20 @@ private fun ArtifactPublishLogoCard(
                         Text(stringResource(R.string.artifact_publish_logo_use_package))
                     }
                 }
+            }
+
+            OutlinedButton(
+                onClick = onPreview,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.artifact_publish_logo_market_preview))
             }
 
             if (errorMessage != null) {

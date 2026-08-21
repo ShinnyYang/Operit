@@ -68,6 +68,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -386,8 +387,9 @@ fun UnifiedMarketDetailScreen(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun UnifiedMarketDetailHeaderCard(
-    header: UnifiedMarketDetailHeader
+internal fun UnifiedMarketDetailHeaderCard(
+    header: UnifiedMarketDetailHeader,
+    logoPainter: Painter? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -401,7 +403,8 @@ private fun UnifiedMarketDetailHeaderCard(
             UnifiedMarketDetailLeadingIcon(
                 title = header.title,
                 fallbackAvatarText = header.fallbackAvatarText,
-                logoUrl = header.logoUrl
+                logoUrl = header.logoUrl,
+                logoPainter = logoPainter
             )
 
             Column(
@@ -530,9 +533,15 @@ private fun UnifiedMarketDetailStickyTabs(
 private fun UnifiedMarketDetailLeadingIcon(
     title: String,
     fallbackAvatarText: String,
-    logoUrl: String?
+    logoUrl: String?,
+    logoPainter: Painter?
 ) {
-    val logoPainter = rememberRemoteLogoPainter(logoUrl = logoUrl, size = 76.dp)
+    val remoteLogoPainter =
+        rememberRemoteLogoPainter(
+            logoUrl = logoUrl.takeIf { logoPainter == null },
+            size = 76.dp
+        )
+    val resolvedLogoPainter = logoPainter ?: remoteLogoPainter
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
@@ -541,9 +550,9 @@ private fun UnifiedMarketDetailLeadingIcon(
             modifier = Modifier.size(76.dp),
             contentAlignment = Alignment.Center
         ) {
-            if (logoPainter != null) {
+            if (resolvedLogoPainter != null) {
                 Image(
-                    painter = logoPainter,
+                    painter = resolvedLogoPainter,
                     contentDescription = title,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.size(64.dp)

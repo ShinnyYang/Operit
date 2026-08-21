@@ -7252,6 +7252,14 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="artifact_publish_logo_preview">Prévia do logo</string>
     <string name="artifact_publish_logo_invalid">Não foi possível ler o logo. Escolha um arquivo SVG, PNG, JPEG ou WebP válido.</string>
     <string name="artifact_publish_logo_too_large">O arquivo do logo deve ter no máximo 512 KiB.</string>
+    <string name="artifact_publish_logo_market_preview">Visualizar efeito no mercado</string>
+    <string name="artifact_publish_logo_market_preview_title">Prévia do mercado</string>
+    <string name="artifact_publish_logo_market_list">Lista</string>
+    <string name="artifact_publish_logo_market_detail">Detalhes</string>
+    <string name="artifact_publish_logo_market_preview_action">Instalar pacote (prévia)</string>
+    <string name="artifact_publish_logo_market_preview_account">Conta atual</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Pacote sem nome</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">Sem descrição</string>
     <string name="artifact_publish_github_repository_url">Link do repositório GitHub do autor</string>
     <string name="artifact_publish_load_github_releases">Carregar Releases</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

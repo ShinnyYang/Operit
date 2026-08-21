@@ -4355,6 +4355,14 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="artifact_publish_logo_preview">Previzualizare siglă</string>
     <string name="artifact_publish_logo_invalid">Sigla nu poate fi citită. Alege un fișier SVG, PNG, JPEG sau WebP valid.</string>
     <string name="artifact_publish_logo_too_large">Fișierul siglei trebuie să aibă cel mult 512 KiB.</string>
+    <string name="artifact_publish_logo_market_preview">Previzualizare efect în piață</string>
+    <string name="artifact_publish_logo_market_preview_title">Previzualizare piață</string>
+    <string name="artifact_publish_logo_market_list">Listă</string>
+    <string name="artifact_publish_logo_market_detail">Detalii</string>
+    <string name="artifact_publish_logo_market_preview_action">Instalează pachetul (previzualizare)</string>
+    <string name="artifact_publish_logo_market_preview_account">Contul curent</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Pachet fără nume</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">Fără descriere</string>
     <string name="artifact_publish_github_repository_url">Autorul GitHub Link către depozit</string>
     <string name="artifact_publish_load_github_releases">Se încarcă Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

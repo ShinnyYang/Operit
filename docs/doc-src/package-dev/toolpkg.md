@@ -561,7 +561,8 @@ ToolPkg 可以把包 Logo 作为普通资源随归档分发。`logo` 填写资�
 在 ToolPkg 发布页面也可以直接选择 Logo。直接上传模式会生成临时发布副本，
 把选择的图片写入 `manifest.logo` 和 `resources`，不会修改本地原包。引用已有
 GitHub Release 资产时，远程资产保持不变，选择的图片只作为市场 Logo 上传。
-已发布条目的 Logo 需要通过发布新版本修改。
+发布页面还提供市场列表和详情效果预览；预览直接使用本地选择的图片，不会
+触发上传。已发布条目的 Logo 需要通过发布新版本修改。
 
 ## AssemblyScript WASM 模块
 

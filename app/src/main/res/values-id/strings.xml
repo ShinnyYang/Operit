@@ -7414,6 +7414,14 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="artifact_publish_logo_preview">Pratinjau logo</string>
     <string name="artifact_publish_logo_invalid">Logo tidak dapat dibaca. Pilih file SVG, PNG, JPEG, atau WebP yang valid.</string>
     <string name="artifact_publish_logo_too_large">Ukuran file logo harus 512 KiB atau lebih kecil.</string>
+    <string name="artifact_publish_logo_market_preview">Pratinjau pasar</string>
+    <string name="artifact_publish_logo_market_preview_title">Pratinjau pasar</string>
+    <string name="artifact_publish_logo_market_list">Daftar</string>
+    <string name="artifact_publish_logo_market_detail">Detail</string>
+    <string name="artifact_publish_logo_market_preview_action">Instal Paket (Pratinjau)</string>
+    <string name="artifact_publish_logo_market_preview_account">Akun saat ini</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Paket tanpa nama</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">Tidak ada deskripsi</string>
     <string name="artifact_publish_github_repository_url">Tautan repositori GitHub penulis</string>
     <string name="artifact_publish_load_github_releases">Muat Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
