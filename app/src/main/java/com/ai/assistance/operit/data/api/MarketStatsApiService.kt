@@ -19,8 +19,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
@@ -155,6 +157,12 @@ data class MarketV2AuthResponse(
     val githubId: Long = 0,
     val login: String = "",
     val avatarUrl: String = ""
+)
+
+@Serializable
+data class MarketV2LogoUploadResponse(
+    val ok: Boolean = false,
+    val url: String = ""
 )
 
 @Serializable
@@ -307,6 +315,7 @@ data class MarketV2Entry(
     val title: String = "",
     val description: String = "",
     val detail: String = "",
+    val logoUrl: String? = null,
     val authorId: String = "",
     val publisherId: String = "",
     val allowPublicUpdates: Boolean = true,
@@ -432,13 +441,15 @@ data class MarketV2PublishRequest(
     val version: MarketV2PublishVersion,
     val source: MarketV2PublishSource? = null,
     val repoVersion: MarketV2PublishRepoVersion? = null,
-    val asset: MarketV2PublishAsset? = null
+    val asset: MarketV2PublishAsset? = null,
+    val logoUrl: String? = null
 )
 
 @Serializable
 data class MarketV2NewVersionRequest(
     val entry: MarketV2NewVersionEntryPatch? = null,
     val version: MarketV2PublishVersion,
+    val logoUrl: String? = null,
     val repoVersion: MarketV2PublishRepoVersion? = null,
     val asset: MarketV2PublishAsset? = null
 )
@@ -449,7 +460,8 @@ data class MarketV2NewVersionEntryPatch(
     val description: String? = null,
     val detail: String? = null,
     val categoryId: String? = null,
-    val allowPublicUpdates: Boolean? = null
+    val allowPublicUpdates: Boolean? = null,
+    val logoUrl: String? = null
 )
 
 @Serializable
@@ -458,7 +470,8 @@ data class MarketV2EntryUpdateRequest(
     val description: String,
     val detail: String = "",
     val categoryId: String = "",
-    val allowPublicUpdates: Boolean? = null
+    val allowPublicUpdates: Boolean? = null,
+    val logoUrl: String? = null
 )
 
 @Serializable
@@ -785,6 +798,45 @@ class MarketStatsApiService {
             }
         }
 
+    suspend fun uploadMarketLogo(
+        fileName: String,
+        contentType: String,
+        bytes: ByteArray
+    ): Result<String> =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                require(fileName.isNotBlank()) { "Logo file name is required" }
+                require(contentType.isNotBlank()) { "Logo content type is required" }
+                require(bytes.isNotEmpty()) { "Logo content is empty" }
+                val multipartBody =
+                    MultipartBody.Builder()
+                        .setType(MultipartBody.FORM)
+                        .addFormDataPart(
+                            "logo",
+                            fileName,
+                            bytes.toRequestBody(contentType.toMediaType())
+                        )
+                        .build()
+                requestDynamic(
+                    method = "POST",
+                    pathSegments = listOf("market", "v2", "logos"),
+                    body = null,
+                    requestBody = multipartBody,
+                    label = "uploadMarketLogo fileName=$fileName"
+                ) { responseBody, _ ->
+                    val response =
+                        json.decodeFromString(
+                            MarketV2LogoUploadResponse.serializer(),
+                            responseBody
+                        )
+                    require(response.ok && response.url.isNotBlank()) {
+                        "Market logo upload returned no hosted URL"
+                    }
+                    response.url
+                }
+            }
+        }
+
     suspend fun getComments(entryId: String, page: Int = 1): Result<List<MarketV2Comment>> =
         withContext(Dispatchers.IO) {
             runCatching {
@@ -936,6 +988,7 @@ class MarketStatsApiService {
                             title = request.title,
                             description = request.description,
                             detail = request.detail,
+                            logoUrl = request.logoUrl,
                             stateCode = "pending",
                             source = request.source?.let { MarketV2Source(kind = it.kind, url = it.url) }
                         )
@@ -978,6 +1031,7 @@ class MarketStatsApiService {
                             MarketV2NewVersionRequest(
                                 entry = entryPatch,
                                 version = request.version,
+                                logoUrl = request.logoUrl,
                                 repoVersion = request.repoVersion,
                                 asset = request.asset
                             )
@@ -1043,6 +1097,7 @@ class MarketStatsApiService {
         pathSegments: List<String>,
         label: String,
         body: String? = null,
+        requestBody: RequestBody? = null,
         queryParameters: Map<String, String> = emptyMap(),
         includeMarketSession: Boolean = true,
         followRedirects: Boolean = true,
@@ -1062,12 +1117,12 @@ class MarketStatsApiService {
             requestBuilder.addHeader("Authorization", "Bearer ${ensureMarketSession()}")
         }
 
-        val requestBody = body?.toRequestBody(JSON_MEDIA_TYPE)
+        val resolvedRequestBody = requestBody ?: body?.toRequestBody(JSON_MEDIA_TYPE)
         when (method.uppercase()) {
             "GET" -> requestBuilder.get()
-            "POST" -> requestBuilder.post(requestBody ?: ByteArray(0).toRequestBody(JSON_MEDIA_TYPE))
-            "PATCH" -> requestBuilder.patch(requestBody ?: ByteArray(0).toRequestBody(JSON_MEDIA_TYPE))
-            "DELETE" -> requestBuilder.delete(requestBody)
+            "POST" -> requestBuilder.post(resolvedRequestBody ?: ByteArray(0).toRequestBody(JSON_MEDIA_TYPE))
+            "PATCH" -> requestBuilder.patch(resolvedRequestBody ?: ByteArray(0).toRequestBody(JSON_MEDIA_TYPE))
+            "DELETE" -> requestBuilder.delete(resolvedRequestBody)
             else -> error("Unsupported HTTP method: $method")
         }
 
@@ -1249,6 +1304,7 @@ class MarketStatsApiService {
             title = title,
             description = description,
             detail = detail,
+            logoUrl = logoUrl,
             categoryId = categoryId,
             allowPublicUpdates = allowPublicUpdates,
             stateCode = "pending",
@@ -1262,6 +1318,7 @@ class MarketStatsApiService {
             title = this.title,
             description = this.description,
             detail = this.detail,
+            logoUrl = this.logoUrl,
             categoryId = this.categoryId,
             allowPublicUpdates = this.allowPublicUpdates ?: true,
             stateCode = "pending"

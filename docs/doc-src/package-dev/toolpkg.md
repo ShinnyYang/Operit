@@ -536,6 +536,34 @@ const jarPath = await ToolPkg.readResource('apktool_lib_jar', 'apktool-lib.jar')
 - 如果资源 `mime` 是目录类型（例如 `inode/directory`、`vnd.android.document/directory`），运行时会先把该目录压成 zip，再返回这个 zip 文件的绝对路径；默认文件名会自动补 `.zip`。
 - `registerToolPkg()` 执行期间不可调用；调用会立即抛出异常。
 
+## ToolPkg Logo
+
+ToolPkg 可以把包 Logo 作为普通资源随归档分发。`logo` 填写资源 key，资源
+必须是文件，支持 SVG、PNG、JPEG 和 WebP：
+
+```json
+{
+  "logo": "package_logo",
+  "resources": [
+    {
+      "key": "package_logo",
+      "path": "resources/logo.svg",
+      "mime": "image/svg+xml"
+    }
+  ]
+}
+```
+
+没有 `logo` 字段的旧包继续使用宿主默认图标。发布到市场时，宿主会读取该
+资源并上传到市场 Logo 托管接口；包管理页面直接从已安装的 ToolPkg 缓存中
+读取资源。
+
+在 ToolPkg 发布页面也可以直接选择 Logo。直接上传模式会生成临时发布副本，
+把选择的图片写入 `manifest.logo` 和 `resources`，不会修改本地原包。引用已有
+GitHub Release 资产时，远程资产保持不变，选择的图片只作为市场 Logo 上传。
+发布页面还提供市场列表和详情效果预览；预览直接使用本地选择的图片，不会
+触发上传。已发布条目的 Logo 需要通过发布新版本修改。
+
 ## AssemblyScript WASM 模块
 
 企业插件可以在 `manifest.json` 中声明 AssemblyScript 编译得到的 `.wasm` 核心模块：
