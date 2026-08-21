@@ -3499,6 +3499,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="parameter_value">Nilai Parameter</string>
     <string name="parameter_range_format">Rentang: %1$s - %2$s</string>
     <string name="overseas_provider_warning">Terdeteksi Anda berada di Tiongkok Daratan, tetapi memilih penyedia layanan luar negeri. Harap konfirmasi apakah alat proxy telah diaktifkan</string>
+    <string name="international_proxy_provider_warning">Layanan ini meneruskan permintaan melalui proksi pihak ketiga internasional. Akses dari Tiongkok Daratan memerlukan alat proksi. Data permintaan akan diteruskan oleh pihak ketiga; perhatikan lingkungan jaringan, ketentuan layanan, dan persyaratan kepatuhan data.</string>
     <string name="custom_parameter_added">Parameter kustom telah ditambahkan</string>
     <string name="parameter_name">Nama Parameter</string>
     <string name="parameter_name_placeholder">Contoh: Parameter Saya</string>

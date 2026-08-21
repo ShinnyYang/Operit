@@ -3424,6 +3424,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="parameter_value">Valor do parâmetro</string>
     <string name="parameter_range_format">Intervalo: %1$s - %2$s</string>
     <string name="overseas_provider_warning">Foi detectado que você está na China continental, mas escolheu um provedor de serviços estrangeiro. Por favor, confirme se a ferramenta proxy está habilitada</string>
+    <string name="international_proxy_provider_warning">Este serviço encaminha solicitações por meio de um proxy internacional de terceiros. O acesso a partir da China continental requer uma ferramenta de proxy. Os dados das solicitações serão retransmitidos por terceiros; verifique o ambiente de rede, os termos de serviço e os requisitos de conformidade de dados.</string>
     <string name="custom_parameter_added">Parâmetros personalizados foram adicionados</string>
     <string name="parameter_name">Nome do parâmetro</string>
     <string name="parameter_name_placeholder">Por exemplo: meus parâmetros</string>

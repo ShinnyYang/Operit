@@ -3500,6 +3500,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="parameter_value">Nilai parameter</string>
     <string name="parameter_range_format">Julat: %1$s - %2$s</string>
     <string name="overseas_provider_warning">Dikesan anda berada di tanah besar China, tetapi memilih pembekal perkhidmatan luar negara. Sila sahkan sama ada alat proksi telah dihidupkan</string>
+    <string name="international_proxy_provider_warning">Perkhidmatan ini menyalurkan permintaan melalui proksi pihak ketiga antarabangsa. Akses dari tanah besar China memerlukan alat proksi. Data permintaan akan dihantar melalui pihak ketiga; semak persekitaran rangkaian, terma perkhidmatan dan keperluan pematuhan data.</string>
     <string name="custom_parameter_added">Parameter tersuai telah ditambah</string>
     <string name="parameter_name">Nama parameter</string>
     <string name="parameter_name_placeholder">Contoh: Parameter saya</string>

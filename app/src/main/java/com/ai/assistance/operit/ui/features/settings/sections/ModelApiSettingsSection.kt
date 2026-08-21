@@ -1,10 +1,10 @@
 package com.ai.assistance.operit.ui.features.settings.sections
 
 import android.annotation.SuppressLint
+import androidx.annotation.StringRes
 import com.ai.assistance.operit.util.AppLogger
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -73,6 +73,31 @@ val TAG = "ModelApiSettings"
 
 private val modelApiSettingsSaveMutex = Mutex()
 
+internal enum class ProviderRegionWarningType {
+    OVERSEAS,
+    INTERNATIONAL_PROXY
+}
+
+internal fun providerRegionWarningType(providerType: ApiProviderType?): ProviderRegionWarningType? =
+    when (providerType) {
+        ApiProviderType.OPENROUTER,
+        ApiProviderType.FOUR_ROUTER -> ProviderRegionWarningType.INTERNATIONAL_PROXY
+        ApiProviderType.OPENAI,
+        ApiProviderType.GOOGLE,
+        ApiProviderType.ANTHROPIC,
+        ApiProviderType.MISTRAL,
+        ApiProviderType.NVIDIA,
+        ApiProviderType.NOUS_PORTAL -> ProviderRegionWarningType.OVERSEAS
+        else -> null
+    }
+
+@StringRes
+private fun ProviderRegionWarningType.messageResource(): Int =
+    when (this) {
+        ProviderRegionWarningType.OVERSEAS -> R.string.overseas_provider_warning
+        ProviderRegionWarningType.INTERNATIONAL_PROXY -> R.string.international_proxy_provider_warning
+    }
+
 private data class ProviderSelectionOption(
     val id: String,
     val displayName: String
@@ -90,8 +115,8 @@ fun ModelApiSettingsSection(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 区域告警可见性
-    var showRegionWarning by remember { mutableStateOf(false) }
+    // 区域告警类型；null 表示当前无需显示。
+    var regionWarningType by remember(config.id) { mutableStateOf<ProviderRegionWarningType?>(null) }
 
     fun getDefaultModelName(providerTypeId: String): String {
         val providerType = ApiProviderType.fromProviderTypeId(providerTypeId) ?: return ""
@@ -283,29 +308,22 @@ fun ModelApiSettingsSection(
     // 当API提供商改变时更新端点
     LaunchedEffect(selectedProviderTypeId) {
         AppLogger.d("ModelApiSettingsSection", "API提供商改变")
-        if (
-            selectedApiProvider == ApiProviderType.OPENAI ||
-                selectedApiProvider == ApiProviderType.OPENAI_RESPONSES ||
-                selectedApiProvider == ApiProviderType.OPENAI_RESPONSES_GENERIC ||
-                selectedApiProvider == ApiProviderType.OPENAI_GENERIC ||
-                selectedApiProvider == ApiProviderType.GOOGLE ||
-                selectedApiProvider == ApiProviderType.GEMINI_GENERIC ||
-                selectedApiProvider == ApiProviderType.ANTHROPIC ||
-                selectedApiProvider == ApiProviderType.ANTHROPIC_GENERIC ||
-                selectedApiProvider == ApiProviderType.MISTRAL ||
-                selectedApiProvider == ApiProviderType.NVIDIA ||
-                selectedApiProvider == ApiProviderType.NOUS_PORTAL
-        ) {
+        // 仅对明确归类的海外官方服务或国际中转服务进行地域提醒。
+        val warningType = providerRegionWarningType(selectedApiProvider)
+        if (warningType != null) {
             val inChina = LocationUtils.isDeviceInMainlandChina(context)
-            showRegionWarning = inChina
+            regionWarningType = warningType.takeIf { inChina }
             if (inChina) {
-                AppLogger.d("ModelApiSettingsSection", "检测到位于中国大陆")
-                showNotification(context.getString(R.string.overseas_provider_warning))
+                AppLogger.d(
+                    "ModelApiSettingsSection",
+                    "检测到位于中国大陆，显示 ${warningType.name} 提醒"
+                )
+                showNotification(context.getString(warningType.messageResource()))
             } else {
                 AppLogger.d("ModelApiSettingsSection", "检测到位于海外")
             }
         } else {
-            showRegionWarning = false
+            regionWarningType = null
         }
 
         val shouldSyncEndpointByProviderChange = hasInitializedProviderEndpointSync
@@ -464,8 +482,8 @@ fun ModelApiSettingsSection(
                 )
             }
 
-            AnimatedVisibility(visible = showRegionWarning) {
-                SettingsInfoBanner(text = stringResource(R.string.overseas_provider_warning))
+            regionWarningType?.let { warningType ->
+                SettingsInfoBanner(text = stringResource(warningType.messageResource()))
             }
 
             if (isMnnProvider) {

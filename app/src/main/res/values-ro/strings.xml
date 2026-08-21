@@ -3942,6 +3942,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="parameter_value">Valorile parametrilor</string>
     <string name="parameter_range_format">Domeniu de aplicare: %1$s - %2$s</string>
     <string name="overseas_provider_warning">S-a detectat că vă aflați în China continentală, dar ați selectat un furnizor de servicii din străinătate. Vă rugăm să verificați dacă ați activat instrumentul de proxy.</string>
+    <string name="international_proxy_provider_warning">Acest serviciu direcționează solicitările printr-un proxy internațional terț. Accesul din China continentală necesită un instrument proxy. Datele solicitărilor vor fi retransmise de o terță parte; verificați mediul de rețea, termenii serviciului și cerințele de conformitate a datelor.</string>
 
     <!-- 自定义参数对话框 -->
     <string name="custom_parameter_added">Au fost adăugate parametri personalizați</string>
