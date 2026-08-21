@@ -10,6 +10,12 @@ const val OPERIT_MARKET_OWNER = "AAswordman"
 const val OPERIT_FORGE_REPO_NAME = "OperitForge"
 const val PUBLISH_LOGO_MAX_BYTES = 512 * 1024
 
+data class ToolPkgLogoAsset(
+    val fileName: String,
+    val contentType: String,
+    val bytes: ByteArray
+)
+
 private const val SCRIPT_MARKET_LABEL = "script-artifact"
 private const val PACKAGE_MARKET_LABEL = "package-artifact"
 private const val PLACEHOLDER_MARKET_ARTIFACT_ID = "artifact"
@@ -123,12 +129,6 @@ data class LocalPublishableArtifact(
     val inferredVersion: String? = null
 )
 
-data class PublishLogoAsset(
-    val fileName: String,
-    val contentType: String,
-    val bytes: ByteArray
-)
-
 sealed interface PublishArtifactSource {
     data class DirectUpload(
         val minifyArtifact: Boolean
@@ -161,7 +161,6 @@ data class ArtifactPublishClusterContext(
     val projectDescription: String,
     val marketDescription: String,
     val marketDetail: String,
-    val logoUrl: String? = null,
     val categoryId: String = "",
     val canEditEntry: Boolean = false
 )
@@ -215,8 +214,7 @@ data class MarketRegistrationPayload(
     val sourceFileName: String,
     val minSupportedAppVersion: String?,
     val maxSupportedAppVersion: String?,
-    val protection: String? = null,
-    val logoUrl: String? = null
+    val protection: String? = null
 )
 
 @Serializable
@@ -234,7 +232,6 @@ data class ArtifactMarketMetadata(
     val version: String = "",
     val displayName: String = "",
     val description: String = "",
-    val logoUrl: String? = null,
     val categoryId: String = "",
     val sourceFileName: String = "",
     val minSupportedAppVersion: String? = null,
@@ -281,7 +278,6 @@ fun ArtifactMarketMetadata.toPublishClusterContext(entryId: String? = null): Art
         projectDescription = effectiveProjectDescription(),
         marketDescription = description,
         marketDetail = effectiveProjectDescription(),
-        logoUrl = logoUrl,
         categoryId = categoryId
     )
 }
@@ -470,7 +466,6 @@ fun buildArtifactMarketMetadata(
         version = payload.version,
         displayName = payload.displayName,
         description = payload.description,
-        logoUrl = payload.logoUrl,
         categoryId = payload.categoryId,
         sourceFileName = payload.sourceFileName,
         minSupportedAppVersion = payload.minSupportedAppVersion,

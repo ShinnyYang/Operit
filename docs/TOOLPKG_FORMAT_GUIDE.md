@@ -174,10 +174,8 @@ windows_control.toolpkg (ZIP 压缩包)
 | `workflow_templates` | array | 否 | 注册到宿主“工作流”入口的工作流模板列表 |
 | `workspace_templates` | array | 否 | 注册到宿主“工作区创建”入口的工作区模板列表 |
 
-发布 ToolPkg 时可以在发布页面选择 Logo。直接上传模式会把选择的图片写入临时
-发布副本的 `manifest.logo` 和 `resources`，不会修改本地原包。引用已有 GitHub
-Release 资产时，远程资产保持不变，选择的图片只作为市场 Logo 上传；已发布条目
-的 Logo 需要通过发布新版本修改。
+发布 ToolPkg 时仅使用归档中已有的 `manifest.logo` 资源。客户端不会上传或托管
+Logo，也不会在市场发布、更新或新版本请求中发送 Logo 字段。
 
 #### 压缩发布
 

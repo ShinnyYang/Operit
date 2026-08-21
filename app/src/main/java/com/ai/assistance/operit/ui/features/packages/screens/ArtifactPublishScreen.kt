@@ -47,8 +47,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -68,21 +66,15 @@ import com.ai.assistance.operit.ui.features.packages.market.ArtifactPublishClust
 import com.ai.assistance.operit.ui.features.packages.market.GitHubForgePublishService
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactSource
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactType
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoAsset
+import com.ai.assistance.operit.ui.features.packages.market.ToolPkgLogoAsset
 import com.ai.assistance.operit.ui.features.packages.market.PublishProgressStage
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoReadException
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoTooLargeException
-import com.ai.assistance.operit.ui.features.packages.market.readPublishLogoAsset
 import com.ai.assistance.operit.ui.features.packages.market.isOperit2VersionAllowed
 import com.ai.assistance.operit.ui.features.packages.market.sameArtifactRuntimePackageId
 import com.ai.assistance.operit.ui.features.packages.screens.artifact.viewmodel.ArtifactMarketViewModel
 import com.ai.assistance.operit.ui.common.icons.rememberLogoPainter
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ToolPkgArtifactMinifier
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private data class ArtifactPublishEditInfo(
@@ -98,7 +90,6 @@ private data class ArtifactPublishEditInfo(
     val runtimePackageId: String,
     val normalizedId: String,
     val sourceFileName: String,
-    val logoUrl: String?
 )
 
 private fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishEditInfo(): ArtifactPublishEditInfo {
@@ -118,7 +109,6 @@ private fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishEdi
         runtimePackageId = versionValue?.runtimePackageId.orEmpty(),
         normalizedId = id,
         sourceFileName = assetValue?.assetName.orEmpty().ifBlank { assetValue?.name.orEmpty() },
-        logoUrl = logoUrl
     )
 }
 
@@ -135,7 +125,6 @@ fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishClusterCont
         projectDescription = detail.ifBlank { description },
         marketDescription = description,
         marketDetail = detail,
-        logoUrl = logoUrl,
         categoryId = categoryId,
         canEditEntry = canEditEntry
     )
@@ -149,7 +138,6 @@ fun ArtifactPublishScreen(
     publishContext: ArtifactPublishClusterContext? = null
 ) {
     val context = LocalContext.current
-    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val isEditMode = editingEntry != null
     val viewModel: ArtifactMarketViewModel =
@@ -226,11 +214,6 @@ fun ArtifactPublishScreen(
     var version by rememberSaveable { mutableStateOf(initialInfo?.version.orEmpty().ifBlank { "1.0.0" }) }
     var minSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.minSupportedAppVersion.orEmpty()) }
     var maxSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.maxSupportedAppVersion.orEmpty()) }
-    var selectedLogoAsset by remember { mutableStateOf<PublishLogoAsset?>(null) }
-    var isLoadingLogo by remember { mutableStateOf(false) }
-    var logoSelectionError by remember { mutableStateOf<String?>(null) }
-    var logoSelectionGeneration by remember { mutableStateOf(0) }
-
     var selectorExpanded by remember { mutableStateOf(false) }
     var releaseSelectorExpanded by remember { mutableStateOf(false) }
     var releaseAssetSelectorExpanded by remember { mutableStateOf(false) }
@@ -281,15 +264,8 @@ fun ArtifactPublishScreen(
     val selectedArtifact = filteredArtifacts.firstOrNull { it.packageName == selectedPackageName }
     val selectedType = selectedArtifact?.type ?: initialInfo?.type
     val isPublishing = publishStage !in listOf(PublishProgressStage.IDLE, PublishProgressStage.COMPLETED)
-    val logoSelectionKey =
-        "${selectedPackageName}:${selectedArtifact?.sourceFile?.absolutePath}:${selectedType}"
-    val currentLogoSelectionKey = rememberUpdatedState(logoSelectionKey)
-    val canSelectLogo =
-        !isEditMode &&
-            selectedType == PublishArtifactType.PACKAGE &&
-            (activePublishContext == null || canEditContinuationEntry)
     val packageLogo by
-        produceState<PublishLogoAsset?>(
+        produceState<ToolPkgLogoAsset?>(
             initialValue = null,
             selectedPackageName,
             selectedArtifact?.sourceFile?.absolutePath,
@@ -309,7 +285,7 @@ fun ArtifactPublishScreen(
                     null
                 }
         }
-    val displayedLogo = selectedLogoAsset ?: packageLogo
+    val displayedLogo = packageLogo
     val logoPainter =
         rememberLogoPainter(
             logoKey = "${selectedPackageName}:${displayedLogo?.fileName}:${displayedLogo?.bytes?.contentHashCode()}",
@@ -318,46 +294,7 @@ fun ArtifactPublishScreen(
             fileName = displayedLogo?.fileName,
             size = 64.dp
         )
-    val logoPickerLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-            if (uri == null) return@rememberLauncherForActivityResult
-            val generation = logoSelectionGeneration + 1
-            val selectionKeyAtSelection = currentLogoSelectionKey.value
-            logoSelectionGeneration = generation
-            coroutineScope.launch {
-                isLoadingLogo = true
-                logoSelectionError = null
-                try {
-                    val logoAsset = readPublishLogoAsset(context, uri)
-                    if (logoSelectionGeneration == generation && currentLogoSelectionKey.value == selectionKeyAtSelection) {
-                        selectedLogoAsset = logoAsset
-                        viewModel.clearPendingMarketRegistrationRetry()
-                    }
-                } catch (error: PublishLogoTooLargeException) {
-                    if (logoSelectionGeneration == generation && currentLogoSelectionKey.value == selectionKeyAtSelection) {
-                        selectedLogoAsset = null
-                        logoSelectionError = context.getString(R.string.artifact_publish_logo_too_large)
-                    }
-                    AppLogger.e("ArtifactPublishScreen", "Selected logo is too large", error)
-                } catch (error: PublishLogoReadException) {
-                    if (logoSelectionGeneration == generation && currentLogoSelectionKey.value == selectionKeyAtSelection) {
-                        selectedLogoAsset = null
-                        logoSelectionError = context.getString(R.string.artifact_publish_logo_invalid)
-                    }
-                    AppLogger.e("ArtifactPublishScreen", "Failed to read selected logo", error)
-                } finally {
-                    if (logoSelectionGeneration == generation && currentLogoSelectionKey.value == selectionKeyAtSelection) {
-                        isLoadingLogo = false
-                    }
-                }
-            }
-        }
-
-    LaunchedEffect(logoSelectionKey) {
-        logoSelectionGeneration += 1
-        selectedLogoAsset = null
-        logoSelectionError = null
-        isLoadingLogo = false
+    LaunchedEffect(selectedPackageName, selectedArtifact?.sourceFile?.absolutePath, selectedType) {
         showMarketPreview = false
     }
     val selectorDisplayName =
@@ -791,23 +728,51 @@ fun ArtifactPublishScreen(
             }
         }
 
-        if (canSelectLogo) {
-            ArtifactPublishLogoCard(
-                logoPainter = logoPainter,
-                selectedLogoAsset = selectedLogoAsset,
-                packageLogo = packageLogo,
-                isLoading = isLoadingLogo,
-                errorMessage = logoSelectionError,
-                onPreview = { showMarketPreview = true },
-                onChoose = {
-                    logoPickerLauncher.launch(arrayOf("image/*", "image/svg+xml"))
-                },
-                onUsePackageLogo = {
-                    selectedLogoAsset = null
-                    logoSelectionError = null
-                    viewModel.clearPendingMarketRegistrationRetry()
+        if (selectedType == PublishArtifactType.PACKAGE && packageLogo != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (logoPainter != null) {
+                        ComposeImage(
+                            painter = logoPainter,
+                            contentDescription = stringResource(R.string.artifact_publish_logo_preview),
+                            modifier = Modifier.size(56.dp).padding(4.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.artifact_publish_logo_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.artifact_publish_logo_from_package,
+                                packageLogo.fileName
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    OutlinedButton(onClick = { showMarketPreview = true }) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.artifact_publish_logo_market_preview))
+                    }
                 }
-            )
+            }
         }
 
         OutlinedTextField(
@@ -1056,7 +1021,6 @@ fun ArtifactPublishScreen(
                     description.isNotBlank() &&
                     categoryId.isNotBlank() &&
                     !isPublishing &&
-                    !isLoadingLogo &&
                     (
                         if (isEditMode) {
                             initialInfo?.type != null
@@ -1229,8 +1193,7 @@ fun ArtifactPublishScreen(
                                     minSupportedAppVersion = minSupportedAppVersion.ifBlank { null },
                                     maxSupportedAppVersion = maxSupportedAppVersion.ifBlank { GitHubForgePublishService.DEFAULT_MAX_SUPPORTED_APP_VERSION },
                                     publishContext = activePublishContext,
-                                    source = selectedSource,
-                                    logo = selectedLogoAsset
+                                    source = selectedSource
                                 )
                             }
                         }
@@ -1359,7 +1322,7 @@ fun ArtifactPublishScreen(
         )
     }
 
-    if (showMarketPreview && canSelectLogo) {
+    if (showMarketPreview && selectedType == PublishArtifactType.PACKAGE) {
         MarketPublishPreviewDialog(
             title = displayName,
             description = description,
@@ -1372,11 +1335,11 @@ fun ArtifactPublishScreen(
     }
 }
 
-@Composable
+/*
 private fun ArtifactPublishLogoCard(
     logoPainter: androidx.compose.ui.graphics.painter.Painter?,
-    selectedLogoAsset: PublishLogoAsset?,
-    packageLogo: PublishLogoAsset?,
+    selectedLogoAsset: ToolPkgLogoAsset?,
+    packageLogo: ToolPkgLogoAsset?,
     isLoading: Boolean,
     errorMessage: String?,
     onPreview: () -> Unit,
@@ -1515,3 +1478,4 @@ private fun ArtifactPublishLogoCard(
         }
     }
 }
+*/

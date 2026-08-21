@@ -15,8 +15,9 @@ scaling code, but it is tied to APK assets and provider identifiers.
 ## Intent
 
 Add an optional package logo resource that travels inside a ToolPkg archive. The
-same resource is rendered locally from the package cache and is uploaded to the
-market as a separately hosted image for pre-install market screens.
+same resource is rendered locally from the package cache. Market responses may
+provide an optional `logoUrl` for display, but the client does not upload or
+host logo files.
 
 Existing ToolPkg archives and existing market entries remain valid. The new
 manifest field is optional and `schema_version` remains unchanged.
@@ -42,14 +43,12 @@ manifest field is optional and `schema_version` remains unchanged.
 
 - ToolPkg manifest parsing, cache access and package-manager rendering
 - Generic SVG and bitmap logo rendering shared with provider logos
-- Artifact publication logo extraction and market-hosted upload
+- Artifact publication logo extraction from `manifest.logo`
 - Market list and detail rendering
 - ToolPkg format documentation and a small example resource
 - Static review only in this change; no build or test command is run by default
-- The ToolPkg publish screen accepts a local SVG or bitmap logo, previews the selected
-  image, and writes it only into the temporary direct-upload archive when needed.
-- The publish screen also previews the logo in the real market list-card and detail-header
-  layouts without uploading or publishing the artifact.
+- The publish screen reads and previews only the logo already declared by the
+  selected ToolPkg manifest.
 
 Android client implementation is complete. The market Worker/API remains an
 external dependency because it is not part of this repository.

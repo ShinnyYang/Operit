@@ -42,7 +42,7 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.ui.common.icons.rememberLogoPainter
 import com.ai.assistance.operit.ui.features.packages.market.MarketBrowseCard
 import com.ai.assistance.operit.ui.features.packages.market.MarketBrowseCardModel
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoAsset
+import com.ai.assistance.operit.ui.features.packages.market.ToolPkgLogoAsset
 import com.ai.assistance.operit.ui.features.packages.market.UnifiedMarketDetailHeader
 import com.ai.assistance.operit.ui.features.packages.market.UnifiedMarketDetailHeaderCard
 import com.ai.assistance.operit.ui.features.packages.market.UnifiedMarketDetailMetric
@@ -56,7 +56,7 @@ internal fun MarketPublishPreviewDialog(
     detail: String,
     version: String,
     author: String,
-    logoAsset: PublishLogoAsset?,
+    logoAsset: ToolPkgLogoAsset?,
     onDismiss: () -> Unit
 ) {
     var selectedMode by rememberSaveable { mutableIntStateOf(0) }

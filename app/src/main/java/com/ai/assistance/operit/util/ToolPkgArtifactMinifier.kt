@@ -5,29 +5,19 @@ import com.ai.assistance.operit.core.tools.packTool.ToolPkgArchiveParser
 import com.ai.assistance.operit.core.tools.packTool.ToolPkgMarketOrigin
 import com.ai.assistance.operit.core.tools.packTool.ToolPkgMarketOriginCodec
 import com.ai.assistance.operit.ui.features.packages.market.PUBLISH_LOGO_MAX_BYTES
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoAsset
+import com.ai.assistance.operit.ui.features.packages.market.ToolPkgLogoAsset
 import java.io.ByteArrayOutputStream
-import java.io.ByteArrayInputStream
 import java.io.File
 import java.nio.charset.StandardCharsets
-import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
-import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 import org.hjson.JsonValue
 import org.json.JSONObject
 
 /** Produces publish artifacts with optional AST minification and mandatory market provenance. */
 object ToolPkgArtifactMinifier {
-    fun readToolPkgLogoAsset(sourceFile: File): PublishLogoAsset? {
+    fun readToolPkgLogoAsset(sourceFile: File): ToolPkgLogoAsset? {
         val manifestPreview =
             ToolPkgArchiveParser.readToolPkgManifestPreview { sourceFile.inputStream() }
                 ?: throw IllegalArgumentException("manifest.hjson or manifest.json not found")
@@ -59,7 +49,7 @@ object ToolPkgArtifactMinifier {
             require(bytes.size <= PUBLISH_LOGO_MAX_BYTES) {
                 "ToolPkg logo must be at most ${PUBLISH_LOGO_MAX_BYTES / 1024} KiB"
             }
-            return PublishLogoAsset(
+            return ToolPkgLogoAsset(
                 fileName = fileName,
                 contentType = contentType,
                 bytes = bytes
@@ -67,132 +57,6 @@ object ToolPkgArtifactMinifier {
         }
     }
 
-    fun injectToolPkgLogo(
-        artifactBytes: ByteArray,
-        logo: PublishLogoAsset
-    ): ByteArray {
-        require(logo.bytes.isNotEmpty()) { "Logo content is empty" }
-        require(logo.bytes.size <= PUBLISH_LOGO_MAX_BYTES) {
-            "ToolPkg logo must be at most ${PUBLISH_LOGO_MAX_BYTES / 1024} KiB"
-        }
-
-        val manifestPreview =
-            ToolPkgArchiveParser.readToolPkgManifestPreview { ByteArrayInputStream(artifactBytes) }
-                ?: throw IllegalArgumentException("manifest.hjson or manifest.json not found")
-        val manifestEntryName =
-            ToolPkgArchiveParser.normalizeZipEntryPath(manifestPreview.entryName)
-                ?: throw IllegalArgumentException("Invalid toolpkg manifest entry name")
-        val manifestBasePath = manifestEntryName.substringBeforeLast('/', "")
-        val logoExtension = logo.fileName.substringAfterLast('.', "").lowercase()
-        require(logoExtension in TOOLPKG_LOGO_EXTENSIONS) {
-            "Unsupported ToolPkg logo format: ${logo.fileName}"
-        }
-        val logoResourceKey =
-            "$TOOLPKG_LOGO_RESOURCE_KEY_PREFIX${UUID.randomUUID().toString().replace("-", "")}"
-        val logoRelativePath = "resources/$logoResourceKey.$logoExtension"
-        val logoEntryPath =
-            ToolPkgArchiveParser.resolveManifestRelativeResourcePath(
-                manifestBasePath,
-                logoRelativePath
-            ) ?: throw IllegalArgumentException("Invalid generated logo resource path")
-        val entries = readArchiveEntries(artifactBytes)
-        val manifestEntry =
-            entries.firstOrNull { entry ->
-                ToolPkgArchiveParser.normalizeZipEntryPath(entry.name)
-                    ?.equals(manifestEntryName, ignoreCase = true) == true
-            } ?: throw IllegalArgumentException("ToolPkg manifest entry is missing")
-        val updatedManifest =
-            buildManifestWithLogo(
-                manifestText = manifestEntry.bytes.toString(StandardCharsets.UTF_8),
-                manifestEntryName = manifestEntryName,
-                logoRelativePath = logoRelativePath,
-                logoResourceKey = logoResourceKey,
-                logo = logo
-            )
-
-        val outputBytes = ByteArrayOutputStream()
-        var logoEntryReplaced = false
-        ZipOutputStream(outputBytes).use { zipOutput ->
-            entries.forEach { entry ->
-                val normalizedName = ToolPkgArchiveParser.normalizeZipEntryPath(entry.name)
-                val outputEntryBytes =
-                    when {
-                        normalizedName?.equals(manifestEntryName, ignoreCase = true) == true -> updatedManifest
-                        normalizedName?.equals(logoEntryPath, ignoreCase = true) == true -> {
-                            logoEntryReplaced = true
-                            logo.bytes
-                        }
-                        else -> entry.bytes
-                    }
-                zipOutput.putNextEntry(
-                    ZipEntry(entry.name).apply {
-                        if (entry.time >= 0L) time = entry.time
-                        comment = entry.comment
-                    }
-                )
-                zipOutput.write(outputEntryBytes)
-                zipOutput.closeEntry()
-            }
-            if (!logoEntryReplaced) {
-                zipOutput.putNextEntry(ZipEntry(logoEntryPath))
-                zipOutput.write(logo.bytes)
-                zipOutput.closeEntry()
-            }
-        }
-        return outputBytes.toByteArray()
-    }
-
-    private fun buildManifestWithLogo(
-        manifestText: String,
-        manifestEntryName: String,
-        logoRelativePath: String,
-        logoResourceKey: String,
-        logo: PublishLogoAsset
-    ): ByteArray {
-        val manifestJson =
-            if (manifestEntryName.endsWith(".hjson", ignoreCase = true)) {
-                JsonValue.readHjson(manifestText).toString()
-            } else {
-                manifestText
-            }
-        val root =
-            Json.parseToJsonElement(manifestJson) as? JsonObject
-                ?: throw IllegalArgumentException("ToolPkg manifest root must be an object")
-        val resources =
-            (root["resources"] as? JsonArray)?.toMutableList() ?: mutableListOf<JsonElement>()
-        resources +=
-            buildJsonObject {
-                put("key", logoResourceKey)
-                put("path", logoRelativePath)
-                put("mime", logo.contentType)
-            }
-        val updatedManifest =
-            buildJsonObject {
-                root.forEach { (key, value) -> put(key, value) }
-                put("logo", logoResourceKey)
-                put("resources", JsonArray(resources))
-            }
-        return Json.encodeToString(JsonObject.serializer(), updatedManifest)
-            .toByteArray(StandardCharsets.UTF_8)
-    }
-
-    private fun readArchiveEntries(artifactBytes: ByteArray): List<ToolPkgArchiveEntryBytes> {
-        val entries = mutableListOf<ToolPkgArchiveEntryBytes>()
-        ZipInputStream(ByteArrayInputStream(artifactBytes)).use { zipInput ->
-            while (true) {
-                val entry = zipInput.nextEntry ?: break
-                entries +=
-                    ToolPkgArchiveEntryBytes(
-                        name = entry.name,
-                        time = entry.time,
-                        comment = entry.comment,
-                        bytes = zipInput.readBytes()
-                    )
-                zipInput.closeEntry()
-            }
-        }
-        return entries
-    }
 
     internal fun processArtifactFile(
         context: Context,
@@ -491,13 +355,6 @@ object ToolPkgArtifactMinifier {
         return extension in setOf("js", "mjs", "cjs", "ts", "jsx", "tsx")
     }
 
-    private data class ToolPkgArchiveEntryBytes(
-        val name: String,
-        val time: Long,
-        val comment: String?,
-        val bytes: ByteArray
-    )
-
     private data class MetadataBlock(
         val comment: String,
         val content: String,
@@ -505,8 +362,6 @@ object ToolPkgArtifactMinifier {
     )
 
     private const val SCRIPT_MARKET_ORIGIN_METADATA_KEY = "__operit_market_origin"
-    private const val TOOLPKG_LOGO_RESOURCE_KEY_PREFIX = "operit_publish_logo_"
-    private val TOOLPKG_LOGO_EXTENSIONS = setOf("svg", "png", "jpg", "jpeg", "webp")
     private val metadataContentPattern = Regex("""(?s)/\*\s*METADATA\s*(.*?)\*/""")
     private val staticModuleReferencePattern =
             Regex("""(?:require\s*\(\s*[\"']([^\"']+)[\"']\s*\)|(?:from|import)\s*[\"']([^\"']+)[\"'])""")

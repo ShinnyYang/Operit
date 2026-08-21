@@ -31,8 +31,7 @@ data class PublishArtifactRequest(
     val minSupportedAppVersion: String?,
     val maxSupportedAppVersion: String?,
     val publishContext: ArtifactPublishClusterContext? = null,
-    val source: PublishArtifactSource,
-    val logo: PublishLogoAsset? = null
+    val source: PublishArtifactSource
 )
 
 sealed class PublishAttemptResult {
@@ -128,10 +127,6 @@ class GitHubForgePublishService(
                     maxSupportedAppVersion = request.maxSupportedAppVersion,
                     publishContext = request.publishContext
                 )
-            require(request.logo == null || descriptor.type == PublishArtifactType.PACKAGE) {
-                "Logo selection is only supported for ToolPkg packages"
-            }
-
             val resolvedAsset =
                 when (val source = request.source) {
                     is PublishArtifactSource.DirectUpload -> {
@@ -176,20 +171,13 @@ class GitHubForgePublishService(
                             marketOrigin = marketOrigin,
                             minify = source.minifyArtifact
                         )
-                        val fileBytes =
-                            request.logo?.let { logo ->
-                                ToolPkgArtifactMinifier.injectToolPkgLogo(
-                                    artifactBytes = processedFileBytes,
-                                    logo = logo
-                                )
-                            } ?: processedFileBytes
                         val uploadedAsset =
                             uploadAssetReplacingExisting(
                                 owner = currentUser.login,
                                 repo = forgeRepo.repoName,
                                 release = ensuredRelease.release,
                                 descriptor = descriptor,
-                                content = fileBytes
+                                content = processedFileBytes
                             ).getOrElse { error ->
                                 return@withContext Result.failure(error)
                             }
@@ -199,7 +187,7 @@ class GitHubForgePublishService(
                             repository = forgeRepo.repoName,
                             release = ensuredRelease.release,
                             asset = uploadedAsset,
-                            sha256 = sha256Hex(fileBytes),
+                            sha256 = sha256Hex(processedFileBytes),
                             releaseWasCreated = ensuredRelease.created
                         )
                     }
@@ -240,7 +228,6 @@ class GitHubForgePublishService(
                 }
 
             onProgress(PublishProgressStage.REGISTERING_MARKET)
-            val logoUrl = resolveMarketLogoUrl(request, descriptor)
             val payload =
                 MarketRegistrationPayload(
                     type = descriptor.type,
@@ -259,7 +246,6 @@ class GitHubForgePublishService(
                     displayName = descriptor.displayName,
                     description = descriptor.description,
                     detail = descriptor.detail,
-                    logoUrl = logoUrl,
                     categoryId = descriptor.categoryId,
                     allowPublicUpdates = descriptor.allowPublicUpdates,
                     sourceFileName = sourceFile.name,
@@ -454,7 +440,6 @@ class GitHubForgePublishService(
                 categoryId = payload.categoryId,
                 allowPublicUpdates = payload.allowPublicUpdates,
                 detail = payload.detail.ifBlank { payload.description },
-                logoUrl = payload.logoUrl,
                 version = MarketV2PublishVersion(
                     version = payload.version,
                     formatVer = payload.type.marketFormatVersion(),
@@ -487,7 +472,6 @@ class GitHubForgePublishService(
                 title = payload.displayName,
                 description = payload.description,
                 detail = payload.detail.ifBlank { payload.description },
-                logoUrl = payload.logoUrl,
                 stateCode = "pending",
                 latestVersion = MarketV2Version(
                     id = response.versionId,
@@ -514,8 +498,7 @@ class GitHubForgePublishService(
                     title = payload.displayName.takeIf { it != context.lockedDisplayName },
                     description = payload.description.takeIf { it != context.marketDescription },
                     detail = payload.detail.takeIf { it != context.marketDetail },
-                    categoryId = payload.categoryId.takeIf { it != context.categoryId },
-                    logoUrl = payload.logoUrl.takeIf { it != context.logoUrl }
+                    categoryId = payload.categoryId.takeIf { it != context.categoryId }
                 )
             } else {
                 MarketV2NewVersionEntryPatch(
@@ -528,8 +511,7 @@ class GitHubForgePublishService(
                 it.description != null ||
                 it.detail != null ||
                 it.categoryId != null ||
-                it.allowPublicUpdates != null ||
-                it.logoUrl != null
+                it.allowPublicUpdates != null
         }
     }
 
@@ -537,36 +519,6 @@ class GitHubForgePublishService(
         require(file.exists()) { "Source file not found: ${file.absolutePath}" }
         require(file.isFile) { "Source path is not a file: ${file.absolutePath}" }
         require(file.canRead()) { "Cannot read source file: ${file.absolutePath}" }
-    }
-
-    private suspend fun resolveMarketLogoUrl(
-        request: PublishArtifactRequest,
-        descriptor: PublishArtifactDescriptor
-    ): String? {
-        require(request.logo == null || descriptor.type == PublishArtifactType.PACKAGE) {
-            "Logo selection is only supported for ToolPkg packages"
-        }
-        val publishContext = request.publishContext
-        if (publishContext?.canEditEntry == false) {
-            return publishContext.logoUrl
-        }
-        if (descriptor.type != PublishArtifactType.PACKAGE) {
-            return publishContext?.logoUrl
-        }
-
-        val logoAsset =
-            request.logo
-                ?: ToolPkgArtifactMinifier.readToolPkgLogoAsset(descriptor.sourceFile)
-                ?: return publishContext?.logoUrl
-        return marketStatsApiService
-            .uploadMarketLogo(
-                fileName = logoAsset.fileName,
-                contentType = logoAsset.contentType,
-                bytes = logoAsset.bytes
-            )
-            .getOrElse { error ->
-                throw IllegalStateException("Failed to upload ToolPkg logo: ${error.message}", error)
-            }
     }
 
     private fun sha256Hex(bytes: ByteArray): String {

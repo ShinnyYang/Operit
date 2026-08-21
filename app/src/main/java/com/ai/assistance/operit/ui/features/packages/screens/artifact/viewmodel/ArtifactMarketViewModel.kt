@@ -23,7 +23,6 @@ import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactReque
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactSource
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactType
 import com.ai.assistance.operit.ui.features.packages.market.PublishAttemptResult
-import com.ai.assistance.operit.ui.features.packages.market.PublishLogoAsset
 import com.ai.assistance.operit.ui.features.packages.market.PublishProgressStage
 import com.ai.assistance.operit.ui.features.packages.market.formatSupportedAppVersions
 import com.ai.assistance.operit.ui.features.packages.market.normalizeMarketArtifactId
@@ -150,7 +149,6 @@ class ArtifactMarketViewModel(
         maxSupportedAppVersion: String?,
         publishContext: ArtifactPublishClusterContext? = null,
         source: PublishArtifactSource,
-        logo: PublishLogoAsset? = null
     ) {
         val localArtifact = _publishableArtifacts.value.firstOrNull { it.packageName == packageName }
         if (localArtifact == null) {
@@ -177,8 +175,7 @@ class ArtifactMarketViewModel(
                 minSupportedAppVersion = minSupportedAppVersion,
                 maxSupportedAppVersion = maxSupportedAppVersion,
                 publishContext = publishContext,
-                source = source,
-                logo = logo
+                source = source
             )
         executePublish(request, allowCreateForgeRepo = false)
     }
@@ -252,8 +249,7 @@ class ArtifactMarketViewModel(
                         description = payload.description,
                         detail = payload.projectDescription,
                         categoryId = categoryId,
-                        allowPublicUpdates = allowPublicUpdates,
-                        logoUrl = payload.logoUrl
+                        allowPublicUpdates = allowPublicUpdates
                     )
                 ).fold(
                     onSuccess = {
@@ -448,7 +444,6 @@ class ArtifactMarketViewModel(
             displayName = trimmedDisplayName,
             description = trimmedDescription,
             detail = trimmedDetail,
-            logoUrl = entry.logoUrl,
             categoryId = entry.categoryId,
             sourceFileName = assetName,
             minSupportedAppVersion = normalizeAppVersionOrNull(minSupportedAppVersion),
