@@ -10,14 +10,17 @@ import androidx.room.PrimaryKey
     indices = [
         Index(value = ["occurredAtMs"]),
         Index(value = ["provider", "model", "configId", "occurredAtMs"]),
+        Index(value = ["importKey"], unique = true),
     ],
 )
 data class TokenUsageRecordEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0L,
-    val occurredAtMs: Long,
+    val importKey: String? = null,
+    val occurredAtMs: Long?,
     val configId: String,
     val provider: String,
     val model: String,
+    val requestCount: Long,
     val uncachedInputTokens: Long? = null,
     val cachedInputTokens: Long? = null,
     val cacheWriteTokens: Long? = null,

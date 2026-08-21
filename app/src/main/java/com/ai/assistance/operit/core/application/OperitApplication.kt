@@ -45,6 +45,7 @@ import com.ai.assistance.operit.data.preferences.initAndroidPermissionPreference
 import com.ai.assistance.operit.data.preferences.initUserPreferencesManager
 import com.ai.assistance.operit.data.preferences.preferencesManager
 import com.ai.assistance.operit.data.repository.CustomEmojiRepository
+import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.ui.features.chat.webview.LocalWebServer
 import com.ai.assistance.operit.ui.features.chat.webview.workspace.editor.language.LanguageFactory
 import com.ai.assistance.operit.util.GlobalExceptionHandler
@@ -177,6 +178,16 @@ class OperitApplication : Application(), ImageLoaderFactory, WorkConfiguration.P
         val defaultProfileName = applicationContext.getString(R.string.default_profile)
         initUserPreferencesManager(applicationContext, defaultProfileName)
         AppLogger.d(TAG, "【启动计时】用户偏好管理器初始化完成 - ${System.currentTimeMillis() - startTime}ms")
+
+        // Run the legacy token import during startup so upgrades retain statistics
+        // even when the user opens another screen before visiting token stats.
+        applicationScope.launch {
+            try {
+                TokenUsageRepository.getInstance(applicationContext).ensureInitialized()
+            } catch (error: Throwable) {
+                AppLogger.e(TAG, "Token statistics migration failed", error)
+            }
+        }
 
         AppLogger.d(TAG, "【启动计时】Android权限偏好管理器已就绪 - ${System.currentTimeMillis() - startTime}ms")
 

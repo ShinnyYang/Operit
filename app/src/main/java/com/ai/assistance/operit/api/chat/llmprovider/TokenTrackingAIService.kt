@@ -302,6 +302,7 @@ class TokenTrackingAIService(
                 configId = configId,
                 provider = providerModel.substring(0, separator),
                 model = providerModel.substring(separator + 1),
+                requestCount = 1L,
                 uncachedInputTokens = snapshot.uncachedInputTokens,
                 cachedInputTokens = snapshot.cachedInputTokens,
                 cacheWriteTokens =

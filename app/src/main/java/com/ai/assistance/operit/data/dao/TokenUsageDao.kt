@@ -39,6 +39,9 @@ abstract class TokenUsageDao {
     abstract suspend fun insertRecord(record: TokenUsageRecordEntity): Long
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
+    abstract suspend fun insertRecords(records: List<TokenUsageRecordEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertStatsModel(model: TokenStatsModelEntity)
 
     @Query(
@@ -91,17 +94,17 @@ abstract class TokenUsageDao {
             provider AS provider,
             model AS model,
             configId AS configId,
-            COUNT(*) AS requests,
+            COALESCE(SUM(requestCount), 0) AS requests,
             COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
+            COALESCE(SUM(CASE WHEN uncachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS uncachedInputKnown,
             COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
+            COALESCE(SUM(CASE WHEN cachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cachedInputKnown,
             COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
+            COALESCE(SUM(CASE WHEN cacheWriteTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cacheWriteKnown,
             COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
+            COALESCE(SUM(CASE WHEN totalInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS totalInputKnown,
             COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown
+            COALESCE(SUM(CASE WHEN outputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS outputKnown
         FROM token_usage_records
         WHERE (:allModels OR (provider || ':' || model) IN (:providerModels))
         GROUP BY provider, model, configId
@@ -119,17 +122,17 @@ abstract class TokenUsageDao {
             provider AS provider,
             model AS model,
             configId AS configId,
-            COUNT(*) AS requests,
+            COALESCE(SUM(requestCount), 0) AS requests,
             COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
+            COALESCE(SUM(CASE WHEN uncachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS uncachedInputKnown,
             COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
+            COALESCE(SUM(CASE WHEN cachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cachedInputKnown,
             COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
+            COALESCE(SUM(CASE WHEN cacheWriteTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cacheWriteKnown,
             COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
+            COALESCE(SUM(CASE WHEN totalInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS totalInputKnown,
             COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown
+            COALESCE(SUM(CASE WHEN outputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS outputKnown
         FROM token_usage_records
         WHERE occurredAtMs >= :startMs AND occurredAtMs < :endMs
             AND (:allModels OR (provider || ':' || model) IN (:providerModels))

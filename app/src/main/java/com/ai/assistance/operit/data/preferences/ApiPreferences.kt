@@ -5,13 +5,23 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.data.collects.PricingCurrency
+import com.ai.assistance.operit.data.model.ApiProviderType
+import com.ai.assistance.operit.data.model.BillingMode
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
+import com.ai.assistance.operit.data.stats.ModelPriceSettings
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKey
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKeyDecoder
+import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
+import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -31,6 +41,9 @@ class ApiPreferences private constructor(private val context: Context) {
     companion object {
         @Volatile
         private var INSTANCE: ApiPreferences? = null
+
+        internal var toolPkgProviderAliasesProvider: (() -> Map<String, String>)? = null
+        internal var configuredProviderIdsProvider: (suspend () -> List<String>)? = null
 
         fun getInstance(context: Context): ApiPreferences {
             return INSTANCE ?: synchronized(this) {
@@ -68,6 +81,30 @@ class ApiPreferences private constructor(private val context: Context) {
                 getInstance(context).saveFeatureToggle(normalized, enabled)
             }
         }
+
+        private fun getTokenInputKey(providerModel: String) =
+            longPreferencesKey("token_input_${providerModel.replace(":", "_")}")
+        private fun getTokenCachedInputKey(providerModel: String) =
+            longPreferencesKey("token_cached_input_${providerModel.replace(":", "_")}")
+        private fun getTokenOutputKey(providerModel: String) =
+            longPreferencesKey("token_output_${providerModel.replace(":", "_")}")
+        private fun getModelInputPriceKey(providerModel: String) =
+            floatPreferencesKey("model_input_price_${providerModel.replace(":", "_")}")
+        private fun getModelCachedInputPriceKey(providerModel: String) =
+            floatPreferencesKey("model_cached_input_price_${providerModel.replace(":", "_")}")
+        private fun getModelOutputPriceKey(providerModel: String) =
+            floatPreferencesKey("model_output_price_${providerModel.replace(":", "_")}")
+        private fun getRequestCountKey(providerModel: String) =
+            intPreferencesKey("request_count_${providerModel.replace(":", "_")}")
+        private fun getBillingModeKey(providerModel: String) =
+            stringPreferencesKey("billing_mode_${providerModel.replace(":", "_")}")
+        private fun getPricePerRequestKey(providerModel: String) =
+            floatPreferencesKey("price_per_request_${providerModel.replace(":", "_")}")
+        private val RELEASED_MODEL_PRICE_KEY_PREFIXES = listOf(
+            "model_input_price_", "model_cached_input_price_", "model_output_price_",
+            "billing_mode_", "price_per_request_",
+        )
+        private val USD_TO_CNY_EXCHANGE_RATE = floatPreferencesKey("usd_to_cny_exchange_rate")
 
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
         val FEATURE_TOGGLES_JSON = stringPreferencesKey("feature_toggles_json")
@@ -477,6 +514,138 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 
+    /** Reads released cumulative statistics once before Room takes ownership. */
+    suspend fun readTokenStatsMigrationSnapshot(): TokenStatsMigrationSnapshot {
+        val preferences = context.apiDataStore.data.first()
+        val counterPrefixes = listOf(
+            "token_input_",
+            "token_cached_input_",
+            "token_output_",
+            "request_count_",
+        )
+        val encodedTotals = linkedSetOf<String>()
+        val encodedPrices = linkedSetOf<String>()
+        preferences.asMap().keys.forEach { key ->
+            counterPrefixes.firstOrNull { key.name.startsWith(it) }?.let { prefix ->
+                encodedTotals += key.name.removePrefix(prefix)
+            }
+            RELEASED_MODEL_PRICE_KEY_PREFIXES
+                .firstOrNull { key.name.startsWith(it) }
+                ?.let { prefix -> encodedPrices += key.name.removePrefix(prefix) }
+        }
+        val providerAliases = releasedTokenProviderAliases()
+        val skippedLegacyKeys = linkedSetOf<String>()
+
+        // These keys are from the pre-provider/model format. They cannot be assigned
+        // accurately, so skip them while allowing the rest of the migration to finish.
+        fun decodeReleasedKeyOrSkip(encoded: String): ReleasedProviderModelKey? {
+            val decoded = ReleasedProviderModelKeyDecoder.decodeOrNull(encoded, providerAliases)
+            if (decoded == null && skippedLegacyKeys.add(encoded)) {
+                AppLogger.w(
+                    "ApiPreferences",
+                    "Skipping legacy token statistics key without provider/model: $encoded",
+                )
+            }
+            return decoded
+        }
+
+        val totals = encodedTotals.mapNotNull { encoded ->
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
+            val input = readTokenCount(preferences, getTokenInputKey(key.storedProviderModel).name)
+            val cached = readTokenCount(preferences, getTokenCachedInputKey(key.storedProviderModel).name)
+            val output = readTokenCount(preferences, getTokenOutputKey(key.storedProviderModel).name)
+            val requestCount = preferences.asMap().entries
+                .firstOrNull { it.key.name == getRequestCountKey(key.storedProviderModel).name }
+                ?.value
+                ?.let { it as? Number }
+                ?.toLong()
+                ?.coerceAtLeast(0L)
+                ?: 0L
+            ReleasedTokenUsageTotal(key.provider, key.model, input, cached, output, requestCount)
+                .takeIf { input > 0L || cached > 0L || output > 0L || requestCount > 0L }
+        }.groupBy { it.provider to it.model }
+            .map { (_, values) -> values.reduce(ReleasedTokenUsageTotal::plus) }
+        val prices = encodedPrices.mapNotNull { encoded ->
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
+            val billingMode = preferences[getBillingModeKey(key.storedProviderModel)]?.let(BillingMode::valueOf)
+            val inputPrice = positivePrice(preferences[getModelInputPriceKey(key.storedProviderModel)])
+            val cachedInputPrice = positivePrice(preferences[getModelCachedInputPriceKey(key.storedProviderModel)])
+            val outputPrice = positivePrice(preferences[getModelOutputPriceKey(key.storedProviderModel)])
+            val pricePerRequest = positivePrice(preferences[getPricePerRequestKey(key.storedProviderModel)])
+            if (billingMode == null && inputPrice == null && cachedInputPrice == null &&
+                outputPrice == null && pricePerRequest == null) return@mapNotNull null
+            ReleasedTokenPriceSetting(
+                key.provider,
+                key.model,
+                ModelPriceSettings(
+                    billingMode = billingMode,
+                    currency = if (billingMode == BillingMode.COUNT) PricingCurrency.CNY else PricingCurrency.USD,
+                    inputPricePerMillion = inputPrice,
+                    cachedInputPricePerMillion = cachedInputPrice,
+                    outputPricePerMillion = outputPrice,
+                    pricePerRequest = pricePerRequest,
+                )
+            )
+        }.groupBy { it.provider to it.model }.map { (identity, values) ->
+            val settings = values.map(ReleasedTokenPriceSetting::settings).distinct()
+            require(settings.size == 1) { "Conflicting released prices for ${identity.first}:${identity.second}" }
+            ReleasedTokenPriceSetting(identity.first, identity.second, settings.single())
+        }
+        return TokenStatsMigrationSnapshot(
+            totals = totals,
+            prices = prices,
+            usdToCnyRate = preferences[USD_TO_CNY_EXCHANGE_RATE]
+                ?.takeIf { it.isFinite() && it > 0f }
+                ?.toDouble(),
+        )
+    }
+
+    /** Removes only old statistics keys after their Room import is complete. */
+    suspend fun clearMigratedTokenStatsData() {
+        context.apiDataStore.edit { preferences ->
+            val prefixes = listOf(
+                "token_input_", "token_cached_input_", "token_output_", "request_count_",
+                "model_input_price_", "model_cached_input_price_", "model_cache_write_price_",
+                "model_output_price_", "model_pricing_currency_", "billing_mode_",
+                "price_per_request_", "stats_",
+            )
+            preferences.asMap().keys
+                .filter { it == USD_TO_CNY_EXCHANGE_RATE || prefixes.any(it.name::startsWith) }
+                .forEach { key ->
+                    @Suppress("UNCHECKED_CAST")
+                    preferences.remove(key as Preferences.Key<Any>)
+                }
+        }
+    }
+
+    private fun readTokenCount(preferences: Preferences, keyName: String): Long {
+        val values = preferences.asMap().entries.filter { it.key.name == keyName }.map { it.value }
+        return when (val value = values.firstOrNull { it is Long } ?: values.firstOrNull()) {
+            is Long -> value
+            is Int -> if (value < 0) value.toLong() and 0xFFFF_FFFFL else value.toLong()
+            else -> 0L
+        }
+    }
+
+    private suspend fun releasedTokenProviderAliases(): Map<String, String> {
+        val registered = toolPkgProviderAliasesProvider?.invoke()
+            ?: ToolPkgAiProviderRegistry.releasedTokenProviderAliases()
+        val configured = configuredProviderIdsProvider?.invoke()
+            ?: ModelConfigManager(context).getAllConfigSummaries().map { it.apiProviderTypeId }
+        return buildMap {
+            configured.map(String::trim).filter(String::isNotEmpty)
+                .filter { ApiProviderType.fromProviderTypeId(it) == null }
+                .forEach { providerId ->
+                    put(providerId, providerId)
+                    put("TOOLPKG_${providerId.lowercase()}", providerId)
+                }
+            putAll(registered)
+        }
+    }
+
+    private fun positivePrice(value: Float?): Double? =
+        value?.toDouble()?.takeIf { it.isFinite() && it > 0.0 }
+
     suspend fun saveMaxImageHistoryUserTurns(turns: Int) {
         context.apiDataStore.edit { preferences ->
             preferences[MAX_IMAGE_HISTORY_USER_TURNS] = turns
@@ -506,3 +675,34 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 }
+
+data class TokenStatsMigrationSnapshot(
+    val totals: List<ReleasedTokenUsageTotal>,
+    val prices: List<ReleasedTokenPriceSetting>,
+    val usdToCnyRate: Double?,
+)
+
+data class ReleasedTokenUsageTotal(
+    val provider: String,
+    val model: String,
+    val inputTokens: Long,
+    val cachedInputTokens: Long,
+    val outputTokens: Long,
+    val requestCount: Long,
+) {
+    operator fun plus(other: ReleasedTokenUsageTotal): ReleasedTokenUsageTotal {
+        require(provider == other.provider && model == other.model)
+        return copy(
+            inputTokens = Math.addExact(inputTokens, other.inputTokens),
+            cachedInputTokens = Math.addExact(cachedInputTokens, other.cachedInputTokens),
+            outputTokens = Math.addExact(outputTokens, other.outputTokens),
+            requestCount = Math.addExact(requestCount, other.requestCount),
+        )
+    }
+}
+
+data class ReleasedTokenPriceSetting(
+    val provider: String,
+    val model: String,
+    val settings: ModelPriceSettings,
+)

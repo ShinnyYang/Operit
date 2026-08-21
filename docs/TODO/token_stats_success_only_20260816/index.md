@@ -25,13 +25,13 @@ page use only the active primary and secondary theme families.
 
 - The current v20-to-v21 token statistics schema is unpublished. Edit it as the
   final schema and do not introduce another database version transition.
-- Do not import historical chat counters or legacy cumulative token totals into
-  the new ledger because they cannot prove the success-only invariant.
+- Import historical chat counters and legacy cumulative token totals once during
+  upgrade so users do not lose visible statistics. Timestamp-free cumulative
+  rows remain outside dated trend buckets.
 - Retain pricing, including per-request pricing and cache-write pricing where a
   provider requires it for billing.
-- Released `api_settings` prices and the legacy exchange rate are NOT migrated
-  into the new storage; confirmed as a fresh start. No legacy usage, chat, or
-  cumulative token data is imported under any circumstance.
+- Released `api_settings` prices and the legacy exchange rate are migrated once
+  into the new storage after the Room import completes.
 - Do not run local compilation, builds, or tests. Dispatch the Android build in
   GitHub Actions after the completed commit is pushed.
 

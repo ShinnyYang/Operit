@@ -21,9 +21,19 @@ internal class TokenStatsPreferences(context: Context) {
         private val USD_TO_CNY_RATE = doublePreferencesKey("usd_to_cny_rate")
         private val TIME_RANGE_START = longPreferencesKey("time_range_start")
         private val TIME_RANGE_END = longPreferencesKey("time_range_end")
+        private val IMPORTED_AT = longPreferencesKey("imported_at_ms")
     }
 
     private val dataStore = context.applicationContext.tokenStatsDataStore
+
+    suspend fun importedAtMs(): Long? = dataStore.data.first()[IMPORTED_AT]
+
+    suspend fun completeMigration(importedAtMs: Long, releasedUsdToCnyRate: Double?) {
+        dataStore.edit { preferences ->
+            releasedUsdToCnyRate?.let { preferences[USD_TO_CNY_RATE] = it }
+            preferences[IMPORTED_AT] = importedAtMs
+        }
+    }
 
     suspend fun loadRateWithEstimate(): Pair<Double, Boolean> {
         val stored = dataStore.data.first()[USD_TO_CNY_RATE]
