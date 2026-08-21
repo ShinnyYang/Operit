@@ -17,7 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Image as ImageIcon
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.AlertDialog
@@ -1392,7 +1392,7 @@ private fun ArtifactPublishLogoCard(
                         )
                     } else {
                         androidx.compose.material3.Icon(
-                            imageVector = ImageIcon,
+                            imageVector = Icons.Default.Image,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(18.dp)
@@ -1449,7 +1449,7 @@ private fun ArtifactPublishLogoCard(
                         )
                     } else {
                         androidx.compose.material3.Icon(
-                            imageVector = UploadFile,
+                            imageVector = Icons.Default.UploadFile,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
@@ -1464,7 +1464,7 @@ private fun ArtifactPublishLogoCard(
                         modifier = Modifier.weight(1f)
                     ) {
                         androidx.compose.material3.Icon(
-                            imageVector = RestartAlt,
+                            imageVector = Icons.Default.RestartAlt,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
