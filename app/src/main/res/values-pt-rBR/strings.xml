@@ -6080,7 +6080,6 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="enhanced_connecting_service">Conectando ao serviço de IA...</string>
     <string name="enhanced_receiving_response">Recebendo resposta de IA...</string>
     <string name="server_tool_running">Chamando ferramenta do servidor: %1$s...</string>
-    <string name="server_tool_label">Ferramenta do servidor</string>
     <string name="enhanced_error_with_message">Erro: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Aviso: Por favor, produza o conteúdo do texto. É proibido produzir apenas o conteúdo pensante.</string>
     <string name="enhanced_truncated_tool_call_warning">Aviso: Saída de chamada de ferramenta truncada detectada. Todas as chamadas de ferramenta desta rodada foram invalidadas e não serão executadas. Tente reduzir a produção única, divida a tarefa ou tente novamente após mudar para um modelo/fornecedor mais adequado.</string>

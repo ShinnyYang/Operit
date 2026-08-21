@@ -6458,7 +6458,6 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="enhanced_connecting_service">Menyambung ke perkhidmatan AI...</string>
     <string name="enhanced_receiving_response">Menerima respons AI...</string>
     <string name="server_tool_running">Memanggil alat sisi pelayan: %1$s...</string>
-    <string name="server_tool_label">Alat sisi pelayan</string>
     <string name="enhanced_error_with_message">Ralat: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Amaran: Sila keluarkan kandungan teks, dilarang hanya mengeluarkan kandungan pemikiran.</string>
     <string name="enhanced_truncated_tool_call_warning">Amaran: Pengeluaran panggilan alat dikesan dipotong. Semua panggilan alat dalam pusingan ini telah dibatalkan dan tidak akan dilaksanakan. Cuba kurangkan keluaran tunggal, pecahkan tugas, atau tukar kepada model/pembekal yang lebih sesuai dan cuba semula.</string>

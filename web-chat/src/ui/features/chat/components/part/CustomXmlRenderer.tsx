@@ -35,6 +35,25 @@ const READ_ONLY_GROUPABLE_TOOL_NAMES = new Set([
   'visit_web'
 ]);
 
+const RESPONSES_WEB_SEARCH_PROVIDER = 'openai:responses_web_search';
+
+interface ResponsesWebSearchPayload {
+  type?: string;
+  id?: string;
+  status?: string;
+  action?: {
+    type?: string;
+    query?: string;
+  } | null;
+}
+
+interface ServerToolRecord {
+  toolName: string;
+  id: string;
+  status: string;
+  query: string | null;
+}
+
 type ToolCollapseMode = 'read_only' | 'all' | 'full' | string;
 
 function readThinkingExpandedPreference() {
@@ -56,6 +75,83 @@ function shouldHideGeminiThoughtSignatureMeta(block: WebMessageContentBlock) {
     block.tag_name === 'meta' &&
     (block.attrs?.provider?.trim()?.toLowerCase() ?? '') === 'gemini:thought_signature'
   );
+}
+
+function isResponsesWebSearchMeta(block: WebMessageContentBlock) {
+  return (
+    block.tag_name === 'meta' &&
+    (block.attrs?.provider?.trim() ?? '') === RESPONSES_WEB_SEARCH_PROVIDER
+  );
+}
+
+function decodeBase64Utf8(payload: string) {
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(payload) || payload.length % 4 !== 0) {
+    throw new Error('invalid base64 payload');
+  }
+
+  const binary = atob(payload);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+}
+
+function decodeResponsesWebSearchRecord(block: WebMessageContentBlock): ServerToolRecord | null {
+  if (!isResponsesWebSearchMeta(block) || block.closed === false) {
+    return null;
+  }
+
+  try {
+    const encodedPayload = block.content?.trim() ?? '';
+    if (!encodedPayload) {
+      throw new Error('empty payload');
+    }
+
+    const decodedPayload = decodeBase64Utf8(encodedPayload);
+    const payload = JSON.parse(decodedPayload) as ResponsesWebSearchPayload;
+    if (
+      payload === null ||
+      typeof payload !== 'object' ||
+      Array.isArray(payload) ||
+      payload.type !== 'web_search_call' ||
+      typeof payload.id !== 'string' ||
+      !payload.id.trim() ||
+      typeof payload.status !== 'string' ||
+      !payload.status.trim()
+    ) {
+      throw new Error('invalid web_search_call payload');
+    }
+
+    let query: string | null = null;
+    if (payload.action !== undefined) {
+      if (
+        payload.action === null ||
+        typeof payload.action !== 'object' ||
+        Array.isArray(payload.action)
+      ) {
+        throw new Error('invalid web search action');
+      }
+
+      if (payload.action.type === 'search') {
+        if (typeof payload.action.query !== 'string' || !payload.action.query.trim()) {
+          throw new Error('search action is missing a query');
+        }
+        query = payload.action.query.trim();
+      }
+    }
+
+    return {
+      toolName: 'web_search',
+      id: payload.id.trim(),
+      status: payload.status.trim(),
+      query
+    };
+  } catch (error) {
+    console.error('[CustomXmlRenderer] Invalid Responses web search metadata', error);
+    return null;
+  }
 }
 
 function shouldHideStatusBlock(block: WebMessageContentBlock, showStatusTags: boolean) {
@@ -320,6 +416,49 @@ function StatusBlock({ block }: { block: WebMessageContentBlock }) {
   return <div className={`structured-status-card is-${statusType}`}>{statusText}</div>;
 }
 
+function ServerToolSourceIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="structured-server-tool-source-icon"
+      fill="none"
+      height="16"
+      stroke="currentColor"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth="2"
+      viewBox="0 0 24 24"
+      width="16"
+    >
+      <path d="M19.35 10.04A7.49 7.49 0 0 0 12 4c-2.89 0-5.4 1.64-6.65 4.04A5.994 5.994 0 0 0 6 20h13a5 5 0 0 0 .35-9.96Z" />
+    </svg>
+  );
+}
+
+function ServerToolRecordBlock({ record }: { record: ServerToolRecord }) {
+  const queryLabel = record.query ? `，查询：${record.query}` : '';
+  const semanticDescription = `Server tool · ${record.toolName}，状态：${record.status}${queryLabel}`;
+
+  return (
+    <section
+      aria-label={semanticDescription}
+      className="structured-server-tool-row"
+      data-tool-call-id={record.id}
+    >
+      <ServerToolSourceIcon />
+      <div className="structured-server-tool-copy">
+        <strong className="structured-server-tool-title">{record.toolName}</strong>
+        <div className="structured-server-tool-details">
+          <span className="structured-server-tool-status">{record.status}</span>
+          {record.query ? (
+            <span className="structured-server-tool-query">{record.query}</span>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function GenericXmlBlock({ block }: { block: WebMessageContentBlock }) {
   return (
     <section className="structured-card generic-card">
@@ -338,6 +477,11 @@ function renderXmlBlock(
   streaming: boolean
 ) {
   const tagName = block.tag_name;
+
+  const serverToolRecord = decodeResponsesWebSearchRecord(block);
+  if (serverToolRecord) {
+    return <ServerToolRecordBlock record={serverToolRecord} />;
+  }
 
   if (shouldHideGeminiThoughtSignatureMeta(block)) {
     return null;

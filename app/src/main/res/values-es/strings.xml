@@ -6906,7 +6906,6 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="enhanced_connecting_service">Conectando al servicio de IA...</string>
     <string name="enhanced_receiving_response">Recibiendo respuesta de la IA...</string>
     <string name="server_tool_running">Llamando a la herramienta del servidor: %1$s...</string>
-    <string name="server_tool_label">Herramienta del servidor</string>
     <string name="enhanced_error_with_message">Error: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Advertencia: por favor, genere contenido del cuerpo del texto; no está permitido generar solo contenido de pensamiento.</string>
     <string name="enhanced_truncated_tool_call_warning">Advertencia: se detectó que la salida de la invocación de herramientas fue truncada. Todas las invocaciones de herramientas de esta ronda han sido invalidadas y no se ejecutarán. Intente reducir la salida única, dividir la tarea o cambiar a un modelo/proveedor más adecuado y vuelva a intentarlo.</string>

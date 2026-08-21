@@ -6418,7 +6418,6 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="enhanced_connecting_service">Menghubungkan ke layanan AI...</string>
     <string name="enhanced_receiving_response">Menerima respons AI...</string>
     <string name="server_tool_running">Memanggil alat sisi server: %1$s...</string>
-    <string name="server_tool_label">Alat sisi server</string>
     <string name="enhanced_error_with_message">Kesalahan: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Peringatan: Harap keluarkan konten utama, dilarang hanya mengeluarkan konten pemikiran.</string>
     <string name="enhanced_truncated_tool_call_warning">Peringatan: Terdeteksi output panggilan alat terpotong. Semua panggilan alat pada putaran ini telah dibatalkan dan tidak akan dieksekusi. Coba kurangi output sekali pakai, pecah tugas, atau ganti model/penyedia yang lebih sesuai dan coba lagi.</string>
