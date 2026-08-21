@@ -4465,6 +4465,16 @@
     <string name="artifact_publish_asset_source_upload">上传当前本地包</string>
     <string name="artifact_publish_asset_source_github_release">引用 GitHub Release 资产</string>
     <string name="artifact_publish_asset_source_confirmation">发布资源来源: %1$s</string>
+    <string name="artifact_publish_logo_title">包 Logo</string>
+    <string name="artifact_publish_logo_description">可选择新的图片。直接上传会把它写入发布包，GitHub Release 模式只更新市场 Logo。</string>
+    <string name="artifact_publish_logo_choose">选择 Logo</string>
+    <string name="artifact_publish_logo_use_package">使用包内 Logo</string>
+    <string name="artifact_publish_logo_selected">已选择: %1$s</string>
+    <string name="artifact_publish_logo_from_package">包内 Logo: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Logo: %1$s</string>
+    <string name="artifact_publish_logo_preview">Logo 预览</string>
+    <string name="artifact_publish_logo_invalid">无法读取 Logo，请选择有效的 SVG、PNG、JPEG 或 WebP 文件</string>
+    <string name="artifact_publish_logo_too_large">Logo 文件不能超过 512 KiB</string>
     <string name="artifact_publish_github_repository_url">作者 GitHub 仓库链接</string>
     <string name="artifact_publish_load_github_releases">加载 Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

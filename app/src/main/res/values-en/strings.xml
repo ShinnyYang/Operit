@@ -8127,6 +8127,16 @@
     <string name="artifact_publish_asset_source_upload">Upload current local package</string>
     <string name="artifact_publish_asset_source_github_release">Reference GitHub Release asset</string>
     <string name="artifact_publish_asset_source_confirmation">Release asset source: %1$s</string>
+    <string name="artifact_publish_logo_title">Package Logo</string>
+    <string name="artifact_publish_logo_description">Choose an image for the package. Direct upload writes it into the published package; GitHub Release mode updates the market logo only.</string>
+    <string name="artifact_publish_logo_choose">Choose Logo</string>
+    <string name="artifact_publish_logo_use_package">Use Package Logo</string>
+    <string name="artifact_publish_logo_selected">Selected: %1$s</string>
+    <string name="artifact_publish_logo_from_package">Package logo: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Logo: %1$s</string>
+    <string name="artifact_publish_logo_preview">Logo preview</string>
+    <string name="artifact_publish_logo_invalid">Could not read the logo. Choose a valid SVG, PNG, JPEG, or WebP file.</string>
+    <string name="artifact_publish_logo_too_large">The logo file must be 512 KiB or smaller.</string>
     <string name="artifact_publish_github_repository_url">Author GitHub repository link</string>
     <string name="artifact_publish_load_github_releases">Load Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

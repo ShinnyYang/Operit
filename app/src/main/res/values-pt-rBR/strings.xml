@@ -7242,6 +7242,16 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="artifact_publish_asset_source_upload">Enviar pacote local atual</string>
     <string name="artifact_publish_asset_source_github_release">Referenciar ativo do GitHub Release</string>
     <string name="artifact_publish_asset_source_confirmation">Origem do recurso de publicação: %1$s</string>
+    <string name="artifact_publish_logo_title">Logo do pacote</string>
+    <string name="artifact_publish_logo_description">Escolha uma imagem para o pacote. O envio direto grava a imagem no pacote publicado; o modo GitHub Release atualiza apenas o logo do mercado.</string>
+    <string name="artifact_publish_logo_choose">Escolher logo</string>
+    <string name="artifact_publish_logo_use_package">Usar logo do pacote</string>
+    <string name="artifact_publish_logo_selected">Selecionado: %1$s</string>
+    <string name="artifact_publish_logo_from_package">Logo do pacote: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Logo: %1$s</string>
+    <string name="artifact_publish_logo_preview">Prévia do logo</string>
+    <string name="artifact_publish_logo_invalid">Não foi possível ler o logo. Escolha um arquivo SVG, PNG, JPEG ou WebP válido.</string>
+    <string name="artifact_publish_logo_too_large">O arquivo do logo deve ter no máximo 512 KiB.</string>
     <string name="artifact_publish_github_repository_url">Link do repositório GitHub do autor</string>
     <string name="artifact_publish_load_github_releases">Carregar Releases</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

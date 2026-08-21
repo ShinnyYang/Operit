@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.api.MarketV2Comment
+import com.ai.assistance.operit.ui.common.icons.rememberRemoteLogoPainter
 import com.ai.assistance.operit.ui.common.displays.MarkdownTextComposable
 import com.ai.assistance.operit.ui.main.LocalTopBarTitleContent
 import com.ai.assistance.operit.ui.main.TopBarTitleContent
@@ -90,6 +91,7 @@ import java.util.TimeZone
 data class UnifiedMarketDetailHeader(
     val title: String,
     val fallbackAvatarText: String,
+    val logoUrl: String? = null,
     val participants: List<UnifiedMarketDetailParticipant> = emptyList(),
     val badges: List<String> = emptyList(),
     val metrics: List<UnifiedMarketDetailMetric> = emptyList(),
@@ -398,7 +400,8 @@ private fun UnifiedMarketDetailHeaderCard(
         ) {
             UnifiedMarketDetailLeadingIcon(
                 title = header.title,
-                fallbackAvatarText = header.fallbackAvatarText
+                fallbackAvatarText = header.fallbackAvatarText,
+                logoUrl = header.logoUrl
             )
 
             Column(
@@ -526,8 +529,10 @@ private fun UnifiedMarketDetailStickyTabs(
 @Composable
 private fun UnifiedMarketDetailLeadingIcon(
     title: String,
-    fallbackAvatarText: String
+    fallbackAvatarText: String,
+    logoUrl: String?
 ) {
+    val logoPainter = rememberRemoteLogoPainter(logoUrl = logoUrl, size = 76.dp)
     Surface(
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.85f)
@@ -536,12 +541,21 @@ private fun UnifiedMarketDetailLeadingIcon(
             modifier = Modifier.size(76.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = fallbackAvatarText.ifBlank { marketDetailInitial(title) },
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
+            if (logoPainter != null) {
+                Image(
+                    painter = logoPainter,
+                    contentDescription = title,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(64.dp)
+                )
+            } else {
+                Text(
+                    text = fallbackAvatarText.ifBlank { marketDetailInitial(title) },
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            }
         }
     }
 }
