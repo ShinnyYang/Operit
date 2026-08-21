@@ -159,6 +159,9 @@ data class ModelConfigData(
         // Gemini特定配置
         val enableGoogleSearch: Boolean = false, // 是否启用Google Search Grounding (仅Gemini支持)
 
+        // DeepSeek特定配置
+        val enableDeepSeekWebSearch: Boolean = true,
+
         // Claude特定配置
         val enableClaude1hPromptCache: Boolean = false, // 是否启用1小时提示缓存TTL (仅Claude支持)
 

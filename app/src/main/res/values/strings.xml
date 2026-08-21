@@ -3967,6 +3967,8 @@
     <string name="enable_direct_video_processing_desc">启用后，视频将直接发送给AI处理，而不是通过工具抽帧/分析</string>
     <string name="enable_google_search">启用 Google Search</string>
     <string name="enable_google_search_desc">启用后，Gemini 将使用 Google 搜索来增强回答（可能产生额外费用）</string>
+    <string name="enable_deepseek_web_search">启用 DeepSeek 网络搜索</string>
+    <string name="enable_deepseek_web_search_desc">选择 Responses 端点时，允许 DeepSeek 自动调用服务器网络搜索工具。</string>
     <string name="enable_claude_1h_prompt_cache">启用 Claude 1 小时提示缓存</string>
     <string name="enable_claude_1h_prompt_cache_desc">启用后，Claude 和 Claude 兼容供应商的提示缓存 TTL 将使用 1 小时</string>
     <string name="enable_tool_call">模型支持ToolCall</string>
@@ -7570,6 +7572,8 @@
     <string name="enhanced_processing_message">正在处理消息...</string>
     <string name="enhanced_connecting_service">正在连接AI服务...</string>
     <string name="enhanced_receiving_response">正在接收AI响应...</string>
+    <string name="server_tool_running">正在调用服务端工具：%1$s...</string>
+    <string name="server_tool_label">服务端工具</string>
     <string name="enhanced_error_with_message">错误: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">警告：请输出正文内容，禁止仅输出思考内容。</string>
     <string name="enhanced_truncated_tool_call_warning">警告：检测到工具调用输出被截断。本轮所有工具调用均已作废且不会执行。请尝试减少单次输出、拆分任务，或更换更合适的模型/供应商后重试。</string>

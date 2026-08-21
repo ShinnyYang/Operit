@@ -4007,6 +4007,8 @@
     <string name="enable_direct_video_processing_desc">When enabled, video will be sent directly to the AI for processing instead of tool-based frame extraction/analysis</string>
     <string name="enable_google_search">Enable Google Search</string>
     <string name="enable_google_search_desc">When enabled, Gemini will use Google Search to enhance responses (may incur additional charges)</string>
+    <string name="enable_deepseek_web_search">Enable DeepSeek web search</string>
+    <string name="enable_deepseek_web_search_desc">Allow the DeepSeek Responses API to call its server-side web search tool.</string>
     <string name="enable_claude_1h_prompt_cache">Enable Claude 1-hour prompt cache</string>
     <string name="enable_claude_1h_prompt_cache_desc">When enabled, Claude and Claude-compatible providers use a 1-hour prompt cache TTL</string>
     <string name="enable_tool_call">Model supports ToolCall</string>
@@ -7049,6 +7051,8 @@
     <string name="enhanced_processing_message">Processing message...</string>
     <string name="enhanced_connecting_service">Connecting to AI service...</string>
     <string name="enhanced_receiving_response">Receiving AI response...</string>
+    <string name="server_tool_running">Calling server-side tool: %1$s...</string>
+    <string name="server_tool_label">Server tool</string>
     <string name="enhanced_error_with_message">Error: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Warning: Please output main content and do not output thinking-only responses.</string>
     <string name="enhanced_truncated_tool_call_warning">Warning: A tool call was truncated by the model output limit. All tool calls in this round were invalidated and will not be executed. Try reducing single-turn output, splitting the task, or switching to a more suitable model/provider.</string>

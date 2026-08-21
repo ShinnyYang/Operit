@@ -1329,6 +1329,9 @@ class MessageProcessingDelegate(
                                                         tryEmitScrollToBottomThrottled(chatId)
                                                     }
                                                 }
+
+                                                TextStreamEventType.SERVER_TOOL_STARTED,
+                                                TextStreamEventType.SERVER_TOOL_COMPLETED -> Unit
                                             }
                                         }
                                     }
@@ -1741,6 +1744,9 @@ class MessageProcessingDelegate(
                                             } ?: return@collect
                                         aiMessage.content = snapshot
                                     }
+
+                                    TextStreamEventType.SERVER_TOOL_STARTED,
+                                    TextStreamEventType.SERVER_TOOL_COMPLETED -> Unit
                                 }
                             }
                         }

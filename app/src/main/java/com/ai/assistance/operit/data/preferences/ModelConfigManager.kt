@@ -479,6 +479,7 @@ class ModelConfigManager(private val context: Context) {
             enableDirectAudioProcessing: Boolean,
             enableDirectVideoProcessing: Boolean,
             enableGoogleSearch: Boolean,
+            enableDeepSeekWebSearch: Boolean,
             enableClaude1hPromptCache: Boolean,
             enableToolCall: Boolean
     ): ModelConfigData {
@@ -500,6 +501,7 @@ class ModelConfigManager(private val context: Context) {
                     enableDirectAudioProcessing = enableDirectAudioProcessing,
                     enableDirectVideoProcessing = enableDirectVideoProcessing,
                     enableGoogleSearch = enableGoogleSearch,
+                    enableDeepSeekWebSearch = enableDeepSeekWebSearch,
                     enableClaude1hPromptCache = enableClaude1hPromptCache,
                     enableToolCall = enableToolCall
             )

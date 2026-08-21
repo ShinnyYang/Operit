@@ -28,7 +28,8 @@ open class OpenAIResponsesProvider(
     supportsFiles: Boolean = false,
     enableToolCall: Boolean = false,
     thinkingConfigurations: String = "",
-    thinkingOptionId: String = ""
+    thinkingOptionId: String = "",
+    private val enableServerWebSearch: Boolean = false
 ) : OpenAIProvider(
     apiEndpoint = responsesApiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -72,6 +73,10 @@ open class OpenAIResponsesProvider(
         val jsonObject = JSONObject(baseRequestBodyJson)
 
         applyResponsesReasoningEffort(context, jsonObject, enableThinking)
+        OpenAIResponsesPayloadAdapter.appendServerWebSearchTool(
+            requestJson = jsonObject,
+            enabled = enableServerWebSearch
+        )
 
         val logJson = JSONObject(jsonObject.toString())
         if (logJson.has("tools")) {
@@ -205,6 +210,7 @@ object OpenAIResponsesPayloadAdapter {
         val textChunks: List<String>,
         val reasoningChunks: List<String>,
         val reasoningMetadataTags: List<String>,
+        val webSearchMetadataTags: List<String>,
         val reasoningObserved: Boolean,
         val toolCalls: JSONArray,
         val usage: UsageCounts?
@@ -215,6 +221,24 @@ object OpenAIResponsesPayloadAdapter {
             "max_tokens" -> "max_output_tokens"
             else -> apiName
         }
+    }
+
+    internal fun appendServerWebSearchTool(requestJson: JSONObject, enabled: Boolean) {
+        if (!enabled) {
+            return
+        }
+
+        val tools = requestJson.optJSONArray("tools") ?: JSONArray().also {
+            requestJson.put("tools", it)
+        }
+        val isAlreadyDeclared =
+            (0 until tools.length()).any { index ->
+                tools.optJSONObject(index)?.optString("type", "") == "web_search"
+            }
+        if (isAlreadyDeclared) {
+            return
+        }
+        tools.put(JSONObject().put("type", "web_search"))
     }
 
     fun parseUsageCounts(usage: JSONObject?): UsageCounts? {
@@ -302,6 +326,7 @@ object OpenAIResponsesPayloadAdapter {
         val textChunks = mutableListOf<String>()
         val reasoningChunks = mutableListOf<String>()
         val reasoningMetadataTags = mutableListOf<String>()
+        val webSearchMetadataTags = mutableListOf<String>()
         val toolCalls = JSONArray()
         var reasoningObserved = false
 
@@ -355,6 +380,12 @@ object OpenAIResponsesPayloadAdapter {
                             toolCalls.put(toolCall)
                         }
                     }
+
+                    "web_search_call" -> {
+                        createWebSearchMetadataTag(item)?.let { metadataTag ->
+                            webSearchMetadataTags.add(metadataTag)
+                        }
+                    }
                 }
             }
         }
@@ -363,6 +394,7 @@ object OpenAIResponsesPayloadAdapter {
             textChunks = textChunks,
             reasoningChunks = reasoningChunks,
             reasoningMetadataTags = reasoningMetadataTags,
+            webSearchMetadataTags = webSearchMetadataTags,
             reasoningObserved = reasoningObserved,
             toolCalls = toolCalls,
             usage = parseUsageCounts(jsonResponse.optJSONObject("usage"))
@@ -431,6 +463,28 @@ object OpenAIResponsesPayloadAdapter {
 
             if (role == "assistant") {
                 appendReasoningItemsFromAssistantMessage(message, input)
+                appendWebSearchItemsFromAssistantMessage(message, input)
+                val convertedContent = convertMessageContentForResponses(message.opt("content"))
+                val hasContent =
+                    when (convertedContent) {
+                        is String -> convertedContent.isNotBlank()
+                        is JSONArray -> convertedContent.length() > 0
+                        else -> false
+                    }
+
+                // Responses requires function_call items to be followed immediately by their
+                // function_call_output items. Emit the visible assistant message first so it
+                // cannot split the function-call/output sequence.
+                if (hasContent) {
+                    input.put(
+                        JSONObject().apply {
+                            put("type", "message")
+                            put("role", "assistant")
+                            put("content", convertedContent)
+                        }
+                    )
+                }
+
                 val toolCalls = message.optJSONArray("tool_calls")
                 if (toolCalls != null && toolCalls.length() > 0) {
                     for (j in 0 until toolCalls.length()) {
@@ -453,6 +507,7 @@ object OpenAIResponsesPayloadAdapter {
                         input.put(callItem)
                     }
                 }
+                continue
             }
 
             val convertedContent = convertMessageContentForResponses(message.opt("content"))
@@ -486,7 +541,7 @@ object OpenAIResponsesPayloadAdapter {
     private fun convertMessageContentForResponses(content: Any?): Any {
         return when (content) {
             null -> ""
-            is String -> ChatMarkupRegex.removeOpenAiResponsesReasoningMeta(content)
+            is String -> removeResponsesMetadata(content)
             is JSONArray -> {
                 val convertedParts = JSONArray()
 
@@ -494,7 +549,7 @@ object OpenAIResponsesPayloadAdapter {
                     val part = content.optJSONObject(i) ?: continue
                     when (part.optString("type", "")) {
                         "text", "output_text", "input_text" -> {
-                            val text = ChatMarkupRegex.removeOpenAiResponsesReasoningMeta(part.optString("text", ""))
+                            val text = removeResponsesMetadata(part.optString("text", ""))
                             if (text.isNotEmpty()) {
                                 convertedParts.put(
                                     JSONObject().apply {
@@ -550,12 +605,12 @@ object OpenAIResponsesPayloadAdapter {
                         }
 
                         else -> {
-                            val fallbackText = part.optString("text", "")
-                            if (fallbackText.isNotEmpty()) {
+                            val plainText = removeResponsesMetadata(part.optString("text", ""))
+                            if (plainText.isNotEmpty()) {
                                 convertedParts.put(
                                     JSONObject().apply {
                                         put("type", "input_text")
-                                        put("text", fallbackText)
+                                        put("text", plainText)
                                     }
                                 )
                             }
@@ -568,6 +623,12 @@ object OpenAIResponsesPayloadAdapter {
 
             else -> content.toString()
         }
+    }
+
+    private fun removeResponsesMetadata(content: String): String {
+        return ChatMarkupRegex.removeOpenAiResponsesWebSearchMeta(
+            ChatMarkupRegex.removeOpenAiResponsesReasoningMeta(content)
+        )
     }
 
     private fun extractToolOutputText(content: Any?): String {
@@ -611,7 +672,8 @@ object OpenAIResponsesPayloadAdapter {
             val summaryArray = item.optJSONArray("summary") ?: JSONArray()
             put("summary", JSONArray(summaryArray.toString()))
         }
-        val payloadBase64 = Base64.encodeToString(payload.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        val payloadBase64 =
+            Base64.encodeToString(payload.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
         return ChatMarkupRegex.openAiResponsesReasoningMetaTag(payloadBase64)
     }
 
@@ -645,6 +707,18 @@ object OpenAIResponsesPayloadAdapter {
         return payloads
     }
 
+    private fun extractWebSearchPayloadsFromContentArray(content: JSONArray): List<String> {
+        val payloads = mutableListOf<String>()
+        for (i in 0 until content.length()) {
+            val part = content.optJSONObject(i) ?: continue
+            val text = part.optString("text", "")
+            if (text.isNotEmpty()) {
+                payloads.addAll(ChatMarkupRegex.extractOpenAiResponsesWebSearchPayloads(text))
+            }
+        }
+        return payloads
+    }
+
     private fun appendReasoningItemFromMetadata(metadata: JSONObject, input: JSONArray) {
         val reasoningId = metadata.optString("reasoning_id", "").trim()
         val encryptedContent = metadata.optString("encrypted_content", "").trim()
@@ -661,6 +735,39 @@ object OpenAIResponsesPayloadAdapter {
                 put("summary", JSONArray(summary.toString()))
             }
         )
+    }
+
+    private fun appendWebSearchItemsFromAssistantMessage(message: JSONObject, input: JSONArray) {
+        val content = message.opt("content")
+        val payloads = when (content) {
+            is String -> ChatMarkupRegex.extractOpenAiResponsesWebSearchPayloads(content)
+            is JSONArray -> extractWebSearchPayloadsFromContentArray(content)
+            else -> emptyList()
+        }
+
+        payloads.forEach { payloadBase64 ->
+            runCatching {
+                val decodedPayload = String(Base64.decode(payloadBase64, Base64.DEFAULT), Charsets.UTF_8)
+                val item = JSONObject(decodedPayload)
+                if (item.optString("type", "") == "web_search_call") {
+                    input.put(item)
+                }
+            }.onFailure { error ->
+                AppLogger.w("OpenAIResponsesProvider", "Responses web search metadata decode failed", error)
+            }
+        }
+    }
+
+    fun createWebSearchMetadataTag(item: JSONObject): String? {
+        if (
+            item.optString("type", "") != "web_search_call" ||
+                item.optString("id", "").isBlank()
+        ) {
+            return null
+        }
+        val payloadBase64 =
+            Base64.encodeToString(item.toString().toByteArray(Charsets.UTF_8), Base64.NO_WRAP)
+        return ChatMarkupRegex.openAiResponsesWebSearchMetaTag(payloadBase64)
     }
 
     private fun convertFunctionCallItemToChatToolCall(item: JSONObject): JSONObject? {

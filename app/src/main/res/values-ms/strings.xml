@@ -3448,6 +3448,8 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="enable_direct_video_processing_desc">Setelah diaktifkan, video akan dihantar terus kepada AI untuk diproses, bukan melalui alat yang mengekstrak bingkai/menganalisis</string>
     <string name="enable_google_search">Aktifkan Google Search</string>
     <string name="enable_google_search_desc">Setelah diaktifkan, Gemini akan menggunakan carian Google untuk meningkatkan jawapan (mungkin menyebabkan kos tambahan)</string>
+    <string name="enable_deepseek_web_search">Aktifkan carian web DeepSeek</string>
+    <string name="enable_deepseek_web_search_desc">Benarkan API Responses DeepSeek memanggil alat carian web pada pelayan.</string>
     <string name="enable_claude_1h_prompt_cache">Aktifkan cache prompt Claude 1 jam</string>
     <string name="enable_claude_1h_prompt_cache_desc">Setelah diaktifkan, Claude dan penyedia serasi Claude akan menggunakan TTL cache prompt 1 jam</string>
     <string name="enable_tool_call">Model menyokong ToolCall</string>
@@ -6455,6 +6457,8 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="enhanced_processing_message">Memproses mesej...</string>
     <string name="enhanced_connecting_service">Menyambung ke perkhidmatan AI...</string>
     <string name="enhanced_receiving_response">Menerima respons AI...</string>
+    <string name="server_tool_running">Memanggil alat sisi pelayan: %1$s...</string>
+    <string name="server_tool_label">Alat sisi pelayan</string>
     <string name="enhanced_error_with_message">Ralat: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Amaran: Sila keluarkan kandungan teks, dilarang hanya mengeluarkan kandungan pemikiran.</string>
     <string name="enhanced_truncated_tool_call_warning">Amaran: Pengeluaran panggilan alat dikesan dipotong. Semua panggilan alat dalam pusingan ini telah dibatalkan dan tidak akan dilaksanakan. Cuba kurangkan keluaran tunggal, pecahkan tugas, atau tukar kepada model/pembekal yang lebih sesuai dan cuba semula.</string>

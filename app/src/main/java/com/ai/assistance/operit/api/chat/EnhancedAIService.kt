@@ -394,6 +394,15 @@ class EnhancedAIService private constructor(private val context: Context) {
         _inputProcessingState.value = newState
     }
 
+    /** 服务端工具事件只携带协议类型，本地化文案统一在 UI 状态边界生成。 */
+    private fun serverToolRunningMessage(toolType: String): String {
+        return if (toolType == "web_search") {
+            context.getString(R.string.searching)
+        } else {
+            context.getString(R.string.server_tool_running, toolType)
+        }
+    }
+
     // Per-request token counts
     private val _perRequestTokenCounts = MutableStateFlow<Pair<Long, Long>?>(null)
     val perRequestTokenCounts: StateFlow<Pair<Long, Long>?> = _perRequestTokenCounts.asStateFlow()
@@ -850,9 +859,9 @@ class EnhancedAIService private constructor(private val context: Context) {
             finalProcessedInput = ChatUtils.stripGeminiThoughtSignatureMeta(finalProcessedInput)
             finalPreparedHistory = ChatUtils.stripGeminiThoughtSignatureMetaTurns(finalPreparedHistory)
         }
-        if (!ChatUtils.isOpenAIResponsesProviderModel(serviceForFunction.providerModel)) {
-            finalProcessedInput = ChatUtils.stripOpenAiResponsesReasoningMeta(finalProcessedInput)
-            finalPreparedHistory = ChatUtils.stripOpenAiResponsesReasoningMetaTurns(finalPreparedHistory)
+        if (!serviceForFunction.usesResponsesApi) {
+            finalProcessedInput = ChatUtils.stripOpenAiResponsesMetadata(finalProcessedInput)
+            finalPreparedHistory = ChatUtils.stripOpenAiResponsesMetadataTurns(finalPreparedHistory)
         }
 
         val requestHistory =
@@ -1071,9 +1080,9 @@ class EnhancedAIService private constructor(private val context: Context) {
                         finalProcessedInput = ChatUtils.stripGeminiThoughtSignatureMeta(finalProcessedInput)
                         finalPreparedHistory = ChatUtils.stripGeminiThoughtSignatureMetaTurns(finalPreparedHistory)
                     }
-                    if (!ChatUtils.isOpenAIResponsesProviderModel(serviceForFunction.providerModel)) {
-                        finalProcessedInput = ChatUtils.stripOpenAiResponsesReasoningMeta(finalProcessedInput)
-                        finalPreparedHistory = ChatUtils.stripOpenAiResponsesReasoningMetaTurns(finalPreparedHistory)
+                    if (!serviceForFunction.usesResponsesApi) {
+                        finalProcessedInput = ChatUtils.stripOpenAiResponsesMetadata(finalProcessedInput)
+                        finalPreparedHistory = ChatUtils.stripOpenAiResponsesMetadataTurns(finalPreparedHistory)
                     }
                     val requestHistory =
                         applyFinalizedCurrentUserTurn(
@@ -1150,6 +1159,27 @@ class EnhancedAIService private constructor(private val context: Context) {
                                                 execContext.streamBuffer.clear()
                                                 execContext.streamBuffer.append(snapshot)
                                                 execContext.roundManager.updateContent(snapshot)
+                                            }
+
+                                            TextStreamEventType.SERVER_TOOL_STARTED -> {
+                                                if (!isSubTask) {
+                                                    val message = serverToolRunningMessage(
+                                                        checkNotNull(event.toolType)
+                                                    )
+                                                    withContext(Dispatchers.Main) {
+                                                        _inputProcessingState.value =
+                                                            InputProcessingState.Receiving(message)
+                                                    }
+                                                }
+                                            }
+
+                                            TextStreamEventType.SERVER_TOOL_COMPLETED -> {
+                                                if (!isSubTask) {
+                                                    withContext(Dispatchers.Main) {
+                                                        _inputProcessingState.value =
+                                                            InputProcessingState.Receiving(context.getString(R.string.enhanced_receiving_response))
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -2376,6 +2406,27 @@ class EnhancedAIService private constructor(private val context: Context) {
                                             context.streamBuffer.clear()
                                             context.streamBuffer.append(snapshot)
                                             context.roundManager.updateContent(snapshot)
+                                        }
+
+                                        TextStreamEventType.SERVER_TOOL_STARTED -> {
+                                            if (!isSubTask) {
+                                                val message = serverToolRunningMessage(
+                                                    checkNotNull(event.toolType)
+                                                )
+                                                withContext(Dispatchers.Main) {
+                                                    _inputProcessingState.value =
+                                                        InputProcessingState.Receiving(message)
+                                                }
+                                            }
+                                        }
+
+                                        TextStreamEventType.SERVER_TOOL_COMPLETED -> {
+                                            if (!isSubTask) {
+                                                withContext(Dispatchers.Main) {
+                                                    _inputProcessingState.value =
+                                                        InputProcessingState.Receiving(this@EnhancedAIService.context.getString(R.string.enhanced_receiving_tool_result))
+                                                }
+                                            }
                                         }
                                     }
                                 }

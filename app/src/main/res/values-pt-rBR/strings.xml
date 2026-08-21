@@ -3330,6 +3330,8 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="enable_direct_video_processing_desc">Quando ativado, o vídeo será enviado diretamente para processamento de IA em vez de extração/análise de quadros pela ferramenta</string>
     <string name="enable_google_search">Ativar Pesquisa Google</string>
     <string name="enable_google_search_desc">Quando ativado, o Gemini usará a Pesquisa Google para aprimorar as respostas (podem ser aplicadas taxas adicionais)</string>
+    <string name="enable_deepseek_web_search">Ativar pesquisa web do DeepSeek</string>
+    <string name="enable_deepseek_web_search_desc">Permita que a API Responses do DeepSeek use a ferramenta de pesquisa web do servidor.</string>
     <string name="enable_claude_1h_prompt_cache">Ativar cache de prompt Claude de 1 hora</string>
     <string name="enable_claude_1h_prompt_cache_desc">Quando ativado, Claude e provedores compatíveis com Claude usarão TTL de cache de prompt de 1 hora</string>
     <string name="enable_tool_call">Modelo suporta ToolCall</string>
@@ -6077,6 +6079,8 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="enhanced_processing_message">Processando mensagem...</string>
     <string name="enhanced_connecting_service">Conectando ao serviço de IA...</string>
     <string name="enhanced_receiving_response">Recebendo resposta de IA...</string>
+    <string name="server_tool_running">Chamando ferramenta do servidor: %1$s...</string>
+    <string name="server_tool_label">Ferramenta do servidor</string>
     <string name="enhanced_error_with_message">Erro: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Aviso: Por favor, produza o conteúdo do texto. É proibido produzir apenas o conteúdo pensante.</string>
     <string name="enhanced_truncated_tool_call_warning">Aviso: Saída de chamada de ferramenta truncada detectada. Todas as chamadas de ferramenta desta rodada foram invalidadas e não serão executadas. Tente reduzir a produção única, divida a tarefa ou tente novamente após mudar para um modelo/fornecedor mais adequado.</string>
