@@ -114,7 +114,8 @@ class ConversationService(
             messages: List<PromptTurn>,
             previousSummary: String?,
             multiServiceManager: MultiServiceManager,
-            customRules: String? = null
+            customRules: String? = null,
+            recordTokenUsage: Boolean = true,
     ): String {
         try {
             val useEnglish = LocaleUtils.getCurrentLanguage(context).lowercase().startsWith("en")
@@ -270,7 +271,7 @@ class ConversationService(
                             context = context,
                             chatHistory = preparedHistory,
                             modelParameters = modelParameters,
-                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.SUMMARY
+                            recordTokenUsage = recordTokenUsage,
                     )
 
             // 收集流中的所有内容
@@ -336,7 +337,8 @@ class ConversationService(
     suspend fun generateConversationTitle(
         userText: String,
         attachmentFileNames: List<String>,
-        multiServiceManager: MultiServiceManager
+        multiServiceManager: MultiServiceManager,
+        recordTokenUsage: Boolean = true,
     ): String {
         return try {
             val useEnglish = LocaleUtils.getCurrentLanguage(context).lowercase().startsWith("en")
@@ -359,7 +361,7 @@ class ConversationService(
                 modelParameters = modelParameters,
                 stream = false,
                 enableRetry = false,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.TITLE
+                recordTokenUsage = recordTokenUsage,
             ).collect { content -> contentBuilder.append(content) }
 
             val title = sanitizeConversationTitle(
@@ -1073,7 +1075,11 @@ class ConversationService(
      * @param multiServiceManager 多服务管理器
      * @return 翻译后的文本
      */
-    suspend fun translateText(text: String, multiServiceManager: MultiServiceManager): String {
+    suspend fun translateText(
+        text: String,
+        multiServiceManager: MultiServiceManager,
+        recordTokenUsage: Boolean = true,
+    ): String {
         val currentLanguage = LocaleUtils.getCurrentLanguage(context)
         
         // 根据当前语言确定目标语言
@@ -1113,7 +1119,7 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
                 context = context,
                 chatHistory = chatHistory + PromptTurn(kind = PromptTurnKind.USER, content = translationPrompt),
                 modelParameters = modelParameters,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
+                recordTokenUsage = recordTokenUsage,
             )
             
             stream.collect { content ->
@@ -1173,7 +1179,6 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
                 context = context,
                 chatHistory = chatHistory + PromptTurn(kind = PromptTurnKind.USER, content = descriptionPrompt),
                 modelParameters = modelParameters,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             )
             
             stream.collect { content ->
@@ -1232,7 +1237,6 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                 modelParameters = modelParameters,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }
@@ -1278,7 +1282,6 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                 modelParameters = modelParameters,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }
@@ -1322,7 +1325,6 @@ ${FunctionalPrompts.translationUserPrompt(targetLanguage, text)}
                 context = context,
                 chatHistory = listOf(PromptTurn(kind = PromptTurnKind.USER, content = prompt)),
                 modelParameters = modelParameters,
-                statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.OTHER
             ).collect { chunk ->
                 result.append(chunk)
             }

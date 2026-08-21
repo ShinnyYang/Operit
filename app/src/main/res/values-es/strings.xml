@@ -3646,7 +3646,6 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="settings_pricing_description_with_currency">Establecer precio por millón de tokens (%1$s)</string>
     <string name="settings_token_price_description_with_currency">Establecer precio por solicitud de API (%1$s)</string>
     <string name="settings_exchange_rate_title">Configuración de tipo de cambio</string>
-    <string name="settings_exchange_rate_subtitle">Los modelos facturados en USD se convertirán a CNY según este tipo de cambio</string>
     <string name="settings_usd_to_cny_rate_label">Tipo de cambio USD → CNY</string>
     <string name="settings_rate_applied_hint">Costo total calculado a 1 USD = %1$.4f CNY</string>
     <string name="settings_input_price_per_million">Precio de entrada (por millón de tokens)</string>

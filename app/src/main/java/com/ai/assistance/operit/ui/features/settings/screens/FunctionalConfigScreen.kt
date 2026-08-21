@@ -489,17 +489,24 @@ fun FunctionConfigCard(
                                                             "user" to "Connection test: summarize this short dialog.",
                                                             "assistant" to "Sure, I can help with summaries."
                                                         )
-                                                    enhancedService.generateSummary(sampleMessages)
+                                                    enhancedService.generateSummary(
+                                                        sampleMessages,
+                                                        recordTokenUsage = false,
+                                                    )
                                                 }
                                                 FunctionType.TITLE_GENERATION -> {
                                                     val enhancedService = EnhancedAIService.getInstance(context)
                                                     enhancedService.generateConversationTitle(
-                                                        userText = context.getString(R.string.functional_config_test_title_generation_user_text)
+                                                        userText = context.getString(R.string.functional_config_test_title_generation_user_text),
+                                                        recordTokenUsage = false,
                                                     )
                                                 }
                                                 FunctionType.TRANSLATION -> {
                                                     val enhancedService = EnhancedAIService.getInstance(context)
-                                                    enhancedService.translateText("Connection test: translate me.")
+                                                    enhancedService.translateText(
+                                                        "Connection test: translate me.",
+                                                        recordTokenUsage = false,
+                                                    )
                                                 }
                                                 FunctionType.IMAGE_RECOGNITION -> {
                                                     val imageFile = AssetCopyUtils.copyAssetToCache(context, "test/1.jpg")
@@ -526,7 +533,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -556,7 +563,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -586,7 +593,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -609,7 +616,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -630,7 +637,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     ).collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
                                                 }
@@ -661,7 +668,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     ).collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
                                                 }
@@ -675,7 +682,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()
@@ -692,7 +699,7 @@ fun FunctionConfigCard(
                                                         parameters,
                                                         stream = false,
                                                         enableRetry = false,
-                                                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                                                        recordTokenUsage = false,
                                                     )
                                                         .collect { chunk -> buffer.append(chunk) }
                                                     buffer.toString()

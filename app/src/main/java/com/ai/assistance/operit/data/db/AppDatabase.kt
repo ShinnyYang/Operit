@@ -227,7 +227,7 @@ abstract class AppDatabase : RoomDatabase() {
                 }
             }
 
-        /** v20 -> v21: final two-table token statistics schema. Intermediate v21 was unpublished. */
+        /** v20 -> v21: final unpublished token statistics schema. */
         internal val MIGRATION_20_21 =
             object : Migration(20, 21) {
                 override fun migrate(db: SupportSQLiteDatabase) {
@@ -252,21 +252,15 @@ abstract class AppDatabase : RoomDatabase() {
                             `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
                             `importKey` TEXT,
                             `occurredAtMs` INTEGER,
-                            `source` TEXT NOT NULL,
-                            `configId` TEXT,
+                            `configId` TEXT NOT NULL,
                             `provider` TEXT NOT NULL,
                             `model` TEXT NOT NULL,
-                            `category` TEXT,
-                            `status` TEXT,
-                            `requestCount` INTEGER,
+                            `requestCount` INTEGER NOT NULL DEFAULT 1,
                             `uncachedInputTokens` INTEGER,
                             `cachedInputTokens` INTEGER,
                             `cacheWriteTokens` INTEGER,
                             `totalInputTokens` INTEGER,
-                            `outputTokens` INTEGER,
-                            `reasoningTokens` INTEGER,
-                            `ttftMs` INTEGER,
-                            `durationMs` INTEGER
+                            `outputTokens` INTEGER
                         )
                         """.trimIndent()
                     )
@@ -279,20 +273,6 @@ abstract class AppDatabase : RoomDatabase() {
                             "`index_token_usage_records_provider_model_configId_occurredAtMs` " +
                             "ON `token_usage_records` " +
                             "(`provider`, `model`, `configId`, `occurredAtMs`)"
-                    )
-                    exec(
-                        "CREATE INDEX IF NOT EXISTS `index_token_usage_records_source_occurredAtMs` " +
-                            "ON `token_usage_records` (`source`, `occurredAtMs`)"
-                    )
-                    exec(
-                        "CREATE INDEX IF NOT EXISTS " +
-                            "`index_token_usage_records_category_status_occurredAtMs` " +
-                            "ON `token_usage_records` (`category`, `status`, `occurredAtMs`)"
-                    )
-                    exec(
-                        "CREATE UNIQUE INDEX IF NOT EXISTS " +
-                            "`index_token_usage_records_importKey` " +
-                            "ON `token_usage_records` (`importKey`)"
                     )
                     exec(
                         """
@@ -311,20 +291,21 @@ abstract class AppDatabase : RoomDatabase() {
                         )
                         """.trimIndent()
                     )
-                    // Copy history once so statistics deletion remains independent from chat storage.
+                    exec(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS `index_token_usage_records_importKey` " +
+                            "ON `token_usage_records` (`importKey`)"
+                    )
+                    // Preserve token-bearing history before the new ledger starts recording requests.
                     exec(
                         """
                         INSERT INTO `token_usage_records` (
-                            `occurredAtMs`, `source`, `configId`, `provider`, `model`,
-                            `category`, `status`, `requestCount`, `uncachedInputTokens`,
-                            `cachedInputTokens`, `cacheWriteTokens`, `totalInputTokens`,
-                            `outputTokens`, `reasoningTokens`, `ttftMs`, `durationMs`
+                            `occurredAtMs`, `configId`, `provider`, `model`,
+                            `requestCount`, `uncachedInputTokens`, `cachedInputTokens`, `totalInputTokens`, `outputTokens`
                         )
                         SELECT
-                            `timestamp`, 'CONVERSATION', NULL, `provider`, `modelName`,
-                            'CHAT', 'COMPLETED', NULL, MAX(`inputTokens` - `cachedInputTokens`, 0),
-                            `cachedInputTokens`, NULL, `inputTokens`, `outputTokens`, NULL,
-                            NULLIF(`waitDurationMs`, 0), NULLIF(`outputDurationMs`, 0)
+                            `timestamp`, '', `provider`, `modelName`, 1,
+                            MAX(`inputTokens` - `cachedInputTokens`, 0), `cachedInputTokens`,
+                            `inputTokens`, `outputTokens`
                         FROM `messages`
                         WHERE `sender` = 'ai'
                             AND TRIM(`provider`) <> ''
@@ -335,32 +316,21 @@ abstract class AppDatabase : RoomDatabase() {
                     exec(
                         """
                         INSERT INTO `token_usage_records` (
-                            `occurredAtMs`, `source`, `configId`, `provider`, `model`,
-                            `category`, `status`, `requestCount`, `uncachedInputTokens`,
-                            `cachedInputTokens`, `cacheWriteTokens`, `totalInputTokens`,
-                            `outputTokens`, `reasoningTokens`, `ttftMs`, `durationMs`
+                            `occurredAtMs`, `configId`, `provider`, `model`,
+                            `requestCount`, `uncachedInputTokens`, `cachedInputTokens`, `totalInputTokens`, `outputTokens`
                         )
                         SELECT
-                            variants.`messageTimestamp`, 'CONVERSATION', NULL,
-                            variants.`provider`, variants.`modelName`, 'CHAT', 'COMPLETED', NULL,
-                            MAX(variants.`inputTokens` - variants.`cachedInputTokens`, 0),
-                            variants.`cachedInputTokens`, NULL, variants.`inputTokens`,
-                            variants.`outputTokens`, NULL, NULLIF(variants.`waitDurationMs`, 0),
-                            NULLIF(variants.`outputDurationMs`, 0)
-                        FROM `message_variants` AS variants
-                        WHERE TRIM(variants.`provider`) <> ''
-                            AND TRIM(variants.`modelName`) <> ''
-                            AND (
-                                variants.`inputTokens` > 0
-                                OR variants.`cachedInputTokens` > 0
-                                OR variants.`outputTokens` > 0
-                            )
+                            `messageTimestamp`, '', `provider`, `modelName`, 1,
+                            MAX(`inputTokens` - `cachedInputTokens`, 0), `cachedInputTokens`,
+                            `inputTokens`, `outputTokens`
+                        FROM `message_variants`
+                        WHERE TRIM(`provider`) <> ''
+                            AND TRIM(`modelName`) <> ''
+                            AND (`inputTokens` > 0 OR `cachedInputTokens` > 0 OR `outputTokens` > 0)
                         """.trimIndent()
                     )
                 }
             }
-
-
 
         // 定义从版本2到3的迁移
         private val MIGRATION_2_3 =

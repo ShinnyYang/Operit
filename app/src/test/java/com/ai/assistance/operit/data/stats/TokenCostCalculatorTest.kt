@@ -171,8 +171,6 @@ class TokenCostCalculatorTest {
         model = "gpt-test",
         configId = "test-config",
         requests = requests,
-        requestCountKnown = requests,
-        usageRows = requests,
         uncachedInputTokens = uncachedInputTokens,
         uncachedInputKnown = uncachedInputKnown,
         cachedInputTokens = cachedInputTokens,
@@ -183,11 +181,5 @@ class TokenCostCalculatorTest {
         totalInputKnown = totalInputKnown,
         outputTokens = outputTokens,
         outputKnown = outputKnown,
-        reasoningTokens = 0L,
-        reasoningKnown = requests,
-        ttftTotalMs = 0L,
-        ttftSamples = 0L,
-        durationTotalMs = 0L,
-        durationSamples = 0L,
     )
 }

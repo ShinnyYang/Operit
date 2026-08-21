@@ -3,6 +3,7 @@ package com.ai.assistance.operit.ui.features.settings.sections
 import android.annotation.SuppressLint
 import com.ai.assistance.operit.util.AppLogger
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -57,6 +58,8 @@ import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
 import com.ai.assistance.operit.ui.common.input.bringIntoViewOnImeFocus
 import com.ai.assistance.operit.ui.features.settings.DebouncedModelConfigAutoSaveEffect
 import com.ai.assistance.operit.ui.features.settings.ModelConfigSaveCoordinator
+import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
+import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import com.ai.assistance.operit.ui.features.settings.RegisterModelConfigSaveAction
 import com.ai.assistance.operit.util.LocationUtils
 import kotlinx.coroutines.CoroutineScope
@@ -1651,22 +1654,43 @@ private fun ApiProviderDialog(
                                     modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                             ) {
-                                // 提供商图标（使用圆形背景色）
-                                Box(
-                                        modifier = Modifier
-                                                .size(32.dp)
-                                                .background(
-                                                        getProviderColor(provider.id),
-                                                        CircleShape
-                                                ),
-                                        contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                            text = provider.displayName.firstOrNull()?.toString() ?: "?",
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            style = MaterialTheme.typography.bodyLarge,
-                                            fontWeight = FontWeight.Bold
-                                    )
+                                // 提供商图标（优先显示品牌 Logo，缺失时回退到首字母色块）
+                                val providerLogo =
+                                        rememberProviderLogoPainter(provider.id, 32.dp)
+                                if (providerLogo != null) {
+                                    Box(
+                                            modifier = Modifier
+                                                    .size(32.dp)
+                                                    .background(
+                                                            getProviderColor(provider.id).copy(alpha = 0.14f),
+                                                            CircleShape
+                                                    ),
+                                            contentAlignment = Alignment.Center
+                                    ) {
+                                        Image(
+                                                painter = providerLogo,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(24.dp),
+                                                colorFilter = providerLogoColorFilter()
+                                        )
+                                    }
+                                } else {
+                                    Box(
+                                            modifier = Modifier
+                                                    .size(32.dp)
+                                                    .background(
+                                                            getProviderColor(provider.id),
+                                                            CircleShape
+                                                    ),
+                                            contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                                text = provider.displayName.firstOrNull()?.toString() ?: "?",
+                                                color = MaterialTheme.colorScheme.onPrimary,
+                                                style = MaterialTheme.typography.bodyLarge,
+                                                fontWeight = FontWeight.Bold
+                                        )
+                                    }
                                 }
                                 
                                 Spacer(modifier = Modifier.width(16.dp))

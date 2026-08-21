@@ -182,8 +182,12 @@ open class ClaudeProvider(
         return total
     }
 
-    private fun parseAnthropicUsage(usage: JSONObject?): AnthropicUsageCounts? {
+    private fun parseAnthropicUsage(
+        usage: JSONObject?,
+        openAiCompatible: Boolean,
+    ): AnthropicUsageCounts? {
         usage ?: return null
+        if (openAiCompatible) return parseOpenAiCompatibleUsage(usage)
 
         // 评审 P1-5：显式全零 payload 也是“已观察到的 usage”——按字段存在判断，
         // 不能按 “>0” 过滤；P2-1：Long 解析，旧 UI 计数边界饱和 Int。
@@ -219,16 +223,37 @@ open class ClaudeProvider(
         val outputTokens =
             usage.optLong("output_tokens", usage.optLong("completion_tokens", 0L)).coerceAtLeast(0L)
 
-        if (totalInputTokens <= 0 && outputTokens <= 0) {
-            return null
-        }
-
         return AnthropicUsageCounts(
             actualInputTokens = actualInputTokens,
             cachedInputTokens = cachedInputTokens,
             totalInputTokens = totalInputTokens,
             outputTokens = outputTokens,
             cacheCreationInputTokens = cacheCreationInputTokens
+        )
+    }
+
+    private fun parseOpenAiCompatibleUsage(usage: JSONObject): AnthropicUsageCounts? {
+        val hasAny =
+            usage.has("prompt_tokens") || usage.has("input_tokens") ||
+                usage.has("completion_tokens") || usage.has("output_tokens")
+        if (!hasAny) return null
+
+        val totalInputTokens =
+            usage.optLong("prompt_tokens", usage.optLong("input_tokens", 0L)).coerceAtLeast(0L)
+        val cachedInputTokens =
+            usage.optJSONObject("prompt_tokens_details")
+                ?.optLong("cached_tokens", 0L)
+                ?: usage.optJSONObject("input_tokens_details")
+                    ?.optLong("cached_tokens", 0L)
+                ?: usage.optLong("cached_tokens", 0L)
+        val outputTokens =
+            usage.optLong("completion_tokens", usage.optLong("output_tokens", 0L)).coerceAtLeast(0L)
+        return AnthropicUsageCounts(
+            actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0L),
+            cachedInputTokens = cachedInputTokens.coerceAtLeast(0L),
+            totalInputTokens = totalInputTokens,
+            outputTokens = outputTokens,
+            cacheCreationInputTokens = 0L,
         )
     }
 
@@ -239,16 +264,17 @@ open class ClaudeProvider(
         overwriteOutputTokens: Boolean,
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)? = null,
         attemptNumber: Int = 1,
-        completeSnapshot: Boolean = false
+        completeSnapshot: Boolean = false,
+        openAiCompatible: Boolean = false,
     ): Boolean {
-        val parsed = parseAnthropicUsage(usage) ?: return false
+        val parsed = parseAnthropicUsage(usage, openAiCompatible) ?: return false
 
         tokenCacheManager.updateActualTokens(
             actualInput = parsed.actualInputTokens,
             cachedInput = parsed.cachedInputTokens
         )
 
-        if (overwriteOutputTokens && parsed.outputTokens > 0) {
+        if (overwriteOutputTokens) {
             tokenCacheManager.setOutputTokens(parsed.outputTokens)
         }
 
@@ -262,13 +288,22 @@ open class ClaudeProvider(
             parsed.cachedInputTokens,
             tokenCacheManager.outputTokenCount
         )
+        val normalizedUsage =
+            if (openAiCompatible) {
+                com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.openAiChatCompletions(
+                    usage,
+                    completeSnapshot,
+                )
+            } else {
+                com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.anthropic(
+                    usage,
+                    completeSnapshot,
+                )
+            }
         onUsageReported?.invoke(
             // 流式 start/delta 是部分更新（省略字段保留旧值）；非流式最终响应是
             // 完整快照中 null 表示明确未知，覆盖该 attempt 的旧值。
-            com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.anthropic(
-                usage,
-                completeSnapshot,
-            ) ?: return true,
+            normalizedUsage ?: return true,
             attemptNumber
         )
         return true
@@ -1411,9 +1446,10 @@ open class ClaudeProvider(
             preserveThinkInHistory: Boolean,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
-            onNonFatalError: suspend (error: String) -> Unit,
-            enableRetry: Boolean,
-            statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+             onNonFatalError: suspend (error: String) -> Unit,
+              enableRetry: Boolean,
+              recordTokenUsage: Boolean,
+              onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -1426,6 +1462,7 @@ open class ClaudeProvider(
         val receivedContent = StringBuilder()
         val requestSavepointId = "attempt_${UUID.randomUUID().toString().replace("-", "")}"
         var thinkingFormatFlipped = false  // limit thinking format flip to once
+        var outboundAttempt = 0
 
         suspend fun emitSavepoint(id: String) {
             eventChannel.emit(TextStreamEvent(TextStreamEventType.SAVEPOINT, id))
@@ -1509,6 +1546,8 @@ open class ClaudeProvider(
                 throw UserCancellationException(context.getString(R.string.openai_error_request_cancelled))
             }
 
+            val currentAttempt = ++outboundAttempt
+            var streamCompletionConfirmed = !stream
             val call = try {
                 if (retryCount > 0) {
                     AppLogger.d(
@@ -1575,8 +1614,66 @@ open class ClaudeProvider(
                             "Claude响应格式检测: looksLikeJson=$looksLikeJson, looksLikeSse=$looksLikeSse, isEventStream=$isEventStream"
                         )
 
+                        suspend fun processOpenAiCompatibleJsonLines(responseText: String) {
+                            for (jsonLine in responseText.lineSequence()) {
+                                val line = jsonLine.trim()
+                                if (!line.startsWith("{")) continue
+                                val jsonResponse = runCatching { JSONObject(line) }.getOrNull() ?: continue
+                                val choices = jsonResponse.optJSONArray("choices")
+                                val first = choices?.optJSONObject(0)
+                                val delta = first?.optJSONObject("delta")
+                                val content = delta?.optString("content", "").orEmpty()
+                                if (content.isNotEmpty()) {
+                                    tokenCacheManager.addOutputTokens(ChatUtils.estimateTokenCount(content))
+                                    onTokensUpdated(
+                                        tokenCacheManager.totalInputTokenCount,
+                                        tokenCacheManager.cachedInputTokenCount,
+                                        tokenCacheManager.outputTokenCount,
+                                    )
+                                    emit(content)
+                                    receivedContent.append(content)
+                                }
+                                val finishReason =
+                                    if (first != null && first.has("finish_reason") && !first.isNull("finish_reason")) {
+                                        first.optString("finish_reason", "").trim()
+                                    } else {
+                                        ""
+                                    }
+                                if (
+                                    finishReason.isNotEmpty() &&
+                                        !finishReason.equals("null", ignoreCase = true) &&
+                                        !finishReason.equals("none", ignoreCase = true)
+                                ) {
+                                    streamCompletionConfirmed = true
+                                }
+                                applyAnthropicUsage(
+                                    usage = jsonResponse.optJSONObject("usage"),
+                                    onTokensUpdated = onTokensUpdated,
+                                    source = "openai_compatible_jsonl",
+                                    overwriteOutputTokens = true,
+                                    onUsageReported = onUsageReported,
+                                    attemptNumber = currentAttempt,
+                                    completeSnapshot = true,
+                                    openAiCompatible = true,
+                                )
+                            }
+                        }
+
                         if (stream && !looksLikeSse && looksLikeJson) {
                             val responseText = responseBody.string().trim()
+                            val jsonLines =
+                                responseText
+                                    .lineSequence()
+                                    .map { it.trim() }
+                                    .filter { it.isNotEmpty() }
+                                    .toList()
+                            if (
+                                jsonLines.size > 1 &&
+                                    jsonLines.all { line -> runCatching { JSONObject(line) }.isSuccess }
+                            ) {
+                                processOpenAiCompatibleJsonLines(responseText)
+                                return@withContext
+                            }
                             val json = JSONObject(responseText)
                             val resultText = parseAnthropicNonStreaming(json).ifBlank { parseOpenAiNonStreaming(json) }
                             if (resultText.isNotBlank()) {
@@ -1590,8 +1687,9 @@ open class ClaudeProvider(
                                 source = "non_streaming_json",
                                 overwriteOutputTokens = true,
                                 onUsageReported = onUsageReported,
-                                attemptNumber = retryCount + 1,
-                                completeSnapshot = true
+                                attemptNumber = currentAttempt,
+                                completeSnapshot = true,
+                                openAiCompatible = json.has("choices"),
                             )
                             if (resultText.isBlank() && !usageApplied) {
                                 throw IOException(context.getString(R.string.provider_error_parsing_failed))
@@ -1608,6 +1706,7 @@ open class ClaudeProvider(
                                     context.getString(R.string.openai_error_request_cancelled)
                                 )
                             }
+                            streamCompletionConfirmed = true
                             return@withContext
                         }
 
@@ -1626,8 +1725,9 @@ open class ClaudeProvider(
                                 source = "non_streaming_response",
                                 overwriteOutputTokens = true,
                                 onUsageReported = onUsageReported,
-                                attemptNumber = retryCount + 1,
-                                completeSnapshot = true
+                                attemptNumber = currentAttempt,
+                                completeSnapshot = true,
+                                openAiCompatible = json.has("choices"),
                             )
                             if (resultText.isNotBlank() && !usageApplied) {
                                 onTokensUpdated(
@@ -1664,7 +1764,10 @@ open class ClaudeProvider(
                                 continue
                             }
                             val data = line.substringAfter("data:").trimStart()
-                            if (data == "[DONE]") break
+                            if (data == "[DONE]") {
+                                streamCompletionConfirmed = true
+                                break
+                            }
                             if (data.isBlank()) continue
 
                             val jsonResponse = runCatching { JSONObject(data) }.getOrNull() ?: continue
@@ -1687,6 +1790,29 @@ open class ClaudeProvider(
                                     emit(content)
                                     receivedContent.append(content)
                                 }
+                                val finishReason =
+                                    if (first != null && first.has("finish_reason") && !first.isNull("finish_reason")) {
+                                        first.optString("finish_reason", "").trim()
+                                    } else {
+                                        ""
+                                    }
+                                if (
+                                    finishReason.isNotEmpty() &&
+                                        !finishReason.equals("null", ignoreCase = true) &&
+                                        !finishReason.equals("none", ignoreCase = true)
+                                ) {
+                                    streamCompletionConfirmed = true
+                                }
+                                applyAnthropicUsage(
+                                    usage = jsonResponse.optJSONObject("usage"),
+                                    onTokensUpdated = onTokensUpdated,
+                                    source = "openai_compatible_streaming",
+                                    overwriteOutputTokens = true,
+                                    onUsageReported = onUsageReported,
+                                    attemptNumber = currentAttempt,
+                                    completeSnapshot = true,
+                                    openAiCompatible = true,
+                                )
                                 continue
                             }
 
@@ -1700,7 +1826,7 @@ open class ClaudeProvider(
                                         source = "message_start",
                                         overwriteOutputTokens = false,
                                         onUsageReported = onUsageReported,
-                                        attemptNumber = retryCount + 1
+                                        attemptNumber = currentAttempt
                                     )
                                 }
                                 "content_block_start" -> {
@@ -1852,7 +1978,7 @@ open class ClaudeProvider(
                                         source = "message_delta",
                                         overwriteOutputTokens = true,
                                         onUsageReported = onUsageReported,
-                                        attemptNumber = retryCount + 1,
+                                        attemptNumber = currentAttempt,
                                     )
                                 }
                                 "message_stop" -> {
@@ -1885,6 +2011,7 @@ open class ClaudeProvider(
                                         receivedContent.append(thinkingEndTag)
                                         isInThinkingBlock = false
                                     }
+                                    streamCompletionConfirmed = true
                                     break
                                 }
                             }
@@ -1920,8 +2047,9 @@ open class ClaudeProvider(
                                     source = "buffered_json_fallback",
                                     overwriteOutputTokens = true,
                                     onUsageReported = onUsageReported,
-                                    attemptNumber = retryCount + 1,
-                                    completeSnapshot = true
+                                    attemptNumber = currentAttempt,
+                                    completeSnapshot = true,
+                                    openAiCompatible = wholeJson.has("choices"),
                                 )
                                 if (resultText.isNotBlank() && !usageApplied) {
                                     onTokensUpdated(
@@ -1930,16 +2058,20 @@ open class ClaudeProvider(
                                         tokenCacheManager.outputTokenCount
                                     )
                                 }
+                                if (resultText.isBlank() && !usageApplied) {
+                                    throw IOException(context.getString(R.string.provider_error_parsing_failed))
+                                }
+                                streamCompletionConfirmed = true
                             } else {
                                 // 再尝试逐行解析（JSONL），优先支持 OpenAI-style delta
-                                buffered.lineSequence().forEach { jsonLine ->
+                                for (jsonLine in buffered.lineSequence()) {
                                     val t = jsonLine.trim()
-                                    if (!t.startsWith("{")) return@forEach
-                                    val obj = runCatching { JSONObject(t) }.getOrNull() ?: return@forEach
-                                    val choices = obj.optJSONArray("choices") ?: return@forEach
-                                    val first = choices.optJSONObject(0) ?: return@forEach
-                                    val delta = first.optJSONObject("delta") ?: return@forEach
-                                    val content = delta.optString("content", "")
+                                    if (!t.startsWith("{")) continue
+                                    val obj = runCatching { JSONObject(t) }.getOrNull() ?: continue
+                                    val choices = obj.optJSONArray("choices")
+                                    val first = choices?.optJSONObject(0)
+                                    val delta = first?.optJSONObject("delta")
+                                    val content = delta?.optString("content", "").orEmpty()
                                     if (content.isNotBlank()) {
                                         emittedAny = true
                                         tokenCacheManager.addOutputTokens(ChatUtils.estimateTokenCount(content))
@@ -1951,6 +2083,29 @@ open class ClaudeProvider(
                                         emit(content)
                                         receivedContent.append(content)
                                     }
+                                    val finishReason =
+                                        if (first != null && first.has("finish_reason") && !first.isNull("finish_reason")) {
+                                            first.optString("finish_reason", "").trim()
+                                        } else {
+                                            ""
+                                        }
+                                    if (
+                                        finishReason.isNotEmpty() &&
+                                            !finishReason.equals("null", ignoreCase = true) &&
+                                            !finishReason.equals("none", ignoreCase = true)
+                                    ) {
+                                        streamCompletionConfirmed = true
+                                    }
+                                    applyAnthropicUsage(
+                                        usage = obj.optJSONObject("usage"),
+                                        onTokensUpdated = onTokensUpdated,
+                                        source = "openai_compatible_jsonl",
+                                        overwriteOutputTokens = true,
+                                        onUsageReported = onUsageReported,
+                                        attemptNumber = currentAttempt,
+                                        completeSnapshot = true,
+                                        openAiCompatible = true,
+                                    )
                                 }
                             }
                         }
@@ -1971,6 +2126,10 @@ open class ClaudeProvider(
                         context.getString(R.string.openai_error_request_cancelled)
                     )
                 }
+                if (stream && !streamCompletionConfirmed) {
+                    throw IOException(context.getString(R.string.provider_error_network_interrupted))
+                }
+                onUsageFinalized?.invoke(currentAttempt)
                 AppLogger.d("AIService", "【Claude】请求成功完成")
                 logFinalOutput(receivedContent, "Claude final output summary: ")
                 return@stream
@@ -2038,10 +2197,7 @@ open class ClaudeProvider(
         )
     }
 
-    override suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
-    ): Result<String> {
+    override suspend fun testConnection(context: Context): Result<String> {
         return try {
             // 通过发送一条短消息来测试完整的连接、认证和API端点。
             // 这比getModelsList更可靠，因为它直接命中了聊天API。
@@ -2053,9 +2209,10 @@ open class ClaudeProvider(
                 emptyList(),
                 false,
                 onTokensUpdated = { _, _, _ -> },
-                onUsageReported = onUsageReported,
+                onUsageReported = null,
                 onNonFatalError = {},
-                enableRetry = false
+                enableRetry = false,
+                recordTokenUsage = false,
             )
 
             // 消耗流以确保连接有效。

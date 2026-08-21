@@ -12,8 +12,6 @@ import com.ai.assistance.operit.data.stats.TokenActivityAggregator
 import com.ai.assistance.operit.data.stats.TokenActivityViewMode
 import com.ai.assistance.operit.data.stats.TokenActivityRangeData
 import com.ai.assistance.operit.data.stats.TokenCostCurrency
-import com.ai.assistance.operit.data.stats.TokenStatCategory
-import com.ai.assistance.operit.data.stats.TokenStatStatus
 import com.ai.assistance.operit.data.stats.TokenStatsDisplayModelBreakdown
 import com.ai.assistance.operit.data.stats.TokenStatsPriceDraft
 import com.ai.assistance.operit.data.stats.TokenStatsLifetimeOverview
@@ -56,8 +54,6 @@ data class TokenStatsUiState(
     val manualRate: Double = TokenCostCurrency.DEFAULT_USD_TO_CNY_RATE,
     val rateIsEstimated: Boolean = true,
     val selectedModels: Set<String> = emptySet(),
-    val selectedCategories: Set<TokenStatCategory>? = null,
-    val selectedStatuses: Set<TokenStatStatus>? = null,
     val availableDisplayModels: List<TokenStatsDisplayModelBreakdown> = emptyList(),
     val knownModelNames: Map<String, String> = emptyMap(),
     val configurationNames: Map<String, String> = emptyMap(),
@@ -93,6 +89,7 @@ class TokenUsageStatisticsViewModel(
     private var loadGeneration = 0
     private var loadJob: Job? = null
     private val knownModelNames = linkedMapOf<String, String>()
+    private val knownModelProviderModels = linkedMapOf<String, Set<String>>()
 
     fun consumeActionMessage() {
         _actionMessage.value = null
@@ -121,22 +118,25 @@ class TokenUsageStatisticsViewModel(
 
                 val result = coroutineScope {
                     val pricesDeferred = async(Dispatchers.IO) { manager.allPriceSettings() }
+                    val providerModelsByDisplayId = knownModelProviderModels.toMutableMap().apply {
+                        filterSnapshot.availableDisplayModels.forEach { model ->
+                            this[model.displayModelId] =
+                                this[model.displayModelId].orEmpty() + model.providerModels
+                        }
+                    }
                     val selectedProviderModels =
-                        filterSnapshot.selectedModels
-                            .takeIf { it.isNotEmpty() }
-                            ?.let { selected ->
-                                filterSnapshot.availableDisplayModels
-                                    .asSequence()
-                                    .filter { it.displayModelId in selected }
-                                    .flatMap { it.providerModels.asSequence() }
-                                    .toSet()
-                            }
+                        if (filterSnapshot.selectedModels.isEmpty()) {
+                            null
+                        } else {
+                            filterSnapshot.selectedModels
+                                .asSequence()
+                                .flatMap { providerModelsByDisplayId[it].orEmpty().asSequence() }
+                                .toSet()
+                        }
                     val rangeParams = TokenStatsQueryParams(
                         targetCurrency = currency,
                         manualRate = rateInfo.first,
                         providerModels = selectedProviderModels,
-                        categories = filterSnapshot.selectedCategories,
-                        statuses = filterSnapshot.selectedStatuses,
                     )
                     val availableParams = rangeParams.copy(providerModels = null)
                     val lifetimeDeferred = async(Dispatchers.IO) {
@@ -194,6 +194,7 @@ class TokenUsageStatisticsViewModel(
                 }
 
                 if (generation != loadGeneration) return@launch
+                rememberModelNames(result.lifetime.displayModels)
                 rememberModelNames(result.range?.displayModels.orEmpty())
                 rememberModelNames(result.available?.displayModels.orEmpty())
                 _state.update {
@@ -232,7 +233,11 @@ class TokenUsageStatisticsViewModel(
     }
 
     private fun rememberModelNames(models: List<TokenStatsDisplayModelBreakdown>) {
-        models.forEach { knownModelNames[it.displayModelId] = it.displayName }
+        models.forEach {
+            knownModelNames[it.displayModelId] = it.displayName
+            knownModelProviderModels[it.displayModelId] =
+                knownModelProviderModels[it.displayModelId].orEmpty() + it.providerModels
+        }
     }
 
     fun setCustomRange(startMs: Long, endMs: Long): Boolean {
@@ -271,34 +276,6 @@ class TokenUsageStatisticsViewModel(
 
     fun selectAllModels() {
         _state.update { it.copy(selectedModels = emptySet()) }
-        load()
-    }
-
-    fun toggleCategory(category: TokenStatCategory) {
-        _state.update { state ->
-            val selected = state.selectedCategories?.toMutableSet() ?: mutableSetOf()
-            if (!selected.add(category)) selected.remove(category)
-            state.copy(selectedCategories = selected.ifEmpty { null })
-        }
-        load()
-    }
-
-    fun clearCategories() {
-        _state.update { it.copy(selectedCategories = null) }
-        load()
-    }
-
-    fun toggleStatus(status: TokenStatStatus) {
-        _state.update { state ->
-            val selected = state.selectedStatuses?.toMutableSet() ?: mutableSetOf()
-            if (!selected.add(status)) selected.remove(status)
-            state.copy(selectedStatuses = selected.ifEmpty { null })
-        }
-        load()
-    }
-
-    fun clearStatuses() {
-        _state.update { it.copy(selectedStatuses = null) }
         load()
     }
 

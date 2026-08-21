@@ -5,11 +5,8 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.TokenUsageRecordEntity
-import com.ai.assistance.operit.data.model.TokenUsageRecordSource
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.stats.ProviderUsageSnapshot
-import com.ai.assistance.operit.data.stats.TokenStatCategory
-import com.ai.assistance.operit.data.stats.TokenStatStatus
 import com.ai.assistance.operit.data.stats.TokenUsageRepository
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.stream.RevisableTextStream
@@ -18,23 +15,25 @@ import com.ai.assistance.operit.util.stream.Stream
 import com.ai.assistance.operit.util.stream.StreamCollector
 import com.ai.assistance.operit.util.stream.TextStreamEvent
 import com.ai.assistance.operit.util.stream.TextStreamEventCarrier
-import com.ai.assistance.operit.util.stream.TimeoutException
-import java.io.InterruptedIOException
-import java.net.SocketTimeoutException
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 
-/** Adds one compact Room statistics row around every logical [AIService] request. */
+/** Records successful formal-inference requests with provider-confirmed usage. */
 class TokenTrackingAIService(
     private val delegate: AIService,
     context: Context,
     private val configId: String,
 ) : AIService {
     private val repository = TokenUsageRepository.getInstance(context.applicationContext)
+    private val activeRequests = ConcurrentHashMap.newKeySet<RequestTracker>()
+    private val cancellationLock = Any()
+    private var cancellationEpoch = 0L
 
     override val inputTokenCount: Long get() = delegate.inputTokenCount
     override val cachedInputTokenCount: Long get() = delegate.cachedInputTokenCount
@@ -42,7 +41,13 @@ class TokenTrackingAIService(
     override val providerModel: String get() = delegate.providerModel
 
     override fun resetTokenCounts() = delegate.resetTokenCounts()
-    override fun cancelStreaming() = delegate.cancelStreaming()
+    override fun cancelStreaming() {
+        synchronized(cancellationLock) {
+            cancellationEpoch += 1
+            activeRequests.forEach { request -> request.cancel() }
+        }
+        delegate.cancelStreaming()
+    }
     override suspend fun getModelsList(context: Context): Result<List<ModelOption>> =
         delegate.getModelsList(context)
 
@@ -65,63 +70,76 @@ class TokenTrackingAIService(
         onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
-        statsCategory: TokenStatCategory?,
+        recordTokenUsage: Boolean,
+        onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
-        val request = RequestTracker(
-            configId = configId,
-            providerModel = providerModel,
-            category = statsCategory ?: TokenStatCategory.OTHER,
-        )
-        val inner = try {
-            delegate.sendMessage(
-                context = context,
-                chatHistory = chatHistory,
-                modelParameters = modelParameters,
-                enableThinking = enableThinking,
-                stream = stream,
-                availableTools = availableTools,
-                preserveThinkInHistory = preserveThinkInHistory,
-                onTokensUpdated = onTokensUpdated,
-                onUsageReported = { usage, attempt ->
-                    request.onUsage(usage, attempt)
-                    forwardUsageObserver(onUsageReported, usage, attempt)
-                },
-                onNonFatalError = onNonFatalError,
-                enableRetry = enableRetry,
-                statsCategory = statsCategory,
-            )
-        } catch (t: Throwable) {
-            persist(request.finish(classify(t)))
-            throw t
+        val request = RequestTracker(configId = configId, providerModel = providerModel)
+        val requestEpoch = synchronized(cancellationLock) { cancellationEpoch }
+        val onStarted: () -> Unit = {
+            synchronized(cancellationLock) {
+                if (cancellationEpoch != requestEpoch) {
+                    request.cancel()
+                }
+                activeRequests.add(request)
+                Unit
+            }
         }
-        return wrapStream(inner, request)
+        val onFinished: () -> Unit = {
+            synchronized(cancellationLock) {
+                activeRequests.remove(request)
+                Unit
+            }
+        }
+        val inner =
+            if (!recordTokenUsage) {
+                delegate.sendMessage(
+                    context = context,
+                    chatHistory = chatHistory,
+                    modelParameters = modelParameters,
+                    enableThinking = enableThinking,
+                    stream = stream,
+                    availableTools = availableTools,
+                    preserveThinkInHistory = preserveThinkInHistory,
+                    onTokensUpdated = onTokensUpdated,
+                    onUsageReported = onUsageReported,
+                    onNonFatalError = onNonFatalError,
+                    enableRetry = enableRetry,
+                    recordTokenUsage = false,
+                    onUsageFinalized = onUsageFinalized,
+                )
+            } else {
+                delegate.sendMessage(
+                    context = context,
+                    chatHistory = chatHistory,
+                    modelParameters = modelParameters,
+                    enableThinking = enableThinking,
+                    stream = stream,
+                    availableTools = availableTools,
+                    preserveThinkInHistory = preserveThinkInHistory,
+                    onTokensUpdated = onTokensUpdated,
+                    onUsageReported = { usage, attempt ->
+                        request.onUsage(usage, attempt)
+                        forwardUsageObserver(onUsageReported, usage, attempt)
+                    },
+                    onNonFatalError = onNonFatalError,
+                    enableRetry = enableRetry,
+                    recordTokenUsage = true,
+                    onUsageFinalized = { attempt ->
+                        request.onSuccess(attempt)
+                        forwardUsageFinalizedObserver(onUsageFinalized, attempt)
+                    },
+                )
+            }
+        return wrapStream(
+            inner = inner,
+            request = request,
+            onStarted = onStarted,
+            onFinished = onFinished,
+        )
     }
 
-    override suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (ProviderUsageSnapshot, attempt: Int) -> Unit)?,
-    ): Result<String> {
-        val request =
-            RequestTracker(configId, providerModel, TokenStatCategory.CONNECTION_TEST)
-        return try {
-            val result = delegate.testConnection(context) { usage, attempt ->
-                request.onUsage(usage, attempt)
-                forwardUsageObserver(onUsageReported, usage, attempt)
-            }
-            persist(
-                request.finish(
-                    result.exceptionOrNull()?.let(::classify) ?: TokenStatStatus.COMPLETED
-                )
-            )
-            result
-        } catch (e: CancellationException) {
-            persist(request.finish(classify(e)))
-            throw e
-        } catch (t: Throwable) {
-            persist(request.finish(classify(t)))
-            Result.failure(t)
-        }
-    }
+    override suspend fun testConnection(context: Context): Result<String> =
+        delegate.testConnection(context)
 
     private suspend fun forwardUsageObserver(
         observer: (suspend (ProviderUsageSnapshot, Int) -> Unit)?,
@@ -138,17 +156,38 @@ class TokenTrackingAIService(
         }
     }
 
-    private fun wrapStream(inner: Stream<String>, request: RequestTracker): Stream<String> =
+    private suspend fun forwardUsageFinalizedObserver(
+        observer: (suspend (Int?) -> Unit)?,
+        attempt: Int?,
+    ) {
+        val callback = observer ?: return
+        try {
+            callback(attempt)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            AppLogger.e(TAG, "usage completion observer failed", e)
+        }
+    }
+
+    private fun wrapStream(
+        inner: Stream<String>,
+        request: RequestTracker,
+        onStarted: () -> Unit,
+        onFinished: () -> Unit,
+    ): Stream<String> =
         if (inner is TextStreamEventCarrier) {
-            TrackingRevisableStream(inner, inner.eventChannel, request, repository)
+            TrackingRevisableStream(inner, inner.eventChannel, request, repository, onStarted, onFinished)
         } else {
-            TrackingStream(inner, request, repository)
+            TrackingStream(inner, request, repository, onStarted, onFinished)
         }
 
     private class TrackingStream(
         private val inner: Stream<String>,
         private val request: RequestTracker,
         private val repository: TokenUsageRepository,
+        private val onStarted: () -> Unit,
+        private val onFinished: () -> Unit,
     ) : Stream<String> {
         override val isLocked: Boolean get() = inner.isLocked
         override val bufferedCount: Int get() = inner.bufferedCount
@@ -158,15 +197,14 @@ class TokenTrackingAIService(
 
         override suspend fun collect(collector: StreamCollector<String>) {
             try {
-                inner.collect { value ->
-                    if (value.isNotEmpty()) request.onFirstToken()
-                    collector.emit(value)
-                }
-            } catch (t: Throwable) {
-                persist(repository, request, request.finish(classify(t)))
-                throw t
+                onStarted()
+                request.throwIfCancelled()
+                inner.collect { value -> collector.emit(value) }
+                currentCoroutineContext().ensureActive()
+                persist(repository, request, request.finish())
+            } finally {
+                onFinished()
             }
-            persist(repository, request, request.finish(TokenStatStatus.COMPLETED))
         }
     }
 
@@ -175,6 +213,8 @@ class TokenTrackingAIService(
         override val eventChannel: SharedStream<TextStreamEvent>,
         private val request: RequestTracker,
         private val repository: TokenUsageRepository,
+        private val onStarted: () -> Unit,
+        private val onFinished: () -> Unit,
     ) : RevisableTextStream {
         override val isLocked: Boolean get() = inner.isLocked
         override val bufferedCount: Int get() = inner.bufferedCount
@@ -184,30 +224,27 @@ class TokenTrackingAIService(
 
         override suspend fun collect(collector: StreamCollector<String>) {
             try {
-                inner.collect { value ->
-                    if (value.isNotEmpty()) request.onFirstToken()
-                    collector.emit(value)
-                }
-            } catch (t: Throwable) {
-                persist(repository, request, request.finish(classify(t)))
-                throw t
+                onStarted()
+                request.throwIfCancelled()
+                inner.collect { value -> collector.emit(value) }
+                currentCoroutineContext().ensureActive()
+                persist(repository, request, request.finish())
+            } finally {
+                onFinished()
             }
-            persist(repository, request, request.finish(TokenStatStatus.COMPLETED))
         }
     }
-
-    private suspend fun persist(record: TokenUsageRecordEntity) = persist(repository, record)
 
     private class RequestTracker(
         private val configId: String,
         private val providerModel: String,
-        private val category: TokenStatCategory,
     ) {
         private val startedAtMs = System.currentTimeMillis()
         private val lock = Any()
         private val attempts = linkedMapOf<Int, ProviderUsageSnapshot>()
-        private var firstTokenAtMs: Long? = null
         private val finished = AtomicBoolean(false)
+        private val cancelled = AtomicBoolean(false)
+        private var successfulAttempt: Int? = null
 
         fun onUsage(usage: ProviderUsageSnapshot, attempt: Int) {
             synchronized(lock) {
@@ -216,51 +253,66 @@ class TokenTrackingAIService(
             }
         }
 
-        fun onFirstToken() {
+        fun onSuccess(attempt: Int?) {
             synchronized(lock) {
-                if (firstTokenAtMs == null) firstTokenAtMs = System.currentTimeMillis()
+                successfulAttempt = attempt?.coerceAtLeast(1)
             }
         }
 
-        fun finish(status: TokenStatStatus): TokenUsageRecordEntity {
-            val endedAtMs = System.currentTimeMillis()
-            val snapshots = synchronized(lock) { attempts.values.toList() }
-            val firstToken = synchronized(lock) { firstTokenAtMs }
+        fun cancel() {
+            cancelled.set(true)
+        }
+
+        fun throwIfCancelled() {
+            if (cancelled.get()) throw CancellationException("AI request was cancelled")
+        }
+
+        fun finish(): TokenUsageRecordEntity? {
+            if (cancelled.get()) return null
+            val snapshot =
+                synchronized(lock) {
+                    successfulAttempt?.let(attempts::get)
+                } ?: return null
+            if (cancelled.get()) return null
+            if (!snapshot.hasKnownFields()) return null
+
             val separator = providerModel.indexOf(':')
             require(separator > 0 && separator < providerModel.lastIndex) {
                 "provider:model is required for token usage events"
             }
+            // 推理不再作为独立统计列落库；provider 明确将其独立于 output 上报时，
+            // 先并入持久化 output，保持总量与费用口径完整。
+            val reportedOutputTokens = snapshot.outputTokens
+            val persistedOutputTokens = when {
+                reportedOutputTokens != null && snapshot.reasoningIncludedInOutput == false ->
+                    snapshot.reasoningTokens?.let { saturatedAdd(reportedOutputTokens, it) }
+                reportedOutputTokens != null -> reportedOutputTokens
+                else -> null
+            }
+            if (snapshot.uncachedInputTokens == null &&
+                snapshot.cachedInputTokens == null &&
+                snapshot.cacheWriteTokens == null &&
+                snapshot.totalInputTokens == null &&
+                persistedOutputTokens == null
+            ) {
+                return null
+            }
             return TokenUsageRecordEntity(
                 occurredAtMs = startedAtMs,
-                source = TokenUsageRecordSource.REQUEST,
                 configId = configId,
                 provider = providerModel.substring(0, separator),
                 model = providerModel.substring(separator + 1),
-                category = category.name,
-                status = status.name,
                 requestCount = 1L,
-                uncachedInputTokens = snapshots.sumKnown { it.uncachedInputTokens },
-                cachedInputTokens = snapshots.sumKnown { it.cachedInputTokens },
-                cacheWriteTokens = snapshots.sumKnown { snapshot ->
-                    if (snapshot.cacheWriteSeparateBilling) snapshot.cacheWriteTokens else 0L
-                },
-                totalInputTokens = snapshots.sumKnown { it.totalInputTokens },
-                outputTokens = snapshots.sumKnown { snapshot ->
-                    snapshot.outputTokens?.let { output ->
-                        if (snapshot.reasoningIncludedInOutput == false) {
-                            saturatedAdd(output, snapshot.reasoningTokens ?: 0L)
-                        } else {
-                            output
-                        }
-                    }
-                },
-                reasoningTokens = snapshots.sumKnown { it.reasoningTokens },
-                ttftMs = firstToken?.let { (it - startedAtMs).coerceAtLeast(0L) },
-                durationMs = firstToken?.let { (endedAtMs - it).coerceAtLeast(0L) },
+                uncachedInputTokens = snapshot.uncachedInputTokens,
+                cachedInputTokens = snapshot.cachedInputTokens,
+                cacheWriteTokens =
+                    if (snapshot.cacheWriteSeparateBilling) snapshot.cacheWriteTokens else 0L,
+                totalInputTokens = snapshot.totalInputTokens,
+                outputTokens = persistedOutputTokens,
             )
         }
 
-        fun markPersisted(): Boolean = finished.compareAndSet(false, true)
+        fun markPersisted(): Boolean = !cancelled.get() && finished.compareAndSet(false, true)
 
         private fun merge(
             previous: ProviderUsageSnapshot?,
@@ -280,14 +332,13 @@ class TokenTrackingAIService(
 
     companion object {
         private const val TAG = "TokenTrackingAIService"
-        private const val MAX_CAUSE_DEPTH = 8
 
         private suspend fun persist(
             repository: TokenUsageRepository,
             request: RequestTracker,
-            record: TokenUsageRecordEntity,
+            record: TokenUsageRecordEntity?,
         ) {
-            if (request.markPersisted()) persist(repository, record)
+            if (record != null && request.markPersisted()) persist(repository, record)
         }
 
         private suspend fun persist(
@@ -301,45 +352,6 @@ class TokenTrackingAIService(
                     AppLogger.e(TAG, "token usage insert failed", e)
                 }
             }
-        }
-
-        private fun classify(t: Throwable): TokenStatStatus = when {
-            t is CancellationException && t !is TimeoutCancellationException ->
-                TokenStatStatus.CANCELLED
-            isTimeout(t) -> TokenStatStatus.TIMEOUT
-            else -> TokenStatStatus.FAILED
-        }
-
-        private fun isTimeout(t: Throwable): Boolean {
-            var current: Throwable? = t
-            var depth = 0
-            while (current != null && depth < MAX_CAUSE_DEPTH) {
-                if (
-                    current is TimeoutCancellationException ||
-                    current is TimeoutException ||
-                    current is java.util.concurrent.TimeoutException ||
-                    current is SocketTimeoutException ||
-                    (current is InterruptedIOException &&
-                        current.message?.contains("timeout", ignoreCase = true) == true)
-                ) {
-                    return true
-                }
-                current = current.cause
-                depth++
-            }
-            return false
-        }
-
-        private fun List<ProviderUsageSnapshot>.sumKnown(
-            selector: (ProviderUsageSnapshot) -> Long?,
-        ): Long? {
-            if (isEmpty()) return null
-            var sum = 0L
-            forEach { snapshot ->
-                val value = selector(snapshot) ?: return null
-                sum = if (Long.MAX_VALUE - sum < value) Long.MAX_VALUE else sum + value
-            }
-            return sum
         }
 
         private fun saturatedAdd(left: Long, right: Long): Long =

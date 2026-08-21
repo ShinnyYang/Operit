@@ -10,11 +10,8 @@ import com.ai.assistance.operit.data.model.TokenUsageRecordEntity
 data class TokenUsageModelAggregateRow(
     val provider: String,
     val model: String,
-    val configId: String?,
-    /** Exact for request and released-total rows; a lower bound when conversation rows contribute. */
+    val configId: String,
     val requests: Long,
-    val requestCountKnown: Long,
-    val usageRows: Long,
     val uncachedInputTokens: Long,
     val uncachedInputKnown: Long,
     val cachedInputTokens: Long,
@@ -25,57 +22,13 @@ data class TokenUsageModelAggregateRow(
     val totalInputKnown: Long,
     val outputTokens: Long,
     val outputKnown: Long,
-    val reasoningTokens: Long,
-    val reasoningKnown: Long,
-    val ttftTotalMs: Long,
-    val ttftSamples: Long,
-    val durationTotalMs: Long,
-    val durationSamples: Long,
 ) {
     val providerModel: String
         get() = "$provider:$model"
 }
-
-data class TokenUsageBreakdownRow(
-    val key: String,
-    val provider: String,
-    val model: String,
-    val configId: String?,
-    val requests: Long,
-    val requestCountKnown: Long,
-    val usageRows: Long,
-    val uncachedInputTokens: Long,
-    val uncachedInputKnown: Long,
-    val cachedInputTokens: Long,
-    val cachedInputKnown: Long,
-    val cacheWriteTokens: Long,
-    val cacheWriteKnown: Long,
-    val totalInputTokens: Long,
-    val totalInputKnown: Long,
-    val outputTokens: Long,
-    val outputKnown: Long,
-    val reasoningTokens: Long,
-    val reasoningKnown: Long,
-    val ttftTotalMs: Long,
-    val ttftSamples: Long,
-    val durationTotalMs: Long,
-    val durationSamples: Long,
-) {
-    val providerModel: String
-        get() = "$provider:$model"
-}
-
-data class TokenUsageIdentityRow(
-    val configId: String?,
-    val provider: String,
-    val model: String,
-)
 
 data class TokenUsageActivityDayRow(
     val localDate: String,
-    val configId: String?,
-    val provider: String,
-    val model: String,
     val tokens: Long,
 )
 
@@ -90,9 +43,6 @@ abstract class TokenUsageDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     abstract suspend fun upsertStatsModel(model: TokenStatsModelEntity)
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    abstract suspend fun upsertStatsModels(models: List<TokenStatsModelEntity>)
 
     @Query(
         """
@@ -144,41 +94,26 @@ abstract class TokenUsageDao {
             provider AS provider,
             model AS model,
             configId AS configId,
-            COALESCE(SUM(COALESCE(requestCount, 1)), 0) AS requests,
-            COUNT(requestCount) AS requestCountKnown,
-            COUNT(*) AS usageRows,
+            COALESCE(SUM(requestCount), 0) AS requests,
             COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
+            COALESCE(SUM(CASE WHEN uncachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS uncachedInputKnown,
             COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
+            COALESCE(SUM(CASE WHEN cachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cachedInputKnown,
             COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
+            COALESCE(SUM(CASE WHEN cacheWriteTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cacheWriteKnown,
             COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
+            COALESCE(SUM(CASE WHEN totalInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS totalInputKnown,
             COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown,
-            COALESCE(SUM(reasoningTokens), 0) AS reasoningTokens,
-            COUNT(reasoningTokens) AS reasoningKnown,
-            COALESCE(SUM(ttftMs), 0) AS ttftTotalMs,
-            COUNT(ttftMs) AS ttftSamples,
-            COALESCE(SUM(durationMs), 0) AS durationTotalMs,
-            COUNT(durationMs) AS durationSamples
+            COALESCE(SUM(CASE WHEN outputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS outputKnown
         FROM token_usage_records
-        WHERE source = 'REQUEST'
-            AND (:allModels OR (provider || ':' || model) IN (:providerModels))
-            AND (:allCategories OR category IN (:categories))
-            AND (:allStatuses OR status IN (:statuses))
+        WHERE (:allModels OR (provider || ':' || model) IN (:providerModels))
         GROUP BY provider, model, configId
         ORDER BY provider, model, configId
         """
     )
-    abstract suspend fun aggregateRequestModelsForLifetime(
+    abstract suspend fun aggregateModelsForLifetime(
         providerModels: List<String>,
         allModels: Boolean,
-        categories: List<String>,
-        allCategories: Boolean,
-        statuses: List<String>,
-        allStatuses: Boolean,
     ): List<TokenUsageModelAggregateRow>
 
     @Query(
@@ -187,31 +122,20 @@ abstract class TokenUsageDao {
             provider AS provider,
             model AS model,
             configId AS configId,
-            COALESCE(SUM(COALESCE(requestCount, 1)), 0) AS requests,
-            COUNT(requestCount) AS requestCountKnown,
-            COUNT(*) AS usageRows,
+            COALESCE(SUM(requestCount), 0) AS requests,
             COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
+            COALESCE(SUM(CASE WHEN uncachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS uncachedInputKnown,
             COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
+            COALESCE(SUM(CASE WHEN cachedInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cachedInputKnown,
             COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
+            COALESCE(SUM(CASE WHEN cacheWriteTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS cacheWriteKnown,
             COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
+            COALESCE(SUM(CASE WHEN totalInputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS totalInputKnown,
             COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown,
-            COALESCE(SUM(reasoningTokens), 0) AS reasoningTokens,
-            COUNT(reasoningTokens) AS reasoningKnown,
-            COALESCE(SUM(ttftMs), 0) AS ttftTotalMs,
-            COUNT(ttftMs) AS ttftSamples,
-            COALESCE(SUM(durationMs), 0) AS durationTotalMs,
-            COUNT(durationMs) AS durationSamples
+            COALESCE(SUM(CASE WHEN outputTokens IS NOT NULL THEN requestCount ELSE 0 END), 0) AS outputKnown
         FROM token_usage_records
-        WHERE source IN ('REQUEST', 'CONVERSATION')
-            AND occurredAtMs >= :startMs AND occurredAtMs < :endMs
+        WHERE occurredAtMs >= :startMs AND occurredAtMs < :endMs
             AND (:allModels OR (provider || ':' || model) IN (:providerModels))
-            AND (:allCategories OR category IN (:categories))
-            AND (:allStatuses OR status IN (:statuses))
         GROUP BY provider, model, configId
         ORDER BY provider, model, configId
         """
@@ -221,132 +145,12 @@ abstract class TokenUsageDao {
         endMs: Long,
         providerModels: List<String>,
         allModels: Boolean,
-        categories: List<String>,
-        allCategories: Boolean,
-        statuses: List<String>,
-        allStatuses: Boolean,
     ): List<TokenUsageModelAggregateRow>
 
     @Query(
         """
         SELECT
-            category AS `key`,
-            provider AS provider,
-            model AS model,
-            configId AS configId,
-            COALESCE(SUM(COALESCE(requestCount, 1)), 0) AS requests,
-            COUNT(requestCount) AS requestCountKnown,
-            COUNT(*) AS usageRows,
-            COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
-            COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
-            COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
-            COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
-            COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown,
-            COALESCE(SUM(reasoningTokens), 0) AS reasoningTokens,
-            COUNT(reasoningTokens) AS reasoningKnown,
-            COALESCE(SUM(ttftMs), 0) AS ttftTotalMs,
-            COUNT(ttftMs) AS ttftSamples,
-            COALESCE(SUM(durationMs), 0) AS durationTotalMs,
-            COUNT(durationMs) AS durationSamples
-        FROM token_usage_records
-        WHERE source IN ('REQUEST', 'CONVERSATION')
-            AND occurredAtMs >= :startMs AND occurredAtMs < :endMs
-            AND (:allModels OR (provider || ':' || model) IN (:providerModels))
-            AND (:allCategories OR category IN (:categories))
-            AND (:allStatuses OR status IN (:statuses))
-        GROUP BY category, provider, model, configId
-        ORDER BY category, provider, model, configId
-        """
-    )
-    abstract suspend fun aggregateCategoriesInRange(
-        startMs: Long,
-        endMs: Long,
-        providerModels: List<String>,
-        allModels: Boolean,
-        categories: List<String>,
-        allCategories: Boolean,
-        statuses: List<String>,
-        allStatuses: Boolean,
-    ): List<TokenUsageBreakdownRow>
-
-    @Query(
-        """
-        SELECT
-            status AS `key`,
-            provider AS provider,
-            model AS model,
-            configId AS configId,
-            COALESCE(SUM(COALESCE(requestCount, 1)), 0) AS requests,
-            COUNT(requestCount) AS requestCountKnown,
-            COUNT(*) AS usageRows,
-            COALESCE(SUM(uncachedInputTokens), 0) AS uncachedInputTokens,
-            COUNT(uncachedInputTokens) AS uncachedInputKnown,
-            COALESCE(SUM(cachedInputTokens), 0) AS cachedInputTokens,
-            COUNT(cachedInputTokens) AS cachedInputKnown,
-            COALESCE(SUM(cacheWriteTokens), 0) AS cacheWriteTokens,
-            COUNT(cacheWriteTokens) AS cacheWriteKnown,
-            COALESCE(SUM(totalInputTokens), 0) AS totalInputTokens,
-            COUNT(totalInputTokens) AS totalInputKnown,
-            COALESCE(SUM(outputTokens), 0) AS outputTokens,
-            COUNT(outputTokens) AS outputKnown,
-            COALESCE(SUM(reasoningTokens), 0) AS reasoningTokens,
-            COUNT(reasoningTokens) AS reasoningKnown,
-            COALESCE(SUM(ttftMs), 0) AS ttftTotalMs,
-            COUNT(ttftMs) AS ttftSamples,
-            COALESCE(SUM(durationMs), 0) AS durationTotalMs,
-            COUNT(durationMs) AS durationSamples
-        FROM token_usage_records
-        WHERE source IN ('REQUEST', 'CONVERSATION')
-            AND occurredAtMs >= :startMs AND occurredAtMs < :endMs
-            AND (:allModels OR (provider || ':' || model) IN (:providerModels))
-            AND (:allCategories OR category IN (:categories))
-            AND (:allStatuses OR status IN (:statuses))
-        GROUP BY status, provider, model, configId
-        ORDER BY status, provider, model, configId
-        """
-    )
-    abstract suspend fun aggregateStatusesInRange(
-        startMs: Long,
-        endMs: Long,
-        providerModels: List<String>,
-        allModels: Boolean,
-        categories: List<String>,
-        allCategories: Boolean,
-        statuses: List<String>,
-        allStatuses: Boolean,
-    ): List<TokenUsageBreakdownRow>
-
-    @Query(
-        """
-        SELECT configId, provider, model
-        FROM token_usage_records
-        GROUP BY configId, provider, model
-        ORDER BY provider, model, configId
-        """
-    )
-    abstract suspend fun getObservedIdentities(): List<TokenUsageIdentityRow>
-
-    @Query(
-        """
-        SELECT DISTINCT provider || ':' || model
-        FROM token_usage_records
-        ORDER BY 1
-        """
-    )
-    abstract suspend fun getObservedProviderModels(): List<String>
-
-    @Query(
-        """
-        SELECT
             strftime('%Y-%m-%d', occurredAtMs / 1000, 'unixepoch', 'localtime') AS localDate,
-            configId AS configId,
-            provider AS provider,
-            model AS model,
             COALESCE(SUM(
                 COALESCE(
                     totalInputTokens,
@@ -360,11 +164,8 @@ abstract class TokenUsageDao {
                 ) + COALESCE(outputTokens, 0)
             ), 0) AS tokens
         FROM token_usage_records
-        WHERE source IN ('REQUEST', 'CONVERSATION')
-            AND occurredAtMs >= :startMs AND occurredAtMs < :endMs
+        WHERE occurredAtMs >= :startMs AND occurredAtMs < :endMs
             AND (:allModels OR (provider || ':' || model) IN (:providerModels))
-            AND (:allCategories OR category IN (:categories))
-            AND (:allStatuses OR status IN (:statuses))
         GROUP BY localDate, configId, provider, model
         ORDER BY localDate, provider, model, configId
         """
@@ -374,10 +175,5 @@ abstract class TokenUsageDao {
         endMs: Long,
         providerModels: List<String>,
         allModels: Boolean,
-        categories: List<String>,
-        allCategories: Boolean,
-        statuses: List<String>,
-        allStatuses: Boolean,
     ): List<TokenUsageActivityDayRow>
-
 }

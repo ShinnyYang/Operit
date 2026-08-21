@@ -3493,7 +3493,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="settings_pricing_description_with_currency">Setare la fiecare milionTokenPreț (%1$s)</string>
     <string name="settings_token_price_description_with_currency">Setare de fiecare datăAPIPreț solicitat (%1$s)</string>
     <string name="settings_exchange_rate_title">Setări privind cursul de schimb</string>
-    <string name="settings_exchange_rate_subtitle">În cadrul modelului de facturare în dolari, costul total va fi convertit în renminbi la acest curs de schimb</string>
     <string name="settings_usd_to_cny_rate_label">USD → CNY Cursul de schimb</string>
     <string name="settings_rate_applied_hint">Costul total se calculează în funcție de 1 USD = %1$.4f CNY Conversie</string>
     <string name="settings_input_price_per_million">Introduceți prețul (pe milion)Token)</string>

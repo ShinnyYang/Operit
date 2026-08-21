@@ -257,7 +257,6 @@ object MemoryLibrary {
                 aiService.sendMessage(
                     context = context,
                     chatHistory = messages,
-                    statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.MEMORY
                 )
             stream.collect { content -> result.append(content) }
         }
@@ -661,7 +660,6 @@ object MemoryLibrary {
                     aiService.sendMessage(
                         context = context,
                         chatHistory = messages,
-                        statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.MEMORY
                     )
                 stream.collect { content -> result.append(content) }
             }

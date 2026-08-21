@@ -28,12 +28,9 @@ internal class TokenStatsPreferences(context: Context) {
 
     suspend fun importedAtMs(): Long? = dataStore.data.first()[IMPORTED_AT]
 
-    suspend fun completeMigration(
-        importedAtMs: Long,
-        releasedUsdToCnyRate: Double?,
-    ) {
+    suspend fun completeMigration(importedAtMs: Long, releasedUsdToCnyRate: Double?) {
         dataStore.edit { preferences ->
-            releasedUsdToCnyRate?.let { rate -> preferences[USD_TO_CNY_RATE] = rate }
+            releasedUsdToCnyRate?.let { preferences[USD_TO_CNY_RATE] = it }
             preferences[IMPORTED_AT] = importedAtMs
         }
     }

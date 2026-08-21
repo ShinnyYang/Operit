@@ -1110,13 +1110,7 @@ class EnhancedAIService private constructor(private val context: Context) {
                                         currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
                                         _perRequestTokenCounts.value = Pair(input, output)
                                     },
-                                    onNonFatalError = onNonFatalError,
-                                    statsCategory =
-                                        if (isSubTask) {
-                                            com.ai.assistance.operit.data.stats.TokenStatCategory.SUBAGENT
-                                        } else {
-                                            com.ai.assistance.operit.data.stats.TokenStatCategory.CHAT
-                                        }
+                                     onNonFatalError = onNonFatalError,
                             )
                     val revisableStream = responseStream as? TextStreamEventCarrier
 
@@ -2334,13 +2328,7 @@ class EnhancedAIService private constructor(private val context: Context) {
                                     currentRequestCachedInputTokenCount = cachedInput.coerceAtLeast(0)
                                     _perRequestTokenCounts.value = Pair(input, output)
                                 },
-                                onNonFatalError = onNonFatalError,
-                                statsCategory =
-                                    if (isSubTask) {
-                                        com.ai.assistance.operit.data.stats.TokenStatCategory.SUBAGENT
-                                    } else {
-                                        com.ai.assistance.operit.data.stats.TokenStatCategory.CHAT
-                                    }
+                                 onNonFatalError = onNonFatalError,
                         )
 
                 // 更新状态为接收中
@@ -2561,8 +2549,11 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @param messages 要总结的消息列表
      * @return 生成的总结文本
      */
-    suspend fun generateSummary(messages: List<Pair<String, String>>): String {
-        return generateSummary(messages, null)
+    suspend fun generateSummary(
+        messages: List<Pair<String, String>>,
+        recordTokenUsage: Boolean = true,
+    ): String {
+        return generateSummary(messages, null, recordTokenUsage = recordTokenUsage)
     }
 
     /**
@@ -2574,30 +2565,45 @@ class EnhancedAIService private constructor(private val context: Context) {
     suspend fun generateSummary(
             messages: List<Pair<String, String>>,
             previousSummary: String?,
-            customRules: String? = null
+            customRules: String? = null,
+            recordTokenUsage: Boolean = true,
     ): String {
-        return generateSummaryFromPromptTurns(messages.toPromptTurns(), previousSummary, customRules)
+        return generateSummaryFromPromptTurns(
+            messages.toPromptTurns(),
+            previousSummary,
+            customRules,
+            recordTokenUsage,
+        )
     }
 
     suspend fun generateSummaryFromPromptTurns(
             messages: List<PromptTurn>,
             previousSummary: String?,
-            customRules: String? = null
+            customRules: String? = null,
+            recordTokenUsage: Boolean = true,
     ): String {
         // 调用ConversationService中的方法
-        return conversationService.generateSummaryFromPromptTurns(messages, previousSummary, multiServiceManager, customRules)
+        return conversationService.generateSummaryFromPromptTurns(
+            messages,
+            previousSummary,
+            multiServiceManager,
+            customRules,
+            recordTokenUsage,
+        )
     }
 
 
 
     suspend fun generateConversationTitle(
         userText: String,
-        attachmentFileNames: List<String> = emptyList()
+        attachmentFileNames: List<String> = emptyList(),
+        recordTokenUsage: Boolean = true,
     ): String {
         return conversationService.generateConversationTitle(
             userText = userText,
             attachmentFileNames = attachmentFileNames,
-            multiServiceManager = multiServiceManager
+            multiServiceManager = multiServiceManager,
+            recordTokenUsage = recordTokenUsage,
         )
     }
 
@@ -3117,8 +3123,8 @@ class EnhancedAIService private constructor(private val context: Context) {
      * @param text 要翻译的文本
      * @return 翻译后的文本
      */
-    suspend fun translateText(text: String): String {
-        return conversationService.translateText(text, multiServiceManager)
+    suspend fun translateText(text: String, recordTokenUsage: Boolean = true): String {
+        return conversationService.translateText(text, multiServiceManager, recordTokenUsage)
     }
 
     /**

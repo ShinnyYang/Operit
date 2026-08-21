@@ -95,6 +95,29 @@ open class GeminiProvider(
     companion object {
         private const val TAG = "GeminiProvider"
         private const val DEBUG = true // 开启调试日志
+        private val terminalFinishReasons =
+            setOf(
+                "STOP",
+                "MAX_TOKENS",
+                "SAFETY",
+                "RECITATION",
+                "LANGUAGE",
+                "OTHER",
+                "BLOCKLIST",
+                "PROHIBITED_CONTENT",
+                "SPII",
+                "MALFORMED_FUNCTION_CALL",
+                "IMAGE_SAFETY",
+                "IMAGE_PROHIBITED_CONTENT",
+                "IMAGE_OTHER",
+                "NO_IMAGE",
+                "IMAGE_RECITATION",
+                "UNEXPECTED_TOOL_CALL",
+                "TOO_MANY_TOOL_CALLS",
+                "MISSING_THOUGHT_SIGNATURE",
+                "MALFORMED_RESPONSE",
+                "ESCALATION",
+            )
     }
 
     // HTTP客户端
@@ -115,6 +138,8 @@ open class GeminiProvider(
         override val statusCode: Int,
         cause: Throwable? = null
     ) : IOException(message, cause), HttpStatusCodeException
+
+    private class PromptBlockedException(message: String) : IOException(message)
 
     // Token计数
     private val tokenCacheManager = TokenCacheManager()
@@ -273,7 +298,8 @@ open class GeminiProvider(
 
     private data class GeminiContentExtractionResult(
         val content: String,
-        val usage: com.ai.assistance.operit.data.stats.ProviderUsageSnapshot?
+        val usage: com.ai.assistance.operit.data.stats.ProviderUsageSnapshot?,
+        val completionConfirmed: Boolean = false,
     )
 
     private fun encodeGeminiThoughtSignature(signature: String): String {
@@ -1038,6 +1064,9 @@ open class GeminiProvider(
         if (exception is UserCancellationException || exception is kotlinx.coroutines.CancellationException) {
             throw exception
         }
+        if (exception is PromptBlockedException) {
+            throw exception
+        }
         if (isManuallyCancelled) {
             logError("请求被用户取消，停止重试。", exception)
             throw UserCancellationException(context.getString(R.string.gemini_error_request_cancelled), exception)
@@ -1080,9 +1109,10 @@ open class GeminiProvider(
             preserveThinkInHistory: Boolean,
             onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
             onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
-            onNonFatalError: suspend (error: String) -> Unit,
-            enableRetry: Boolean,
-            statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+             onNonFatalError: suspend (error: String) -> Unit,
+              enableRetry: Boolean,
+              recordTokenUsage: Boolean,
+              onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
         val eventChannel = MutableSharedStream<TextStreamEvent>(replay = Int.MAX_VALUE)
         val responseStream = stream {
@@ -1201,6 +1231,10 @@ open class GeminiProvider(
                 activeCall = null
                 activeResponse = null
                 logFinalOutput(receivedContent, "Gemini final output summary: ")
+                if (isManuallyCancelled) {
+                    throw UserCancellationException(context.getString(R.string.gemini_error_request_cancelled))
+                }
+                onUsageFinalized?.invoke(retryCount + 1)
                 return@stream
             } catch (e: Exception) {
                 lastException = e
@@ -1433,6 +1467,7 @@ open class GeminiProvider(
         var dataCount = 0
         var jsonCount = 0
         var contentCount = 0
+        var streamCompletionConfirmed = false
 
         suspend fun reportUsage(usage: com.ai.assistance.operit.data.stats.ProviderUsageSnapshot?) {
             usage?.let { onUsageReported?.invoke(it, attemptNumber) }
@@ -1461,6 +1496,7 @@ open class GeminiProvider(
                         // 跳过结束标记
                         if (data == "[DONE]") {
                             logDebug("收到流结束标记 [DONE]")
+                            streamCompletionConfirmed = true
                             return@forEach
                         }
 
@@ -1470,6 +1506,9 @@ open class GeminiProvider(
                             jsonCount++
 
                             val extraction = extractContentFromJson(context, json, requestId, onTokensUpdated)
+                            if (extraction.completionConfirmed) {
+                                streamCompletionConfirmed = true
+                            }
                             val content = extraction.content
                             if (content.isNotEmpty()) {
                                 contentCount++
@@ -1540,6 +1579,9 @@ open class GeminiProvider(
                                                                     requestId,
                                                                     onTokensUpdated
                                                             )
+                                                    if (extraction.completionConfirmed) {
+                                                        streamCompletionConfirmed = true
+                                                    }
                                                     val content = extraction.content
                                                     if (content.isNotEmpty()) {
                                                         contentCount++
@@ -1554,6 +1596,26 @@ open class GeminiProvider(
                                                     reportUsage(extraction.usage)
                                                 }
                                             }
+                                        }
+                                        is JSONObject -> {
+                                            jsonCount++
+                                            val extraction =
+                                                extractContentFromJson(
+                                                    context,
+                                                    jsonContent,
+                                                    requestId,
+                                                    onTokensUpdated,
+                                                )
+                                            if (extraction.completionConfirmed) {
+                                                streamCompletionConfirmed = true
+                                            }
+                                            val content = extraction.content
+                                            if (content.isNotEmpty()) {
+                                                contentCount++
+                                                receivedContent.append(content)
+                                                streamCollector.emit(content)
+                                            }
+                                            reportUsage(extraction.usage)
                                         }
                                     }
 
@@ -1603,6 +1665,9 @@ open class GeminiProvider(
                                 val jsonObject = jsonContent.optJSONObject(i) ?: continue
                                 jsonCount++
                                 val extraction = extractContentFromJson(context, jsonObject, requestId, onTokensUpdated)
+                                if (extraction.completionConfirmed) {
+                                    streamCompletionConfirmed = true
+                                }
                                 val content = extraction.content
                                 if (content.isNotEmpty()) {
                                     contentCount++
@@ -1616,6 +1681,9 @@ open class GeminiProvider(
                         is JSONObject -> {
                             jsonCount++
                             val extraction = extractContentFromJson(context, jsonContent, requestId, onTokensUpdated)
+                            if (extraction.completionConfirmed) {
+                                streamCompletionConfirmed = true
+                            }
                             val content = extraction.content
                             if (content.isNotEmpty()) {
                                 contentCount++
@@ -1633,6 +1701,10 @@ open class GeminiProvider(
                 } catch (e: Exception) {
                     logError("解析最终收集的JSON失败: ${e.message}", e)
                 }
+            }
+
+            if (!streamCompletionConfirmed) {
+                throw IOException(context.getString(R.string.provider_error_network_interrupted))
             }
 
             // 确保思考模式正确结束
@@ -1765,12 +1837,26 @@ open class GeminiProvider(
             // 提取候选项
             val candidates = json.optJSONArray("candidates")
             if (candidates == null || candidates.length() == 0) {
+                val promptFeedback = json.optJSONObject("promptFeedback")
+                if (promptFeedback != null) {
+                    throw PromptBlockedException(
+                        context.getString(R.string.gemini_error_response_failed, promptFeedback.toString()),
+                    )
+                }
                 logDebug("未找到候选项")
                 return GeminiContentExtractionResult("", usage)
             }
 
             // 处理第一个candidate
             val candidate = candidates.getJSONObject(0)
+            val finishReason =
+                if (candidate.has("finishReason") && !candidate.isNull("finishReason")) {
+                    candidate.optString("finishReason", "").trim()
+                } else {
+                    ""
+                }
+            val completionConfirmed =
+                finishReason in terminalFinishReasons
             
             // 提取 Google Search grounding metadata（搜索来源信息）
             if (enableGoogleSearch) {
@@ -1841,7 +1927,6 @@ open class GeminiProvider(
             }
 
             // 检查finish_reason
-            val finishReason = candidate.optString("finishReason", "")
             if (finishReason.isNotEmpty() && finishReason != "STOP") {
                 logDebug("收到完成原因: $finishReason")
             }
@@ -1850,14 +1935,14 @@ open class GeminiProvider(
             val content = candidate.optJSONObject("content")
             if (content == null) {
                 logDebug("未找到content对象")
-                return GeminiContentExtractionResult("", usage)
+                return GeminiContentExtractionResult("", usage, completionConfirmed)
             }
 
             // 提取parts数组
             val parts = content.optJSONArray("parts")
             if (parts == null || parts.length() == 0) {
                 logDebug("未找到parts数组或为空")
-                return GeminiContentExtractionResult("", usage)
+                return GeminiContentExtractionResult("", usage, completionConfirmed)
             }
 
             // 遍历parts，提取text内容和functionCall
@@ -1987,7 +2072,7 @@ open class GeminiProvider(
                 contentBuilder.toString()
             }
             
-            return GeminiContentExtractionResult(finalContent, usage)
+            return GeminiContentExtractionResult(finalContent, usage, completionConfirmed)
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {
@@ -2008,10 +2093,7 @@ open class GeminiProvider(
         )
     }
 
-    override suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
-    ): Result<String> {
+    override suspend fun testConnection(context: Context): Result<String> {
         return try {
             // 通过发送一条短消息来测试完整的连接、认证和API端点。
             // 这比getModelsList更可靠，因为它直接命中了聊天API。
@@ -2025,9 +2107,10 @@ open class GeminiProvider(
                 false,
                 null,
                 onTokensUpdated = { _, _, _ -> },
-                onUsageReported = onUsageReported,
+                onUsageReported = null,
                 onNonFatalError = {},
-                enableRetry = false
+                enableRetry = false,
+                recordTokenUsage = false,
             )
 
             // 消耗流以确保连接有效。

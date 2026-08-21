@@ -10,16 +10,18 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.data.collects.PricingCurrency
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.BillingMode
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
-import com.ai.assistance.operit.data.collects.PricingCurrency
-import com.ai.assistance.operit.data.stats.ReleasedProviderModelKeyDecoder
 import com.ai.assistance.operit.data.stats.ModelPriceSettings
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKey
+import com.ai.assistance.operit.data.stats.ReleasedProviderModelKeyDecoder
 import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
+import com.ai.assistance.operit.util.AppLogger
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -33,9 +35,6 @@ import kotlinx.serialization.json.Json
 private val Context.apiDataStore: DataStore<Preferences> by
         preferencesDataStore(name = "api_settings")
 
-private fun validReleasedUsdToCnyRate(stored: Float?): Double? =
-    stored?.takeIf { it.isFinite() && it > 0f }?.toDouble()
-
 class ApiPreferences private constructor(private val context: Context) {
 
     // Define our preferences keys
@@ -43,10 +42,7 @@ class ApiPreferences private constructor(private val context: Context) {
         @Volatile
         private var INSTANCE: ApiPreferences? = null
 
-        /** JVM tests can avoid initializing the application-scoped ToolPkg runtime. */
         internal var toolPkgProviderAliasesProvider: (() -> Map<String, String>)? = null
-
-        /** JVM tests can provide saved ToolPkg provider IDs without reading model-config DataStore. */
         internal var configuredProviderIdsProvider: (suspend () -> List<String>)? = null
 
         fun getInstance(context: Context): ApiPreferences {
@@ -86,47 +82,28 @@ class ApiPreferences private constructor(private val context: Context) {
             }
         }
 
-        // 动态生成供应商:模型的Token键
         private fun getTokenInputKey(providerModel: String) =
-                longPreferencesKey("token_input_${providerModel.replace(":", "_")}")
-
+            longPreferencesKey("token_input_${providerModel.replace(":", "_")}")
         private fun getTokenCachedInputKey(providerModel: String) =
-                longPreferencesKey("token_cached_input_${providerModel.replace(":", "_")}")
-
+            longPreferencesKey("token_cached_input_${providerModel.replace(":", "_")}")
         private fun getTokenOutputKey(providerModel: String) =
-                longPreferencesKey("token_output_${providerModel.replace(":", "_")}")
-
-        // 模型定价键
+            longPreferencesKey("token_output_${providerModel.replace(":", "_")}")
         private fun getModelInputPriceKey(providerModel: String) =
-                floatPreferencesKey("model_input_price_${providerModel.replace(":", "_")}")
-
+            floatPreferencesKey("model_input_price_${providerModel.replace(":", "_")}")
         private fun getModelCachedInputPriceKey(providerModel: String) =
-                floatPreferencesKey("model_cached_input_price_${providerModel.replace(":", "_")}")
-
+            floatPreferencesKey("model_cached_input_price_${providerModel.replace(":", "_")}")
         private fun getModelOutputPriceKey(providerModel: String) =
-                floatPreferencesKey("model_output_price_${providerModel.replace(":", "_")}")
-
-        // 请求次数统计键
+            floatPreferencesKey("model_output_price_${providerModel.replace(":", "_")}")
         private fun getRequestCountKey(providerModel: String) =
-                intPreferencesKey("request_count_${providerModel.replace(":", "_")}")
-
-        // 计费方式键
+            intPreferencesKey("request_count_${providerModel.replace(":", "_")}")
         private fun getBillingModeKey(providerModel: String) =
-                stringPreferencesKey("billing_mode_${providerModel.replace(":", "_")}")
-
-        // 按次计费价格键
+            stringPreferencesKey("billing_mode_${providerModel.replace(":", "_")}")
         private fun getPricePerRequestKey(providerModel: String) =
-                floatPreferencesKey("price_per_request_${providerModel.replace(":", "_")}")
-
-        private val RELEASED_MODEL_PRICE_KEY_PREFIXES =
-                listOf(
-                        "model_input_price_",
-                        "model_cached_input_price_",
-                        "model_output_price_",
-                        "billing_mode_",
-                        "price_per_request_",
-                )
-
+            floatPreferencesKey("price_per_request_${providerModel.replace(":", "_")}")
+        private val RELEASED_MODEL_PRICE_KEY_PREFIXES = listOf(
+            "model_input_price_", "model_cached_input_price_", "model_output_price_",
+            "billing_mode_", "price_per_request_",
+        )
         private val USD_TO_CNY_EXCHANGE_RATE = floatPreferencesKey("usd_to_cny_exchange_rate")
 
         val KEEP_SCREEN_ON = booleanPreferencesKey("keep_screen_on")
@@ -537,7 +514,7 @@ class ApiPreferences private constructor(private val context: Context) {
         }
     }
 
-    /** One read of the released main token data before ownership moves to Room. */
+    /** Reads released cumulative statistics once before Room takes ownership. */
     suspend fun readTokenStatsMigrationSnapshot(): TokenStatsMigrationSnapshot {
         val preferences = context.apiDataStore.data.first()
         val counterPrefixes = listOf(
@@ -557,105 +534,93 @@ class ApiPreferences private constructor(private val context: Context) {
                 ?.let { prefix -> encodedPrices += key.name.removePrefix(prefix) }
         }
         val providerAliases = releasedTokenProviderAliases()
+        val skippedLegacyKeys = linkedSetOf<String>()
+
+        // These keys are from the pre-provider/model format. They cannot be assigned
+        // accurately, so skip them while allowing the rest of the migration to finish.
+        fun decodeReleasedKeyOrSkip(encoded: String): ReleasedProviderModelKey? {
+            val decoded = ReleasedProviderModelKeyDecoder.decodeOrNull(encoded, providerAliases)
+            if (decoded == null && skippedLegacyKeys.add(encoded)) {
+                AppLogger.w(
+                    "ApiPreferences",
+                    "Skipping legacy token statistics key without provider/model: $encoded",
+                )
+            }
+            return decoded
+        }
+
         val totals = encodedTotals.mapNotNull { encoded ->
-            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
             val input = readTokenCount(preferences, getTokenInputKey(key.storedProviderModel).name)
             val cached = readTokenCount(preferences, getTokenCachedInputKey(key.storedProviderModel).name)
             val output = readTokenCount(preferences, getTokenOutputKey(key.storedProviderModel).name)
             val requestCount = preferences.asMap().entries
                 .firstOrNull { it.key.name == getRequestCountKey(key.storedProviderModel).name }
                 ?.value
-                .let { it as? Number }
+                ?.let { it as? Number }
                 ?.toLong()
                 ?.coerceAtLeast(0L)
                 ?: 0L
-            ReleasedTokenUsageTotal(
-                provider = key.provider,
-                model = key.model,
-                inputTokens = input,
-                cachedInputTokens = cached,
-                outputTokens = output,
-                requestCount = requestCount,
-            ).takeIf { input > 0L || cached > 0L || output > 0L || requestCount > 0L }
+            ReleasedTokenUsageTotal(key.provider, key.model, input, cached, output, requestCount)
+                .takeIf { input > 0L || cached > 0L || output > 0L || requestCount > 0L }
         }.groupBy { it.provider to it.model }
-            .map { (_, totals) -> totals.reduce(ReleasedTokenUsageTotal::plus) }
+            .map { (_, values) -> values.reduce(ReleasedTokenUsageTotal::plus) }
         val prices = encodedPrices.mapNotNull { encoded ->
-            val key = ReleasedProviderModelKeyDecoder.decode(encoded, providerAliases)
+            val key = decodeReleasedKeyOrSkip(encoded) ?: return@mapNotNull null
             val billingMode = preferences[getBillingModeKey(key.storedProviderModel)]?.let(BillingMode::valueOf)
             val inputPrice = positivePrice(preferences[getModelInputPriceKey(key.storedProviderModel)])
             val cachedInputPrice = positivePrice(preferences[getModelCachedInputPriceKey(key.storedProviderModel)])
             val outputPrice = positivePrice(preferences[getModelOutputPriceKey(key.storedProviderModel)])
             val pricePerRequest = positivePrice(preferences[getPricePerRequestKey(key.storedProviderModel)])
-            if (
-                billingMode == null &&
-                    inputPrice == null &&
-                    cachedInputPrice == null &&
-                    outputPrice == null &&
-                    pricePerRequest == null
-            ) {
-                return@mapNotNull null
-            }
-            val settings = ModelPriceSettings(
-                billingMode = billingMode,
-                currency = if (billingMode == BillingMode.COUNT) PricingCurrency.CNY else PricingCurrency.USD,
-                inputPricePerMillion = inputPrice,
-                cachedInputPricePerMillion = cachedInputPrice,
-                outputPricePerMillion = outputPrice,
-                pricePerRequest = pricePerRequest,
+            if (billingMode == null && inputPrice == null && cachedInputPrice == null &&
+                outputPrice == null && pricePerRequest == null) return@mapNotNull null
+            ReleasedTokenPriceSetting(
+                key.provider,
+                key.model,
+                ModelPriceSettings(
+                    billingMode = billingMode,
+                    currency = if (billingMode == BillingMode.COUNT) PricingCurrency.CNY else PricingCurrency.USD,
+                    inputPricePerMillion = inputPrice,
+                    cachedInputPricePerMillion = cachedInputPrice,
+                    outputPricePerMillion = outputPrice,
+                    pricePerRequest = pricePerRequest,
+                )
             )
-            ReleasedTokenPriceSetting(key.provider, key.model, settings)
-        }.groupBy { it.provider to it.model }
-            .map { (identity, prices) ->
-                val settings = prices.map(ReleasedTokenPriceSetting::settings).distinct()
-                require(settings.size == 1) {
-                    "Conflicting released prices for ${identity.first}:${identity.second}"
-                }
-                ReleasedTokenPriceSetting(identity.first, identity.second, settings.single())
-            }
+        }.groupBy { it.provider to it.model }.map { (identity, values) ->
+            val settings = values.map(ReleasedTokenPriceSetting::settings).distinct()
+            require(settings.size == 1) { "Conflicting released prices for ${identity.first}:${identity.second}" }
+            ReleasedTokenPriceSetting(identity.first, identity.second, settings.single())
+        }
         return TokenStatsMigrationSnapshot(
             totals = totals,
             prices = prices,
-            usdToCnyRate = validReleasedUsdToCnyRate(preferences[USD_TO_CNY_EXCHANGE_RATE]),
+            usdToCnyRate = preferences[USD_TO_CNY_EXCHANGE_RATE]
+                ?.takeIf { it.isFinite() && it > 0f }
+                ?.toDouble(),
         )
     }
 
-    /** Remove released keys and every unpublished token-statistics key after import. */
+    /** Removes only old statistics keys after their Room import is complete. */
     suspend fun clearMigratedTokenStatsData() {
         context.apiDataStore.edit { preferences ->
-            val keyPrefixes = listOf(
-                "token_input_",
-                "token_cached_input_",
-                "token_output_",
-                "request_count_",
-                "model_input_price_",
-                "model_cached_input_price_",
-                "model_cache_write_price_",
-                "model_output_price_",
-                "model_pricing_currency_",
-                "billing_mode_",
-                "price_per_request_",
-                "stats_",
+            val prefixes = listOf(
+                "token_input_", "token_cached_input_", "token_output_", "request_count_",
+                "model_input_price_", "model_cached_input_price_", "model_cache_write_price_",
+                "model_output_price_", "model_pricing_currency_", "billing_mode_",
+                "price_per_request_", "stats_",
             )
-            val keys = preferences.asMap().keys.filter { key ->
-                key == USD_TO_CNY_EXCHANGE_RATE || keyPrefixes.any(key.name::startsWith)
-            }
-            keys.forEach { key ->
-                @Suppress("UNCHECKED_CAST")
-                preferences.remove(key as Preferences.Key<Any>)
-            }
+            preferences.asMap().keys
+                .filter { it == USD_TO_CNY_EXCHANGE_RATE || prefixes.any(it.name::startsWith) }
+                .forEach { key ->
+                    @Suppress("UNCHECKED_CAST")
+                    preferences.remove(key as Preferences.Key<Any>)
+                }
         }
     }
 
     private fun readTokenCount(preferences: Preferences, keyName: String): Long {
-        val values = preferences.asMap().entries
-                .filter { it.key.name == keyName }
-                .map { it.value }
-        val value = values.firstOrNull { it is Long } ?: values.firstOrNull()
-        return readTokenCountValue(value)
-    }
-
-    private fun readTokenCountValue(value: Any?): Long {
-        return when (value) {
+        val values = preferences.asMap().entries.filter { it.key.name == keyName }.map { it.value }
+        return when (val value = values.firstOrNull { it is Long } ?: values.firstOrNull()) {
             is Long -> value
             is Int -> if (value < 0) value.toLong() and 0xFFFF_FFFFL else value.toLong()
             else -> 0L
@@ -667,26 +632,15 @@ class ApiPreferences private constructor(private val context: Context) {
             ?: ToolPkgAiProviderRegistry.releasedTokenProviderAliases()
         val configured = configuredProviderIdsProvider?.invoke()
             ?: ModelConfigManager(context).getAllConfigSummaries().map { it.apiProviderTypeId }
-        val configuredAliases =
-            configured
-                .map(String::trim)
-                .filter(String::isNotEmpty)
-                .filter { ApiProviderType.fromProviderTypeId(it) == null }
-                .associateWith { it }
         return buildMap {
-            configuredAliases.forEach { (providerId, identity) ->
-                put(providerId, identity)
-                put("TOOLPKG_${providerId.lowercase()}", identity)
-            }
-            // The active registration supplies the display identity used by new requests.
+            configured.map(String::trim).filter(String::isNotEmpty)
+                .filter { ApiProviderType.fromProviderTypeId(it) == null }
+                .forEach { providerId ->
+                    put(providerId, providerId)
+                    put("TOOLPKG_${providerId.lowercase()}", providerId)
+                }
             putAll(registered)
         }
-    }
-
-    private fun splitProviderModel(providerModel: String): Pair<String, String>? {
-        val separator = providerModel.indexOf(':')
-        if (separator <= 0 || separator == providerModel.lastIndex) return null
-        return providerModel.substring(0, separator) to providerModel.substring(separator + 1)
     }
 
     private fun positivePrice(value: Float?): Double? =

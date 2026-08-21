@@ -114,10 +114,7 @@ class LlamaProvider(
         return ModelListFetcher.getLlamaLocalModels(context)
     }
 
-    override suspend fun testConnection(
-        context: Context,
-        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?
-    ): Result<String> = withContext(Dispatchers.IO) {
+    override suspend fun testConnection(context: Context): Result<String> = withContext(Dispatchers.IO) {
         if (!LlamaSession.isAvailable()) {
             return@withContext Result.failure(Exception(LlamaSession.getUnavailableReason()))
         }
@@ -177,13 +174,14 @@ class LlamaProvider(
         onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
         onNonFatalError: suspend (error: String) -> Unit,
         enableRetry: Boolean,
-        statsCategory: com.ai.assistance.operit.data.stats.TokenStatCategory?
+        recordTokenUsage: Boolean,
+        onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> = stream {
         isCancelled = false
 
         if (!LlamaSession.isAvailable()) {
             emit("${context.getString(R.string.llama_error_prefix)}: ${LlamaSession.getUnavailableReason()}")
-            // 致命错误：保留用户可见错误文本后以失败终止（统计边界记为 FAILED）
+            // Preserve the user-visible error before ending the stream.
             throw IOException("${context.getString(R.string.llama_error_prefix)}: ${LlamaSession.getUnavailableReason()}")
         }
 
@@ -300,8 +298,7 @@ class LlamaProvider(
             com.ai.assistance.operit.data.stats.ProviderUsageNormalizer.SOURCE_LLAMA,
             onUsageReported,
         )
-        usageReporter.runReportingFinally({ _inputTokenCount }, { _outputTokenCount }) {
-            val success = withContext(Dispatchers.IO) {
+        val success = withContext(Dispatchers.IO) {
                 s.generateStream(prompt, requestedMaxNewTokens) { token ->
                     if (isCancelled) {
                         false
@@ -327,38 +324,38 @@ class LlamaProvider(
                 }
             }
 
-            LocalGenerationEnd.end(
-                cancelled = isCancelled,
-                success = success,
-                usageReporter = usageReporter,
-                inputTokens = _inputTokenCount,
-                outputTokens = _outputTokenCount,
-                cancelMessage = context.getString(R.string.llama_error_request_cancelled),
-                emitToolResult = {
-                    if (effectiveEnableToolCall) {
-                        val normalizedPayload = withContext(Dispatchers.IO) {
-                            kotlin.runCatching {
-                                s.parseToolCallResponse(toolCallOutputBuffer.toString())
-                            }.getOrNull()
-                        }
-                        val converted = StructuredToolCallBridge.convertToolCallPayloadToXml(
-                            normalizedPayload ?: toolCallOutputBuffer.toString()
-                        )
-                        if (converted.isNotBlank()) {
-                            finalOutputBuffer.append(converted)
-                            emit(converted)
-                        }
+        LocalGenerationEnd.end(
+            cancelled = isCancelled,
+            success = success,
+            usageReporter = usageReporter,
+            inputTokens = _inputTokenCount,
+            outputTokens = _outputTokenCount,
+            cancelMessage = context.getString(R.string.llama_error_request_cancelled),
+            emitToolResult = {
+                if (effectiveEnableToolCall) {
+                    val normalizedPayload = withContext(Dispatchers.IO) {
+                        kotlin.runCatching {
+                            s.parseToolCallResponse(toolCallOutputBuffer.toString())
+                        }.getOrNull()
                     }
-                },
-                failWith = {
-                    kotlin.runCatching {
-                        onNonFatalError(context.getString(R.string.llama_error_inference_failed))
+                    val converted = StructuredToolCallBridge.convertToolCallPayloadToXml(
+                        normalizedPayload ?: toolCallOutputBuffer.toString()
+                    )
+                    if (converted.isNotBlank()) {
+                        finalOutputBuffer.append(converted)
+                        emit(converted)
                     }
-                    emit("\n\n${context.getString(R.string.llama_error_inference_tag)}")
-                    throw IOException(context.getString(R.string.llama_error_inference_failed))
-                },
-            )
-        }
+                }
+            },
+            failWith = {
+                kotlin.runCatching {
+                    onNonFatalError(context.getString(R.string.llama_error_inference_failed))
+                }
+                emit("\n\n${context.getString(R.string.llama_error_inference_tag)}")
+                throw IOException(context.getString(R.string.llama_error_inference_failed))
+            },
+        )
+        onUsageFinalized?.invoke(1)
 
         AppLogger.i(TAG, "llama.cpp推理完成，输出token数: $_outputTokenCount")
         logFinalOutput(finalOutputBuffer, "Final llama.cpp output summary: ")

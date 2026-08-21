@@ -94,7 +94,7 @@ object ModelConfigConnectionTester {
                     parameters,
                     stream = false,
                     enableRetry = false,
-                    statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                    recordTokenUsage = false,
                 ).collect { }
             }
 
@@ -136,7 +136,7 @@ object ModelConfigConnectionTester {
                             stream = false,
                             availableTools = availableTools,
                             enableRetry = false,
-                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                            recordTokenUsage = false,
                         ).collect { }
                     }
 
@@ -164,7 +164,7 @@ object ModelConfigConnectionTester {
                             parameters,
                             stream = false,
                             enableRetry = false,
-                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                            recordTokenUsage = false,
                         ).collect { }
                     } finally {
                         ImagePoolManager.removeImage(imageId)
@@ -193,7 +193,7 @@ object ModelConfigConnectionTester {
                             parameters,
                             stream = false,
                             enableRetry = false,
-                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                            recordTokenUsage = false,
                         ).collect { }
                     } finally {
                         MediaPoolManager.removeMedia(audioId)
@@ -222,7 +222,7 @@ object ModelConfigConnectionTester {
                             parameters,
                             stream = false,
                             enableRetry = false,
-                            statsCategory = com.ai.assistance.operit.data.stats.TokenStatCategory.CONNECTION_TEST
+                            recordTokenUsage = false,
                         ).collect { }
                     } finally {
                         MediaPoolManager.removeMedia(videoId)

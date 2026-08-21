@@ -3364,7 +3364,6 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="settings_pricing_description_with_currency">Tetapkan harga per juta Token (%1$s)</string>
     <string name="settings_token_price_description_with_currency">Tetapkan harga setiap permintaan API (%1$s)</string>
     <string name="settings_exchange_rate_title">Tetapan kadar pertukaran</string>
-    <string name="settings_exchange_rate_subtitle">Model pengebilan USD akan ditukar kepada jumlah kos RMB mengikut kadar pertukaran ini</string>
     <string name="settings_usd_to_cny_rate_label">Kadar pertukaran USD → CNY</string>
     <string name="settings_rate_applied_hint">Jumlah kos ditukar pada 1 USD = %1$.4f CNY</string>
     <string name="settings_input_price_per_million">Masukkan harga (per juta Token)</string>
