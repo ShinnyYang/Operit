@@ -61,21 +61,13 @@ internal data class GeminiThinkingConfig(
     companion object {
         private const val INCLUDE_THOUGHTS = "includeThoughts"
         private const val THINKING_LEVEL = "thinkingLevel"
-        private val thinkingLevelsByGlobalQuality =
-            mapOf(
-                1 to "MINIMAL",
-                2 to "LOW",
-                3 to "MEDIUM",
-                4 to "HIGH",
-                5 to "HIGH"
-            )
-
         fun fromGlobalQuality(qualityLevel: Int): GeminiThinkingConfig {
-            val thinkingLevel =
-                thinkingLevelsByGlobalQuality[qualityLevel]
-                    ?: throw IllegalArgumentException(
-                        "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
-                    )
+            val thinkingLevel = ThinkingQualityMappingRegistry
+                .resolve(ApiProviderType.GOOGLE.name, "")
+                .textValueFor(qualityLevel)
+                ?: throw IllegalArgumentException(
+                    "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
+                )
             return GeminiThinkingConfig(includeThoughts = true, thinkingLevel = thinkingLevel)
         }
     }

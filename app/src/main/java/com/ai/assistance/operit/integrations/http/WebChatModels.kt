@@ -468,6 +468,24 @@ data class WebCharacterSelectorResponse(
 )
 
 @Serializable
+data class WebThinkingQualityOption(
+    @SerialName("level")
+    val level: Int,
+    @SerialName("label")
+    val label: String,
+)
+
+@Serializable
+data class WebThinkingQualityMapping(
+    @SerialName("mode")
+    val mode: String,
+    @SerialName("parameter_label")
+    val parameterLabel: String,
+    @SerialName("options")
+    val options: List<WebThinkingQualityOption> = emptyList(),
+)
+
+@Serializable
 data class WebModelSelectorState(
     @SerialName("current_config_id")
     val currentConfigId: String,
@@ -485,6 +503,8 @@ data class WebModelSelectorState(
     val lockedCharacterCardId: String? = null,
     @SerialName("locked_character_card_name")
     val lockedCharacterCardName: String? = null,
+    @SerialName("thinking_quality_mapping")
+    val thinkingQualityMapping: WebThinkingQualityMapping,
     @SerialName("configs")
     val configs: List<WebModelSelectorConfig> = emptyList()
 )

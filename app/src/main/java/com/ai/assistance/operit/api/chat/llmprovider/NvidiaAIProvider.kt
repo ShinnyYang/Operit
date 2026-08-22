@@ -107,11 +107,8 @@ class NvidiaAIProvider(
             return null
         }
 
-        val efforts = listOf("low", "medium", "high", "max", "max")
-        val qualityIndex = qualityLevel.coerceIn(
-            ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-            ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-        ) - 1
-        return efforts[qualityIndex]
+        return ThinkingQualityMappingRegistry
+            .resolve(ApiProviderType.NVIDIA.name, modelName)
+            .textValueFor(qualityLevel)
     }
 }

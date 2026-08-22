@@ -8,6 +8,9 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.BuildConfig
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
+import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityControl
+import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityMapping
+import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityMappingRegistry
 import com.ai.assistance.operit.api.chat.ChatRuntimeHolder
 import com.ai.assistance.operit.api.chat.ChatRuntimeSlot
 import com.ai.assistance.operit.data.model.ActivePrompt
@@ -1555,6 +1558,13 @@ class WebChatHttpBridge(
         val currentModelName = currentConfig?.let {
             getModelByIndex(it.modelName, currentModelIndex)
         }?.takeIf { it.isNotBlank() } ?: appContext.getString(R.string.not_selected)
+        val thinkingQualityMapping = ThinkingQualityMappingRegistry
+            .resolveForModel(
+                providerTypeId = currentConfig?.apiProviderTypeId.orEmpty(),
+                modelName = currentModelName,
+                apiEndpoint = currentConfig?.apiEndpoint.orEmpty(),
+            )
+            .toWebThinkingQualityMapping()
 
         return WebModelSelectorState(
             currentConfigId = currentConfigMapping.configId,
@@ -1565,6 +1575,7 @@ class WebChatHttpBridge(
             lockedByCharacterCard = lockedCard != null,
             lockedCharacterCardId = lockedCard?.id,
             lockedCharacterCardName = lockedCard?.name,
+            thinkingQualityMapping = thinkingQualityMapping,
             configs = configSummaries.map { config ->
                 val models = getModelList(config.modelName)
                 WebModelSelectorConfig(
@@ -1586,6 +1597,18 @@ class WebChatHttpBridge(
             }
         )
     }
+
+    private fun ThinkingQualityMapping.toWebThinkingQualityMapping(): WebThinkingQualityMapping =
+        WebThinkingQualityMapping(
+            mode = when (control) {
+                ThinkingQualityControl.LEVELS -> "levels"
+                ThinkingQualityControl.TOGGLE_ONLY -> "toggle_only"
+            },
+            parameterLabel = parameterLabel,
+            options = options.map { option ->
+                WebThinkingQualityOption(level = option.level, label = option.displayLabel)
+            },
+        )
 
     private suspend fun resolveDefaultCharacterPromptSnapshot(
         allCards: List<CharacterCard>
