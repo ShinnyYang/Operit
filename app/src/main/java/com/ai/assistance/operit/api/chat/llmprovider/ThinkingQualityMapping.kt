@@ -63,7 +63,8 @@ internal object ThinkingQualityMappingRegistry {
             ApiProviderType.OPENAI.name,
             ApiProviderType.OPENAI_GENERIC.name,
             ApiProviderType.OPENAI_RESPONSES.name,
-            ApiProviderType.OPENAI_RESPONSES_GENERIC.name ->
+            ApiProviderType.OPENAI_RESPONSES_GENERIC.name,
+            ApiProviderType.OPENAI_CODEX.name ->
                 textMapping("reasoning_effort", openAiEfforts)
 
             ApiProviderType.GOOGLE.name,
