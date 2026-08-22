@@ -147,11 +147,11 @@ open class OpenAIProvider(
         attemptNumber: Int = 1
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
-        tokenCacheManager.updateActualTokens(parsed.actualInputTokens.toLong(), parsed.cachedInputTokens.toLong())
-        tokenCacheManager.setOutputTokens(parsed.outputTokens.toLong())
+        tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
+        tokenCacheManager.setOutputTokens(parsed.outputTokens)
         onTokensUpdated(
-            parsed.totalInputTokens.toLong(),
-            parsed.cachedInputTokens.toLong(),
+            parsed.totalInputTokens,
+            parsed.cachedInputTokens,
             tokenCacheManager.outputTokenCount
         )
         onUsageReported?.invoke(

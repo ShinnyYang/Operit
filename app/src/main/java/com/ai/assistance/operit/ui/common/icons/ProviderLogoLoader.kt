@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.caverock.androidsvg.SVG
+import com.ai.assistance.operit.data.model.normalizeProviderTypeId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.math.max
@@ -37,8 +38,9 @@ object ProviderLogoLoader {
 
     /** 查找 provider 对应的 assets 内 logo 文件路径，不存在返回 null */
     fun findLogoAssetPath(context: Context, providerTypeId: String): String? {
-        if (providerTypeId.isBlank()) return null
-        val dir = "$LOGO_ROOT/$providerTypeId"
+        val normalizedProviderTypeId = normalizeProviderTypeId(providerTypeId)
+        if (normalizedProviderTypeId.isBlank()) return null
+        val dir = "$LOGO_ROOT/$normalizedProviderTypeId"
         return try {
             val files = context.assets.list(dir) ?: return null
             val file =

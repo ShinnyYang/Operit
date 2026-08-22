@@ -266,10 +266,10 @@ class OpenAIResponsesProvider(
 object OpenAIResponsesPayloadAdapter {
 
     data class UsageCounts(
-        val totalInputTokens: Int,
-        val actualInputTokens: Int,
-        val cachedInputTokens: Int,
-        val outputTokens: Int
+        val totalInputTokens: Long,
+        val actualInputTokens: Long,
+        val cachedInputTokens: Long,
+        val outputTokens: Long
     )
 
     data class ParsedResponseOutput(
@@ -292,7 +292,7 @@ object OpenAIResponsesPayloadAdapter {
         usage ?: return null
 
         // 评审 P1-5：显式全零 payload 也是“已观察到的 usage”——按字段存在判断，
-        // 不能按 “>0” 过滤；P2-1：数值全程 Long 解析，只在旧 UI 计数边界饱和 Int。
+        // 不能按 “>0” 过滤；usage 计数保持 Long，避免大值在即时计数链路截断。
         val hasInput = usage.has("prompt_tokens") || usage.has("input_tokens")
         val hasOutput = usage.has("completion_tokens") || usage.has("output_tokens")
         val cachedDetails =
@@ -302,21 +302,17 @@ object OpenAIResponsesPayloadAdapter {
         if (!hasInput && !hasOutput && !hasCached) return null
 
         val totalInputTokens = usage.optLong("prompt_tokens", usage.optLong("input_tokens", -1))
-            .saturateToInt()
+            .coerceAtLeast(0L)
         val outputTokens = usage.optLong("completion_tokens", usage.optLong("output_tokens", -1))
-            .saturateToInt()
+            .coerceAtLeast(0L)
         val cachedInputTokens =
             (cachedDetails?.optLong("cached_tokens", -1)?.takeIf { it >= 0 }
                 ?: usage.optLong("cached_tokens", -1))
-                .coerceAtLeast(0)
-                .saturateToInt()
-        val actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0)
+                .coerceAtLeast(0L)
+        val actualInputTokens = (totalInputTokens - cachedInputTokens).coerceAtLeast(0L)
 
         return UsageCounts(totalInputTokens, actualInputTokens, cachedInputTokens, outputTokens)
     }
-
-    /** 旧 UI 计数边界（P2-1）：Long 饱和为 Int，绝不回绕为负。 */
-    private fun Long.saturateToInt(): Int = coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
 
     fun toResponsesRequest(chatStyleRequest: JSONObject): JSONObject {
         val converted = JSONObject(chatStyleRequest.toString())

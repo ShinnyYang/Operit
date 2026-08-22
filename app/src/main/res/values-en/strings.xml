@@ -3703,6 +3703,7 @@
     <string name="token_stats_configuration_count">%1$d configurations</string>
     <string name="token_stats_model_expand">Expand or collapse details</string>
     <string name="token_stats_pricing_configuration">Configuration price</string>
+    <string name="token_stats_pricing_model">Model price</string>
     <string name="token_stats_price_label">Price</string>
     <string name="token_stats_unknown_pricing">Pricing unknown</string>
     <string name="token_stats_config_deleted">Deleted configuration</string>
