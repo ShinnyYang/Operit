@@ -6,6 +6,7 @@ import com.ai.assistance.operit.data.dao.TokenUsageActivityDayRow
 import com.ai.assistance.operit.data.dao.TokenUsageModelAggregateRow
 import com.ai.assistance.operit.data.model.TokenStatsModelEntity
 import com.ai.assistance.operit.data.model.normalizeProviderModel
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -75,6 +76,20 @@ object TokenStatsQueryService {
                 buckets = buckets,
                 displayModels = displayModels,
             )
+        }
+    }
+
+    internal suspend fun earliestOccurredDate(
+        context: Context,
+        params: TokenStatsQueryParams,
+        zone: ZoneId,
+    ): LocalDate? {
+        val repository = TokenUsageRepository.getInstance(context)
+        return repository.withDao { dao ->
+            dao.getEarliestOccurredAtMs(
+                providerModels = params.providerModels.queryValues(),
+                allModels = params.providerModels == null,
+            )?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() }
         }
     }
 
