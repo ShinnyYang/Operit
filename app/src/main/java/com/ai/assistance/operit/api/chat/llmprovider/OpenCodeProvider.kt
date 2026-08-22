@@ -201,6 +201,12 @@ internal class OpenCodeChatProvider(
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall
 ) {
+    // OpenCode 的 OpenAI Chat 路由直接向后端透传 think 历史（即使 Operit 未显式开启
+    // thinking，OpenCode 也可能按模型能力输出推理）。为保证后续请求不因缺失
+    // reasoning_content 而被上游拒绝（400），此路由必须回传历史 assistant 消息的
+    // reasoning_content。这是对 DeepSeek thinking 协议的必要补全。
+    override val preserveAssistantReasoningContent: Boolean = true
+
     override fun createRequestBody(
         context: Context,
         chatHistory: List<PromptTurn>,
@@ -216,7 +222,9 @@ internal class OpenCodeChatProvider(
             modelParameters = modelParameters,
             stream = stream,
             availableTools = availableTools,
-            preserveThinkInHistory = preserveThinkInHistory
+            // OpenCode 的 OpenAI Chat 路由必须保留 think 历史，才能从历史中提取
+            // reasoning_content 并原样回传（上游要求），否则后续请求会被 400 拒绝。
+            preserveThinkInHistory = true
         )
     )
 }
