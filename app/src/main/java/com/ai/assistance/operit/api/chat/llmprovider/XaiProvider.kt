@@ -78,18 +78,19 @@ class XaiProvider(
         if (xaiModelSupportsReasoningEffort(modelName)) {
             val existingEffort = requestJson.optString("reasoning_effort", "").trim()
             if (existingEffort.isEmpty()) {
-                val qualityLevel = runCatching {
+                val qualityLevel = try {
                     runBlocking {
                         ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
                     }
-                }.getOrElse {
-                    AppLogger.w(
+                } catch (error: Exception) {
+                    AppLogger.e(
                         "XaiProvider",
-                        "Failed to read thinking quality level; using xAI low effort",
-                        it
+                        "Failed to read thinking quality level; aborting xAI request",
+                        error
                     )
-                    1
+                    throw error
                 }
+
                 requestJson.put(
                     "reasoning_effort",
                     XaiReasoningMapper.effortForQuality(enableThinking, qualityLevel)
