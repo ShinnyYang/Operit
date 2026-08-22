@@ -4452,6 +4452,7 @@
 
     <!-- Model Configuration -->
     <string name="overseas_provider_warning">Detected that you are in mainland China but selected an overseas service provider. Please confirm whether you have enabled proxy tools</string>
+    <string name="international_proxy_provider_warning">This service routes requests through an international third-party proxy. Access from mainland China requires a proxy tool. Request data will be relayed by a third party; review your network environment, terms of service, and data compliance requirements.</string>
 
         <!-- Token Config WebView & URL Config Dialog -->
     <string name="custom_url_config">Custom URL Configuration</string>
