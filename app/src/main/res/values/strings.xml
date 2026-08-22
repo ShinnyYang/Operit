@@ -3622,6 +3622,7 @@
     <string name="token_stats_model_show_all">展开全部（%1$d）</string>
     <string name="token_stats_model_collapse">收起</string>
     <string name="token_stats_pricing_configuration">配置价格</string>
+    <string name="token_stats_pricing_model">模型价格</string>
     <string name="token_stats_price_label">单价</string>
     <string name="token_stats_unknown_pricing">定价未知</string>
     <string name="token_stats_config_deleted">已删除的配置</string>

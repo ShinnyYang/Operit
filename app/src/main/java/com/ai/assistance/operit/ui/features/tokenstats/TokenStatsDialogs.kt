@@ -243,7 +243,7 @@ internal fun PriceSettingsDialog(
     val allPricesValid =
         priceFields.all { raw ->
             raw.isBlank() ||
-                raw.toDoubleOrNull()?.let { it.isFinite() && it > 0.0 } == true
+                raw.toDoubleOrNull()?.let { it.isFinite() && it >= 0.0 } == true
         }
     val targetValid = scope != TokenStatsPriceScope.CONFIG || configId.isNotBlank()
     AlertDialog(

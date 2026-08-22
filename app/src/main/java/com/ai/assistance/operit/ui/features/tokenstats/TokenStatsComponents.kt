@@ -63,6 +63,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ai.assistance.operit.R
 import com.ai.assistance.operit.data.collects.PricingCurrency
+import com.ai.assistance.operit.data.model.normalizeProviderModel
+import com.ai.assistance.operit.data.model.normalizeProviderTypeId
 import com.ai.assistance.operit.data.stats.TokenActivityViewMode
 import com.ai.assistance.operit.data.stats.TokenPriceResolver
 import com.ai.assistance.operit.data.stats.TokenCostCalculator
@@ -75,6 +77,7 @@ import com.ai.assistance.operit.data.stats.TokenStatsTimeRange
 import com.ai.assistance.operit.data.stats.TokenStatsTokenAggregate
 import com.ai.assistance.operit.data.stats.TokenStatsTotals
 import com.ai.assistance.operit.data.stats.TokenStatsTrendBucket
+import com.ai.assistance.operit.data.stats.tokenStatsPriceScopeForConfigId
 import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
 import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import java.time.ZoneId
@@ -871,7 +874,7 @@ internal fun TokenStatsConfigurationCardsSection(
 ) {
     val colors = LocalTokenStatsColors.current
     var configurationsExpanded by rememberSaveable { mutableStateOf(false) }
-    var expandedConfigId by rememberSaveable { mutableStateOf<String?>(null) }
+    var expandedIdentityKey by rememberSaveable { mutableStateOf<String?>(null) }
     val sortedConfigurations =
         configurations.sortedByDescending { it.totals.totalTokens.knownSum }
     TokenStatsCard(modifier = Modifier.fillMaxWidth()) {
@@ -879,37 +882,55 @@ internal fun TokenStatsConfigurationCardsSection(
             modifier = Modifier.padding(TokenStatsSpacing.card),
             verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.content),
         ) {
-            TokenStatsCardTitle(stringResource(R.string.settings_model_details)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
-                    text = stringResource(
-                        R.string.token_stats_configuration_count,
-                        configurations.size,
-                    ),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = colors.cardSupportingContent,
+                    text = stringResource(R.string.settings_model_details),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = colors.cardContent,
+                    maxLines = 1,
+                    softWrap = false,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
-                IconButton(
-                    onClick = {
-                        configurationsExpanded = !configurationsExpanded
-                        if (!configurationsExpanded) expandedConfigId = null
-                    },
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.End,
                 ) {
-                    Icon(
-                        imageVector =
-                            if (configurationsExpanded) {
-                                Icons.Filled.ExpandLess
-                            } else {
-                                Icons.Filled.ExpandMore
-                            },
-                        contentDescription = stringResource(
-                            if (configurationsExpanded) {
-                                R.string.token_stats_model_collapse
-                            } else {
-                                R.string.token_stats_model_expand
-                            },
+                    Text(
+                        text = stringResource(
+                            R.string.token_stats_configuration_count,
+                            configurations.size,
                         ),
-                        tint = colors.cardSupportingContent,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.cardSupportingContent,
                     )
+                    IconButton(
+                        onClick = {
+                            configurationsExpanded = !configurationsExpanded
+                            if (!configurationsExpanded) expandedIdentityKey = null
+                        },
+                    ) {
+                        Icon(
+                            imageVector =
+                                if (configurationsExpanded) {
+                                    Icons.Filled.ExpandLess
+                                } else {
+                                    Icons.Filled.ExpandMore
+                                },
+                            contentDescription = stringResource(
+                                if (configurationsExpanded) {
+                                    R.string.token_stats_model_collapse
+                                } else {
+                                    R.string.token_stats_model_expand
+                                },
+                            ),
+                            tint = colors.cardSupportingContent,
+                        )
+                    }
                 }
             }
             if (configurationsExpanded) {
@@ -920,15 +941,16 @@ internal fun TokenStatsConfigurationCardsSection(
                     val configurationName =
                         configurationNames[identity.configId]
                             ?: stringResource(R.string.token_stats_config_deleted)
+                    val identityKey = tokenStatsIdentityKey(identity)
                     TokenStatsConfigurationRow(
                         identity = identity,
                         configurationName = configurationName,
                         currency = currency,
                         priceSettings = priceSettings,
-                        expanded = expandedConfigId == identity.configId,
+                        expanded = expandedIdentityKey == identityKey,
                         onToggleExpanded = {
-                            expandedConfigId =
-                                if (expandedConfigId == identity.configId) null else identity.configId
+                            expandedIdentityKey =
+                                if (expandedIdentityKey == identityKey) null else identityKey
                         },
                         onEditPrice = onEditPrice,
                         onResetConfigurationPrice = onResetConfigurationPrice,
@@ -1037,12 +1059,15 @@ private fun TokenStatsConfigurationRow(
             )
         }
         if (expanded) {
-            val providerModel = "${identity.provider}:${identity.model}"
-            val configurationPrice =
+            val providerModel = normalizeProviderModel("${identity.provider}:${identity.model}")
+            val priceScope = tokenStatsPriceScopeForConfigId(identity.configId)
+            val priceOverride =
                 priceSettings.firstOrNull {
-                    it.scope == TokenStatsPriceScope.CONFIG &&
-                        it.providerModel.equals(providerModel, ignoreCase = true) &&
-                        it.configId == identity.configId
+                    it.scope == priceScope &&
+                        normalizeProviderModel(it.providerModel)
+                            .equals(providerModel, ignoreCase = true) &&
+                        (priceScope == TokenStatsPriceScope.PROVIDER_MODEL ||
+                            it.configId == identity.configId)
                 }
             Column(
                 modifier = Modifier
@@ -1135,20 +1160,26 @@ private fun TokenStatsConfigurationRow(
                     TextButton(
                         onClick = {
                             onEditPrice(
-                                configurationPrice,
-                                priceDraftForConfiguration(identity, priceSettings),
+                                priceOverride,
+                                priceDraftForIdentity(identity, priceSettings),
                                 configurationName,
                             )
                         },
                     ) {
                         Text(
-                            text = stringResource(R.string.token_stats_pricing_configuration),
+                            text = stringResource(
+                                if (priceScope == TokenStatsPriceScope.CONFIG) {
+                                    R.string.token_stats_pricing_configuration
+                                } else {
+                                    R.string.token_stats_pricing_model
+                                },
+                            ),
                             style = MaterialTheme.typography.labelSmall,
                         )
                     }
                     TextButton(
-                        enabled = configurationPrice != null,
-                        onClick = { configurationPrice?.let(onResetConfigurationPrice) },
+                        enabled = priceOverride != null,
+                        onClick = { priceOverride?.let(onResetConfigurationPrice) },
                     ) {
                         Text(
                             text = stringResource(R.string.reset_to_default),
@@ -1325,32 +1356,42 @@ internal fun TokenStatsSettingsCard(
 
 // ==== 定价草稿推导（沿用） ====
 
-private fun priceDraftForConfiguration(
+private fun tokenStatsIdentityKey(
+    identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
+): String = "${identity.configId}\u001f${identity.provider}\u001f${identity.model}"
+
+private fun priceDraftForIdentity(
     identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
     priceSettings: List<TokenStatsPriceSetting>,
 ): TokenStatsPriceDraft {
-    val providerModel = "${identity.provider}:${identity.model}"
+    val providerModel = normalizeProviderModel("${identity.provider}:${identity.model}")
+    val priceScope = tokenStatsPriceScopeForConfigId(identity.configId)
     val providerSettings =
         priceSettings.firstOrNull {
             it.scope == TokenStatsPriceScope.PROVIDER_MODEL &&
-                it.providerModel.equals(providerModel, ignoreCase = true)
+                normalizeProviderModel(it.providerModel).equals(providerModel, ignoreCase = true)
         }?.toModelPriceSettings()
     val configurationSettings =
-        priceSettings.firstOrNull {
-            it.scope == TokenStatsPriceScope.CONFIG &&
-                it.providerModel.equals(providerModel, ignoreCase = true) &&
-                it.configId == identity.configId
-        }?.toModelPriceSettings()
+        if (priceScope == TokenStatsPriceScope.CONFIG) {
+            priceSettings.firstOrNull {
+                it.scope == TokenStatsPriceScope.CONFIG &&
+                    normalizeProviderModel(it.providerModel)
+                        .equals(providerModel, ignoreCase = true) &&
+                    it.configId == identity.configId
+            }?.toModelPriceSettings()
+        } else {
+            null
+        }
     val resolved =
         TokenPriceResolver.resolve(
             providerModel,
             mergePriceSettings(providerSettings, configurationSettings),
         )
     return TokenStatsPriceDraft(
-        scope = TokenStatsPriceScope.CONFIG,
-        provider = identity.provider,
+        scope = priceScope,
+        provider = normalizeProviderTypeId(identity.provider),
         model = identity.model,
-        configId = identity.configId,
+        configId = identity.configId.takeIf { priceScope == TokenStatsPriceScope.CONFIG },
         billingMode = resolved.billingMode,
         currency = resolved.currency,
         inputPricePerMillion = resolved.inputPricePerMillion,
