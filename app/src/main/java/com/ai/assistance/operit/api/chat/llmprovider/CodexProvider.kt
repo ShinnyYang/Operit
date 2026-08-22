@@ -11,7 +11,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,6 +63,7 @@ class CodexProvider(
         toolsJson: String?,
     ) {
         super.customizeFinalRequestObject(requestObject, messagesArray, toolsJson)
+        CodexModelVariant.applyRequestParameters(requestObject, modelName)
         requestObject.put("store", false)
         requestObject.put("parallel_tool_calls", false)
         val include = requestObject.optJSONArray("include") ?: JSONArray().also {
@@ -75,7 +75,7 @@ class CodexProvider(
     }
 
     override suspend fun getModelsList(_context: Context): Result<List<ModelOption>> {
-        return CodexModelListFetcher.getModelsList(authManager, httpClient)
+        return CodexModelListFetcher.getModelsList(httpClient)
     }
 
     private fun containsString(array: JSONArray, value: String): Boolean {
@@ -96,8 +96,9 @@ object CodexModelPolicy {
     private val explicitlyDisallowed = setOf("gpt-5.5-pro")
     private val versionPattern = Regex("^gpt-(\\d+\\.\\d+)")
 
-    fun allows(modelId: String): Boolean {
+    fun allows(modelId: String, reasoningMode: String? = null): Boolean {
         val normalized = modelId.trim().lowercase()
+        if (reasoningMode?.trim()?.equals("pro", ignoreCase = true) == true) return false
         if (normalized in explicitlyDisallowed) return false
         if (normalized in explicitlyAllowed) return true
         if (normalized == "gpt-5.6") return false
@@ -105,42 +106,43 @@ object CodexModelPolicy {
             ?: return false
         return version > 5.4
     }
+}
 
-    fun filter(models: List<ModelOption>): List<ModelOption> =
-        models.filter { allows(it.id) }
+internal object CodexModelVariant {
+    private const val FAST_SUFFIX = "-fast"
+
+    fun applyRequestParameters(requestObject: JSONObject, modelName: String) {
+        val apiModelId = apiModelId(modelName)
+        if (apiModelId == modelName) return
+
+        requestObject.put("model", apiModelId)
+        requestObject.put("service_tier", "priority")
+    }
+
+    fun apiModelId(modelName: String): String = modelName.removeSuffix(FAST_SUFFIX)
 }
 
 object CodexModelListFetcher {
     suspend fun getModelsList(
-        authManager: CodexAuthManager,
         httpClient: OkHttpClient = SharedHttpClient.instance,
     ): Result<List<ModelOption>> {
         return try {
-            val accessToken = authManager.getValidAccessToken()
-            val accountId = authManager.currentAccountId()
-                ?: throw IllegalStateException("Codex account ID is unavailable")
-            val url = CodexOAuthProtocol.CODEX_MODELS_ENDPOINT.toHttpUrl()
-                .newBuilder()
-                .addQueryParameter("client_version", BuildConfig.VERSION_NAME)
-                .build()
             val request = Request.Builder()
-                .url(url)
+                .url(CodexOAuthProtocol.MODEL_CATALOG_ENDPOINT)
                 .get()
-                .header("Authorization", "Bearer $accessToken")
-                .header("ChatGPT-Account-ID", accountId)
-                .header("originator", "operit")
                 .header("User-Agent", "Operit/${BuildConfig.VERSION_NAME}")
+                .header("Accept", "application/json")
                 .build()
             val responseBody = withContext(Dispatchers.IO) {
                 httpClient.newCall(request).execute().use { response ->
                     val body = response.body?.string().orEmpty()
                     if (!response.isSuccessful) {
-                        throw IllegalStateException("Codex model request failed with HTTP ${response.code}")
+                        throw IllegalStateException("OpenCode model catalog request failed with HTTP ${response.code}")
                     }
                     body
                 }
             }
-            Result.success(CodexModelPolicy.filter(parseModels(responseBody)))
+            Result.success(parseModels(responseBody))
         } catch (error: Exception) {
             Result.failure(error)
         }
@@ -148,19 +150,40 @@ object CodexModelListFetcher {
 
     internal fun parseModels(responseBody: String): List<ModelOption> {
         val root = JSONObject(responseBody)
-        val models = root.optJSONArray("models")
-            ?: throw IllegalArgumentException("Codex model response has no models array")
+        val openAiProvider = root.optJSONObject("openai")
+            ?: throw IllegalArgumentException("OpenCode model catalog has no openai provider")
+        val models = openAiProvider.optJSONObject("models")
+            ?: throw IllegalArgumentException("OpenCode model catalog has no openai models")
         val result = mutableListOf<ModelOption>()
-        for (index in 0 until models.length()) {
-            val model = models.optJSONObject(index) ?: continue
-            val id = model.optString("slug", "").ifBlank {
-                model.optString("id", "")
-            }.trim()
-            if (id.isNotEmpty()) {
-                val name = model.optString("display_name", "").ifBlank {
-                    model.optString("name", "")
-                }.trim().ifBlank { id }
-                result += ModelOption(id = id, name = name)
+        val modelKeys = models.keys()
+        while (modelKeys.hasNext()) {
+            val modelKey = modelKeys.next()
+            val model = models.optJSONObject(modelKey) ?: continue
+            val id = model.optString("id").trim()
+            val name = model.optString("name").trim()
+            if (id.isBlank() || name.isBlank() || !CodexModelPolicy.allows(id)) {
+                continue
+            }
+            result += ModelOption(id = id, name = name)
+
+            val modes = model.optJSONObject("experimental")?.optJSONObject("modes") ?: continue
+            val modeKeys = modes.keys()
+            while (modeKeys.hasNext()) {
+                val mode = modeKeys.next().trim()
+                if (mode.isBlank()) continue
+                val modeConfig = modes.optJSONObject(mode) ?: continue
+                val reasoningMode = modeConfig
+                    .optJSONObject("provider")
+                    ?.optJSONObject("body")
+                    ?.optJSONObject("reasoning")
+                    ?.optString("mode")
+                    ?.trim()
+                if (!CodexModelPolicy.allows(id, reasoningMode)) continue
+
+                result += ModelOption(
+                    id = "$id-$mode",
+                    name = "$name ${mode.replaceFirstChar { it.uppercaseChar() }}",
+                )
             }
         }
         return result

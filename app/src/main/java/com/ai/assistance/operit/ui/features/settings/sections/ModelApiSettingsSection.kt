@@ -410,7 +410,7 @@ fun ModelApiSettingsSection(
 
     suspend fun fetchAvailableModels(): Result<List<ModelOption>> {
         return when {
-            isCodexProvider -> CodexModelListFetcher.getModelsList(codexAuthManager)
+            isCodexProvider -> CodexModelListFetcher.getModelsList()
             isMnnProvider -> ModelListFetcher.getMnnLocalModels(context)
             isLlamaProvider -> ModelListFetcher.getLlamaLocalModels(context)
             isToolPkgProvider -> runCatching {

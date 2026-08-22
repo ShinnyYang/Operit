@@ -14,7 +14,9 @@
 - Token endpoint: `/oauth/token`
 - Revoke endpoint: `/oauth/revoke`
 - Codex Responses endpoint: `https://chatgpt.com/backend-api/codex/responses`
-- Codex model endpoint: `https://chatgpt.com/backend-api/codex/models`
+- OpenCode model catalog: `https://models.opencode.ai/api.json`, reading `openai.models`
+- Catalog requests are unauthenticated; Codex OAuth credentials are only used for inference requests.
+- OpenCode `experimental.modes.fast` entries are exposed as `<model>-fast` and send `service_tier=priority` with the base model ID.
 - OAuth client ID: the public ID used by the current Codex client
 - Authorization code exchange: form encoded PKCE request
 - Refresh: current Codex token request format, with rotated refresh credentials
