@@ -8262,4 +8262,18 @@
     <string name="token_stats_detail_open">Tap to view details</string>
     <string name="markdown_link_not_openable">This link points to a reference inside the document and cannot be opened</string>
 
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">Sign in to OpenAI Codex first</string>
+    <string name="codex_login_title">Sign in to OpenAI Codex</string>
+    <string name="codex_login_starting">Preparing Codex sign-in...</string>
+    <string name="codex_login_waiting">Complete sign-in in your browser</string>
+    <string name="codex_login_action">Sign in with ChatGPT</string>
+    <string name="codex_login_success">OpenAI Codex sign-in succeeded</string>
+    <string name="codex_login_failed">OpenAI Codex sign-in failed: %1$s</string>
+    <string name="codex_logout_action">Sign out of Codex</string>
+    <string name="codex_logout_success">Signed out of OpenAI Codex</string>
+    <string name="codex_auth_title">OpenAI Codex account</string>
+    <string name="codex_auth_not_logged_in">Sign in with ChatGPT to use Codex subscription access</string>
+    <string name="codex_auth_account">Account: %1$s</string>
+    <string name="codex_endpoint_fixed">The Codex endpoint is fixed by the system</string>
 </resources>

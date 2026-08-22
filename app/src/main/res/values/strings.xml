@@ -8254,4 +8254,18 @@
     <string name="token_stats_detail_open">点击查看详细数据</string>
     <string name="markdown_link_not_openable">该链接指向文档内部的引用，无法打开</string>
 
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">请先登录 OpenAI Codex</string>
+    <string name="codex_login_title">登录 OpenAI Codex</string>
+    <string name="codex_login_starting">正在准备 Codex 登录...</string>
+    <string name="codex_login_waiting">请在浏览器中完成登录</string>
+    <string name="codex_login_action">登录 ChatGPT</string>
+    <string name="codex_login_success">OpenAI Codex 登录成功</string>
+    <string name="codex_login_failed">OpenAI Codex 登录失败：%1$s</string>
+    <string name="codex_logout_action">退出 Codex 登录</string>
+    <string name="codex_logout_success">已退出 OpenAI Codex 登录</string>
+    <string name="codex_auth_title">OpenAI Codex 账号</string>
+    <string name="codex_auth_not_logged_in">登录 ChatGPT 后使用 Codex 订阅额度</string>
+    <string name="codex_auth_account">账号：%1$s</string>
+    <string name="codex_endpoint_fixed">Codex endpoint 由系统固定</string>
 </resources>

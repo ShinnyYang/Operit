@@ -23,6 +23,8 @@ import androidx.compose.material.icons.automirrored.filled.FormatListBulleted
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -47,12 +49,15 @@ import com.ai.assistance.operit.R
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.llmprovider.AIServiceFactory
+import com.ai.assistance.operit.api.chat.llmprovider.CodexModelListFetcher
 import com.ai.assistance.operit.api.chat.llmprovider.LlamaProvider
 import com.ai.assistance.operit.api.chat.llmprovider.ModelListFetcher
+import com.ai.assistance.operit.data.api.CodexAuthManager
 import com.ai.assistance.operit.data.collects.ApiProviderConfigs
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelConfigData
 import com.ai.assistance.operit.data.model.ModelOption
+import com.ai.assistance.operit.data.preferences.CodexAuthState
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
 import com.ai.assistance.operit.plugins.toolpkg.ToolPkgAiProviderRegistry
 import com.ai.assistance.operit.ui.common.input.bringIntoViewOnImeFocus
@@ -61,6 +66,7 @@ import com.ai.assistance.operit.ui.features.settings.ModelConfigSaveCoordinator
 import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
 import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
 import com.ai.assistance.operit.ui.features.settings.RegisterModelConfigSaveAction
+import com.ai.assistance.operit.ui.features.codex.CodexLoginDialog
 import com.ai.assistance.operit.util.LocationUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -115,6 +121,9 @@ fun ModelApiSettingsSection(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val codexAuthManager = remember { CodexAuthManager.getInstance(context) }
+    val codexAuthState by codexAuthManager.authState.collectAsState()
+    var showCodexLoginDialog by remember(config.id) { mutableStateOf(false) }
 
     // 区域告警类型；null 表示当前无需显示。
     var regionWarningType by remember(config.id) { mutableStateOf<ProviderRegionWarningType?>(null) }
@@ -143,6 +152,7 @@ fun ModelApiSettingsSection(
     var hasInitializedProviderEndpointSync by remember(config.id) { mutableStateOf(false) }
     var previousProviderTypeId by remember(config.id) { mutableStateOf(config.apiProviderTypeId) }
     val selectedApiProvider = ApiProviderType.fromProviderTypeId(selectedProviderTypeId)
+    val isCodexProvider = selectedApiProvider == ApiProviderType.OPENAI_CODEX
 
     // MNN特定配置状态
     var mnnForwardTypeInput by remember(config.id) { mutableStateOf(config.mnnForwardType) }
@@ -331,6 +341,9 @@ fun ModelApiSettingsSection(
         hasInitializedProviderEndpointSync = true
         if (!shouldSyncEndpointByProviderChange) {
             // 首次进入页面时保留持久化配置，避免把用户已选择的端点覆盖成默认值。
+            if (selectedApiProvider == ApiProviderType.OPENAI_CODEX) {
+                apiEndpointInput = getDefaultApiEndpoint(selectedApiProvider)
+            }
             return@LaunchedEffect
         }
 
@@ -343,6 +356,7 @@ fun ModelApiSettingsSection(
         val previousDefaultEndpoint =
             previousProvider?.let { getDefaultApiEndpoint(it) }.orEmpty()
         val shouldApplyNewProviderDefault =
+            selectedApiProvider == ApiProviderType.OPENAI_CODEX ||
             apiEndpointInput.isEmpty() ||
                 isDefaultApiEndpoint(apiEndpointInput) ||
                 (previousDefaultEndpoint.isNotEmpty() && apiEndpointInput == previousDefaultEndpoint)
@@ -372,14 +386,13 @@ fun ModelApiSettingsSection(
         !isMnnProvider &&
             !isLlamaProvider &&
             (canUseKeylessModelUi || !isUsingDefaultApiKey)
-    val canRequestModelList =
-        isToolPkgProvider ||
-            isMnnProvider ||
-            isLlamaProvider ||
-            (
-                apiEndpointInput.isNotBlank() &&
-                    (!providerRequiresApiKey || (!isUsingDefaultApiKey && apiKeyInput.isNotBlank()))
-            )
+    val canRequestModelList = when {
+        isCodexProvider -> codexAuthState != null && apiEndpointInput.isNotBlank()
+        isToolPkgProvider || isMnnProvider || isLlamaProvider -> true
+        else ->
+            apiEndpointInput.isNotBlank() &&
+                (!providerRequiresApiKey || (!isUsingDefaultApiKey && apiKeyInput.isNotBlank()))
+    }
     val endpointOptions = getEndpointOptions(selectedProviderTypeId)
     val selectableEndpointOptions =
         when {
@@ -397,6 +410,7 @@ fun ModelApiSettingsSection(
 
     suspend fun fetchAvailableModels(): Result<List<ModelOption>> {
         return when {
+            isCodexProvider -> CodexModelListFetcher.getModelsList(codexAuthManager)
             isMnnProvider -> ModelListFetcher.getMnnLocalModels(context)
             isLlamaProvider -> ModelListFetcher.getLlamaLocalModels(context)
             isToolPkgProvider -> runCatching {
@@ -520,6 +534,29 @@ fun ModelApiSettingsSection(
                         }
                     }
                 )
+            } else if (isCodexProvider) {
+                CodexAuthSettingsBlock(
+                    authState = codexAuthState,
+                    onLogin = { showCodexLoginDialog = true },
+                    onLogout = {
+                        scope.launch {
+                            codexAuthManager.logout()
+                            EnhancedAIService.refreshAllServices(configManager.appContext)
+                            showNotification(context.getString(R.string.codex_logout_success))
+                        }
+                    },
+                )
+                SettingsTextField(
+                    title = stringResource(R.string.api_endpoint),
+                    subtitle = stringResource(R.string.codex_endpoint_fixed),
+                    value = apiEndpointInput,
+                    onValueChange = {},
+                    enabled = false,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Uri,
+                        imeAction = ImeAction.Next,
+                    ),
+                )
             } else {
                 SettingsTextField(
                         title = stringResource(R.string.api_endpoint),
@@ -642,8 +679,8 @@ fun ModelApiSettingsSection(
                                 imeAction = ImeAction.Next
                         ),
                         visualTransformation = if (isApiKeyFocused || apiKeyInput.isEmpty()) VisualTransformation.None else ApiKeyVisualTransformation(),
-                        interactionSource = apiKeyInteractionSource
-                )
+                         interactionSource = apiKeyInteractionSource
+                 )
             }
             SettingsTextField(
                     title = stringResource(R.string.model_name),
@@ -793,6 +830,19 @@ fun ModelApiSettingsSection(
             )
 
         }
+    }
+
+    if (showCodexLoginDialog) {
+        CodexLoginDialog(
+            onDismissRequest = { showCodexLoginDialog = false },
+            onLoginSuccess = {
+                showCodexLoginDialog = false
+                scope.launch {
+                    EnhancedAIService.refreshAllServices(configManager.appContext)
+                    showNotification(context.getString(R.string.codex_login_success))
+                }
+            },
+        )
     }
 
     // 模型列表对话框
@@ -1072,11 +1122,55 @@ fun ModelApiSettingsSection(
     }
 }
 
+@Composable
+private fun CodexAuthSettingsBlock(
+    authState: CodexAuthState?,
+    onLogin: () -> Unit,
+    onLogout: () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.codex_auth_title),
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+        )
+        if (authState == null) {
+            Text(
+                text = stringResource(R.string.codex_auth_not_logged_in),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Button(onClick = onLogin, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Login, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.codex_login_action))
+            }
+        } else {
+            Text(
+                text = authState.email?.let { email ->
+                    stringResource(R.string.codex_auth_account, email)
+                } ?: stringResource(R.string.codex_auth_account, authState.accountId),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Default.Logout, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.codex_logout_action))
+            }
+        }
+    }
+}
+
 private fun getBuiltInProviderDisplayName(provider: ApiProviderType, context: android.content.Context): String {
     return when (provider) {
         ApiProviderType.OPENAI -> context.getString(R.string.provider_openai)
         ApiProviderType.XAI -> context.getString(R.string.provider_xai)
         ApiProviderType.OPENAI_RESPONSES -> context.getString(R.string.provider_openai_responses)
+        ApiProviderType.OPENAI_CODEX -> context.getString(R.string.provider_openai_codex)
         ApiProviderType.OPENAI_RESPONSES_GENERIC -> context.getString(R.string.provider_openai_responses_generic)
         ApiProviderType.OPENAI_GENERIC -> context.getString(R.string.provider_openai_generic)
         ApiProviderType.ANTHROPIC -> context.getString(R.string.provider_anthropic)
@@ -1757,6 +1851,7 @@ private fun getProviderColor(providerTypeId: String): androidx.compose.ui.graphi
         ApiProviderType.OPENAI -> MaterialTheme.colorScheme.primary
         ApiProviderType.XAI -> MaterialTheme.colorScheme.primary.copy(alpha = 0.94f)
         ApiProviderType.OPENAI_RESPONSES -> MaterialTheme.colorScheme.primary.copy(alpha = 0.92f)
+        ApiProviderType.OPENAI_CODEX -> MaterialTheme.colorScheme.primary.copy(alpha = 0.98f)
         ApiProviderType.OPENAI_RESPONSES_GENERIC -> MaterialTheme.colorScheme.primary.copy(alpha = 0.88f)
         ApiProviderType.OPENAI_GENERIC -> MaterialTheme.colorScheme.primary.copy(alpha = 0.85f)
         ApiProviderType.ANTHROPIC -> MaterialTheme.colorScheme.tertiary

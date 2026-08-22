@@ -8026,4 +8026,18 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="notification_kind_entry_curated">Selectat în selecția de top</string>
     <string name="markdown_link_not_openable">Acest link indică o referință din interiorul documentului și nu poate fi deschis</string>
 
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">Conectați-vă mai întâi la OpenAI Codex</string>
+    <string name="codex_login_title">Conectare OpenAI Codex</string>
+    <string name="codex_login_starting">Se pregătește conectarea Codex...</string>
+    <string name="codex_login_waiting">Finalizați conectarea în browser</string>
+    <string name="codex_login_action">Conectare cu ChatGPT</string>
+    <string name="codex_login_success">Conectarea OpenAI Codex a reușit</string>
+    <string name="codex_login_failed">Conectarea OpenAI Codex a eșuat: %1$s</string>
+    <string name="codex_logout_action">Deconectare Codex</string>
+    <string name="codex_logout_success">Deconectat de la OpenAI Codex</string>
+    <string name="codex_auth_title">Cont OpenAI Codex</string>
+    <string name="codex_auth_not_logged_in">Conectați-vă cu ChatGPT pentru a folosi accesul Codex inclus în abonament</string>
+    <string name="codex_auth_account">Cont: %1$s</string>
+    <string name="codex_endpoint_fixed">Endpointul Codex este fixat de sistem</string>
 </resources>
