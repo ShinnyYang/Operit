@@ -3611,6 +3611,9 @@
     <string name="token_stats_metric_cost">费用</string>
     <string name="token_stats_metric_requests">请求</string>
     <string name="token_stats_metric_tokens">Token</string>
+    <string name="token_stats_unit_millions">M</string>
+    <string name="token_stats_unit_billions">B</string>
+    <string name="token_stats_unit_toggle_description">当前 Token 单位为 %1$s，点击切换为 %2$s</string>
     <string name="token_stats_no_data_in_range">该范围暂无数据</string>
     <string name="token_stats_empty">暂无统计数据</string>
     <string name="token_stats_empty_hint">模型调用统计将在此显示</string>

@@ -13,6 +13,7 @@ import com.ai.assistance.operit.data.stats.TokenActivityViewMode
 import com.ai.assistance.operit.data.stats.TokenActivityRangeData
 import com.ai.assistance.operit.data.stats.TokenCostCurrency
 import com.ai.assistance.operit.data.stats.TokenStatsDisplayModelBreakdown
+import com.ai.assistance.operit.data.stats.TokenStatsDisplayUnit
 import com.ai.assistance.operit.data.stats.TokenStatsPriceDraft
 import com.ai.assistance.operit.data.stats.TokenStatsLifetimeOverview
 import com.ai.assistance.operit.data.stats.TokenStatsPriceSetting
@@ -51,6 +52,7 @@ data class TokenStatsUiState(
     val range: TokenStatsRangeData? = null,
     val currentRange: TokenStatsTimeRange? = null,
     val targetCurrency: PricingCurrency = PricingCurrency.CNY,
+    val tokenDisplayUnit: TokenStatsDisplayUnit = TokenStatsDisplayUnit.MILLIONS,
     val manualRate: Double = TokenCostCurrency.DEFAULT_USD_TO_CNY_RATE,
     val rateIsEstimated: Boolean = true,
     val selectedModels: Set<String> = emptySet(),
@@ -103,6 +105,20 @@ class TokenUsageStatisticsViewModel(
         _state.update { it.copy(activity = it.activity.copy(viewMode = mode)) }
     }
 
+    fun toggleTokenDisplayUnit() {
+        val unit = _state.value.tokenDisplayUnit.toggled()
+        _state.update { it.copy(tokenDisplayUnit = unit) }
+        viewModelScope.launch(dispatcher) {
+            try {
+                settings.saveTokenDisplayUnit(unit)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                AppLogger.e(tag, "Failed to save token display unit", e)
+            }
+        }
+    }
+
     private fun loadInternal() {
         loadJob?.cancel()
         val generation = ++loadGeneration
@@ -111,6 +127,7 @@ class TokenUsageStatisticsViewModel(
             try {
                 val rateInfo = settings.loadRateWithEstimate()
                 val currency = settings.loadTargetCurrency()
+                val tokenDisplayUnit = settings.loadTokenDisplayUnit()
                 val range = settings.loadTimeRange() ?: defaultDateRange(nowMs(), zone)
 
                 if (generation != loadGeneration) return@launch
@@ -205,6 +222,7 @@ class TokenUsageStatisticsViewModel(
                         range = result.range,
                         currentRange = range,
                         targetCurrency = currency,
+                        tokenDisplayUnit = tokenDisplayUnit,
                         manualRate = rateInfo.first,
                         rateIsEstimated = rateInfo.second,
                         availableDisplayModels = result.available?.displayModels.orEmpty(),

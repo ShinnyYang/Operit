@@ -56,6 +56,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -69,6 +72,7 @@ import com.ai.assistance.operit.data.stats.TokenActivityViewMode
 import com.ai.assistance.operit.data.stats.TokenPriceResolver
 import com.ai.assistance.operit.data.stats.TokenCostCalculator
 import com.ai.assistance.operit.data.stats.TokenStatsDisplayModelBreakdown
+import com.ai.assistance.operit.data.stats.TokenStatsDisplayUnit
 import com.ai.assistance.operit.data.stats.TokenStatsGranularity
 import com.ai.assistance.operit.data.stats.TokenStatsPriceDraft
 import com.ai.assistance.operit.data.stats.TokenStatsPriceScope
@@ -77,6 +81,7 @@ import com.ai.assistance.operit.data.stats.TokenStatsTimeRange
 import com.ai.assistance.operit.data.stats.TokenStatsTokenAggregate
 import com.ai.assistance.operit.data.stats.TokenStatsTotals
 import com.ai.assistance.operit.data.stats.TokenStatsTrendBucket
+import com.ai.assistance.operit.data.stats.formatTokenCount
 import com.ai.assistance.operit.data.stats.tokenStatsPriceScopeForConfigId
 import com.ai.assistance.operit.ui.common.icons.providerLogoColorFilter
 import com.ai.assistance.operit.ui.common.icons.rememberProviderLogoPainter
@@ -257,6 +262,9 @@ internal fun TokenStatsSegmentedControl(
 internal fun TokenStatsOverviewCard(
     tokensText: String,
     costText: String,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
+    tokenUnitToggleDescription: String,
+    onToggleTokenDisplayUnit: () -> Unit,
     currentStreakText: String?,
     longestStreakText: String?,
     buckets: List<TokenStatsTrendBucket>,
@@ -287,7 +295,15 @@ internal fun TokenStatsOverviewCard(
             }
 
             Column {
-                Row(verticalAlignment = Alignment.Bottom) {
+                Row(
+                    modifier = Modifier
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onToggleTokenDisplayUnit,
+                        )
+                        .semantics { contentDescription = tokenUnitToggleDescription },
+                    verticalAlignment = Alignment.Bottom,
+                ) {
                     Text(
                         text = tokensText,
                         fontSize = 38.sp,
@@ -336,7 +352,7 @@ internal fun TokenStatsOverviewCard(
                 buckets = buckets,
                 granularity = granularity,
                 zone = zone,
-                formatValue = { formatCompactCount(it.toLong()) },
+                formatValue = { formatTokenCount(it.toLong(), tokenDisplayUnit) },
                 emptyText = stringResource(R.string.token_stats_no_data_in_range),
                 chartLabel = stringResource(R.string.token_stats_chart_tokens),
                 valueSelector = { it.totals.totalTokens.knownSum.toDouble() },
@@ -354,9 +370,16 @@ private fun TokenStatsMetricCard(
     label: String,
     value: String,
     modifier: Modifier = Modifier,
+    onValueClick: (() -> Unit)? = null,
+    valueClickDescription: String? = null,
 ) {
     val colors = LocalTokenStatsColors.current
-    TokenStatsCard(modifier = modifier) {
+    val cardModifier = onValueClick?.let { onClick ->
+        modifier
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = checkNotNull(valueClickDescription) }
+    } ?: modifier
+    TokenStatsCard(modifier = cardModifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -411,6 +434,8 @@ internal fun TokenStatsMetricGrid(
     requests: String,
     cacheRate: String,
     output: String,
+    tokenUnitToggleDescription: String,
+    onToggleTokenDisplayUnit: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(TokenStatsSpacing.section)) {
@@ -420,6 +445,8 @@ internal fun TokenStatsMetricGrid(
                 label = stringResource(R.string.token_activity_peak_tokens),
                 value = peakTokens,
                 modifier = Modifier.weight(1f),
+                onValueClick = onToggleTokenDisplayUnit,
+                valueClickDescription = tokenUnitToggleDescription,
             )
             TokenStatsMetricCard(
                 icon = Icons.Outlined.ShowChart,
@@ -453,6 +480,7 @@ private fun TokenStatsCompositionRow(
     label: String,
     aggregate: TokenStatsTokenAggregate,
     total: Long,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
     modifier: Modifier = Modifier,
 ) {
     val colors = LocalTokenStatsColors.current
@@ -490,7 +518,7 @@ private fun TokenStatsCompositionRow(
             )
         }
         Text(
-            text = formatCompactCount(aggregate.knownSum),
+            text = formatTokenCount(aggregate.knownSum, tokenDisplayUnit),
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             color = colors.cardContent,
@@ -511,6 +539,7 @@ private fun TokenStatsCompositionRow(
 @Composable
 internal fun TokenStatsCompositionCard(
     summary: TokenStatsTotals?,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
     modifier: Modifier = Modifier,
 ) {
     TokenStatsCard(modifier = modifier.fillMaxWidth()) {
@@ -524,16 +553,19 @@ internal fun TokenStatsCompositionCard(
                 label = stringResource(R.string.token_stats_token_cached),
                 aggregate = summary?.cachedInput ?: TokenStatsTokenAggregate(0L, 0L, 0L, 0L),
                 total = total,
+                tokenDisplayUnit = tokenDisplayUnit,
             )
             TokenStatsCompositionRow(
                 label = stringResource(R.string.token_stats_token_uncached),
                 aggregate = summary?.uncachedInput ?: TokenStatsTokenAggregate(0L, 0L, 0L, 0L),
                 total = total,
+                tokenDisplayUnit = tokenDisplayUnit,
             )
             TokenStatsCompositionRow(
                 label = stringResource(R.string.token_stats_token_output),
                 aggregate = summary?.output ?: TokenStatsTokenAggregate(0L, 0L, 0L, 0L),
                 total = total,
+                tokenDisplayUnit = tokenDisplayUnit,
             )
         }
     }
@@ -571,6 +603,7 @@ private fun TokenStatsModelRankRow(
     model: TokenStatsDisplayModelBreakdown,
     totalTokens: Long,
     currency: PricingCurrency,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
 ) {
     val colors = LocalTokenStatsColors.current
     val tokens = knownTokenSum(model.totals)
@@ -599,7 +632,7 @@ private fun TokenStatsModelRankRow(
                 Text(
                     text = stringResource(
                         R.string.token_stats_lifetime_model_value,
-                        formatCompactCount(tokens),
+                        formatTokenCount(tokens, tokenDisplayUnit),
                         percentage,
                     ),
                     style = MaterialTheme.typography.bodySmall,
@@ -637,6 +670,7 @@ private fun TokenStatsModelRankRow(
 internal fun TokenStatsModelRankSection(
     models: List<TokenStatsDisplayModelBreakdown>,
     currency: PricingCurrency,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
 ) {
     val colors = LocalTokenStatsColors.current
     val sortedModels = models.sortedByDescending { knownTokenSum(it.totals) }
@@ -669,6 +703,7 @@ internal fun TokenStatsModelRankSection(
                     model = model,
                     totalTokens = totalTokens,
                     currency = currency,
+                    tokenDisplayUnit = tokenDisplayUnit,
                 )
             }
             if (sortedModels.size > LIFETIME_MODELS_COLLAPSED_COUNT) {
@@ -867,6 +902,7 @@ private fun FilterDropdown(
 internal fun TokenStatsConfigurationCardsSection(
     configurations: List<com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown>,
     currency: PricingCurrency,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
     configurationNames: Map<String, String>,
     priceSettings: List<TokenStatsPriceSetting>,
     onEditPrice: (TokenStatsPriceSetting?, TokenStatsPriceDraft, String?) -> Unit,
@@ -946,6 +982,7 @@ internal fun TokenStatsConfigurationCardsSection(
                         identity = identity,
                         configurationName = configurationName,
                         currency = currency,
+                        tokenDisplayUnit = tokenDisplayUnit,
                         priceSettings = priceSettings,
                         expanded = expandedIdentityKey == identityKey,
                         onToggleExpanded = {
@@ -966,6 +1003,7 @@ private fun TokenStatsConfigurationRow(
     identity: com.ai.assistance.operit.data.stats.TokenStatsIdentityBreakdown,
     configurationName: String,
     currency: PricingCurrency,
+    tokenDisplayUnit: TokenStatsDisplayUnit,
     priceSettings: List<TokenStatsPriceSetting>,
     expanded: Boolean,
     onToggleExpanded: () -> Unit,
@@ -1095,7 +1133,10 @@ private fun TokenStatsConfigurationRow(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = formatCompactCount(totals.uncachedInput.knownSum),
+                            text = formatTokenCount(
+                                totals.uncachedInput.knownSum,
+                                tokenDisplayUnit,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
@@ -1110,7 +1151,10 @@ private fun TokenStatsConfigurationRow(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = formatCompactCount(totals.cachedInput.knownSum),
+                            text = formatTokenCount(
+                                totals.cachedInput.knownSum,
+                                tokenDisplayUnit,
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
@@ -1125,7 +1169,7 @@ private fun TokenStatsConfigurationRow(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = formatCompactCount(totals.output.knownSum),
+                            text = formatTokenCount(totals.output.knownSum, tokenDisplayUnit),
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
