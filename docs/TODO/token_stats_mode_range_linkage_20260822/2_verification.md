@@ -6,5 +6,6 @@
   `2d3a6a71d`.
 - [DONE] Add focused date policy tests for daily, weekly, cumulative, and an
   anchor before the first recorded date.
-- [TODO] Run the project's requested remote Release build and record its job
-  result after the implementation is pushed or available to the builder.
+- [DONE] Run the requested remote Release build for commit `6e1c9d0e0`. The
+  builder reported success and produced
+  `operit-release-fix_provider-logos-token-statistics-main-6e1c9d0e.apk`.
