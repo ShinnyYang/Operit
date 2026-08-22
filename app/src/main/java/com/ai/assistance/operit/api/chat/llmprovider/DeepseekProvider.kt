@@ -223,7 +223,7 @@ class DeepseekProvider(
                     put("role", "assistant")
                     put("reasoning_content", queuedAssistantReasoning.orEmpty())
                     if (!queuedAssistantToolText.isNullOrBlank()) {
-                        put("content", buildContentField(context, queuedAssistantToolText!!))
+                        put("content", buildContentField(context, queuedAssistantToolText!!, role = "assistant"))
                     } else {
                         put("content", null)
                     }
@@ -268,7 +268,7 @@ class DeepseekProvider(
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "system")
-                                    put("content", buildContentField(context, originalContent))
+                                    put("content", buildContentField(context, originalContent, role = "system"))
                                 }
                             )
                         }
@@ -305,7 +305,7 @@ class DeepseekProvider(
                                     JSONObject().apply {
                                         put("role", "assistant")
                                         put("reasoning_content", reasoningContent)
-                                        put("content", buildContentField(context, content.ifBlank { "[Empty]" }))
+                                        put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
                             }
@@ -331,7 +331,7 @@ class DeepseekProvider(
                                     JSONObject().apply {
                                         put("role", "assistant")
                                         put("reasoning_content", "")
-                                        put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }))
+                                        put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
                             }
@@ -396,7 +396,7 @@ class DeepseekProvider(
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "system")
-                                    put("content", buildContentField(context, originalContent))
+                                    put("content", buildContentField(context, originalContent, role = "system"))
                                 }
                             )
                         }
@@ -418,7 +418,7 @@ class DeepseekProvider(
                                 JSONObject().apply {
                                     put("role", "assistant")
                                     put("reasoning_content", reasoningContent)
-                                    put("content", buildContentField(context, content.ifBlank { "[Empty]" }))
+                                    put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
                             )
                         }
@@ -428,7 +428,7 @@ class DeepseekProvider(
                                 JSONObject().apply {
                                     put("role", "assistant")
                                     put("reasoning_content", "")
-                                    put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }))
+                                    put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
                             )
                         }

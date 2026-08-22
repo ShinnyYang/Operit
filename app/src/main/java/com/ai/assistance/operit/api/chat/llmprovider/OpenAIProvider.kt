@@ -834,9 +834,12 @@ open class OpenAIProvider(
     /**
      * 构建content字段（可能是字符串或数组）
      * @param text 要处理的文本内容
+     * @param role API消息角色；只有user/summary允许注入多媒体内容
      * @return 纯文本字符串或包含图片和文本的JSONArray
      */
-    fun buildContentField(context: Context, text: String): Any {
+    fun buildContentField(context: Context, text: String, role: String = "user"): Any {
+        val allowRichContent =
+            role.equals("user", ignoreCase = true) || role.equals("summary", ignoreCase = true)
         val hasImages = MediaLinkParser.hasImageLinks(text)
         val hasMedia = MediaLinkParser.hasMediaLinks(text)
 
@@ -868,7 +871,8 @@ open class OpenAIProvider(
             AppLogger.w("AIService", "检测到图片链接，但当前Provider不支持图片处理，已移除图片。原始文本长度: ${text.length}, 处理后: ${textWithoutLinks.length}")
         }
 
-        val hasAnySupportedRichContent = hasSupportedMedia || (supportsVision && imageLinks.isNotEmpty())
+        val hasAnySupportedRichContent =
+            allowRichContent && (hasSupportedMedia || (supportsVision && imageLinks.isNotEmpty()))
         if (!hasAnySupportedRichContent) {
             if (textWithoutLinks.isNotEmpty()) return textWithoutLinks
 
@@ -990,7 +994,7 @@ open class OpenAIProvider(
                 else -> null
             }
             if (effectiveContent != null) {
-                historyMessage.put("content", buildContentField(context, effectiveContent))
+                historyMessage.put("content", buildContentField(context, effectiveContent, role = "assistant"))
             } else {
                 historyMessage.put("content", null)
             }
@@ -1035,7 +1039,7 @@ open class OpenAIProvider(
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "system")
-                                    put("content", buildContentField(context, content))
+                                    put("content", buildContentField(context, content, role = "system"))
                                 }
                             )
                         }
@@ -1076,7 +1080,7 @@ open class OpenAIProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "assistant")
-                                        put("content", buildContentField(context, effectiveContent))
+                                        put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
                             }
@@ -1102,7 +1106,7 @@ open class OpenAIProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "assistant")
-                                        put("content", buildContentField(context, effectiveContent))
+                                        put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
                             }
@@ -1175,8 +1179,7 @@ open class OpenAIProvider(
                     } else {
                         content
                     }
-
-                    historyMessage.put("content", buildContentField(context, effectiveContent))
+                    historyMessage.put("content", buildContentField(context, effectiveContent, role = role))
                     messagesArray.put(historyMessage)
                 }
             }
