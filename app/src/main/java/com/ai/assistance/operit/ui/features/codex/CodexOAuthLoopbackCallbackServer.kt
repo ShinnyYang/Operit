@@ -16,7 +16,7 @@ internal class CodexOAuthLoopbackCallbackServer private constructor(
     val redirectUri: String = "http://localhost:$port${CodexOAuthProtocol.CALLBACK_PATH}"
 
     suspend fun awaitCallback(): Uri = withContext(Dispatchers.IO) {
-        while (true) {
+        while (!serverSocket.isClosed) {
             val socket = serverSocket.accept()
             socket.use {
                 socket.soTimeout = REQUEST_READ_TIMEOUT_MILLIS
@@ -29,6 +29,7 @@ internal class CodexOAuthLoopbackCallbackServer private constructor(
                 }
             }
         }
+        throw IllegalStateException("Codex OAuth callback server stopped before receiving a callback")
     }
 
     fun close() {

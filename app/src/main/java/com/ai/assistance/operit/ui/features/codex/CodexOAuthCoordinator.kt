@@ -9,7 +9,7 @@ import com.ai.assistance.operit.data.api.CodexPkceCodes
 import com.ai.assistance.operit.data.preferences.CodexAuthState
 import java.io.IOException
 
-data class CodexOAuthLoginSession(
+internal data class CodexOAuthLoginSession(
     internal val callbackServer: CodexOAuthLoopbackCallbackServer,
     internal val pkce: CodexPkceCodes,
     internal val state: String,
@@ -20,7 +20,7 @@ data class CodexOAuthLoginSession(
         get() = callbackServer.redirectUri
 }
 
-class CodexOAuthCoordinator(context: Context) {
+internal class CodexOAuthCoordinator(context: Context) {
     private val authManager = CodexAuthManager.getInstance(context)
     private val oauthClient = CodexOAuthClient(
         client = okhttp3.OkHttpClient.Builder()
