@@ -3943,6 +3943,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="parameter_value">Valorile parametrilor</string>
     <string name="parameter_range_format">Domeniu de aplicare: %1$s - %2$s</string>
     <string name="overseas_provider_warning">S-a detectat că vă aflați în China continentală, dar ați selectat un furnizor de servicii din străinătate. Vă rugăm să verificați dacă ați activat instrumentul de proxy.</string>
+    <string name="international_proxy_provider_warning">Acest serviciu direcționează solicitările printr-un proxy internațional terț. Accesul din China continentală necesită un instrument proxy. Datele solicitărilor vor fi retransmise de o terță parte; verificați mediul de rețea, termenii serviciului și cerințele de conformitate a datelor.</string>
 
     <!-- 自定义参数对话框 -->
     <string name="custom_parameter_added">Au fost adăugate parametri personalizați</string>
@@ -4348,6 +4349,24 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="artifact_publish_asset_source_upload">Încărcarea pachetului local curent</string>
     <string name="artifact_publish_asset_source_github_release">Citat GitHub Release Active</string>
     <string name="artifact_publish_asset_source_confirmation">Sursa resurselor publicate: %1$s</string>
+    <string name="artifact_publish_logo_title">Sigla pachetului</string>
+    <string name="artifact_publish_logo_description">Alege o imagine pentru pachet. Încărcarea directă o scrie în pachetul publicat; modul GitHub Release actualizează doar sigla din magazin.</string>
+    <string name="artifact_publish_logo_choose">Alege sigla</string>
+    <string name="artifact_publish_logo_use_package">Folosește sigla pachetului</string>
+    <string name="artifact_publish_logo_selected">Selectat: %1$s</string>
+    <string name="artifact_publish_logo_from_package">Sigla pachetului: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Siglă: %1$s</string>
+    <string name="artifact_publish_logo_preview">Previzualizare siglă</string>
+    <string name="artifact_publish_logo_invalid">Sigla nu poate fi citită. Alege un fișier SVG, PNG, JPEG sau WebP valid.</string>
+    <string name="artifact_publish_logo_too_large">Fișierul siglei trebuie să aibă cel mult 512 KiB.</string>
+    <string name="artifact_publish_logo_market_preview">Previzualizare efect în piață</string>
+    <string name="artifact_publish_logo_market_preview_title">Previzualizare piață</string>
+    <string name="artifact_publish_logo_market_list">Listă</string>
+    <string name="artifact_publish_logo_market_detail">Detalii</string>
+    <string name="artifact_publish_logo_market_preview_action">Instalează pachetul (previzualizare)</string>
+    <string name="artifact_publish_logo_market_preview_account">Contul curent</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Pachet fără nume</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">Fără descriere</string>
     <string name="artifact_publish_github_repository_url">Autorul GitHub Link către depozit</string>
     <string name="artifact_publish_load_github_releases">Se încarcă Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

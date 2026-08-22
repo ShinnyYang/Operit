@@ -3703,6 +3703,7 @@
     <string name="token_stats_configuration_count">%1$d configurations</string>
     <string name="token_stats_model_expand">Expand or collapse details</string>
     <string name="token_stats_pricing_configuration">Configuration price</string>
+    <string name="token_stats_pricing_model">Model price</string>
     <string name="token_stats_price_label">Price</string>
     <string name="token_stats_unknown_pricing">Pricing unknown</string>
     <string name="token_stats_config_deleted">Deleted configuration</string>
@@ -4452,6 +4453,7 @@
 
     <!-- Model Configuration -->
     <string name="overseas_provider_warning">Detected that you are in mainland China but selected an overseas service provider. Please confirm whether you have enabled proxy tools</string>
+    <string name="international_proxy_provider_warning">This service routes requests through an international third-party proxy. Access from mainland China requires a proxy tool. Request data will be relayed by a third party; review your network environment, terms of service, and data compliance requirements.</string>
 
         <!-- Token Config WebView & URL Config Dialog -->
     <string name="custom_url_config">Custom URL Configuration</string>
@@ -8130,6 +8132,24 @@
     <string name="artifact_publish_asset_source_upload">Upload current local package</string>
     <string name="artifact_publish_asset_source_github_release">Reference GitHub Release asset</string>
     <string name="artifact_publish_asset_source_confirmation">Release asset source: %1$s</string>
+    <string name="artifact_publish_logo_title">Package Logo</string>
+    <string name="artifact_publish_logo_description">Choose an image for the package. Direct upload writes it into the published package; GitHub Release mode updates the market logo only.</string>
+    <string name="artifact_publish_logo_choose">Choose Logo</string>
+    <string name="artifact_publish_logo_use_package">Use Package Logo</string>
+    <string name="artifact_publish_logo_selected">Selected: %1$s</string>
+    <string name="artifact_publish_logo_from_package">Package logo: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Logo: %1$s</string>
+    <string name="artifact_publish_logo_preview">Logo preview</string>
+    <string name="artifact_publish_logo_invalid">Could not read the logo. Choose a valid SVG, PNG, JPEG, or WebP file.</string>
+    <string name="artifact_publish_logo_too_large">The logo file must be 512 KiB or smaller.</string>
+    <string name="artifact_publish_logo_market_preview">Preview Market Effect</string>
+    <string name="artifact_publish_logo_market_preview_title">Market Preview</string>
+    <string name="artifact_publish_logo_market_list">List</string>
+    <string name="artifact_publish_logo_market_detail">Details</string>
+    <string name="artifact_publish_logo_market_preview_action">Install Package (Preview)</string>
+    <string name="artifact_publish_logo_market_preview_account">Current account</string>
+    <string name="artifact_publish_logo_market_preview_untitled">Untitled package</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">No description</string>
     <string name="artifact_publish_github_repository_url">Author GitHub repository link</string>
     <string name="artifact_publish_load_github_releases">Load Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

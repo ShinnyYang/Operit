@@ -3610,6 +3610,9 @@
     <string name="token_stats_metric_cost">费用</string>
     <string name="token_stats_metric_requests">请求</string>
     <string name="token_stats_metric_tokens">Token</string>
+    <string name="token_stats_unit_millions">M</string>
+    <string name="token_stats_unit_billions">B</string>
+    <string name="token_stats_unit_toggle_description">当前 Token 单位为 %1$s，点击切换为 %2$s</string>
     <string name="token_stats_no_data_in_range">该范围暂无数据</string>
     <string name="token_stats_empty">暂无统计数据</string>
     <string name="token_stats_empty_hint">模型调用统计将在此显示</string>
@@ -3621,6 +3624,7 @@
     <string name="token_stats_model_show_all">展开全部（%1$d）</string>
     <string name="token_stats_model_collapse">收起</string>
     <string name="token_stats_pricing_configuration">配置价格</string>
+    <string name="token_stats_pricing_model">模型价格</string>
     <string name="token_stats_price_label">单价</string>
     <string name="token_stats_unknown_pricing">定价未知</string>
     <string name="token_stats_config_deleted">已删除的配置</string>
@@ -4058,6 +4062,7 @@
     <string name="parameter_value">参数值</string>
     <string name="parameter_range_format">范围: %1$s - %2$s</string>
     <string name="overseas_provider_warning">检测到您在中国大陆，但选择了海外服务商。请确认是否已开启代理工具</string>
+    <string name="international_proxy_provider_warning">该服务通过国际第三方代理中转。在中国大陆访问需要代理工具；请求数据将经第三方转发，请留意网络环境、服务条款与数据合规政策。</string>
     
     <!-- 自定义参数对话框 -->
     <string name="custom_parameter_added">自定义参数已新增</string>
@@ -4468,6 +4473,24 @@
     <string name="artifact_publish_asset_source_upload">上传当前本地包</string>
     <string name="artifact_publish_asset_source_github_release">引用 GitHub Release 资产</string>
     <string name="artifact_publish_asset_source_confirmation">发布资源来源: %1$s</string>
+    <string name="artifact_publish_logo_title">包 Logo</string>
+    <string name="artifact_publish_logo_description">可选择新的图片。直接上传会把它写入发布包，GitHub Release 模式只更新市场 Logo。</string>
+    <string name="artifact_publish_logo_choose">选择 Logo</string>
+    <string name="artifact_publish_logo_use_package">使用包内 Logo</string>
+    <string name="artifact_publish_logo_selected">已选择: %1$s</string>
+    <string name="artifact_publish_logo_from_package">包内 Logo: %1$s</string>
+    <string name="artifact_publish_logo_confirmation">Logo: %1$s</string>
+    <string name="artifact_publish_logo_preview">Logo 预览</string>
+    <string name="artifact_publish_logo_invalid">无法读取 Logo，请选择有效的 SVG、PNG、JPEG 或 WebP 文件</string>
+    <string name="artifact_publish_logo_too_large">Logo 文件不能超过 512 KiB</string>
+    <string name="artifact_publish_logo_market_preview">预览市场效果</string>
+    <string name="artifact_publish_logo_market_preview_title">市场效果预览</string>
+    <string name="artifact_publish_logo_market_list">列表</string>
+    <string name="artifact_publish_logo_market_detail">详情</string>
+    <string name="artifact_publish_logo_market_preview_action">安装插件（预览）</string>
+    <string name="artifact_publish_logo_market_preview_account">当前账号</string>
+    <string name="artifact_publish_logo_market_preview_untitled">未命名工具包</string>
+    <string name="artifact_publish_logo_market_preview_empty_description">暂无描述</string>
     <string name="artifact_publish_github_repository_url">作者 GitHub 仓库链接</string>
     <string name="artifact_publish_load_github_releases">加载 Release</string>
     <string name="artifact_publish_github_release">GitHub Release</string>

@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.ui.features.packages.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Image as ComposeImage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,6 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.UploadFile
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -40,6 +45,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -60,11 +66,16 @@ import com.ai.assistance.operit.ui.features.packages.market.ArtifactPublishClust
 import com.ai.assistance.operit.ui.features.packages.market.GitHubForgePublishService
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactSource
 import com.ai.assistance.operit.ui.features.packages.market.PublishArtifactType
+import com.ai.assistance.operit.ui.features.packages.market.ToolPkgLogoAsset
 import com.ai.assistance.operit.ui.features.packages.market.PublishProgressStage
 import com.ai.assistance.operit.ui.features.packages.market.isOperit2VersionAllowed
 import com.ai.assistance.operit.ui.features.packages.market.sameArtifactRuntimePackageId
 import com.ai.assistance.operit.ui.features.packages.screens.artifact.viewmodel.ArtifactMarketViewModel
-import kotlinx.coroutines.launch
+import com.ai.assistance.operit.ui.common.icons.rememberLogoPainter
+import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.util.ToolPkgArtifactMinifier
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private data class ArtifactPublishEditInfo(
     val type: PublishArtifactType?,
@@ -78,7 +89,7 @@ private data class ArtifactPublishEditInfo(
     val maxSupportedAppVersion: String?,
     val runtimePackageId: String,
     val normalizedId: String,
-    val sourceFileName: String
+    val sourceFileName: String,
 )
 
 private fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishEditInfo(): ArtifactPublishEditInfo {
@@ -97,7 +108,7 @@ private fun com.ai.assistance.operit.data.api.MarketV2Entry.toArtifactPublishEdi
         maxSupportedAppVersion = versionValue?.maxAppVer,
         runtimePackageId = versionValue?.runtimePackageId.orEmpty(),
         normalizedId = id,
-        sourceFileName = assetValue?.assetName.orEmpty().ifBlank { assetValue?.name.orEmpty() }
+        sourceFileName = assetValue?.assetName.orEmpty().ifBlank { assetValue?.name.orEmpty() },
     )
 }
 
@@ -203,7 +214,6 @@ fun ArtifactPublishScreen(
     var version by rememberSaveable { mutableStateOf(initialInfo?.version.orEmpty().ifBlank { "1.0.0" }) }
     var minSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.minSupportedAppVersion.orEmpty()) }
     var maxSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.maxSupportedAppVersion.orEmpty()) }
-
     var selectorExpanded by remember { mutableStateOf(false) }
     var releaseSelectorExpanded by remember { mutableStateOf(false) }
     var releaseAssetSelectorExpanded by remember { mutableStateOf(false) }
@@ -212,6 +222,7 @@ fun ArtifactPublishScreen(
     var showConfirmationDialog by remember { mutableStateOf(false) }
     var showOperit2WarningDialog by remember { mutableStateOf(false) }
     var showSecondForgeConfirm by remember { mutableStateOf(false) }
+    var showMarketPreview by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.refreshPublishableArtifacts()
@@ -253,6 +264,39 @@ fun ArtifactPublishScreen(
     val selectedArtifact = filteredArtifacts.firstOrNull { it.packageName == selectedPackageName }
     val selectedType = selectedArtifact?.type ?: initialInfo?.type
     val isPublishing = publishStage !in listOf(PublishProgressStage.IDLE, PublishProgressStage.COMPLETED)
+    val packageLogo by
+        produceState<ToolPkgLogoAsset?>(
+            initialValue = null,
+            selectedPackageName,
+            selectedArtifact?.sourceFile?.absolutePath,
+            selectedType
+        ) {
+            value =
+                if (selectedType == PublishArtifactType.PACKAGE && selectedArtifact != null) {
+                    try {
+                        withContext(Dispatchers.IO) {
+                            ToolPkgArtifactMinifier.readToolPkgLogoAsset(selectedArtifact.sourceFile)
+                        }
+                    } catch (error: Exception) {
+                        AppLogger.e("ArtifactPublishScreen", "Failed to load package logo", error)
+                        null
+                    }
+                } else {
+                    null
+                }
+        }
+    val displayedLogo = packageLogo
+    val logoPainter =
+        rememberLogoPainter(
+            logoKey = "${selectedPackageName}:${displayedLogo?.fileName}:${displayedLogo?.bytes?.contentHashCode()}",
+            bytes = displayedLogo?.bytes,
+            mimeType = displayedLogo?.contentType,
+            fileName = displayedLogo?.fileName,
+            size = 64.dp
+        )
+    LaunchedEffect(selectedPackageName, selectedArtifact?.sourceFile?.absolutePath, selectedType) {
+        showMarketPreview = false
+    }
     val selectorDisplayName =
         if (isEditMode) {
             selectedArtifact?.displayName
@@ -684,6 +728,53 @@ fun ArtifactPublishScreen(
             }
         }
 
+        if (selectedType == PublishArtifactType.PACKAGE && packageLogo != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (logoPainter != null) {
+                        ComposeImage(
+                            painter = logoPainter,
+                            contentDescription = stringResource(R.string.artifact_publish_logo_preview),
+                            modifier = Modifier.size(56.dp).padding(4.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.artifact_publish_logo_title),
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.artifact_publish_logo_from_package,
+                                packageLogo.fileName
+                            ),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    OutlinedButton(onClick = { showMarketPreview = true }) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.Visibility,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(stringResource(R.string.artifact_publish_logo_market_preview))
+                    }
+                }
+            }
+        }
+
         OutlinedTextField(
             value = displayName,
             onValueChange = {
@@ -1019,6 +1110,14 @@ fun ArtifactPublishScreen(
                         }
                         Text(stringResource(R.string.market_detail_category_label) + ": " + categoryId)
                         Text(stringResource(R.string.version_colon, version))
+                        if (selectedType == PublishArtifactType.PACKAGE && displayedLogo != null) {
+                            Text(
+                                stringResource(
+                                    R.string.artifact_publish_logo_confirmation,
+                                    displayedLogo.fileName
+                                )
+                            )
+                        }
                         Text(
                             stringResource(
                                 R.string.artifact_publish_asset_source_confirmation,
@@ -1222,4 +1321,161 @@ fun ArtifactPublishScreen(
             }
         )
     }
+
+    if (showMarketPreview && selectedType == PublishArtifactType.PACKAGE) {
+        MarketPublishPreviewDialog(
+            title = displayName,
+            description = description,
+            detail = detail,
+            version = version,
+            author = selectedArtifact?.author?.firstOrNull().orEmpty(),
+            logoAsset = displayedLogo,
+            onDismiss = { showMarketPreview = false }
+        )
+    }
 }
+
+/*
+private fun ArtifactPublishLogoCard(
+    logoPainter: androidx.compose.ui.graphics.painter.Painter?,
+    selectedLogoAsset: ToolPkgLogoAsset?,
+    packageLogo: ToolPkgLogoAsset?,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onPreview: () -> Unit,
+    onChoose: () -> Unit,
+    onUsePackageLogo: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.size(64.dp),
+                    shape = MaterialTheme.shapes.medium,
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    if (logoPainter != null) {
+                        ComposeImage(
+                            painter = logoPainter,
+                            contentDescription = stringResource(R.string.artifact_publish_logo_preview),
+                            modifier = Modifier.padding(6.dp)
+                        )
+                    } else {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.Image,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(18.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.artifact_publish_logo_title),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(R.string.artifact_publish_logo_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val selectedFileName = selectedLogoAsset?.fileName
+                    val packageFileName = packageLogo?.fileName
+                    if (selectedFileName != null) {
+                        Text(
+                            text = stringResource(R.string.artifact_publish_logo_selected, selectedFileName),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    } else if (packageFileName != null) {
+                        Text(
+                            text = stringResource(R.string.artifact_publish_logo_from_package, packageFileName),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = onChoose,
+                    enabled = !isLoading,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    } else {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.UploadFile,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.artifact_publish_logo_choose))
+                }
+                if (selectedLogoAsset != null) {
+                    OutlinedButton(
+                        onClick = onUsePackageLogo,
+                        enabled = !isLoading,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        androidx.compose.material3.Icon(
+                            imageVector = Icons.Default.RestartAlt,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.artifact_publish_logo_use_package))
+                    }
+                }
+            }
+
+            OutlinedButton(
+                onClick = onPreview,
+                enabled = !isLoading,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                androidx.compose.material3.Icon(
+                    imageVector = Icons.Default.Visibility,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.artifact_publish_logo_market_preview))
+            }
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+*/
