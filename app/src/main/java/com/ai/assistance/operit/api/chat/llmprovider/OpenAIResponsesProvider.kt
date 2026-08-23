@@ -28,6 +28,7 @@ open class OpenAIResponsesProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
+    supportsFiles: Boolean = false,
     enableToolCall: Boolean = false
 ) : OpenAIProvider(
     apiEndpoint = responsesApiEndpoint,
@@ -39,6 +40,7 @@ open class OpenAIResponsesProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
+    supportsFiles = supportsFiles,
     enableToolCall = enableToolCall
 ) {
     override val useResponsesApi: Boolean = true
@@ -601,6 +603,20 @@ object OpenAIResponsesPayloadAdapter {
                                     JSONObject().apply {
                                         put("type", "input_audio")
                                         put("input_audio", audioObject)
+                                    }
+                                )
+                            }
+                        }
+
+                        "input_file" -> {
+                            val fileData = part.optString("file_data", "")
+                            val fileName = part.optString("filename", "")
+                            if (fileData.isNotEmpty() && fileName.isNotEmpty()) {
+                                convertedParts.put(
+                                    JSONObject().apply {
+                                        put("type", "input_file")
+                                        put("filename", fileName)
+                                        put("file_data", fileData)
                                     }
                                 )
                             }

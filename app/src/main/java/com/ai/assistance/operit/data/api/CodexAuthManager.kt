@@ -13,13 +13,13 @@ import okhttp3.OkHttpClient
 
 class CodexAuthManager private constructor(context: Context) {
     private val preferences = CodexAuthPreferences.getInstance(context)
-    private val oauthClient = CodexOAuthClient(
-        client = OkHttpClient.Builder()
+    private val httpClient = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-            .build(),
-    )
+            .build()
+    private val oauthClient = CodexOAuthClient(client = httpClient)
+    private val usageClient = CodexUsageClient(client = httpClient)
     private val refreshMutex = Mutex()
 
     val authState: StateFlow<CodexAuthState?> = preferences.authState
@@ -106,6 +106,22 @@ class CodexAuthManager private constructor(context: Context) {
     fun currentAccountId(): String? = preferences.currentState()?.accountId
 
     fun currentResidency(): String? = preferences.currentState()?.residency
+
+    suspend fun fetchUsage(): Result<CodexUsageSnapshot> {
+        return try {
+            val accessToken = getValidAccessToken()
+            val accountId = currentAccountId()
+                ?: throw IOException("Codex account ID is unavailable")
+            usageClient.fetch(
+                accessToken = accessToken,
+                accountId = accountId,
+                residency = currentResidency(),
+            )
+        } catch (error: Exception) {
+            AppLogger.e(TAG, "Failed to prepare Codex usage request", error)
+            Result.failure(error)
+        }
+    }
 
     companion object {
         private const val TAG = "CodexAuthManager"

@@ -382,8 +382,9 @@ object AIServiceFactory {
                     httpClient = httpClient,
                     customHeaders = customHeaders,
                     supportsVision = supportsVision,
-                    supportsAudio = supportsAudio,
-                    supportsVideo = supportsVideo,
+                    supportsAudio = false,
+                    supportsVideo = false,
+                    supportsFiles = supportsVision,
                     enableToolCall = enableToolCall,
                 )
 

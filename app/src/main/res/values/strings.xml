@@ -7582,6 +7582,7 @@
     <string name="openai_error_network_interrupted">网络中断</string>
     <string name="openai_audio_video_omitted">音视频内容已省略，当前模型不支持音视频处理</string>
     <string name="openai_image_omitted">图片内容已省略，当前模型不支持图片处理</string>
+    <string name="openai_file_omitted">文件内容已省略，当前模型不支持文件处理</string>
 
     <!-- WorkflowExecutor (新增) -->
     <string name="workflow_non_execute_node">非执行节点</string>
@@ -7693,6 +7694,7 @@
     <string name="conversation_media_image_link">&lt;link type=&quot;image&quot; id=&quot;%1$s&quot;&gt;图片&lt;/link&gt;</string>
     <string name="conversation_media_audio_link">&lt;link type=&quot;audio&quot; id=&quot;%1$s&quot;&gt;音频&lt;/link&gt;</string>
     <string name="conversation_media_video_link">&lt;link type=&quot;video&quot; id=&quot;%1$s&quot;&gt;视频&lt;/link&gt;</string>
+    <string name="conversation_media_file_link">&lt;link type=&quot;file&quot; id=&quot;%1$s&quot; filename=&quot;%2$s&quot;&gt;PDF&lt;/link&gt;</string>
     <string name="conversation_analyze_image_prompt">Please analyze this image.</string>
     <string name="conversation_analyze_audio_prompt">Please analyze this audio.</string>
     <string name="conversation_analyze_video_prompt">Please analyze this video.</string>
@@ -8268,4 +8270,14 @@
     <string name="codex_auth_not_logged_in">登录 ChatGPT 后使用 Codex 订阅额度</string>
     <string name="codex_auth_account">账号：%1$s</string>
     <string name="codex_endpoint_fixed">Codex endpoint 由系统固定</string>
+    <string name="codex_plan">套餐：%1$s</string>
+    <string name="codex_direct_media_processing">图片/PDF 直传</string>
+    <string name="codex_direct_media_processing_desc">将图片和 PDF 直接发送给 Codex 处理</string>
+    <string name="codex_quota_five_hour">近 5 小时</string>
+    <string name="codex_quota_seven_day">近 7 天</string>
+    <string name="codex_quota_no_data">暂无数据</string>
+    <string name="codex_usage_refresh">刷新 Codex 额度</string>
+    <string name="codex_usage_unavailable">额度暂时不可用</string>
+    <string name="codex_reset_after_days">%1$d 天后重置</string>
+    <string name="codex_reset_after_clock">%1$02d:%2$02d 后重置</string>
 </resources>
