@@ -1835,6 +1835,11 @@ class JsEngine(private val context: Context) {
         }
 
         @JavascriptInterface
+        fun registerToolPkgChatViewSlotPlugin(specJson: String) {
+            toolPkgRegistrationSession.appendChatViewSlotPlugin(specJson)
+        }
+
+        @JavascriptInterface
         fun registerToolPkgChatMessageHook(specJson: String) {
             toolPkgRegistrationSession.appendChatMessageHook(specJson)
         }

@@ -58,6 +58,11 @@ internal object ToolPkgMainRegistrationScriptParser {
                     registrations = captured.chatViewHooks,
                     registryName = TOOLPKG_REGISTRATION_CHAT_VIEW_HOOK
                 )
+            val chatViewSlotPlugins =
+                parseRegisteredSlotFunctionHooks(
+                    registrations = captured.chatViewSlotPlugins,
+                    registryName = TOOLPKG_REGISTRATION_CHAT_VIEW_SLOT_PLUGIN
+                )
             val chatMessageHooks =
                 parseRegisteredFunctionHooks(
                     registrations = captured.chatMessageHooks,
@@ -131,6 +136,7 @@ internal object ToolPkgMainRegistrationScriptParser {
                         inputMenuTogglePlugins = inputMenuTogglePlugins,
                         chatInputHooks = chatInputHooks,
                         chatViewHooks = chatViewHooks,
+                        chatViewSlotPlugins = chatViewSlotPlugins,
                         chatMessageHooks = chatMessageHooks,
                         toolLifecycleHooks = toolLifecycleHooks,
                         promptInputHooks = promptInputHooks,
@@ -460,6 +466,48 @@ internal object ToolPkgMainRegistrationScriptParser {
             hooks.add(
                 ToolPkgRegisteredFunctionHook(
                     id = id,
+                    function = functionName,
+                    functionSource = functionSource
+                )
+            )
+        }
+        return hooks
+    }
+
+    private fun parseRegisteredSlotFunctionHooks(
+        registrations: List<String>,
+        registryName: String
+    ): List<ToolPkgRegisteredSlotFunctionHook> {
+        val hooks = mutableListOf<ToolPkgRegisteredSlotFunctionHook>()
+        registrations.forEachIndexed { index, raw ->
+            val item =
+                try {
+                    JSONObject(raw)
+                } catch (e: Exception) {
+                    throw IllegalArgumentException(
+                        "$registryName payload[$index] must be a JSON object",
+                        e
+                    )
+                }
+            val id = item.optString("id").trim()
+            val slotName = item.optString("slot").trim()
+            val functionName = item.optString("function").trim()
+            val functionSource = item.optString("function_source").trim().ifBlank { null }
+
+            if (id.isBlank()) {
+                throw IllegalArgumentException("$registryName[$index].id is required")
+            }
+            if (slotName.isBlank()) {
+                throw IllegalArgumentException("$registryName[$index].slot is required")
+            }
+            if (functionName.isBlank()) {
+                throw IllegalArgumentException("$registryName[$index].function is required")
+            }
+
+            hooks.add(
+                ToolPkgRegisteredSlotFunctionHook(
+                    id = id,
+                    slot = slotName,
                     function = functionName,
                     functionSource = functionSource
                 )

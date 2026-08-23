@@ -33,6 +33,7 @@ export namespace ToolPkg {
         | "input_menu_toggle"
         | ChatInputEventName
         | ChatViewEventName
+        | ChatViewSlotEventName
         | ChatMessageEventName
         | "navigation_entry_action"
         | ToolLifecycleEventName
@@ -89,6 +90,32 @@ export namespace ToolPkg {
         | void
         | Promise<string | XmlRenderHookObjectResult | null | void>;
 
+    /** Named host-owned regions inside a chat view that plugins can render into. */
+    export type ChatViewSlot =
+        | "above_input"
+        | "input_drawer"
+        | "input_toolbar_right";
+
+    /** UI result for a chat view slot renderer. */
+    export interface ChatViewSlotRenderObjectResult extends JsonObject {
+        handled?: boolean;
+        text?: string;
+        content?: string;
+        composeDsl?: {
+            screen: ComposeDslScreen;
+            state?: JsonObject;
+            memo?: JsonObject;
+            moduleSpec?: JsonObject;
+        };
+    }
+
+    export type ChatViewSlotRenderReturn =
+        | string
+        | ChatViewSlotRenderObjectResult
+        | null
+        | void
+        | Promise<string | ChatViewSlotRenderObjectResult | null | void>;
+
     export type InputMenuToggleSlot =
         | "thinking"
         | "memory"
@@ -126,6 +153,9 @@ export namespace ToolPkg {
         | "view_opened"
         | "view_updated"
         | "view_closed";
+
+    export type ChatViewSlotEventName =
+        | "render";
 
     export type ChatMessageEventName =
         | "message_persisted";
@@ -473,6 +503,17 @@ export namespace ToolPkg {
         title?: string;
     }
 
+    /** Payload passed to a chat view slot renderer. */
+    export interface ChatViewSlotEventPayload extends JsonObject {
+        slot?: ChatViewSlot | string;
+        chatId?: string;
+        runtime?: string;
+        inputStyle?: string;
+        isProcessing?: boolean;
+        isInputFocused?: boolean;
+        inputText?: string;
+    }
+
     export interface ChatMessageEventPayload extends JsonObject {
         chatId: string;
         timestamp: number;
@@ -518,6 +559,9 @@ export namespace ToolPkg {
 
     export interface ChatViewHookEvent
         extends HookEventBase<ChatViewEventName, ChatViewEventPayload> {}
+
+    export interface ChatViewSlotHookEvent
+        extends HookEventBase<ChatViewSlotEventName, ChatViewSlotEventPayload> {}
 
     export interface ChatMessageHookEvent
         extends HookEventBase<ChatMessageEventName, ChatMessageEventPayload> {}
@@ -756,6 +800,13 @@ export namespace ToolPkg {
         function: HookHandler<ChatViewHookEvent>;
     }
 
+    /** Registers a renderer for a host chat-view UI slot. */
+    export interface ChatViewSlotPluginRegistration {
+        id: string;
+        slot: ChatViewSlot | string;
+        function: (event: ChatViewSlotHookEvent) => ChatViewSlotRenderReturn;
+    }
+
     export interface ChatMessageHookRegistration {
         id: string;
         function: ChatMessageHookHandler;
@@ -898,6 +949,7 @@ export namespace ToolPkg {
         registerInputMenuTogglePlugin(definition: InputMenuTogglePluginRegistration): void;
         registerChatInputHook(definition: ChatInputHookRegistration): void;
         registerChatViewHook(definition: ChatViewHookRegistration): void;
+        registerChatViewSlotPlugin(definition: ChatViewSlotPluginRegistration): void;
         registerChatMessageHook(definition: ChatMessageHookRegistration): void;
         registerToolLifecycleHook(definition: ToolLifecycleHookRegistration): void;
         registerPromptInputHook(definition: PromptInputHookRegistration): void;
@@ -936,6 +988,8 @@ declare global {
     function registerToolPkgChatInputHook(definition: ToolPkg.ChatInputHookRegistration): void;
 
     function registerToolPkgChatViewHook(definition: ToolPkg.ChatViewHookRegistration): void;
+
+    function registerToolPkgChatViewSlotPlugin(definition: ToolPkg.ChatViewSlotPluginRegistration): void;
 
     function registerToolPkgChatMessageHook(definition: ToolPkg.ChatMessageHookRegistration): void;
 
