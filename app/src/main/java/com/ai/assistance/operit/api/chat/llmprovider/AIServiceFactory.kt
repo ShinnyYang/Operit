@@ -194,7 +194,7 @@ private class LlmNetworkEventListener(
     }
 }
 
-private object SharedHttpClient {
+internal object SharedHttpClient {
     val instance: OkHttpClient by lazy {
         UnsafeModelSsl.apply(
             OkHttpClient.Builder()

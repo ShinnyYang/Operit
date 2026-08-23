@@ -11,18 +11,16 @@ import {
   SaveIcon,
   TuneIcon
 } from '../../../../util/chatIcons';
-import {
-  clampThinkingQualityLevel,
-  MAX_THINKING_QUALITY_LEVEL
-} from '../../../../util/thinkingQuality';
 import type {
   WebInputSettingsState,
   WebModelSelectorConfig,
   WebMemorySelectorState,
   WebModelSelectorState,
-  WebSelectModelResponse
+  WebSelectModelResponse,
+  WebThinkingQualityMapping
 } from '../../../../util/chatTypes';
 import { CharacterCardModelBindingSwitchConfirmDialog } from '../common/CharacterCardModelBindingSwitchConfirmDialog';
+import { ThinkingQualitySlider } from '../common/ThinkingQualitySlider';
 
 type InfoContent = {
   title: string;
@@ -49,7 +47,7 @@ const INFO_COPY = {
   },
   thinkingQuality: {
     title: '思考程度',
-    description: '仅在思考模式下生效；GPT-5.6 系列使用 5 档，其它模型保持原有 4 档。'
+    description: '仅在思考模式下生效；具体档位与当前模型配置一致。'
   },
   maxMode: {
     title: 'Max模式',
@@ -479,7 +477,7 @@ function ClassicThinkingSettingsItem({
   onQualityInfoClick,
   onToggle,
   onToggleInfoClick,
-  maxQualityLevel,
+  qualityMapping,
   qualityLevel
 }: {
   enabled: boolean;
@@ -490,7 +488,7 @@ function ClassicThinkingSettingsItem({
   onQualityInfoClick: () => void;
   onToggle: () => void;
   onToggleInfoClick: () => void;
-  maxQualityLevel: number;
+  qualityMapping: WebThinkingQualityMapping | undefined;
   qualityLevel: number;
 }) {
   return (
@@ -519,29 +517,19 @@ function ClassicThinkingSettingsItem({
             onToggle={onToggle}
             title="思考模式"
           />
-          {enabled ? (
+          {enabled && qualityMapping?.mode === 'levels' ? (
             <ClassicSettingsRow className="is-child">
               <span className="classic-settings-popup-icon is-active">
                 <TuneIcon size={16} />
               </span>
               <ClassicInfoButton onClick={onQualityInfoClick} />
               <ClassicInfoSpacer />
-              <span className="classic-settings-popup-copy">
-                <strong>思考程度</strong>
-              </span>
-              <select
-                className="classic-settings-popup-select"
-                onChange={(event) => {
-                  onQualityChange(Number(event.target.value));
-                }}
-                value={String(qualityLevel)}
-              >
-                {Array.from({ length: maxQualityLevel }, (_, index) => index + 1).map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
+              <ThinkingQualitySlider
+                label="思考程度"
+                mapping={qualityMapping}
+                onChange={onQualityChange}
+                value={qualityLevel}
+              />
             </ClassicSettingsRow>
           ) : null}
         </div>
@@ -701,8 +689,8 @@ export function ClassicChatSettingsBar({
   const thinkingEnabled = inputSettings?.enable_thinking_mode ?? false;
   const thinkingQuality = inputSettings
     ? {
-        maxLevel: MAX_THINKING_QUALITY_LEVEL,
-        level: clampThinkingQualityLevel(inputSettings.thinking_quality_level)
+        level: inputSettings.thinking_quality_level,
+        mapping: modelSelector?.thinking_quality_mapping
       }
     : null;
   const enableMaxContextMode = inputSettings?.enable_max_context_mode ?? false;
@@ -798,7 +786,7 @@ export function ClassicChatSettingsBar({
                       void onUpdateInputSettings({ enable_thinking_mode: !thinkingEnabled });
                     }}
                     onToggleInfoClick={() => openInfo(INFO_COPY.thinkingMode)}
-                    maxQualityLevel={thinkingQuality.maxLevel}
+                    qualityMapping={thinkingQuality.mapping}
                     qualityLevel={thinkingQuality.level}
                   />
                 ) : null}

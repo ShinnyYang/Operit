@@ -3094,7 +3094,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="thinking_type_off">off</string>
     <string name="thinking_type_mode">mode</string>
     <string name="thinking_quality">Nivelul de reflecție</string>
-    <string name="thinking_quality_desc">Se aplică numai în modul de gândire.GPT-5.6 Utilizarea în serie 5 fișier, celelalte modele rămân neschimbate 4 Nivel; cu cât valoarea este mai mare, cu atât gândirea este mai profundă.</string>
+    <string name="thinking_quality_desc">Se aplică numai în modul de gândire. Valorile disponibile urmează maparea reală a modelului și furnizorului curent.</string>
     <string name="model_config">Configurarea modelului</string>
     <string name="model_config_desc">Alegeți aici un model deja configurat sau faceți clic pe „Gestionare configurații” de mai jos pentru a crea sau modifica un model</string>
     <string name="prompt">Cuvânt-cheie</string>

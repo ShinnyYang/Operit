@@ -186,12 +186,9 @@ class OpenAIResponsesProvider(
             return null
         }
 
-        val effortLevels = listOf("low", "medium", "high", "xhigh", "max")
-        val qualityIndex = qualityLevel.coerceIn(
-            ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-            ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-        ) - 1
-        return effortLevels[qualityIndex]
+        return ThinkingQualityMappingRegistry
+            .resolve(responsesProviderType.name, modelName)
+            .textValueFor(qualityLevel)
     }
 
     private fun shouldAttachPromptCacheKey(): Boolean {

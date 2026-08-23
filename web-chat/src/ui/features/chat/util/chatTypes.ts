@@ -276,6 +276,17 @@ export interface WebModelSelectorConfig {
   selected_model_index?: number | null;
 }
 
+export interface WebThinkingQualityOption {
+  level: number;
+  label: string;
+}
+
+export interface WebThinkingQualityMapping {
+  mode: 'levels' | 'toggle_only';
+  parameter_label: string;
+  options: WebThinkingQualityOption[];
+}
+
 export interface WebModelSelectorState {
   current_config_id: string;
   current_config_name?: string | null;
@@ -285,6 +296,7 @@ export interface WebModelSelectorState {
   locked_by_character_card: boolean;
   locked_character_card_id?: string | null;
   locked_character_card_name?: string | null;
+  thinking_quality_mapping: WebThinkingQualityMapping;
   configs: WebModelSelectorConfig[];
 }
 

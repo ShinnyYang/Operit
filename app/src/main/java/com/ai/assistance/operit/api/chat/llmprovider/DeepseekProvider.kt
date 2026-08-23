@@ -4,6 +4,7 @@ import android.content.Context
 import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.core.chat.hooks.PromptTurnKind
 import com.ai.assistance.operit.util.AppLogger
+import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.preferences.ApiPreferences
@@ -28,7 +29,7 @@ class DeepseekProvider(
     modelName: String,
     client: OkHttpClient,
     customHeaders: Map<String, String> = emptyMap(),
-    providerType: com.ai.assistance.operit.data.model.ApiProviderType = com.ai.assistance.operit.data.model.ApiProviderType.DEEPSEEK,
+    providerType: ApiProviderType = ApiProviderType.DEEPSEEK,
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
@@ -455,12 +456,9 @@ class DeepseekProvider(
             return null
         }
 
-        val efforts = listOf("low", "high", "max", "max", "max")
-        val qualityIndex = qualityLevel.coerceIn(
-            ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-            ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-        ) - 1
-        return efforts[qualityIndex]
+        return ThinkingQualityMappingRegistry
+            .resolve(ApiProviderType.DEEPSEEK.name, modelName)
+            .textValueFor(qualityLevel)
     }
 
     override suspend fun sendMessage(
