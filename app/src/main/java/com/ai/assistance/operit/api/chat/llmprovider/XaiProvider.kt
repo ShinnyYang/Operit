@@ -15,14 +15,14 @@ import org.json.JSONObject
 
 /** Maps the app's five quality levels to xAI's supported reasoning efforts. */
 internal object XaiReasoningMapper {
-    private val enabledEfforts = listOf("low", "medium", "medium", "high", "xhigh")
+    internal val supportedEfforts = listOf("low", "medium", "medium", "high", "xhigh")
 
     fun effortForQuality(enableThinking: Boolean, qualityLevel: Int): String {
         if (!enableThinking) {
             // xAI reasoning models cannot disable reasoning; use the lowest supported effort.
             return "low"
         }
-        return enabledEfforts[qualityLevel.coerceIn(1, 5) - 1]
+        return supportedEfforts[qualityLevel.coerceIn(1, 5) - 1]
     }
 }
 

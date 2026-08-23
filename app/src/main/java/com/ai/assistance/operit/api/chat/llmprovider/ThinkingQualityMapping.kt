@@ -60,6 +60,13 @@ internal object ThinkingQualityMappingRegistry {
         val normalizedModelName = modelName.trim().lowercase(Locale.US)
 
         return when (providerType) {
+            ApiProviderType.XAI.name ->
+                if (xaiModelSupportsReasoningEffort(normalizedModelName)) {
+                    textMapping("reasoning_effort", XaiReasoningMapper.supportedEfforts)
+                } else {
+                    ThinkingQualityMapping.toggleOnly("enable_thinking")
+                }
+
             ApiProviderType.OPENAI.name,
             ApiProviderType.OPENAI_GENERIC.name,
             ApiProviderType.OPENAI_RESPONSES.name,

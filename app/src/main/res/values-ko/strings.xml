@@ -3492,7 +3492,7 @@
     <string name="model_name_multiple_hint"> (쉼표로 여러 모델을 구분할 수 있음)</string>
     <string name="auto_save_failed">자동 저장 실패</string>
     <string name="provider_openai">OpenAI(GPT 시리즈)</string>
-    <string name="provider_xai">xAI (Grok)</string>
+    <string name="provider_xai">SpaceXAI (Grok)</string>
     <string name="provider_openai_responses">OpenAI(Responses API)</string>
     <string name="provider_openai_responses_generic">OpenAI Responses(일반)</string>
     <string name="provider_anthropic">Anthropic(Claude 시리즈)</string>

@@ -3353,7 +3353,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="model_name_multiple_hint">(Você pode separar vários modelos com vírgulas)</string>
     <string name="auto_save_failed">Falha no salvamento automático</string>
     <string name="provider_openai">OpenAI (série GPT)</string>
-    <string name="provider_xai">xAI (Grok)</string>
+    <string name="provider_xai">SpaceXAI (Grok)</string>
     <string name="provider_openai_responses">OpenAI (API de respostas)</string>
     <string name="provider_openai_responses_generic">Respostas OpenAIGeral</string>
     <string name="provider_anthropic">Antrópico (Série Claude)</string>
