@@ -202,6 +202,18 @@ internal class OpenCodeChatProvider(
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall
 ) {
+    // OpenCode 的 OpenAI Chat 路由会向后端透传 DeepSeek 风格 thinking 输出
+    // （即使 Operit 未显式开启 thinking，OpenCode 也可能按模型能力自行开启）。
+    // 该协议要求历史 assistant 消息必须原样回传 reasoning_content，否则
+    // 在模型完成工具调用后的下一轮请求会返回 400：
+    //   "The reasoning_content in the thinking mode must be passed back to the API."
+    //
+    // 以下重写将 reasoning_content 的提取与回传完全收敛在 OpenCodeChatProvider 内部：
+    //   1) 强制 preserveThinkInHistory = true，让父类 buildMessagesAndCountTokens
+    //      保留历史 assistant 消息中的 <think> 内容；
+    //   2) 覆盖 customizeFinalRequestObject，在 messagesArray 后处理阶段对
+    //      assistant 消息做 think -> reasoning_content 的拆分与回填。
+    // 该实现不动通用 OpenAIProvider，不影响其它 OpenAI 兼容 provider 的行为。
     override fun createRequestBody(
         context: Context,
         chatHistory: List<PromptTurn>,
@@ -217,9 +229,47 @@ internal class OpenCodeChatProvider(
             modelParameters = modelParameters,
             stream = stream,
             availableTools = availableTools,
-            preserveThinkInHistory = preserveThinkInHistory
+            preserveThinkInHistory = true
         )
     )
+
+    override fun customizeFinalRequestObject(
+        requestObject: JSONObject,
+        messagesArray: JSONArray,
+        toolsJson: String?
+    ) {
+        if (messagesArray.length() == 0) return
+        for (i in 0 until messagesArray.length()) {
+            val message = messagesArray.optJSONObject(i) ?: continue
+            if (message.optString("role") != "assistant") continue
+            extractReasoningContentIntoMessage(context, message)
+        }
+    }
+
+    /**
+     * 对单个 assistant 消息提取 <think>...</think> 内容，写入 reasoning_content 字段，
+     * 并将清理后的内容写回 content 字段。
+     *
+     * 仅处理纯文本 content（多模态 JSONArray 形态跳过，避免改动既有
+     * 多模态构造逻辑；该路径在 OpenCodeChatProvider 实际请求中极少触发）。
+     */
+    private fun extractReasoningContentIntoMessage(context: Context, message: JSONObject) {
+        val rawContent = message.opt("content") ?: return
+        val textContent: String = when (rawContent) {
+            is String -> rawContent
+            else -> return
+        }
+        if (!textContent.contains("<think", ignoreCase = false) &&
+            !textContent.contains("<thinking", ignoreCase = false)
+        ) {
+            return
+        }
+        val (cleanContent, reasoning) = ChatUtils.extractThinkingContent(textContent)
+        // 总是写入 reasoning_content（即使为空，OpenAI Chat 路由上游在历史不含
+        // 该字段时也会拒绝；写空字符串与未写含义不同）。
+        message.put("reasoning_content", reasoning)
+        message.put("content", buildContentField(context, cleanContent))
+    }
 }
 
 /** OpenCode's OpenAI Responses route. */
