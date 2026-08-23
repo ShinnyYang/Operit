@@ -5,10 +5,12 @@ import com.ai.assistance.operit.util.AppLogger
 import java.io.IOException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 
+@Serializable
 data class CodexUsageWindow(
     val usedPercent: Int,
     val windowDurationSeconds: Long?,
@@ -18,10 +20,11 @@ data class CodexUsageWindow(
         get() = (100 - usedPercent).coerceIn(0, 100)
 }
 
+@Serializable
 data class CodexUsageSnapshot(
     val planType: String?,
-    val primaryWindow: CodexUsageWindow?,
-    val secondaryWindow: CodexUsageWindow?,
+    val fiveHourWindow: CodexUsageWindow?,
+    val sevenDayWindow: CodexUsageWindow?,
 )
 
 class CodexUsageClient(
@@ -67,10 +70,18 @@ class CodexUsageClient(
     internal fun parseUsage(responseBody: String): CodexUsageSnapshot {
         val root = JSONObject(responseBody)
         val rateLimit = root.optJSONObject("rate_limit")
+        val windows = listOf(
+            parseWindow(rateLimit?.optJSONObject("primary_window")),
+            parseWindow(rateLimit?.optJSONObject("secondary_window")),
+        ).filterNotNull()
         return CodexUsageSnapshot(
             planType = root.optString("plan_type", "").trim().takeIf { it.isNotEmpty() },
-            primaryWindow = parseWindow(rateLimit?.optJSONObject("primary_window")),
-            secondaryWindow = parseWindow(rateLimit?.optJSONObject("secondary_window")),
+            fiveHourWindow = windows.firstOrNull {
+                it.windowDurationSeconds == FIVE_HOUR_WINDOW_SECONDS
+            },
+            sevenDayWindow = windows.firstOrNull {
+                it.windowDurationSeconds == SEVEN_DAY_WINDOW_SECONDS
+            },
         )
     }
 
@@ -94,5 +105,7 @@ class CodexUsageClient(
 
     private companion object {
         const val TAG = "CodexUsageClient"
+        const val FIVE_HOUR_WINDOW_SECONDS = 5L * 60L * 60L
+        const val SEVEN_DAY_WINDOW_SECONDS = 7L * 24L * 60L * 60L
     }
 }

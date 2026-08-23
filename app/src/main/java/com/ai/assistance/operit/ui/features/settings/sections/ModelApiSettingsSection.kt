@@ -127,8 +127,8 @@ fun ModelApiSettingsSection(
     val scope = rememberCoroutineScope()
     val codexAuthManager = remember { CodexAuthManager.getInstance(context) }
     val codexAuthState by codexAuthManager.authState.collectAsState()
+    val persistedCodexUsage by codexAuthManager.usageSnapshotFlow.collectAsState(initial = null)
     var showCodexLoginDialog by remember(config.id) { mutableStateOf(false) }
-    var codexUsage by remember(config.id) { mutableStateOf<CodexUsageSnapshot?>(null) }
     var codexUsageLoading by remember(config.id) { mutableStateOf(false) }
     var codexUsageError by remember(config.id) { mutableStateOf(false) }
     var codexUsageNow by remember { mutableLongStateOf(System.currentTimeMillis() / 1000L) }
@@ -161,9 +161,11 @@ fun ModelApiSettingsSection(
     var previousProviderTypeId by remember(config.id) { mutableStateOf(config.apiProviderTypeId) }
     val selectedApiProvider = ApiProviderType.fromProviderTypeId(selectedProviderTypeId)
     val isCodexProvider = selectedApiProvider == ApiProviderType.OPENAI_CODEX
+    val codexUsage = persistedCodexUsage
+        ?.takeIf { it.accountId == codexAuthState?.accountId }
+        ?.usage
 
     LaunchedEffect(codexAuthState?.accountId) {
-        codexUsage = null
         codexUsageError = false
     }
 
@@ -180,13 +182,10 @@ fun ModelApiSettingsSection(
             codexUsageLoading = true
             codexUsageError = false
             val result = codexAuthManager.fetchUsage()
-            result
-                .onSuccess { snapshot -> codexUsage = snapshot }
-                .onFailure { error ->
-                    AppLogger.e(TAG, "获取 Codex 额度失败", error)
-                    codexUsage = null
-                    codexUsageError = true
-                }
+            result.exceptionOrNull()?.let { error ->
+                AppLogger.e(TAG, "获取 Codex 额度失败", error)
+            }
+            codexUsageError = result.isFailure
             codexUsageLoading = false
         }
     }
@@ -592,7 +591,6 @@ fun ModelApiSettingsSection(
                      onLogout = {
                          scope.launch {
                              codexAuthManager.logout()
-                             codexUsage = null
                              codexUsageError = false
                              EnhancedAIService.refreshAllServices(configManager.appContext)
                              showNotification(context.getString(R.string.codex_logout_success))
@@ -1288,13 +1286,13 @@ private fun CodexQuotaCapsule(
         ) {
             CodexQuotaWindowRow(
                 label = stringResource(R.string.codex_quota_five_hour),
-                window = usage?.primaryWindow,
+                window = usage?.fiveHourWindow,
                 nowEpochSeconds = nowEpochSeconds,
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
             CodexQuotaWindowRow(
                 label = stringResource(R.string.codex_quota_seven_day),
-                window = usage?.secondaryWindow,
+                window = usage?.sevenDayWindow,
                 nowEpochSeconds = nowEpochSeconds,
             )
             if (usageError) {
@@ -1326,20 +1324,24 @@ private fun CodexQuotaWindowRow(
                 fontWeight = FontWeight.SemiBold,
             )
             Text(
-                text = window?.let { "${it.remainingPercent}%" }
+                text = window?.let {
+                    stringResource(R.string.codex_quota_remaining, it.remainingPercent)
+                }
                     ?: stringResource(R.string.codex_quota_no_data),
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
-        LinearProgressIndicator(
-            progress = { (window?.remainingPercent ?: 0) / 100f },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(6.dp)),
-        )
+        if (window != null) {
+            LinearProgressIndicator(
+                progress = { window.remainingPercent / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+            )
+        }
 
         val resetAt = window?.resetsAtEpochSeconds
         if (resetAt != null) {

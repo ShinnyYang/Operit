@@ -1,6 +1,6 @@
 ---
 fork_repository: https://github.com/luojiaping/Operit.git
-working_branch: fix/provider-logos-token-statistics-main
+working_branch: feat/openai-codex-oauth
 status: in_progress
 ---
 
@@ -36,8 +36,9 @@ Codex without changing the existing XML tool execution bridge.
 
 ## Steps
 
-1. [ ] Add Codex usage models, client, and settings state
-2. [ ] Replace the Codex generic settings rows with the compact surface
-3. [ ] Add Codex PDF `input_file` request construction
-4. [ ] Add tests, docs, and completion records
-5. [ ] Inspect the diff and trigger the remote Release build
+1. [DONE] Add Codex usage models, client, and settings state
+2. [DONE] Replace the Codex generic settings rows with the compact surface
+3. [DONE] Add Codex PDF `input_file` request construction
+4. [DONE] Add tests, docs, and completion records
+5. [DONE] Inspect the diff and trigger the remote Release build
+6. [ ] Correct window classification and persist the latest usage snapshot

@@ -8282,6 +8282,7 @@
     <string name="codex_direct_media_processing_desc">Send images and PDFs directly to Codex</string>
     <string name="codex_quota_five_hour">Last 5 hours</string>
     <string name="codex_quota_seven_day">Last 7 days</string>
+    <string name="codex_quota_remaining">%1$d%% remaining</string>
     <string name="codex_quota_no_data">No data</string>
     <string name="codex_usage_refresh">Refresh Codex usage</string>
     <string name="codex_usage_unavailable">Usage is temporarily unavailable</string>

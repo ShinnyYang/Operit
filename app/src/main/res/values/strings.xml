@@ -8275,6 +8275,7 @@
     <string name="codex_direct_media_processing_desc">将图片和 PDF 直接发送给 Codex 处理</string>
     <string name="codex_quota_five_hour">近 5 小时</string>
     <string name="codex_quota_seven_day">近 7 天</string>
+    <string name="codex_quota_remaining">剩余 %1$d%%</string>
     <string name="codex_quota_no_data">暂无数据</string>
     <string name="codex_usage_refresh">刷新 Codex 额度</string>
     <string name="codex_usage_unavailable">额度暂时不可用</string>
