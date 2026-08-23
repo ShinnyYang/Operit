@@ -19,13 +19,10 @@ import {
   StopIcon,
   TuneIcon
 } from '../../../../util/chatIcons';
-import {
-  clampThinkingQualityLevel,
-  MAX_THINKING_QUALITY_LEVEL
-} from '../../../../util/thinkingQuality';
 import { InputOverlayPopup } from '../common/InputOverlayPopup';
 import { CharacterCardModelBindingSwitchConfirmDialog } from '../common/CharacterCardModelBindingSwitchConfirmDialog';
 import { PendingMessageQueuePanel } from '../common/PendingMessageQueuePanel';
+import { ThinkingQualitySlider } from '../common/ThinkingQualitySlider';
 import type {
   InputProcessingStage,
   PendingQueueMessageItem,
@@ -34,6 +31,7 @@ import type {
   WebModelSelectorConfig,
   WebModelSelectorState,
   WebSelectModelResponse,
+  WebThinkingQualityMapping,
   WebThemeSnapshot,
   WebUploadedAttachment
 } from '../../../../util/chatTypes';
@@ -63,7 +61,7 @@ const INFO_COPY = {
   },
   thinkingQuality: {
     title: '思考程度',
-    description: '仅在思考模式下生效；GPT-5.6 系列使用 5 档，其它模型保持原有 4 档。'
+    description: '仅在思考模式下生效；具体档位与当前模型配置一致。'
   },
   maxMode: {
     title: 'Max模式',
@@ -492,7 +490,7 @@ function AgentThinkingSettingsItem({
   onQualityInfoClick,
   onToggle,
   onToggleInfoClick,
-  maxQualityLevel,
+  qualityMapping,
   qualityLevel
 }: {
   enabled: boolean;
@@ -503,7 +501,7 @@ function AgentThinkingSettingsItem({
   onQualityInfoClick: () => void;
   onToggle: () => void;
   onToggleInfoClick: () => void;
-  maxQualityLevel: number;
+  qualityMapping: WebThinkingQualityMapping | undefined;
   qualityLevel: number;
 }) {
   return (
@@ -532,30 +530,19 @@ function AgentThinkingSettingsItem({
             onToggle={onToggle}
             title="思考模式"
           />
-          {enabled ? (
+          {enabled && qualityMapping?.mode === 'levels' ? (
             <AgentSettingsRow className="is-child">
               <span className="agent-settings-icon is-active">
                 <TuneIcon size={16} />
               </span>
               <AgentInfoButton onClick={onQualityInfoClick} />
               <AgentInfoSpacer />
-              <span className="agent-settings-copy">
-                <strong>思考程度</strong>
-                <em>等级越高，响应通常越慢</em>
-              </span>
-              <select
-                className="agent-settings-select"
-                onChange={(event) => {
-                  onQualityChange(Number(event.target.value));
-                }}
-                value={String(qualityLevel)}
-              >
-                {Array.from({ length: maxQualityLevel }, (_, index) => index + 1).map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
+              <ThinkingQualitySlider
+                label="思考程度"
+                mapping={qualityMapping}
+                onChange={onQualityChange}
+                value={qualityLevel}
+              />
             </AgentSettingsRow>
           ) : null}
         </div>
@@ -782,8 +769,8 @@ export function AgentChatInputSection({
   const thinkingEnabled = inputSettings?.enable_thinking_mode ?? false;
   const thinkingQuality = inputSettings
     ? {
-        maxLevel: MAX_THINKING_QUALITY_LEVEL,
-        level: clampThinkingQualityLevel(inputSettings.thinking_quality_level)
+        level: inputSettings.thinking_quality_level,
+        mapping: modelSelector?.thinking_quality_mapping
       }
     : null;
   const enableMaxContextMode = inputSettings?.enable_max_context_mode ?? false;
@@ -979,7 +966,7 @@ export function AgentChatInputSection({
                     void onUpdateInputSettings({ enable_thinking_mode: !thinkingEnabled });
                   }}
                   onToggleInfoClick={() => setInfoPopupContent(INFO_COPY.thinkingMode)}
-                  maxQualityLevel={thinkingQuality.maxLevel}
+                  qualityMapping={thinkingQuality.mapping}
                   qualityLevel={thinkingQuality.level}
                 />
               ) : null}

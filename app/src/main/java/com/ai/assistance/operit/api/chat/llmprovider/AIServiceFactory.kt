@@ -194,7 +194,7 @@ private class LlmNetworkEventListener(
     }
 }
 
-private object SharedHttpClient {
+internal object SharedHttpClient {
     val instance: OkHttpClient by lazy {
         UnsafeModelSsl.apply(
             OkHttpClient.Builder()
@@ -373,6 +373,18 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall
+                )
+
+            ApiProviderType.OPENAI_CODEX ->
+                CodexProvider(
+                    authManager = com.ai.assistance.operit.data.api.CodexAuthManager.getInstance(context),
+                    modelName = config.modelName,
+                    httpClient = httpClient,
+                    customHeaders = customHeaders,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall,
                 )
 
             // Claude格式，支持Anthropic Claude系列

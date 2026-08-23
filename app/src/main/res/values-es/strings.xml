@@ -1377,7 +1377,7 @@
     <string name="thinking_type_off">off</string>
     <string name="thinking_type_mode">mode</string>
     <string name="thinking_quality">Intensidad de pensamiento</string>
-    <string name="thinking_quality_desc">Solo funciona en el modo de pensamiento. Los modelos GPT-5.6 usan cinco niveles; los demás conservan los cuatro niveles originales. Un valor mayor implica un razonamiento más profundo.</string>
+    <string name="thinking_quality_desc">Solo funciona en el modo de pensamiento. Los valores disponibles siguen el mapeo real del modelo y del proveedor actuales.</string>
     
     <string name="provider_doubao">Doubao (Modelo Volcano)</string>
     <string name="provider_nvidia">NVIDIA (API Catalog)</string>
@@ -7499,4 +7499,18 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Activo de Release</string>
     <string name="markdown_link_not_openable">Este enlace apunta a una referencia dentro del documento y no se puede abrir</string>
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">Inicia sesión primero en OpenAI Codex</string>
+    <string name="codex_login_title">Iniciar sesión en OpenAI Codex</string>
+    <string name="codex_login_starting">Preparando el inicio de sesión de Codex...</string>
+    <string name="codex_login_waiting">Completa el inicio de sesión en el navegador</string>
+    <string name="codex_login_action">Iniciar sesión con ChatGPT</string>
+    <string name="codex_login_success">Inicio de sesión de OpenAI Codex correcto</string>
+    <string name="codex_login_failed">Error al iniciar sesión en OpenAI Codex: %1$s</string>
+    <string name="codex_logout_action">Cerrar sesión de Codex</string>
+    <string name="codex_logout_success">Sesión de OpenAI Codex cerrada</string>
+    <string name="codex_auth_title">Cuenta de OpenAI Codex</string>
+    <string name="codex_auth_not_logged_in">Inicia sesión con ChatGPT para usar el acceso de suscripción de Codex</string>
+    <string name="codex_auth_account">Cuenta: %1$s</string>
+    <string name="codex_endpoint_fixed">El endpoint de Codex está fijado por el sistema</string>
 </resources>

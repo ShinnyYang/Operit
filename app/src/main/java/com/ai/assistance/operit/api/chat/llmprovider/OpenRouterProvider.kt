@@ -165,12 +165,9 @@ open class OpenRouterProvider(
             return null
         }
 
-        val reasoningBudgets = listOf(null, 1_024, 16_000, 32_000, 64_000)
-        val qualityIndex = qualityLevel.coerceIn(
-            ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-            ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-        ) - 1
-        val requestedBudget = reasoningBudgets[qualityIndex]
+        val requestedBudget = ThinkingQualityMappingRegistry
+            .resolve(ApiProviderType.OPENROUTER.name, modelName)
+            .numberValueFor(qualityLevel)
 
         if (requestedBudget == null) {
             return null

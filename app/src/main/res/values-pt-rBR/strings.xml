@@ -2679,7 +2679,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="thinking_type_off">desligado</string>
     <string name="thinking_type_mode">modo</string>
     <string name="thinking_quality">grau de pensamento</string>
-    <string name="thinking_quality_desc">Eficaz apenas no modo de pensamento. Os modelos GPT-5.6 usam cinco níveis; os demais mantêm os quatro níveis originais. Valores maiores usam raciocínio mais profundo.</string>
+    <string name="thinking_quality_desc">Eficaz apenas no modo de pensamento. Os valores disponíveis seguem o mapeamento real do modelo e do provedor atuais.</string>
     <string name="model_config">Configuração do modelo</string>
     <string name="model_config_desc">Selecione um modelo já configurado aqui ou clique em Gerenciar configuração abaixo para criar ou modificar um modelo.</string>
     <string name="prompt">palavra alerta</string>
@@ -7269,4 +7269,18 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Ativo do Release</string>
     <string name="markdown_link_not_openable">Este link aponta para uma referência dentro do documento e não pode ser aberto</string>
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">Faça login no OpenAI Codex primeiro</string>
+    <string name="codex_login_title">Login no OpenAI Codex</string>
+    <string name="codex_login_starting">Preparando o login do Codex...</string>
+    <string name="codex_login_waiting">Conclua o login no navegador</string>
+    <string name="codex_login_action">Entrar com ChatGPT</string>
+    <string name="codex_login_success">Login do OpenAI Codex concluído</string>
+    <string name="codex_login_failed">Falha no login do OpenAI Codex: %1$s</string>
+    <string name="codex_logout_action">Sair do Codex</string>
+    <string name="codex_logout_success">Você saiu do OpenAI Codex</string>
+    <string name="codex_auth_title">Conta OpenAI Codex</string>
+    <string name="codex_auth_not_logged_in">Entre com o ChatGPT para usar o acesso de assinatura do Codex</string>
+    <string name="codex_auth_account">Conta: %1$s</string>
+    <string name="codex_endpoint_fixed">O endpoint do Codex é fixado pelo sistema</string>
 </resources>
