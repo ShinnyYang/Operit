@@ -10,6 +10,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.ai.assistance.operit.data.model.CustomParameterData
+import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelConfigData
 import com.ai.assistance.operit.data.model.ModelConfigDefaults
 import com.ai.assistance.operit.data.model.ModelConfigSummary
@@ -268,23 +269,35 @@ class ModelConfigManager(private val context: Context) {
         return configId
     }
 
-    // 删除配置
-    suspend fun deleteConfig(configId: String) {
+    // 删除配置并清理所有功能对该配置的引用
+    suspend fun deleteConfig(configId: String): List<FunctionType> {
         if (configId == DEFAULT_CONFIG_ID) {
             // 不允许删除默认配置
-            return
+            return emptyList()
         }
 
         val configList = configListFlow.first().toMutableList()
+        if (!configList.remove(configId)) {
+            return emptyList()
+        }
 
-        // 从列表中移除
-        configList.remove(configId)
+        val functionalConfigManager = FunctionalConfigManager(context)
+        functionalConfigManager.initializeIfNeeded()
+        val mappingRepair = remapDeletedConfigReferences(
+            mapping = functionalConfigManager.functionConfigMappingWithIndexFlow.first(),
+            deletedConfigId = configId,
+        )
+        if (mappingRepair.affectedFunctions.isNotEmpty()) {
+            functionalConfigManager.saveFunctionConfigMappingWithIndex(mappingRepair.mapping)
+        }
+
         context.modelConfigDataStore.edit { preferences ->
             // 删除配置记录 - 修复null赋值问题
             preferences.remove(stringPreferencesKey("config_${configId}"))
             // 更新配置列表
             preferences[CONFIG_LIST_KEY] = json.encodeToString(configList)
-                                }
+        }
+        return mappingRepair.affectedFunctions
     }
 
     // 更新配置基本信息（名称等）
