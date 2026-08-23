@@ -24,6 +24,34 @@ data class FunctionConfigMapping(
     val modelIndex: Int = 0
 )
 
+internal data class FunctionConfigMappingRepair(
+    val mapping: Map<FunctionType, FunctionConfigMapping>,
+    val affectedFunctions: List<FunctionType>,
+)
+
+internal fun remapDeletedConfigReferences(
+    mapping: Map<FunctionType, FunctionConfigMapping>,
+    deletedConfigId: String,
+): FunctionConfigMappingRepair {
+    val updatedMapping = mapping.toMutableMap()
+    val affectedFunctions = mapping
+        .filterValues { it.configId == deletedConfigId }
+        .keys
+        .sortedBy { it.name }
+
+    affectedFunctions.forEach { functionType ->
+        updatedMapping[functionType] = FunctionConfigMapping(
+            configId = FunctionalConfigManager.DEFAULT_CONFIG_ID,
+            modelIndex = 0,
+        )
+    }
+
+    return FunctionConfigMappingRepair(
+        mapping = updatedMapping,
+        affectedFunctions = affectedFunctions,
+    )
+}
+
 /** 管理不同功能使用的模型配置 这个类用于将FunctionType映射到对应的ModelConfigID */
 class FunctionalConfigManager(private val context: Context) {
 

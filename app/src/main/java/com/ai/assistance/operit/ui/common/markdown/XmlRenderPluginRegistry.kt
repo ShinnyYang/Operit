@@ -214,7 +214,7 @@ object XmlRenderPluginRegistry {
     }
 
     @Composable
-    private fun RenderComposeDslScreen(
+    fun RenderComposeDslScreen(
         result: XmlRenderResult.ComposeDslScreen,
         modifier: Modifier,
         xmlStream: Stream<String>?,

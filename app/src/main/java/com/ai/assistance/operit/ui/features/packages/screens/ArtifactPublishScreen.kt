@@ -285,6 +285,7 @@ fun ArtifactPublishScreen(
                     null
                 }
         }
+    // Snapshot the delegated state before smart-casting; Kotlin cannot smart-cast delegated properties.
     val displayedLogo = packageLogo
     val logoPainter =
         rememberLogoPainter(
@@ -728,7 +729,7 @@ fun ArtifactPublishScreen(
             }
         }
 
-        if (selectedType == PublishArtifactType.PACKAGE && packageLogo != null) {
+        if (selectedType == PublishArtifactType.PACKAGE && displayedLogo != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -754,7 +755,7 @@ fun ArtifactPublishScreen(
                         Text(
                             text = stringResource(
                                 R.string.artifact_publish_logo_from_package,
-                                packageLogo.fileName
+                                displayedLogo.fileName
                             ),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,

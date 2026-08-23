@@ -12,6 +12,7 @@
 - XML 渲染插件。
 - 输入菜单开关插件。
 - AI 聊天输入框监听和提交 Hook。
+- Chat View 插槽渲染插件。
 - 聊天消息持久化通知 Hook。
 - 工具执行生命周期钩子。
 - Prompt 输入、历史、系统提示词、工具提示词、最终发送前的各类钩子。
@@ -51,6 +52,7 @@ ToolPkg.registerMessageProcessingPlugin(...)
 - `registerToolPkgXmlRenderPlugin(...)`
 - `registerToolPkgInputMenuTogglePlugin(...)`
 - `registerToolPkgChatInputHook(...)`
+- `registerToolPkgChatViewSlotPlugin(...)`
 - `registerToolPkgChatMessageHook(...)`
 - `registerToolPkgToolLifecycleHook(...)`
 - `registerToolPkgPromptInputHook(...)`
@@ -103,6 +105,7 @@ type LocalizedText = string | { [lang: string]: string }
 - `xml_render`
 - `input_menu_toggle`
 - 聊天输入框事件
+- Chat View Slot 渲染事件
 - 聊天消息持久化事件
 - 工具生命周期事件
 - Prompt 输入 / 历史 / 系统提示词 / 工具提示词 / 最终发送事件
@@ -245,6 +248,26 @@ interface PromptTurn {
 - `input_changed`
 - `submit_requested`
 - `submitted`
+
+### `ChatViewSlotEventPayload`
+
+Chat View Slot 是宿主聊天输入区提供的命名 UI 区域。当前支持：
+
+- `above_input`：输入控件上方
+- `input_drawer`：输入框上方的输入容器内部
+- `input_toolbar_right`：模型选择器右侧的工具栏区域
+
+事件 payload 包括：
+
+- `slot?`
+- `chatId?`
+- `runtime?`
+- `inputStyle?`
+- `isProcessing?`
+- `isInputFocused?`
+- `inputText?`
+
+事件名固定为 `render`。宿主拥有插槽位置，插件只描述当前上下文下要显示的内容。
 
 ### `ChatMessageEventPayload`
 
@@ -785,6 +808,32 @@ ToolPkg.registerChatInputHook({
   }
 });
 ```
+
+### 注册 Chat View Slot 插件
+
+```ts
+ToolPkg.registerChatViewSlotPlugin({
+  id: 'demo_chat_slot',
+  slot: 'above_input',
+  function(event) {
+    const payload = event.eventPayload;
+    if (payload.isProcessing) {
+      return { text: '处理中' };
+    }
+
+    return {
+      composeDsl: {
+        screen: 'ui/chat_slot/index.ui.js',
+        state: {
+          chatId: payload.chatId
+        }
+      }
+    };
+  }
+});
+```
+
+返回值可以是普通字符串，也可以是包含 `text`、`content` 或 `composeDsl` 的对象。没有内容时返回 `null` 或 `void`；Compose DSL 页面由宿主使用当前 ToolPkg 的运行时上下文渲染。
 
 ### 注册聊天消息持久化 Hook
 

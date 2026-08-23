@@ -45,6 +45,7 @@ import com.ai.assistance.operit.R
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isShiftPressed
@@ -59,6 +60,9 @@ import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.InputProcessingState
 import com.ai.assistance.operit.data.model.ChatMessage
 import com.ai.assistance.operit.core.tools.ToolProgressBus
+import com.ai.assistance.operit.plugins.chatview.ChatViewSlotPluginRegistry
+import com.ai.assistance.operit.plugins.chatview.ChatViewSlotRenderParams
+import com.ai.assistance.operit.plugins.chatview.ChatViewSlots
 import com.ai.assistance.operit.ui.common.animations.SimpleAnimatedVisibility
 import com.ai.assistance.operit.ui.features.chat.components.AttachmentChip
 import com.ai.assistance.operit.ui.features.chat.components.AttachmentSelectorPanel
@@ -112,6 +116,8 @@ fun ClassicChatInputSection(
     replyToMessage: ChatMessage? = null, // 回复目标消息
     onClearReply: (() -> Unit)? = null, // 清除回复状态的回调
     isWorkspaceOpen: Boolean = false,
+    currentChatId: String? = null,
+    inputMenuRuntime: String = "main",
     pendingQueueMessages: List<PendingQueueMessageItem> = emptyList(),
     isPendingQueueExpanded: Boolean = true,
     onPendingQueueExpandedChange: (Boolean) -> Unit = {},
@@ -121,6 +127,7 @@ fun ClassicChatInputSection(
 ) {
     val showTokenLimitDialog = remember { mutableStateOf(false) }
     val showFullscreenInput = remember { mutableStateOf(false) }
+    var isInputFocused by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val isProcessing =
         isLoading ||
@@ -300,6 +307,22 @@ fun ClassicChatInputSection(
                 ),
     ) {
         Column {
+            ChatViewSlotPluginRegistry.RenderSlot(
+                params = ChatViewSlotRenderParams(
+                    context = context,
+                    slot = ChatViewSlots.ABOVE_INPUT,
+                    chatId = currentChatId,
+                    runtime = inputMenuRuntime,
+                    inputStyle = "classic",
+                    isProcessing = isProcessing,
+                    isInputFocused = isInputFocused,
+                    inputText = userMessage.text
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+
             // Reply preview section
             replyToMessage?.let { message ->
                 Surface(
@@ -478,6 +501,20 @@ fun ClassicChatInputSection(
             val classicInputRowHorizontalPadding = if (chatInputFloating) 14.dp else 22.dp
             val classicInputRowVerticalPadding = if (chatInputFloating) 6.dp else 8.dp
 
+            ChatViewSlotPluginRegistry.RenderSlot(
+                params = ChatViewSlotRenderParams(
+                    context = context,
+                    slot = ChatViewSlots.INPUT_DRAWER,
+                    chatId = currentChatId,
+                    runtime = inputMenuRuntime,
+                    inputStyle = "classic",
+                    isProcessing = isProcessing,
+                    isInputFocused = isInputFocused,
+                    inputText = userMessage.text
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
+
             Row(
                 modifier =
                 Modifier
@@ -504,6 +541,7 @@ fun ClassicChatInputSection(
                     modifier = Modifier
                         .weight(1f)
                         .heightIn(min = 30.dp)
+                        .onFocusChanged { state -> isInputFocused = state.isFocused }
                         .onPreviewKeyEvent { keyEvent ->
                             if (!enableEnterToSend) {
                                 false
@@ -588,6 +626,22 @@ fun ClassicChatInputSection(
                             }
                         }
                     },
+                )
+
+                ChatViewSlotPluginRegistry.RenderSlot(
+                    params = ChatViewSlotRenderParams(
+                        context = context,
+                        slot = ChatViewSlots.INPUT_TOOLBAR_RIGHT,
+                        chatId = currentChatId,
+                        runtime = inputMenuRuntime,
+                        inputStyle = "classic",
+                        isProcessing = isProcessing,
+                        isInputFocused = isInputFocused,
+                        inputText = userMessage.text
+                    ),
+                    modifier = Modifier
+                        .padding(start = 6.dp)
+                        .widthIn(max = 180.dp)
                 )
 
                 Spacer(modifier = Modifier.width(8.dp))

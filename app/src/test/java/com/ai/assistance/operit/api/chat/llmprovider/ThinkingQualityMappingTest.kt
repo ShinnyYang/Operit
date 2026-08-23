@@ -7,6 +7,27 @@ import org.junit.Test
 
 class ThinkingQualityMappingTest {
     @Test
+    fun xaiMapsSupportedModelsToReasoningEfforts() {
+        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.XAI.name, "grok-4.6")
+
+        assertEquals(ThinkingQualityControl.LEVELS, mapping.control)
+        assertEquals("reasoning_effort", mapping.parameterLabel)
+        assertEquals(
+            listOf("low", "medium", "medium", "high", "xhigh"),
+            mapping.options.map { it.displayLabel }
+        )
+        assertEquals("high", mapping.textValueFor(4))
+    }
+
+    @Test
+    fun xaiKeepsLevelControlForModelsWithoutReasoningEffort() {
+        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.XAI.name, "grok-3-mini")
+
+        assertEquals(ThinkingQualityControl.TOGGLE_ONLY, mapping.control)
+        assertTrue(mapping.options.isEmpty())
+    }
+
+    @Test
     fun openAiUsesFiveNamedEffortValues() {
         val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.OPENAI.name, "gpt-5.6-luna")
 

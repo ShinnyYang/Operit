@@ -494,9 +494,40 @@ fun ModelConfigScreen(
                                 TextButton(
                                     onClick = {
                                         scope.launch {
-                                            configManager.deleteConfig(selectedConfigId)
-                                            selectedConfigId = configList.firstOrNull() ?: "default"
-                                            showNotification(context.getString(R.string.config_deleted))
+                                            val deletingConfigId = selectedConfigId
+                                            try {
+                                                saveCoordinator.flushAll(showSuccess = false)
+                                                val affectedFunctions = configManager.deleteConfig(deletingConfigId)
+                                                saveCoordinator.discardConfig(deletingConfigId)
+
+                                                affectedFunctions.forEach { functionType ->
+                                                    try {
+                                                        EnhancedAIService.refreshServiceForFunction(
+                                                            context.applicationContext,
+                                                            functionType,
+                                                        )
+                                                    } catch (e: Exception) {
+                                                        AppLogger.e(
+                                                            "ModelConfigScreen",
+                                                            "刷新删除配置影响的服务失败: $functionType",
+                                                            e,
+                                                        )
+                                                    }
+                                                }
+
+                                                selectedConfigId = configManager.configListFlow
+                                                    .first()
+                                                    .firstOrNull()
+                                                    ?: ModelConfigManager.DEFAULT_CONFIG_ID
+                                                showNotification(context.getString(R.string.config_deleted))
+                                            } catch (e: Exception) {
+                                                AppLogger.e(
+                                                    "ModelConfigScreen",
+                                                    "删除模型配置失败: $deletingConfigId",
+                                                    e,
+                                                )
+                                                showNotification(context.getString(R.string.save_failed))
+                                            }
                                         }
                                     },
                                     contentPadding = PaddingValues(horizontal = 12.dp),

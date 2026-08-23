@@ -1146,9 +1146,7 @@ class StandardSoftwareSettingsModifyTools(private val context: Context) {
 
         return try {
             val modelConfigManager = ModelConfigManager(context)
-            val functionalConfigManager = FunctionalConfigManager(context)
             modelConfigManager.initializeIfNeeded()
-            functionalConfigManager.initializeIfNeeded()
 
             val configList = modelConfigManager.configListFlow.first()
             if (!configList.contains(configId)) {
@@ -1160,26 +1158,7 @@ class StandardSoftwareSettingsModifyTools(private val context: Context) {
                 )
             }
 
-            val mappingWithIndex = functionalConfigManager.functionConfigMappingWithIndexFlow.first()
-            val updatedMapping = mappingWithIndex.toMutableMap()
-            val affectedFunctions = mutableListOf<FunctionType>()
-
-            mappingWithIndex.forEach { (functionType, mapping) ->
-                if (mapping.configId == configId) {
-                    updatedMapping[functionType] =
-                        FunctionConfigMapping(
-                            configId = FunctionalConfigManager.DEFAULT_CONFIG_ID,
-                            modelIndex = 0
-                        )
-                    affectedFunctions.add(functionType)
-                }
-            }
-
-            if (affectedFunctions.isNotEmpty()) {
-                functionalConfigManager.saveFunctionConfigMappingWithIndex(updatedMapping)
-            }
-
-            modelConfigManager.deleteConfig(configId)
+            val affectedFunctions = modelConfigManager.deleteConfig(configId)
 
             affectedFunctions
                 .sortedBy { it.name }

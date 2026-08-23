@@ -1,7 +1,7 @@
 ---
 fork_repository: https://github.com/luojiaping/Operit.git
-working_branch: feat/openai-codex-oauth
-status: in_progress
+working_branch: fix/provider-logos-token-statistics-main
+status: completed
 ---
 
 # Codex Settings, Quota, And PDF Input
@@ -41,4 +41,4 @@ Codex without changing the existing XML tool execution bridge.
 3. [DONE] Add Codex PDF `input_file` request construction
 4. [DONE] Add tests, docs, and completion records
 5. [DONE] Inspect the diff and trigger the remote Release build
-6. [ ] Correct window classification and persist the latest usage snapshot
+6. [DONE] Correct window classification and persist the latest usage snapshot

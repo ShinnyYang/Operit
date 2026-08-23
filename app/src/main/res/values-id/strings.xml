@@ -3263,7 +3263,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="model_name_multiple_hint"> (dapat dipisahkan dengan koma untuk beberapa model)</string>
     <string name="auto_save_failed">Penyimpanan otomatis gagal</string>
     <string name="provider_openai">OpenAI (Seri GPT)</string>
-    <string name="provider_xai">xAI (Grok)</string>
+    <string name="provider_xai">SpaceXAI (Grok)</string>
     <string name="provider_openai_responses">OpenAI (Responses API)</string>
     <string name="provider_openai_responses_generic">OpenAI Responses Umum</string>
     <string name="provider_anthropic">Anthropic (Seri Claude)</string>
