@@ -7431,4 +7431,18 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Aset Release</string>
     <string name="markdown_link_not_openable">Tautan ini menunjuk ke referensi di dalam dokumen dan tidak dapat dibuka</string>
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">Masuk ke OpenAI Codex terlebih dahulu</string>
+    <string name="codex_login_title">Masuk ke OpenAI Codex</string>
+    <string name="codex_login_starting">Menyiapkan login Codex...</string>
+    <string name="codex_login_waiting">Selesaikan login di browser</string>
+    <string name="codex_login_action">Masuk dengan ChatGPT</string>
+    <string name="codex_login_success">Login OpenAI Codex berhasil</string>
+    <string name="codex_login_failed">Login OpenAI Codex gagal: %1$s</string>
+    <string name="codex_logout_action">Keluar dari Codex</string>
+    <string name="codex_logout_success">Berhasil keluar dari OpenAI Codex</string>
+    <string name="codex_auth_title">Akun OpenAI Codex</string>
+    <string name="codex_auth_not_logged_in">Masuk dengan ChatGPT untuk menggunakan akses langganan Codex</string>
+    <string name="codex_auth_account">Akun: %1$s</string>
+    <string name="codex_endpoint_fixed">Endpoint Codex ditetapkan oleh sistem</string>
 </resources>

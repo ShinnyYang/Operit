@@ -39,7 +39,8 @@ object ChatUtils {
     }
 
     fun isOpenAIResponsesProviderModel(providerModel: String): Boolean {
-        return providerModel.substringBefore(":").uppercase() == "OPENAI_RESPONSES"
+        return providerModel.substringBefore(":").uppercase() in
+            setOf("OPENAI_RESPONSES", "OPENAI_CODEX")
     }
 
     /** 过滤掉内容中的思考部分和搜索来源 移除<think></think>、<thinking></thinking>和<search></search>标签及其中的内容，并处理未闭合的情况 */

@@ -375,6 +375,19 @@ object AIServiceFactory {
                     enableToolCall = enableToolCall
                 )
 
+            ApiProviderType.OPENAI_CODEX ->
+                CodexProvider(
+                    authManager = com.ai.assistance.operit.data.api.CodexAuthManager.getInstance(context),
+                    modelName = config.modelName,
+                    httpClient = httpClient,
+                    customHeaders = customHeaders,
+                    supportsVision = supportsVision,
+                    supportsAudio = false,
+                    supportsVideo = false,
+                    supportsFiles = supportsVision,
+                    enableToolCall = enableToolCall,
+                )
+
             // Claude格式，支持Anthropic Claude系列
             ApiProviderType.ANTHROPIC,
             ApiProviderType.ANTHROPIC_GENERIC ->

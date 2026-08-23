@@ -7278,4 +7278,18 @@
     <string name="artifact_publish_github_release">GitHub Release</string>
     <string name="artifact_publish_github_release_asset">Release 자산</string>
     <string name="markdown_link_not_openable">이 링크는 문서 내부의 참조를 가리켜서 열 수 없습니다</string>
+    <string name="provider_openai_codex">OpenAI Codex (ChatGPT OAuth)</string>
+    <string name="onboarding_config_codex_login_required">먼저 OpenAI Codex에 로그인하세요</string>
+    <string name="codex_login_title">OpenAI Codex 로그인</string>
+    <string name="codex_login_starting">Codex 로그인을 준비하는 중...</string>
+    <string name="codex_login_waiting">브라우저에서 로그인을 완료하세요</string>
+    <string name="codex_login_action">ChatGPT로 로그인</string>
+    <string name="codex_login_success">OpenAI Codex 로그인 성공</string>
+    <string name="codex_login_failed">OpenAI Codex 로그인 실패: %1$s</string>
+    <string name="codex_logout_action">Codex 로그아웃</string>
+    <string name="codex_logout_success">OpenAI Codex에서 로그아웃했습니다</string>
+    <string name="codex_auth_title">OpenAI Codex 계정</string>
+    <string name="codex_auth_not_logged_in">ChatGPT로 로그인하여 Codex 구독 액세스를 사용하세요</string>
+    <string name="codex_auth_account">계정: %1$s</string>
+    <string name="codex_endpoint_fixed">Codex endpoint는 시스템에서 고정됩니다</string>
 </resources>
