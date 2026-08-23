@@ -5,19 +5,45 @@ import org.junit.Test
 
 class CodexModelListParserTest {
     @Test
-    fun parsesSlugAndIdFields() {
+    fun parsesOpenCodeCatalogAndExpandsAllowedModes() {
         val models = CodexModelListFetcher.parseModels(
             """
             {
-              "models": [
-                {"slug": "gpt-5.6-luna", "display_name": "Luna"},
-                {"id": "gpt-5.4", "display_name": "5.4"}
-              ]
+              "openai": {
+                "models": {
+                  "gpt-5.6-luna": {
+                    "id": "gpt-5.6-luna",
+                    "name": "GPT-5.6 Luna",
+                    "experimental": {
+                      "modes": {
+                        "fast": {"provider": {"body": {"service_tier": "priority"}}},
+                        "pro": {"provider": {"body": {"reasoning": {"mode": "pro"}}}}
+                      }
+                    }
+                  },
+                  "gpt-5.4": {
+                    "id": "gpt-5.4",
+                    "name": "GPT-5.4",
+                    "experimental": {
+                      "modes": {
+                        "fast": {"provider": {"body": {"service_tier": "priority"}}}
+                      }
+                    }
+                  },
+                  "gpt-5.5-pro": {
+                    "id": "gpt-5.5-pro",
+                    "name": "GPT-5.5 Pro"
+                  }
+                }
+              }
             }
             """.trimIndent(),
         )
 
-        assertEquals(listOf("gpt-5.6-luna", "gpt-5.4"), models.map { it.id })
-        assertEquals(listOf("Luna", "5.4"), models.map { it.name })
+        assertEquals(
+            setOf("gpt-5.6-luna", "gpt-5.6-luna-fast", "gpt-5.4", "gpt-5.4-fast"),
+            models.map { it.id }.toSet(),
+        )
+        assertEquals("GPT-5.6 Luna Fast", models.first { it.id == "gpt-5.6-luna-fast" }.name)
     }
 }

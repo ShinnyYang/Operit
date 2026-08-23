@@ -98,6 +98,7 @@ open class OpenAIProvider(
     protected val supportsVision: Boolean = false, // 是否支持图片处理
     protected val supportsAudio: Boolean = false, // 是否支持音频输入
     protected val supportsVideo: Boolean = false, // 是否支持视频输入
+    protected val supportsFiles: Boolean = false, // 是否支持文件输入
     val enableToolCall: Boolean = false, // 是否启用Tool Call接口
     private val includeUsageInStream: Boolean = false,
 ) : AIService {
@@ -845,9 +846,12 @@ open class OpenAIProvider(
 
         val audioLinks = mediaLinks.filter { it.type == "audio" }
         val videoLinks = mediaLinks.filter { it.type == "video" }
+        val fileLinks = mediaLinks.filter { it.type == "file" }
 
         val hasSupportedMedia =
-            (supportsAudio && audioLinks.isNotEmpty()) || (supportsVideo && videoLinks.isNotEmpty())
+            (supportsAudio && audioLinks.isNotEmpty()) ||
+                (supportsVideo && videoLinks.isNotEmpty()) ||
+                (supportsFiles && fileLinks.isNotEmpty())
 
         var textWithoutLinks = text
         if (hasMedia) {
@@ -876,6 +880,7 @@ open class OpenAIProvider(
             return when {
                 audioLinks.isNotEmpty() || videoLinks.isNotEmpty() -> context.getString(R.string.openai_audio_video_omitted)
                 imageLinks.isNotEmpty() -> context.getString(R.string.openai_image_omitted)
+                fileLinks.isNotEmpty() -> context.getString(R.string.openai_file_omitted)
                 else -> "[Empty]"
             }
         }
@@ -901,6 +906,17 @@ open class OpenAIProvider(
                             put("url", "data:${link.mimeType};base64,${link.base64Data}")
                         }
                     )
+                })
+            }
+        }
+
+        if (supportsFiles) {
+            fileLinks.forEach { link ->
+                val fileName = requireNotNull(link.fileName?.takeIf { it.isNotBlank() })
+                contentArray.put(JSONObject().apply {
+                    put("type", "input_file")
+                    put("filename", fileName)
+                    put("file_data", "data:${link.mimeType};base64,${link.base64Data}")
                 })
             }
         }

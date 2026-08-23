@@ -53,6 +53,8 @@ import com.ai.assistance.operit.api.chat.llmprovider.CodexModelListFetcher
 import com.ai.assistance.operit.api.chat.llmprovider.LlamaProvider
 import com.ai.assistance.operit.api.chat.llmprovider.ModelListFetcher
 import com.ai.assistance.operit.data.api.CodexAuthManager
+import com.ai.assistance.operit.data.api.CodexUsageSnapshot
+import com.ai.assistance.operit.data.api.CodexUsageWindow
 import com.ai.assistance.operit.data.collects.ApiProviderConfigs
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelConfigData
@@ -70,6 +72,8 @@ import com.ai.assistance.operit.ui.features.codex.CodexLoginDialog
 import com.ai.assistance.operit.util.LocationUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
@@ -90,7 +94,6 @@ internal fun providerRegionWarningType(providerType: ApiProviderType?): Provider
         ApiProviderType.FOUR_ROUTER -> ProviderRegionWarningType.INTERNATIONAL_PROXY
         ApiProviderType.OPENAI,
         ApiProviderType.XAI,
-        ApiProviderType.OPENAI_CODEX,
         ApiProviderType.GOOGLE,
         ApiProviderType.ANTHROPIC,
         ApiProviderType.MISTRAL,
@@ -124,7 +127,11 @@ fun ModelApiSettingsSection(
     val scope = rememberCoroutineScope()
     val codexAuthManager = remember { CodexAuthManager.getInstance(context) }
     val codexAuthState by codexAuthManager.authState.collectAsState()
+    val persistedCodexUsage by codexAuthManager.usageSnapshotFlow.collectAsState(initial = null)
     var showCodexLoginDialog by remember(config.id) { mutableStateOf(false) }
+    var codexUsageLoading by remember(config.id) { mutableStateOf(false) }
+    var codexUsageError by remember(config.id) { mutableStateOf(false) }
+    var codexUsageNow by remember { mutableLongStateOf(System.currentTimeMillis() / 1000L) }
 
     // 区域告警类型；null 表示当前无需显示。
     var regionWarningType by remember(config.id) { mutableStateOf<ProviderRegionWarningType?>(null) }
@@ -154,6 +161,34 @@ fun ModelApiSettingsSection(
     var previousProviderTypeId by remember(config.id) { mutableStateOf(config.apiProviderTypeId) }
     val selectedApiProvider = ApiProviderType.fromProviderTypeId(selectedProviderTypeId)
     val isCodexProvider = selectedApiProvider == ApiProviderType.OPENAI_CODEX
+    val codexUsage = persistedCodexUsage
+        ?.takeIf { it.accountId == codexAuthState?.accountId }
+        ?.usage
+
+    LaunchedEffect(codexAuthState?.accountId) {
+        codexUsageError = false
+    }
+
+    LaunchedEffect(codexUsage) {
+        while (isActive && codexUsage != null) {
+            codexUsageNow = System.currentTimeMillis() / 1000L
+            delay(60_000L)
+        }
+    }
+
+    fun refreshCodexUsage() {
+        if (!isCodexProvider || codexAuthState == null || codexUsageLoading) return
+        scope.launch {
+            codexUsageLoading = true
+            codexUsageError = false
+            val result = codexAuthManager.fetchUsage()
+            result.exceptionOrNull()?.let { error ->
+                AppLogger.e(TAG, "获取 Codex 额度失败", error)
+            }
+            codexUsageError = result.isFailure
+            codexUsageLoading = false
+        }
+    }
 
     // MNN特定配置状态
     var mnnForwardTypeInput by remember(config.id) { mutableStateOf(config.mnnForwardType) }
@@ -181,6 +216,15 @@ fun ModelApiSettingsSection(
     
     // Tool Call配置状态
     var enableToolCallInput by remember(config.id) { mutableStateOf(config.enableToolCall) }
+
+    LaunchedEffect(selectedProviderTypeId) {
+        if (isCodexProvider) {
+            enableDirectImageProcessingInput = true
+            enableDirectAudioProcessingInput = false
+            enableDirectVideoProcessingInput = false
+            enableToolCallInput = true
+        }
+    }
 
     data class ApiAutoSaveState(
         val apiEndpoint: String,
@@ -411,7 +455,7 @@ fun ModelApiSettingsSection(
 
     suspend fun fetchAvailableModels(): Result<List<ModelOption>> {
         return when {
-            isCodexProvider -> CodexModelListFetcher.getModelsList(codexAuthManager)
+            isCodexProvider -> CodexModelListFetcher.getModelsList()
             isMnnProvider -> ModelListFetcher.getMnnLocalModels(context)
             isLlamaProvider -> ModelListFetcher.getLlamaLocalModels(context)
             isToolPkgProvider -> runCatching {
@@ -537,14 +581,20 @@ fun ModelApiSettingsSection(
                 )
             } else if (isCodexProvider) {
                 CodexAuthSettingsBlock(
-                    authState = codexAuthState,
-                    onLogin = { showCodexLoginDialog = true },
-                    onLogout = {
-                        scope.launch {
-                            codexAuthManager.logout()
-                            EnhancedAIService.refreshAllServices(configManager.appContext)
-                            showNotification(context.getString(R.string.codex_logout_success))
-                        }
+                     authState = codexAuthState,
+                     usage = codexUsage,
+                     usageLoading = codexUsageLoading,
+                     usageError = codexUsageError,
+                     usageNowEpochSeconds = codexUsageNow,
+                     onLogin = { showCodexLoginDialog = true },
+                     onRefreshUsage = ::refreshCodexUsage,
+                     onLogout = {
+                         scope.launch {
+                             codexAuthManager.logout()
+                             codexUsageError = false
+                             EnhancedAIService.refreshAllServices(configManager.appContext)
+                             showNotification(context.getString(R.string.codex_logout_success))
+                         }
                     },
                 )
                 SettingsTextField(
@@ -780,25 +830,34 @@ fun ModelApiSettingsSection(
                     }
             )
 
-            SettingsSwitchRow(
-                title = stringResource(R.string.enable_direct_image_processing),
-                subtitle = stringResource(R.string.enable_direct_image_processing_desc),
-                checked = enableDirectImageProcessingInput,
-                onCheckedChange = { enableDirectImageProcessingInput = it }
-            )
+             if (isCodexProvider) {
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.codex_direct_media_processing),
+                     subtitle = stringResource(R.string.codex_direct_media_processing_desc),
+                     checked = enableDirectImageProcessingInput,
+                     onCheckedChange = { enableDirectImageProcessingInput = it }
+                 )
+             } else {
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.enable_direct_image_processing),
+                     subtitle = stringResource(R.string.enable_direct_image_processing_desc),
+                     checked = enableDirectImageProcessingInput,
+                     onCheckedChange = { enableDirectImageProcessingInput = it }
+                 )
 
-            SettingsSwitchRow(
-                title = stringResource(R.string.enable_direct_audio_processing),
-                subtitle = stringResource(R.string.enable_direct_audio_processing_desc),
-                checked = enableDirectAudioProcessingInput,
-                onCheckedChange = { enableDirectAudioProcessingInput = it }
-            )
-            SettingsSwitchRow(
-                title = stringResource(R.string.enable_direct_video_processing),
-                subtitle = stringResource(R.string.enable_direct_video_processing_desc),
-                checked = enableDirectVideoProcessingInput,
-                onCheckedChange = { enableDirectVideoProcessingInput = it }
-            )
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.enable_direct_audio_processing),
+                     subtitle = stringResource(R.string.enable_direct_audio_processing_desc),
+                     checked = enableDirectAudioProcessingInput,
+                     onCheckedChange = { enableDirectAudioProcessingInput = it }
+                 )
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.enable_direct_video_processing),
+                     subtitle = stringResource(R.string.enable_direct_video_processing_desc),
+                     checked = enableDirectVideoProcessingInput,
+                     onCheckedChange = { enableDirectVideoProcessingInput = it }
+                 )
+             }
             
             // Google Search Grounding 开关 (仅Gemini支持)
             if (selectedApiProvider == ApiProviderType.GOOGLE ||
@@ -1126,7 +1185,12 @@ fun ModelApiSettingsSection(
 @Composable
 private fun CodexAuthSettingsBlock(
     authState: CodexAuthState?,
+    usage: CodexUsageSnapshot?,
+    usageLoading: Boolean,
+    usageError: Boolean,
+    usageNowEpochSeconds: Long,
     onLogin: () -> Unit,
+    onRefreshUsage: () -> Unit,
     onLogout: () -> Unit,
 ) {
     Column(
@@ -1157,6 +1221,44 @@ private fun CodexAuthSettingsBlock(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = stringResource(
+                        R.string.codex_plan,
+                        formatCodexPlanType(usage?.planType),
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onRefreshUsage,
+                    enabled = !usageLoading,
+                ) {
+                    if (usageLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = stringResource(R.string.codex_usage_refresh),
+                        )
+                    }
+                }
+            }
+
+            CodexQuotaCapsule(
+                usage = usage,
+                usageError = usageError,
+                nowEpochSeconds = usageNowEpochSeconds,
+            )
+
             OutlinedButton(onClick = onLogout, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Logout, contentDescription = null)
                 Spacer(modifier = Modifier.width(8.dp))
@@ -1164,6 +1266,113 @@ private fun CodexAuthSettingsBlock(
             }
         }
     }
+}
+
+@Composable
+private fun CodexQuotaCapsule(
+    usage: CodexUsageSnapshot?,
+    usageError: Boolean,
+    nowEpochSeconds: Long,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        tonalElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CodexQuotaWindowRow(
+                label = stringResource(R.string.codex_quota_five_hour),
+                window = usage?.fiveHourWindow,
+                nowEpochSeconds = nowEpochSeconds,
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
+            CodexQuotaWindowRow(
+                label = stringResource(R.string.codex_quota_seven_day),
+                window = usage?.sevenDayWindow,
+                nowEpochSeconds = nowEpochSeconds,
+            )
+            if (usageError) {
+                Text(
+                    text = stringResource(R.string.codex_usage_unavailable),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodexQuotaWindowRow(
+    label: String,
+    window: CodexUsageWindow?,
+    nowEpochSeconds: Long,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = window?.let {
+                    stringResource(R.string.codex_quota_remaining, it.remainingPercent)
+                }
+                    ?: stringResource(R.string.codex_quota_no_data),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        if (window != null) {
+            LinearProgressIndicator(
+                progress = { window.remainingPercent / 100f },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(6.dp)),
+            )
+        }
+
+        val resetAt = window?.resetsAtEpochSeconds
+        if (resetAt != null) {
+            Text(
+                text = formatCodexResetCountdown(resetAt, nowEpochSeconds),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatCodexPlanType(planType: String?): String {
+    val normalized = planType?.trim()?.takeIf { it.isNotEmpty() } ?: return "-"
+    return normalized
+        .lowercase()
+        .split('_', '-')
+        .joinToString(" ") { part -> part.replaceFirstChar { it.uppercaseChar() } }
+}
+
+@Composable
+private fun formatCodexResetCountdown(resetAtEpochSeconds: Long, nowEpochSeconds: Long): String {
+    val seconds = (resetAtEpochSeconds - nowEpochSeconds).coerceAtLeast(0L)
+    val days = seconds / 86_400L
+    if (days > 0L) {
+        return stringResource(R.string.codex_reset_after_days, days)
+    }
+
+    val hours = seconds / 3_600L
+    val minutes = (seconds % 3_600L) / 60L
+    return stringResource(R.string.codex_reset_after_clock, hours, minutes)
 }
 
 private fun getBuiltInProviderDisplayName(provider: ApiProviderType, context: android.content.Context): String {
