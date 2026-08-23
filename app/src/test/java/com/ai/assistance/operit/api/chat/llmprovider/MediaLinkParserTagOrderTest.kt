@@ -24,6 +24,20 @@ class MediaLinkParserTagOrderTest {
         assertEquals(listOf(MediaLinkTag("video", "v1"), MediaLinkTag("audio", "a1")), MediaLinkParser.extractMediaLinkTags(input))
     }
 
+    @Test fun extractMediaLinkTags_preservesFileAndMediaEncounterOrder() {
+        val input = "<link filename=\"a.pdf\" id=\"f1\" type=\"file\">F</link>" +
+            "<link type=\"audio\" id=\"a1\">A</link>" +
+            "<link type=\"file\" id=\"f2\" filename=\"b.pdf\">F</link>"
+        assertEquals(
+            listOf(
+                MediaLinkTag("file", "f1", "a.pdf"),
+                MediaLinkTag("audio", "a1"),
+                MediaLinkTag("file", "f2", "b.pdf"),
+            ),
+            MediaLinkParser.extractMediaLinkTags(input),
+        )
+    }
+
     @Test fun extractImageLinkIds_preservesEncounterOrder() {
         val input = "<link type=\"image\" id=\"i1\">I</link><link type=\"image\" id=\"i2\">I</link>"
         assertEquals(listOf("i1", "i2"), MediaLinkParser.extractImageLinkIds(input))
