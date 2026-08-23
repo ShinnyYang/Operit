@@ -121,7 +121,7 @@ class OpenCodeProvider private constructor(
                     endpoint, apiKeyProvider, model, client, customHeaders, enableToolCall
                 )
                 else -> OpenCodeChatProvider(
-                    endpoint, apiKeyProvider, model, client, customHeaders,
+                    endpoint, apiKeyProvider, model, context.applicationContext, client, customHeaders,
                     supportsVision, supportsAudio, supportsVideo, enableToolCall
                 )
             }
@@ -184,6 +184,7 @@ internal class OpenCodeChatProvider(
     endpoint: String,
     apiKeyProvider: ApiKeyProvider,
     modelName: String,
+    private val appContext: Context,
     client: OkHttpClient,
     customHeaders: Map<String, String>,
     supportsVision: Boolean,
@@ -242,7 +243,7 @@ internal class OpenCodeChatProvider(
         for (i in 0 until messagesArray.length()) {
             val message = messagesArray.optJSONObject(i) ?: continue
             if (message.optString("role") != "assistant") continue
-            extractReasoningContentIntoMessage(context, message)
+            extractReasoningContentIntoMessage(appContext, message)
         }
     }
 
@@ -254,21 +255,17 @@ internal class OpenCodeChatProvider(
      * 多模态构造逻辑；该路径在 OpenCodeChatProvider 实际请求中极少触发）。
      */
     private fun extractReasoningContentIntoMessage(context: Context, message: JSONObject) {
-        val rawContent = message.opt("content") ?: return
-        val textContent: String = when (rawContent) {
-            is String -> rawContent
-            else -> return
-        }
-        if (!textContent.contains("<think", ignoreCase = false) &&
-            !textContent.contains("<thinking", ignoreCase = false)
-        ) {
-            return
-        }
-        val (cleanContent, reasoning) = ChatUtils.extractThinkingContent(textContent)
+        val textContent = message.opt("content") as? String
+        val (cleanContent, reasoning) = textContent?.let(ChatUtils::extractThinkingContent)
+            ?: ("" to "")
         // 总是写入 reasoning_content（即使为空，OpenAI Chat 路由上游在历史不含
         // 该字段时也会拒绝；写空字符串与未写含义不同）。
         message.put("reasoning_content", reasoning)
-        message.put("content", buildContentField(context, cleanContent))
+        if (textContent != null) {
+            // Assistant history must not re-inject rich media links while the thinking
+            // marker is being split into the provider-specific reasoning field.
+            message.put("content", buildContentField(context, cleanContent, role = "assistant"))
+        }
     }
 }
 
