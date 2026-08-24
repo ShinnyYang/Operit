@@ -114,7 +114,7 @@ open class OpenAIProvider(
     @Volatile
     private var isManuallyCancelled = false
 
-    /** 由客户端请求错误触发的终止异常。重复同一请求不会改变服务端校验结果。 */
+    /** 由客户端请求错误触发的异常；是否重试由 HTTP 状态码策略决定。 */
     class NonRetriableException(
         message: String,
         override val statusCode: Int,
@@ -1546,7 +1546,10 @@ open class OpenAIProvider(
         if (exception is UserCancellationException || exception is CancellationException) {
             throw exception
         }
-        if (exception is NonRetriableException) {
+        if (
+            exception is NonRetriableException &&
+                !LlmRetryPolicy.isRetryableClientStatus(exception.statusCode)
+        ) {
             throw exception
         }
         checkCancellation(context, exception)
