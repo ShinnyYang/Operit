@@ -15,6 +15,7 @@ export function ThinkingQualitySlider({
   const [isDragging, setIsDragging] = useState(false);
   const { options } = mapping;
   const selectedIndex = options.findIndex((option) => option.id === value);
+  // Keep hook order stable while the parent synchronizes an option after a model change.
   const normalizedSelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
   const [draftIndex, setDraftIndex] = useState(normalizedSelectedIndex);
   const draftIndexRef = useRef(normalizedSelectedIndex);
@@ -24,7 +25,7 @@ export function ThinkingQualitySlider({
     draftIndexRef.current = normalizedSelectedIndex;
   }, [normalizedSelectedIndex]);
 
-  if (!options.length) {
+  if (selectedIndex < 0 || !options.length) {
     return null;
   }
 

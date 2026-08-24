@@ -17,13 +17,10 @@ import org.json.JSONObject
 /**
  * NVIDIA API Catalog / NIM provider.
  *
- * Official docs indicate two reasoning control styles:
- * 1) chat_template_kwargs.enable_thinking (Nemotron and many template-based models)
- * 2) reasoning_effort (GPT-OSS deployments)
+ * Official docs expose model-specific reasoning_effort values for GPT-OSS and
+ * the current Nemotron 3 Super/Ultra endpoints.
  *
- * We always write chat_template_kwargs.enable_thinking for an explicit toggle and
- * add a default reasoning_effort=medium for GPT-OSS models when thinking is enabled
- * and user has not set reasoning_effort manually.
+ * The request mapper writes only the control published for the selected model.
  */
 class NvidiaAIProvider(
     apiEndpoint: String,
@@ -68,47 +65,38 @@ class NvidiaAIProvider(
         )
         val jsonObject = JSONObject(baseRequestBodyJson)
 
-        // Explicit thinking toggle for NVIDIA template-based reasoning models.
-        val chatTemplateKwargs = jsonObject.optJSONObject("chat_template_kwargs") ?: JSONObject()
-        chatTemplateKwargs.put("enable_thinking", enableThinking)
-        jsonObject.put("chat_template_kwargs", chatTemplateKwargs)
-
-        // GPT-OSS models on NVIDIA use reasoning_effort to control reasoning depth.
-        val modelNameLower = modelName.lowercase()
-        val isGptOss = modelNameLower.contains("gpt-oss")
-        val gptOssEffort = if (enableThinking && isGptOss && !jsonObject.has("reasoning_effort")) {
-            resolveGptOssReasoningEffort(context)
-        } else {
-            null
-        }
-        if (gptOssEffort != null) {
-            jsonObject.put("reasoning_effort", gptOssEffort)
+        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.NVIDIA.name, modelName)
+        when (mapping.control) {
+            ThinkingQualityControl.TOGGLE_ONLY -> {
+                val chatTemplateKwargs = jsonObject.optJSONObject("chat_template_kwargs") ?: JSONObject()
+                chatTemplateKwargs.put("enable_thinking", enableThinking)
+                jsonObject.put("chat_template_kwargs", chatTemplateKwargs)
+            }
+            ThinkingQualityControl.LEVELS -> if (!jsonObject.has("reasoning_effort")) {
+                val effort = if (enableThinking) resolveNvidiaReasoningEffort(context) else mapping.disabledValue
+                if (effort != null) jsonObject.put("reasoning_effort", effort)
+            }
+            ThinkingQualityControl.UNSUPPORTED -> Unit
         }
 
         AppLogger.d(
             "NvidiaAIProvider",
-            "NVIDIA thinking params applied: enable_thinking=$enableThinking, gpt_oss_reasoning_effort=$gptOssEffort"
+            "NVIDIA thinking mapping applied: control=" + mapping.control + ", enabled=" + enableThinking
         )
 
         return createJsonRequestBody(jsonObject.toString())
     }
 
-    private fun resolveGptOssReasoningEffort(context: Context): String? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "NvidiaAIProvider",
-                "Failed to read thinking option id for NVIDIA GPT-OSS; reasoning_effort not applied",
-                it
-            )
-            return null
+    private fun resolveNvidiaReasoningEffort(context: Context): String? {
+        val qualityLevel = try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("NvidiaAIProvider", "Failed to read thinking option id", error)
+            throw error
         }
 
-        return ThinkingQualityMappingRegistry
-            .resolve(ApiProviderType.NVIDIA.name, modelName)
-            .textValueFor(qualityLevel)
+        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.NVIDIA.name, modelName)
+        return mapping.textValueFor(qualityLevel)
+            ?: throw IllegalArgumentException("NVIDIA option is not supported: $qualityLevel")
     }
 }

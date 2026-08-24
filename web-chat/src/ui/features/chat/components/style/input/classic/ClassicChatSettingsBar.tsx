@@ -686,13 +686,20 @@ export function ClassicChatSettingsBar({
   const [showThinkingDropdown, setShowThinkingDropdown] = useState(false);
   const [showDisableSettingsDropdown, setShowDisableSettingsDropdown] = useState(false);
   const [infoPopupContent, setInfoPopupContent] = useState<InfoContent | null>(null);
-  const thinkingEnabled = inputSettings?.enable_thinking_mode ?? false;
+  const thinkingMapping = modelSelector?.thinking_quality_mapping;
+  const thinkingEnabled = (inputSettings?.enable_thinking_mode ?? false) || (thinkingMapping?.reasoning_required ?? false);
   const thinkingQuality = inputSettings
     ? {
         optionId: inputSettings.thinking_option_id,
-        mapping: modelSelector?.thinking_quality_mapping
+        mapping: thinkingMapping
       }
     : null;
+  useEffect(() => {
+    const mapping = thinkingQuality?.mapping;
+    if (mapping && mapping.options.length > 0 && !mapping.options.some((option) => option.id === thinkingQuality.optionId)) {
+      void onUpdateInputSettings({ thinking_option_id: mapping.options[0].id });
+    }
+  }, [onUpdateInputSettings, thinkingQuality?.mapping, thinkingQuality?.optionId]);
   const enableMaxContextMode = inputSettings?.enable_max_context_mode ?? false;
   const enableMemoryAutoUpdate = inputSettings?.enable_memory_auto_update ?? false;
   const enableAutoRead = inputSettings?.enable_auto_read ?? false;
@@ -772,7 +779,7 @@ export function ClassicChatSettingsBar({
                   onSelectProfile={onSelectMemoryProfile}
                 />
 
-                {thinkingQuality ? (
+                {thinkingQuality && thinkingQuality.mapping?.mode !== 'unsupported' ? (
                   <ClassicThinkingSettingsItem
                     enabled={thinkingEnabled}
                     expanded={showThinkingDropdown}
@@ -783,7 +790,9 @@ export function ClassicChatSettingsBar({
                     }}
                     onQualityInfoClick={() => openInfo(INFO_COPY.thinkingQuality)}
                     onToggle={() => {
-                      void onUpdateInputSettings({ enable_thinking_mode: !thinkingEnabled });
+                      if (!thinkingQuality?.mapping?.reasoning_required) {
+                        void onUpdateInputSettings({ enable_thinking_mode: !thinkingEnabled });
+                      }
                     }}
                     onToggleInfoClick={() => openInfo(INFO_COPY.thinkingMode)}
                     qualityMapping={thinkingQuality.mapping}

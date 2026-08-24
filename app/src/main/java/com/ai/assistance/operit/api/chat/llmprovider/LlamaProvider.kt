@@ -148,13 +148,13 @@ class LlamaProvider(
                         preserveThinkInHistory = false
                     )
                     val toolsJson = StructuredToolCallBridge.buildToolsJson(availableTools)
-                    s.applyStructuredChatTemplate(messagesJson, toolsJson, true)
+                    s.applyStructuredChatTemplate(messagesJson, toolsJson, true, true)
                 } else {
                     val (roles, contents) = buildPlainPromptMessages(
                         chatHistory = chatHistory,
                         preserveThinkInHistory = false
                     )
-                    s.applyChatTemplate(roles, contents, true)
+                    s.applyChatTemplate(roles, contents, true, true)
                 } ?: return@runCatching null
 
                 s.countTokens(prompt).toLong()
@@ -212,13 +212,13 @@ class LlamaProvider(
                     preserveThinkInHistory = preserveThinkInHistory
                 )
                 val toolsJson = StructuredToolCallBridge.buildToolsJson(availableTools)
-                s.applyStructuredChatTemplate(messagesJson, toolsJson, true)
+                s.applyStructuredChatTemplate(messagesJson, toolsJson, enableThinking, true)
             } else {
                 val (roles, contents) = buildPlainPromptMessages(
                     chatHistory = chatHistory,
                     preserveThinkInHistory = preserveThinkInHistory
                 )
-                s.applyChatTemplate(roles, contents, true)
+                s.applyChatTemplate(roles, contents, enableThinking, true)
             }
         }
         if (prompt.isNullOrBlank()) {

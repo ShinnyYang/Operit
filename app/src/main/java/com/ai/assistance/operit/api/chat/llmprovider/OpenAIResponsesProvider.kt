@@ -112,7 +112,8 @@ open class OpenAIResponsesProvider(
     ) {
         val reasoningObject = requestJson.optJSONObject("reasoning")
 
-        if (!enableThinking && reasoningObject == null) {
+        val mapping = ThinkingQualityMappingRegistry.resolve(responsesProviderType.name, modelName)
+        if (!enableThinking && reasoningObject == null && mapping.disabledValue == null) {
             return
         }
 
@@ -125,13 +126,16 @@ open class OpenAIResponsesProvider(
         }
 
         val finalReasoningObject = reasoningObject ?: JSONObject()
+        if (!enableThinking) {
+            val disabledValue = mapping.disabledValue ?: return
+            finalReasoningObject.put("effort", disabledValue)
+            requestJson.put("reasoning", finalReasoningObject)
+            return
+        }
         val existingEffort =
             finalReasoningObject.optString("effort", "").trim().takeIf { it.isNotEmpty() }
         if (existingEffort == null) {
-            val effort = when {
-                enableThinking -> resolveResponsesReasoningEffort(context)
-                else -> "none"
-            }
+            val effort = resolveResponsesReasoningEffort(context)
             if (effort != null) {
                 finalReasoningObject.put("effort", effort)
                 AppLogger.d(
@@ -175,22 +179,16 @@ open class OpenAIResponsesProvider(
     }
 
     private fun resolveResponsesReasoningEffort(context: Context): String? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "OpenAIResponsesProvider",
-                "Failed to read thinking option id; reasoning.effort not applied",
-                it
-            )
-            return null
+        val qualityLevel = try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("OpenAIResponsesProvider", "Failed to read thinking option id", error)
+            throw error
         }
 
-        return ThinkingQualityMappingRegistry
-            .resolve(responsesProviderType.name, modelName)
-            .textValueFor(qualityLevel)
+        val mapping = ThinkingQualityMappingRegistry.resolve(responsesProviderType.name, modelName)
+        return mapping.textValueFor(qualityLevel)
+            ?: throw IllegalArgumentException("OpenAI Responses option is not supported: $qualityLevel")
     }
 
     private fun shouldAttachPromptCacheKey(): Boolean {

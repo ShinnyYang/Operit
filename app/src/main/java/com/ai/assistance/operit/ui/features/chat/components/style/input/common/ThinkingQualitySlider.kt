@@ -64,12 +64,8 @@ internal fun ThinkingQualitySlider(
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (mapping.control != ThinkingQualityControl.LEVELS || mapping.options.isEmpty()) {
-        return
-    }
-
     val options = mapping.options
-    val selectedIndex = options.indexOfFirst { it.id == value }.coerceAtLeast(0)
+    val selectedIndex = options.indexOfFirst { it.id == value }
     val maxIndex = (options.size - 1).coerceAtLeast(1)
     var sliderPosition by remember(options) { mutableFloatStateOf(selectedIndex.toFloat()) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -77,6 +73,10 @@ internal fun ThinkingQualitySlider(
 
     LaunchedEffect(selectedIndex) {
         sliderPosition = selectedIndex.toFloat()
+    }
+
+    if (mapping.control != ThinkingQualityControl.LEVELS || options.isEmpty() || selectedIndex < 0) {
+        return
     }
 
     val currentIndex = sliderPosition.roundToInt().coerceIn(0, options.lastIndex)

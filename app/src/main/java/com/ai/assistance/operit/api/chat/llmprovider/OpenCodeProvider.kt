@@ -64,11 +64,20 @@ class OpenCodeProvider private constructor(
         recordTokenUsage: Boolean,
         onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
-        val optionId =
-            if (enableThinking) ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            else ""
-        val capability = OpenCodeModelCatalog.resolve(client, baseEndpoint, modelName)
-        val variant = OpenCodeReasoningMapper.select(capability, enableThinking, optionId)
+        val optionId = ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
+        val catalogCapability = try {
+            OpenCodeModelCatalog.resolve(client, baseEndpoint, modelName)
+        } catch (error: Exception) {
+            AppLogger.w("OpenCodeProvider", "Model capability lookup failed; using generic reasoning mapping", error)
+            null
+        }
+        val capability = catalogCapability ?: OpenCodeReasoningMapper.genericCapability()
+        // The catalog is authoritative when it declares a capability, but an unknown model must remain usable.
+        val thinkingEnabled = enableThinking || capability?.reasoningRequired == true
+        val variant = OpenCodeReasoningMapper.select(capability, thinkingEnabled, optionId)
+        if (thinkingEnabled && capability?.reasoning == true && variant == null) {
+            throw IllegalArgumentException("OpenCode option is not supported: $optionId")
+        }
         val opencodeParameters = OpenCodeReasoningParameters.forVariant(
             protocol = protocol,
             modelName = modelName,
@@ -80,7 +89,7 @@ class OpenCodeProvider private constructor(
             context = context,
             chatHistory = chatHistory,
             modelParameters = modelParameters + opencodeParameters,
-            enableThinking = enableThinking && protocol == ApiProviderType.OPENAI_RESPONSES_GENERIC,
+            enableThinking = thinkingEnabled && protocol == ApiProviderType.OPENAI_RESPONSES_GENERIC,
             stream = stream,
             availableTools = availableTools,
             preserveThinkInHistory = preserveThinkInHistory,
@@ -139,13 +148,16 @@ class OpenCodeProvider private constructor(
 
 internal object OpenCodeRouting {
     fun protocolFor(baseEndpoint: String, modelName: String): ApiProviderType {
-        val model = modelName.lowercase()
+        val model = modelName.trim().lowercase()
+        val provider = model.substringBefore('/').takeIf { it != model }.orEmpty()
+        val modelId = model.substringAfterLast('/')
         return when {
-            model.startsWith("gpt-") || model.startsWith("grok-") || model.contains("codex") ->
+            provider == "openai" || provider == "azure" || provider == "xai" ||
+                modelId.startsWith("gpt-") || modelId.startsWith("grok-") || modelId.contains("codex") ->
                 ApiProviderType.OPENAI_RESPONSES_GENERIC
-            model.startsWith("claude-") || model.startsWith("qwen") || model.startsWith("minimax-") ->
+            provider == "anthropic" || provider == "minimax" || modelId.startsWith("claude-") || modelId.startsWith("minimax-") ->
                 ApiProviderType.ANTHROPIC_GENERIC
-            model.startsWith("gemini-") -> ApiProviderType.GEMINI_GENERIC
+            provider == "google" || modelId.startsWith("gemini-") -> ApiProviderType.GEMINI_GENERIC
             else -> ApiProviderType.OPENAI_GENERIC
         }
     }
@@ -410,7 +422,8 @@ internal class OpenCodeGeminiProvider(
 internal data class OpenCodeReasoningCapability(
     val reasoning: Boolean,
     val options: List<OpenCodeReasoningOption>,
-    val outputLimit: Int
+    val outputLimit: Int,
+    val reasoningRequired: Boolean = false,
 )
 
 internal sealed class OpenCodeReasoningOption {
@@ -430,12 +443,21 @@ internal sealed class OpenCodeReasoningVariant {
  * Selects the exact option published by OpenCode for the current model.
  */
 internal object OpenCodeReasoningMapper {
+    fun genericCapability(): OpenCodeReasoningCapability = OpenCodeReasoningCapability(
+        reasoning = true,
+        options = listOf(OpenCodeReasoningOption.Effort(listOf("low", "medium", "high"))),
+        outputLimit = 0,
+    )
+
     fun select(
         capability: OpenCodeReasoningCapability?,
         enableThinking: Boolean,
         optionId: String
     ): OpenCodeReasoningVariant? {
         if (capability == null || !capability.reasoning || capability.options.isEmpty()) {
+            return null
+        }
+        if (!enableThinking && capability.reasoningRequired) {
             return null
         }
 
@@ -452,8 +474,7 @@ internal object OpenCodeReasoningMapper {
             val activeEfforts = effort.values
                 .mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
                 .filterNot { it.equals("none", ignoreCase = true) }
-            val selectedEffort = activeEfforts.firstOrNull { it == optionId } ?: activeEfforts.firstOrNull()
-                ?: return null
+            val selectedEffort = activeEfforts.firstOrNull { it == optionId } ?: return null
             return OpenCodeReasoningVariant.Effort(selectedEffort)
         }
 
@@ -465,8 +486,7 @@ internal object OpenCodeReasoningMapper {
             }
             val budgets = budgetVariants(budget, capability.outputLimit)
             if (budgets.isEmpty()) return null
-            val selectedBudget = budgets.firstOrNull { it.toString() == optionId } ?: budgets.firstOrNull()
-                ?: return null
+            val selectedBudget = budgets.firstOrNull { it.toString() == optionId } ?: return null
             return OpenCodeReasoningVariant.BudgetTokens(selectedBudget)
         }
 
@@ -705,14 +725,10 @@ internal object OpenCodeModelCatalog {
                 fetch(client)
             } catch (error: Exception) {
                 AppLogger.w(TAG, "刷新OpenCode模型能力目录失败", error)
-                null
+                throw error
             }
-            if (fresh != null) {
-                snapshot = fresh
-                fresh.providers[providerId]?.get(modelName)
-            } else {
-                current?.providers?.get(providerId)?.get(modelName)
-            }
+            snapshot = fresh
+            fresh.providers[providerId]?.get(modelName)
         }
     }
 
@@ -750,7 +766,8 @@ internal object OpenCodeModelCatalog {
             result[modelId] = OpenCodeReasoningCapability(
                 reasoning = model.optBoolean("reasoning", false),
                 options = parseOptions(model),
-                outputLimit = model.optJSONObject("limit")?.optInt("output", 0) ?: 0
+                outputLimit = model.optJSONObject("limit")?.optInt("output", 0) ?: 0,
+                reasoningRequired = model.optBoolean("reasoning_required", false),
             )
         }
         return result

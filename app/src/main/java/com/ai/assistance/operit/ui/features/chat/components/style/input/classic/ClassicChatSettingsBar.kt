@@ -235,6 +235,12 @@ fun ClassicChatSettingsBar(
             apiEndpoint = currentConfig?.apiEndpoint.orEmpty(),
         )
     }
+    LaunchedEffect(thinkingQualityMapping, thinkingOptionId) {
+        val firstOption = thinkingQualityMapping?.options?.firstOrNull()
+        if (firstOption != null && thinkingQualityMapping?.optionFor(thinkingOptionId) == null) {
+            onThinkingOptionIdChange(firstOption.id)
+        }
+    }
     val toolPermissionText =
         when (if (enableTools) permissionLevel else PermissionLevel.FORBID) {
             PermissionLevel.FORBID -> stringResource(R.string.agent_menu_permission_disabled)
@@ -573,8 +579,8 @@ fun ClassicChatSettingsBar(
                                 )
                             }
                             ThinkingSettingsItem(
-                                enableThinkingMode = enableThinkingMode,
-                                onToggleThinkingMode = onToggleThinkingMode,
+                                enableThinkingMode = enableThinkingMode || thinkingQualityMapping?.reasoningRequired == true,
+                                onToggleThinkingMode = if (thinkingQualityMapping?.reasoningRequired == true) ({}) else onToggleThinkingMode,
                                 thinkingOptionId = thinkingOptionId,
                                 thinkingQualityMapping = thinkingQualityMapping,
                                 onThinkingOptionIdChange = { optionId ->

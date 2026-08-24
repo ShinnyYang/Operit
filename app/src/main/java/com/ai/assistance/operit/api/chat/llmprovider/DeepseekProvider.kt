@@ -61,6 +61,10 @@ class DeepseekProvider(
         preserveThinkInHistory: Boolean
     ): RequestBody {
         fun applyThinkingParamsIfNeeded(jsonObject: JSONObject) {
+            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.DEEPSEEK.name, modelName)
+            if (mapping.control == ThinkingQualityControl.UNSUPPORTED) {
+                return
+            }
             val thinkingObject = jsonObject.optJSONObject("thinking") ?: JSONObject()
             val thinkingType = if (enableThinking) "enabled" else "disabled"
             thinkingObject.put("type", thinkingType)
@@ -443,22 +447,16 @@ class DeepseekProvider(
     }
 
     private fun resolveDeepseekThinkingEffort(context: Context): String? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "DeepseekProvider",
-                "Failed to read thinking option id for DeepSeek; reasoning_effort not applied",
-                it
-            )
-            return null
+        val qualityLevel = try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("DeepseekProvider", "Failed to read thinking option id", error)
+            throw error
         }
 
-        return ThinkingQualityMappingRegistry
-            .resolve(ApiProviderType.DEEPSEEK.name, modelName)
-            .textValueFor(qualityLevel)
+        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.DEEPSEEK.name, modelName)
+        return mapping.textValueFor(qualityLevel)
+            ?: throw IllegalArgumentException("DeepSeek option is not supported: $qualityLevel")
     }
 
     override suspend fun sendMessage(

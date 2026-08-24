@@ -15,17 +15,12 @@ import org.json.JSONObject
 
 /** Selects one of the efforts supported by the current Grok model. */
 internal object XaiReasoningMapper {
-    fun effortForOption(enableThinking: Boolean, optionId: String): String {
-        if (!enableThinking) {
-            return "low"
-        }
-        return optionId.ifBlank { "low" }
-    }
+    fun effortForOption(optionId: String): String = optionId
 }
 
 internal fun xaiModelSupportsReasoningEffort(modelName: String): Boolean {
     val normalized = modelName.trim().lowercase()
-    return normalized.startsWith("grok-4.5") || normalized.startsWith("grok-4.6")
+    return normalized.isNotEmpty()
 }
 
 /** xAI's OpenAI-compatible Chat Completions provider for Grok models. */
@@ -73,6 +68,10 @@ class XaiProvider(
         )
 
         if (xaiModelSupportsReasoningEffort(modelName)) {
+            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.XAI.name, modelName)
+            if (!enableThinking && !mapping.reasoningRequired) {
+                return createJsonRequestBody(requestJson.toString())
+            }
             val existingEffort = requestJson.optString("reasoning_effort", "").trim()
             if (existingEffort.isEmpty()) {
                 val optionId = try {
@@ -88,14 +87,8 @@ class XaiProvider(
                     throw error
                 }
 
-                val effort = if (enableThinking) {
-                    ThinkingQualityMappingRegistry
-                        .resolve(ApiProviderType.XAI.name, modelName)
-                        .textValueFor(optionId)
-                        ?: XaiReasoningMapper.effortForOption(true, "")
-                } else {
-                    XaiReasoningMapper.effortForOption(false, optionId)
-                }
+                val effort = mapping.textValueFor(optionId)
+                    ?: throw IllegalArgumentException("xAI option is not supported: $optionId")
                 requestJson.put("reasoning_effort", effort)
             }
         }

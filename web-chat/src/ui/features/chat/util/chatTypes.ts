@@ -282,9 +282,10 @@ export interface WebThinkingQualityOption {
 }
 
 export interface WebThinkingQualityMapping {
-  mode: 'levels' | 'toggle_only';
+  mode: 'levels' | 'toggle_only' | 'unsupported';
   parameter_label: string;
   options: WebThinkingQualityOption[];
+  reasoning_required: boolean;
 }
 
 export interface WebModelSelectorState {

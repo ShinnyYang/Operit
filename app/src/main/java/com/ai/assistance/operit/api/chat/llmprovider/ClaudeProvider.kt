@@ -66,20 +66,7 @@ open class ClaudeProvider(
     private var activeResponse: Response? = null
     @Volatile private var isManuallyCancelled = false
 
-    /**
-     * Thinking 格式模式。
-     * - ADAPTIVE: thinking.type="adaptive" + display=summarized（新模型）
-     * - ENABLED:  thinking.type="enabled" + budget_tokens（旧模型）
-     */
     private enum class ThinkingFormat { ADAPTIVE, ENABLED }
-
-    /**
-     * 缓存：当前模型对应的 thinking 格式。
-     * 初始由模型名启发式决定；若 API 返回 thinking 类型不兼容的 400 错误，
-     * 会自动翻转并缓存，后续请求直接使用正确格式，避免重复失败。
-     */
-    @Volatile
-    private var cachedThinkingFormat: ThinkingFormat? = null
 
     /**
      * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
@@ -1119,11 +1106,14 @@ open class ClaudeProvider(
                 ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
             val thinkingMapping = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName)
-            val selectedThinkingOption = thinkingMapping.optionFor(
-                thinkingMapping.selectedOptionId(selectedOptionId)
-            )
+            val selectedThinkingOption = thinkingMapping.optionFor(selectedOptionId)
+                ?: throw IllegalArgumentException("Claude option is not supported: $selectedOptionId")
             // 添加extended thinking支持
-            val format = getThinkingFormat()
+            val format = when (selectedThinkingOption.wireValue) {
+                is ThinkingQualityWireValue.Text -> ThinkingFormat.ADAPTIVE
+                is ThinkingQualityWireValue.Number -> ThinkingFormat.ENABLED
+                ThinkingQualityWireValue.Omitted -> throw IllegalArgumentException("Claude option has no thinking wire value")
+            }
             when (format) {
                 ThinkingFormat.ADAPTIVE -> {
                     // adaptive thinking: thinking.type=adaptive + display=summarized
@@ -1133,9 +1123,9 @@ open class ClaudeProvider(
                     thinkingObject.put("type", "adaptive")
                     thinkingObject.put("display", "summarized")
                     jsonObject.put("thinking", thinkingObject)
-                    (selectedThinkingOption?.wireValue as? ThinkingQualityWireValue.Text)?.value?.let { effort ->
-                        jsonObject.put("output_config", JSONObject().put("effort", effort))
-                    }
+                    val effort = (selectedThinkingOption.wireValue as? ThinkingQualityWireValue.Text)?.value
+                        ?: throw IllegalArgumentException("Claude adaptive thinking requires an effort option")
+                    jsonObject.put("output_config", JSONObject().put("effort", effort))
 
                     AppLogger.d("AIService", "启用Claude adaptive thinking, display=summarized")
                 }
@@ -1144,13 +1134,8 @@ open class ClaudeProvider(
                     val thinkingObject = JSONObject()
                     thinkingObject.put("type", "enabled")
 
-                    val budgetTokensFromSelection = (selectedThinkingOption?.wireValue as? ThinkingQualityWireValue.Number)?.value
-                    val budgetTokensFromParams = modelParameters
-                        .firstOrNull { it.apiName == "budget_tokens" }
-                        ?.currentValue
-                    val budgetTokensValue = budgetTokensFromSelection
-                        ?: (budgetTokensFromParams as? Number)?.toInt()?.takeIf { it > 0 }
-                        ?: minOf(1024, maxTokensValue ?: DEFAULT_MAX_TOKENS)
+                    val budgetTokensValue = (selectedThinkingOption.wireValue as? ThinkingQualityWireValue.Number)?.value
+                        ?: throw IllegalArgumentException("Claude enabled thinking requires a budget option")
                     thinkingObject.put("budget_tokens", budgetTokensValue)
 
                     jsonObject.put("thinking", thinkingObject)
@@ -1189,123 +1174,6 @@ open class ClaudeProvider(
     }
 
 
-    /**
-     * 判断模型是否推荐使用 adaptive thinking 格式。
-     * 仅做启发式匹配，覆盖已知官方模型家族和常见中转命名。
-     */
-    private fun prefersAdaptiveThinking(): Boolean {
-        val name = normalizeClaudeModelName(modelName)
-
-        if (hasClaudeFamilyAtLeast(name, "fable", 5, 0)) return true
-        if (hasClaudeFamilyAtLeast(name, "mythos", 5, 0)) return true
-
-        return hasClaudeFamilyAtLeast(name, "opus", 4, 6) ||
-                hasClaudeFamilyAtLeast(name, "sonnet", 4, 6)
-    }
-
-    private fun normalizeClaudeModelName(value: String): String {
-        return value
-            .trim()
-            .lowercase()
-            .replace(Regex("(?<=[a-z])(?=\\d)|(?<=\\d)(?=[a-z])"), "-")
-            .replace(Regex("[^a-z0-9]+"), "-")
-            .trim('-')
-    }
-
-    private fun hasClaudeFamilyAtLeast(
-        normalizedModelName: String,
-        family: String,
-        minMajor: Int,
-        minMinor: Int
-    ): Boolean {
-        val version = claudeFamilyVersion(normalizedModelName, family) ?: return false
-        val major = version.first
-        val minor = version.second
-        return major > minMajor || major == minMajor && minor >= minMinor
-    }
-
-    private fun claudeFamilyVersion(normalizedModelName: String, family: String): Pair<Int, Int>? {
-        val parts = normalizedModelName.split('-').filter { it.isNotEmpty() }
-        val familyIndex = parts.indexOf(family)
-        if (familyIndex == -1) return null
-
-        val beforeFamily = parts.take(familyIndex)
-            .takeLastWhileDigitParts()
-            .takeLast(2)
-        val beforeFamilyVersion = numericVersion(beforeFamily)
-        if (beforeFamilyVersion != null) return beforeFamilyVersion
-
-        val afterFamily = parts.drop(familyIndex + 1)
-            .takeWhileDigitParts()
-            .take(2)
-        return numericVersion(afterFamily)
-    }
-
-    private fun List<String>.takeLastWhileDigitParts(): List<String> {
-        return asReversed()
-            .takeWhile { it.isVersionPart() }
-            .asReversed()
-    }
-
-    private fun List<String>.takeWhileDigitParts(): List<String> {
-        return takeWhile { it.isVersionPart() }
-    }
-
-    private fun String.isVersionPart(): Boolean {
-        return all(Char::isDigit) && length < 8
-    }
-
-    private fun numericVersion(parts: List<String>): Pair<Int, Int>? {
-        val major = parts.firstOrNull()?.toIntOrNull() ?: return null
-        val minor = parts.getOrNull(1)?.toIntOrNull() ?: 0
-        return major to minor
-    }
-
-    /**
-     * 获取当前模型应使用的 thinking 格式。
-     * 优先返回缓存值（包含回退后的正确结果）；
-     * 无缓存时根据模型名启发式推断。
-     */
-    private fun getThinkingFormat(): ThinkingFormat {
-        return cachedThinkingFormat
-            ?: if (prefersAdaptiveThinking()) ThinkingFormat.ADAPTIVE
-            else ThinkingFormat.ENABLED
-    }
-
-    /**
-     * 在检测到 API 返回 thinking type 不兼容的 400 错误后，
-     * 翻转当前缓存的 thinking 格式并记录日志。
-     */
-    private fun flipThinkingFormat(): ThinkingFormat {
-        val current = getThinkingFormat()
-        val flipped = if (current == ThinkingFormat.ADAPTIVE) ThinkingFormat.ENABLED
-                      else ThinkingFormat.ADAPTIVE
-        cachedThinkingFormat = flipped
-        AppLogger.w(
-            "AIService",
-            "【Claude Thinking 回退】$modelName detected thinking type incompatibility, " +
-            "flipped $current → $flipped (cached for subsequent requests)"
-        )
-        return flipped
-    }
-
-    /**
-     * 检测异常是否由 thinking type 不兼容导致（API 返回400）。
-     * 匹配关键词：thinking.type / thinking_type / "enabled" is not supported / "adaptive" is not supported
-     * 同时检查 Anthropic 直接错误和通过中转平台转发的错误。
-     */
-    private fun isThinkingTypeError(e: Exception): Boolean {
-        if (e !is NonRetriableException && e !is IOException) return false
-        val msg = e.message?.lowercase() ?: return false
-        // Anthropic 官方 / AWS Bedrock 的错误格式
-        return msg.contains("thinking") && (
-            msg.contains("is not supported") ||
-            msg.contains("not supported for this model") ||
-            msg.contains("type.") ||
-            msg.contains("unsupported") ||
-            msg.contains("invalid")
-        )
-    }
 
     // 添加模型参数
     protected open fun addParameters(jsonObject: JSONObject, modelParameters: List<ModelParameter<*>>) {
@@ -1475,7 +1343,6 @@ open class ClaudeProvider(
         var lastException: Exception? = null
         val receivedContent = StringBuilder()
         val requestSavepointId = "attempt_${UUID.randomUUID().toString().replace("-", "")}"
-        var thinkingFormatFlipped = false  // limit thinking format flip to once
         var outboundAttempt = 0
 
         suspend fun emitSavepoint(id: String) {
@@ -2150,20 +2017,7 @@ open class ClaudeProvider(
             } catch (e: Exception) {
                 lastException = e
 
-                // 检测 thinking type 不兼容错误，自动翻转格式并立即重试
-                if (enableThinking && !thinkingFormatFlipped && isThinkingTypeError(e)) {
-                    emitRollback(requestSavepointId)
-                    flipThinkingFormat()
-                    thinkingFormatFlipped = true
-                    onNonFatalError(
-                        context.getString(R.string.provider_error_retry_message,
-                            "Thinking format incompatibility detected, switching format",
-                            retryCount + 1)
-                    )
-                    // 不增加 retryCount，因为这是格式问题而非网络问题
-                    AppLogger.w("AIService", "【Claude】Thinking格式不兼容，已自动切换，准备立即重试")
-                } else {
-                    retryCount = handleRetryableError(
+                retryCount = handleRetryableError(
                         context = context,
                         exception = e,
                         retryCount = retryCount,
@@ -2175,7 +2029,6 @@ open class ClaudeProvider(
                             context.getString(R.string.provider_error_retry_message, errorText, retryNumber)
                         },
                     )
-                }
             } finally {
                 activeCall = null
                 activeResponse = null

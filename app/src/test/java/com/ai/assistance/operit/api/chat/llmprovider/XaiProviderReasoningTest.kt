@@ -3,7 +3,6 @@ package com.ai.assistance.operit.api.chat.llmprovider
 import com.ai.assistance.operit.data.collects.ApiProviderConfigs
 import com.ai.assistance.operit.data.model.ApiProviderType
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -32,23 +31,23 @@ class XaiProviderReasoningTest {
         assertEquals(
             listOf("low", "medium", "high", "xhigh"),
             listOf("low", "medium", "high", "xhigh").map {
-                XaiReasoningMapper.effortForOption(enableThinking = true, optionId = it)
+                XaiReasoningMapper.effortForOption(optionId = it)
             }
         )
     }
 
     @Test
-    fun disabledThinkingUsesTheLowestSupportedEffort() {
+    fun mapperPreservesTheSelectedEffort() {
         assertEquals(
-            "low",
-            XaiReasoningMapper.effortForOption(enableThinking = false, optionId = "high")
+            "high",
+            XaiReasoningMapper.effortForOption(optionId = "high")
         )
     }
 
     @Test
-    fun reasoningEffortIsLimitedToDocumentedGrokModels() {
+    fun reasoningEffortUsesTheGrokFamilyRule() {
         assertTrue(xaiModelSupportsReasoningEffort("grok-4.6"))
         assertTrue(xaiModelSupportsReasoningEffort("grok-4.5-latest"))
-        assertFalse(xaiModelSupportsReasoningEffort("grok-3-mini"))
+        assertTrue(xaiModelSupportsReasoningEffort("grok-3-mini"))
     }
 }

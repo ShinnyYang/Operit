@@ -97,10 +97,30 @@ class QwenAIProvider(
         enableThinking: Boolean
     ) {
         if (qwenProviderType != ApiProviderType.SILICONFLOW) {
-            if (enableThinking && !requestJson.has("enable_thinking")) {
-                requestJson.put("enable_thinking", true)
-                AppLogger.d("QwenAIProvider", "已为Qwen模型启用“思考模式”。")
+            return
+        }
+
+        val mapping = ThinkingQualityMappingRegistry.resolve(qwenProviderType.name, modelName)
+        if (mapping.control == ThinkingQualityControl.UNSUPPORTED) return
+
+        if (mapping.parameterLabel == "reasoning_effort") {
+            if (requestJson.has(mapping.parameterLabel)) {
+                AppLogger.d(
+                    "QwenAIProvider",
+                    "Preserving caller-supplied SiliconFlow reasoning_effort=${requestJson.opt(mapping.parameterLabel)}"
+                )
+                return
             }
+            val qualityLevel = try {
+                runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+            } catch (error: Exception) {
+                AppLogger.e("QwenAIProvider", "Failed to read SiliconFlow reasoning option id", error)
+                throw error
+            }
+            val effort = mapping.textValueFor(qualityLevel)
+                ?: throw IllegalArgumentException("SiliconFlow option is not supported: $qualityLevel")
+            requestJson.put(mapping.parameterLabel, effort)
+            AppLogger.d("QwenAIProvider", "SiliconFlow reasoning effort applied via ${mapping.parameterLabel}=$effort")
             return
         }
 
@@ -142,26 +162,16 @@ class QwenAIProvider(
         requestJson: JSONObject,
         modelParameters: List<ModelParameter<*>>
     ): Int? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "QwenAIProvider",
-                "Failed to read thinking option id for SiliconFlow; thinking_budget not applied",
-                it
-            )
-            return null
+        val qualityLevel = try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("QwenAIProvider", "Failed to read thinking option id", error)
+            throw error
         }
 
-        val requestedBudget = ThinkingQualityMappingRegistry
-            .resolve(qwenProviderType.name, modelName)
-            .numberValueFor(qualityLevel)
-
-        if (requestedBudget == null) {
-            return null
-        }
+        val mapping = ThinkingQualityMappingRegistry.resolve(qwenProviderType.name, modelName)
+        val requestedBudget = mapping.numberValueFor(qualityLevel)
+            ?: throw IllegalArgumentException("SiliconFlow option is not supported: $qualityLevel")
 
         val modelMaxTokens =
             (modelParameters.firstOrNull { it.apiName == "max_tokens" && it.isEnabled }?.currentValue as? Number)
@@ -174,7 +184,10 @@ class QwenAIProvider(
         }
 
         val cappedBudget = minOf(requestedBudget, modelMaxTokens - 1)
-        return if (cappedBudget > 0) cappedBudget else null
+        if (cappedBudget < 128) {
+            throw IllegalArgumentException("SiliconFlow thinking budget exceeds max_tokens")
+        }
+        return cappedBudget
     }
 
     override suspend fun sendMessage(

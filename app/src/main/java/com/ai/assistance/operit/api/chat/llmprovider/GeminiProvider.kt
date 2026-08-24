@@ -67,7 +67,7 @@ internal data class GeminiThinkingConfig(
         private const val THINKING_BUDGET = "thinkingBudget"
         fun fromOption(modelName: String, optionId: String): GeminiThinkingConfig {
             val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.GOOGLE.name, modelName)
-            val thinkingLevel = mapping.optionFor(mapping.selectedOptionId(optionId))
+            val thinkingLevel = mapping.optionFor(optionId)
                 ?: throw IllegalArgumentException("Gemini option is not supported: $optionId")
             return when (val wireValue = thinkingLevel.wireValue) {
                 is ThinkingQualityWireValue.Text ->
@@ -1369,15 +1369,16 @@ open class GeminiProvider(
             }
         }
 
-        if (enableThinking) {
-            val thinkingOptionId =
-                runBlocking {
-                    ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-                }
-            val thinkingConfig =
-                GeminiThinkingConfig.fromOption(modelName, thinkingOptionId).toJsonObject()
-            generationConfig.put("thinkingConfig", thinkingConfig)
-            logDebug("已为Gemini模型启用“思考模式”。")
+        val thinkingMapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.GOOGLE.name, modelName)
+        if (thinkingMapping.control == ThinkingQualityControl.LEVELS) {
+            if (enableThinking || thinkingMapping.reasoningRequired) {
+                val thinkingOptionId = runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+                generationConfig.put("thinkingConfig", GeminiThinkingConfig.fromOption(modelName, thinkingOptionId).toJsonObject())
+                logDebug("已为Gemini模型启用“思考模式”。")
+            } else if (!thinkingMapping.reasoningRequired && thinkingMapping.options.any { it.wireValue is ThinkingQualityWireValue.Number }) {
+                generationConfig.put("thinkingConfig", GeminiThinkingConfig(includeThoughts = false, thinkingBudget = 0).toJsonObject())
+                logDebug("已为Gemini模型关闭思考模式。")
+            }
         }
 
         json.put("generationConfig", generationConfig)

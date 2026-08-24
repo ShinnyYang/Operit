@@ -1603,11 +1603,13 @@ class WebChatHttpBridge(
             mode = when (control) {
                 ThinkingQualityControl.LEVELS -> "levels"
                 ThinkingQualityControl.TOGGLE_ONLY -> "toggle_only"
+                ThinkingQualityControl.UNSUPPORTED -> "unsupported"
             },
             parameterLabel = parameterLabel,
             options = options.map { option ->
                 WebThinkingQualityOption(id = option.id, label = option.displayLabel)
             },
+            reasoningRequired = reasoningRequired,
         )
 
     private suspend fun resolveDefaultCharacterPromptSnapshot(

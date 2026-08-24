@@ -16,13 +16,13 @@ class OpenCodeReasoningMapperTest {
     }
 
     @Test
-    fun unknownEffortIdUsesTheFirstDeclaredEffort() {
+    fun unknownEffortIdIsRejected() {
         val capability = OpenCodeReasoningCapability(
             reasoning = true,
             options = listOf(OpenCodeReasoningOption.Effort(listOf("low", "high"))),
             outputLimit = 64_000,
         )
-        assertEquals(OpenCodeReasoningVariant.Effort("low"), OpenCodeReasoningMapper.select(capability, true, "missing"))
+        assertNull(OpenCodeReasoningMapper.select(capability, true, "missing"))
     }
 
     @Test

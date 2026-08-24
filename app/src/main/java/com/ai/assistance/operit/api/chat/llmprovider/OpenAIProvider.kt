@@ -593,11 +593,12 @@ open class OpenAIProvider(
             return
         }
 
-        val effort = if (enableThinking) {
-            resolveOpenAiChatReasoningEffort(context)
-        } else {
-            "none"
-        } ?: return
+        if (!enableThinking) {
+            val disabledValue = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName).disabledValue ?: return
+            requestJson.put("reasoning_effort", disabledValue)
+            return
+        }
+        val effort = resolveOpenAiChatReasoningEffort(context) ?: return
         requestJson.put("reasoning_effort", effort)
         AppLogger.d(
             "OpenAIProvider",
@@ -606,22 +607,16 @@ open class OpenAIProvider(
     }
 
     private fun resolveOpenAiChatReasoningEffort(context: Context): String? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "OpenAIProvider",
-                "Failed to read thinking option id; reasoning_effort not applied",
-                it
-            )
-            return null
+        val qualityLevel = try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("OpenAIProvider", "Failed to read thinking option id", error)
+            throw error
         }
 
-        return ThinkingQualityMappingRegistry
-            .resolve(providerType.name, modelName)
-            .textValueFor(qualityLevel)
+        val mapping = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName)
+        return mapping.textValueFor(qualityLevel)
+            ?: throw IllegalArgumentException("OpenAI option is not supported: $qualityLevel")
     }
 
     private fun supportsOpenAiChatReasoningEffort(): Boolean =

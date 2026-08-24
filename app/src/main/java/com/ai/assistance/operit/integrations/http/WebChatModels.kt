@@ -483,6 +483,8 @@ data class WebThinkingQualityMapping(
     val parameterLabel: String,
     @SerialName("options")
     val options: List<WebThinkingQualityOption> = emptyList(),
+    @SerialName("reasoning_required")
+    val reasoningRequired: Boolean = false,
 )
 
 @Serializable
