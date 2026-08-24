@@ -71,7 +71,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.RoundRect
@@ -113,9 +112,6 @@ import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityMapping
 import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityMappingRegistry
 import com.ai.assistance.operit.api.chat.library.MemoryAutoSaveScheduler
 import com.ai.assistance.operit.core.tools.ToolProgressBus
-import com.ai.assistance.operit.plugins.chatview.ChatViewSlotPluginRegistry
-import com.ai.assistance.operit.plugins.chatview.ChatViewSlotRenderParams
-import com.ai.assistance.operit.plugins.chatview.ChatViewSlots
 import com.ai.assistance.operit.data.model.AttachmentInfo
 import com.ai.assistance.operit.data.model.ChatMessage
 import com.ai.assistance.operit.data.model.CharacterCardChatModelBindingMode
@@ -242,7 +238,6 @@ fun AgentChatInputSection(
     val showFullscreenInput = remember { mutableStateOf(false) }
     val showModelSelectorPopup = remember { mutableStateOf(false) }
     val showExtraSettingsPopup = remember { mutableStateOf(false) }
-    var isInputFocused by remember { mutableStateOf(false) }
     var showCharacterCardBindingSwitchConfirm by remember { mutableStateOf(false) }
     var pendingCharacterCardModelSelection by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var showCharacterCardMemoryBindingSwitchConfirm by remember { mutableStateOf(false) }
@@ -666,22 +661,6 @@ fun AgentChatInputSection(
 
     Surface(color = Color.Transparent, modifier = floatingContainerModifier) {
         Column {
-            ChatViewSlotPluginRegistry.RenderSlot(
-                params = ChatViewSlotRenderParams(
-                    context = context,
-                    slot = ChatViewSlots.ABOVE_INPUT,
-                    chatId = currentChatId,
-                    runtime = inputMenuRuntime,
-                    inputStyle = "agent",
-                    isProcessing = isProcessing,
-                    isInputFocused = isInputFocused,
-                    inputText = userMessage.text
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-
             replyToMessage?.let { message ->
                 Surface(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
@@ -855,20 +834,6 @@ fun AgentChatInputSection(
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                 ) {
-                    ChatViewSlotPluginRegistry.RenderSlot(
-                        params = ChatViewSlotRenderParams(
-                            context = context,
-                            slot = ChatViewSlots.INPUT_DRAWER,
-                            chatId = currentChatId,
-                            runtime = inputMenuRuntime,
-                            inputStyle = "agent",
-                            isProcessing = isProcessing,
-                            isInputFocused = isInputFocused,
-                            inputText = userMessage.text
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
                     OutlinedTextField(
                         value = userMessage,
                         onValueChange = onUserMessageChange,
@@ -883,11 +848,7 @@ fun AgentChatInputSection(
                                 style = inputTextStyle,
                             )
                         },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 44.dp)
-                            .onFocusChanged { state -> isInputFocused = state.isFocused }
-                            .onPreviewKeyEvent(onEnterToSendKeyEvent),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).onPreviewKeyEvent(onEnterToSendKeyEvent),
                         textStyle = inputTextStyle,
                         maxLines = 6,
                         minLines = 1,
@@ -934,7 +895,6 @@ fun AgentChatInputSection(
                             modifier = Modifier.weight(1f),
                             contentAlignment = Alignment.CenterStart,
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
                                 color = Color.Transparent,
@@ -974,23 +934,6 @@ fun AgentChatInputSection(
                                         modifier = Modifier.size(18.dp),
                                     )
                                 }
-                            }
-
-                            ChatViewSlotPluginRegistry.RenderSlot(
-                                params = ChatViewSlotRenderParams(
-                                    context = context,
-                                    slot = ChatViewSlots.INPUT_TOOLBAR_RIGHT,
-                                    chatId = currentChatId,
-                                    runtime = inputMenuRuntime,
-                                    inputStyle = "agent",
-                                    isProcessing = isProcessing,
-                                    isInputFocused = isInputFocused,
-                                    inputText = userMessage.text
-                                ),
-                                modifier = Modifier
-                                    .padding(start = 6.dp)
-                                    .widthIn(max = 180.dp)
-                            )
                             }
                         }
 
@@ -1191,20 +1134,6 @@ fun AgentChatInputSection(
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 8.dp),
                     ) {
-                        ChatViewSlotPluginRegistry.RenderSlot(
-                            params = ChatViewSlotRenderParams(
-                                context = context,
-                                slot = ChatViewSlots.INPUT_DRAWER,
-                                chatId = currentChatId,
-                                runtime = inputMenuRuntime,
-                                inputStyle = "agent",
-                                isProcessing = isProcessing,
-                                isInputFocused = isInputFocused,
-                                inputText = userMessage.text
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
                         OutlinedTextField(
                             value = userMessage,
                             onValueChange = onUserMessageChange,
@@ -1219,11 +1148,7 @@ fun AgentChatInputSection(
                                     style = inputTextStyle,
                                 )
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(min = 44.dp)
-                                .onFocusChanged { state -> isInputFocused = state.isFocused }
-                                .onPreviewKeyEvent(onEnterToSendKeyEvent),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).onPreviewKeyEvent(onEnterToSendKeyEvent),
                             textStyle = inputTextStyle,
                             maxLines = 6,
                             minLines = 1,
@@ -1270,7 +1195,6 @@ fun AgentChatInputSection(
                                 modifier = Modifier.weight(1f),
                                 contentAlignment = Alignment.CenterStart,
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
                                     color = Color.Transparent,
@@ -1310,23 +1234,6 @@ fun AgentChatInputSection(
                                             modifier = Modifier.size(18.dp),
                                         )
                                     }
-                                }
-
-                                ChatViewSlotPluginRegistry.RenderSlot(
-                                    params = ChatViewSlotRenderParams(
-                                        context = context,
-                                        slot = ChatViewSlots.INPUT_TOOLBAR_RIGHT,
-                                        chatId = currentChatId,
-                                        runtime = inputMenuRuntime,
-                                        inputStyle = "agent",
-                                        isProcessing = isProcessing,
-                                        isInputFocused = isInputFocused,
-                                        inputText = userMessage.text
-                                    ),
-                                    modifier = Modifier
-                                        .padding(start = 6.dp)
-                                        .widthIn(max = 180.dp)
-                                )
                                 }
                             }
 

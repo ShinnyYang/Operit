@@ -19,7 +19,6 @@ Kinds:
   prompt_history
   message_processing
   chat_input
-  chat_view_slot
   tool_lifecycle
   summary_generate
 
@@ -267,7 +266,6 @@ function createHookRegistry() {
     prompt_history: [],
     message_processing: [],
     chat_input: [],
-    chat_view_slot: [],
     tool_lifecycle: [],
     summary_generate: []
   };
@@ -309,9 +307,6 @@ function installRuntimeGlobals({ packageId, configDir, fixtures, registry }) {
     registerChatInputHook(definition) {
       registry.chat_input.push(definition);
     },
-    registerChatViewSlotPlugin(definition) {
-      registry.chat_view_slot.push(definition);
-    },
     registerToolLifecycleHook(definition) {
       registry.tool_lifecycle.push(definition);
     },
@@ -339,7 +334,6 @@ function installRuntimeGlobals({ packageId, configDir, fixtures, registry }) {
   global.registerToolPkgAppLifecycleHook = global.ToolPkg.registerAppLifecycleHook;
   global.registerToolPkgMessageProcessingPlugin = global.ToolPkg.registerMessageProcessingPlugin;
   global.registerToolPkgChatInputHook = global.ToolPkg.registerChatInputHook;
-  global.registerToolPkgChatViewSlotPlugin = global.ToolPkg.registerChatViewSlotPlugin;
   global.registerToolPkgToolLifecycleHook = global.ToolPkg.registerToolLifecycleHook;
   global.registerToolPkgPromptInputHook = global.ToolPkg.registerPromptInputHook;
   global.registerToolPkgPromptHistoryHook = global.ToolPkg.registerPromptHistoryHook;

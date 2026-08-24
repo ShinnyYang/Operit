@@ -1991,8 +1991,6 @@ private fun ChatInputBottomBar(
                 replyToMessage = replyToMessage,
                 onClearReply = actualViewModel::clearReplyToMessage,
                 isWorkspaceOpen = isWorkspaceOpen,
-                currentChatId = currentChatId,
-                inputMenuRuntime = inputMenuRuntime,
                 pendingQueueMessages = pendingQueueMessages,
                 isPendingQueueExpanded = isPendingQueueExpanded,
                 onPendingQueueExpandedChange = { expanded ->

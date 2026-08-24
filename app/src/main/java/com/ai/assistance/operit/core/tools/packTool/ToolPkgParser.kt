@@ -121,13 +121,6 @@ internal data class ToolPkgTagFunctionHookRuntime(
     val functionSource: String? = null
 )
 
-internal data class ToolPkgSlotFunctionHookRuntime(
-    val id: String,
-    val slot: String,
-    val function: String,
-    val functionSource: String? = null
-)
-
 internal data class ToolPkgSubpackageRuntime(
     val packageName: String,
     val containerPackageName: String,
@@ -163,7 +156,6 @@ internal data class ToolPkgContainerRuntime(
     val inputMenuTogglePlugins: List<ToolPkgFunctionHookRuntime>,
     val chatInputHooks: List<ToolPkgFunctionHookRuntime>,
     val chatViewHooks: List<ToolPkgFunctionHookRuntime>,
-    val chatViewSlotPlugins: List<ToolPkgSlotFunctionHookRuntime>,
     val chatMessageHooks: List<ToolPkgFunctionHookRuntime>,
     val toolLifecycleHooks: List<ToolPkgFunctionHookRuntime>,
     val promptInputHooks: List<ToolPkgFunctionHookRuntime>,
@@ -305,13 +297,6 @@ internal data class ToolPkgRegisteredTagFunctionHook(
     val functionSource: String? = null
 )
 
-internal data class ToolPkgRegisteredSlotFunctionHook(
-    val id: String,
-    val slot: String,
-    val function: String,
-    val functionSource: String? = null
-)
-
 internal data class ToolPkgMainRegistration(
     val toolboxUiModules: List<ToolPkgRegisteredUiModule> = emptyList(),
     val uiRoutes: List<ToolPkgRegisteredUiRoute> = emptyList(),
@@ -323,7 +308,6 @@ internal data class ToolPkgMainRegistration(
     val inputMenuTogglePlugins: List<ToolPkgRegisteredFunctionHook> = emptyList(),
     val chatInputHooks: List<ToolPkgRegisteredFunctionHook> = emptyList(),
     val chatViewHooks: List<ToolPkgRegisteredFunctionHook> = emptyList(),
-    val chatViewSlotPlugins: List<ToolPkgRegisteredSlotFunctionHook> = emptyList(),
     val chatMessageHooks: List<ToolPkgRegisteredFunctionHook> = emptyList(),
     val toolLifecycleHooks: List<ToolPkgRegisteredFunctionHook> = emptyList(),
     val promptInputHooks: List<ToolPkgRegisteredFunctionHook> = emptyList(),
@@ -1003,35 +987,6 @@ internal object ToolPkgArchiveParser {
             )
         }
 
-        val chatViewSlotPlugins = mutableListOf<ToolPkgSlotFunctionHookRuntime>()
-        val chatViewSlotIds = linkedSetOf<String>()
-        mainRegistration.chatViewSlotPlugins.forEachIndexed { index, hook ->
-            val id = hook.id.trim()
-            if (id.isBlank()) {
-                throw IllegalArgumentException("$TOOLPKG_REGISTRATION_CHAT_VIEW_SLOT_PLUGIN[$index].id is required")
-            }
-            if (!chatViewSlotIds.add(id.lowercase())) {
-                throw IllegalArgumentException("Duplicate chat view slot plugin id: $id")
-            }
-
-            val slot = hook.slot.trim().lowercase()
-            val function = hook.function.trim()
-            if (slot.isBlank()) {
-                throw IllegalArgumentException("$TOOLPKG_REGISTRATION_CHAT_VIEW_SLOT_PLUGIN[$index].slot is required")
-            }
-            if (function.isBlank()) {
-                throw IllegalArgumentException("$TOOLPKG_REGISTRATION_CHAT_VIEW_SLOT_PLUGIN[$index].function is required")
-            }
-            chatViewSlotPlugins.add(
-                ToolPkgSlotFunctionHookRuntime(
-                    id = id,
-                    slot = slot,
-                    function = function,
-                    functionSource = hook.functionSource
-                )
-            )
-        }
-
         val chatMessageHooks = mutableListOf<ToolPkgFunctionHookRuntime>()
         val chatMessageIds = linkedSetOf<String>()
         mainRegistration.chatMessageHooks.forEachIndexed { index, hook ->
@@ -1361,7 +1316,6 @@ internal object ToolPkgArchiveParser {
                 inputMenuTogglePlugins = inputMenuTogglePlugins,
                 chatInputHooks = chatInputHooks,
                 chatViewHooks = chatViewHooks,
-                chatViewSlotPlugins = chatViewSlotPlugins,
                 chatMessageHooks = chatMessageHooks,
                 toolLifecycleHooks = toolLifecycleHooks,
                 promptInputHooks = promptInputHooks,
