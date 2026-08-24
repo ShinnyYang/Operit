@@ -351,7 +351,7 @@ class DeepseekProvider(
                                         JSONObject().apply {
                                             put("role", "tool")
                                             put("tool_call_id", openToolCallIds[index])
-                                            put("content", resultContent)
+                                            put("content", buildContentField(context, resultContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -370,7 +370,7 @@ class DeepseekProvider(
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, textContent))
+                                            put("content", buildContentField(context, textContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -385,7 +385,7 @@ class DeepseekProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "user")
-                                        put("content", buildContentField(context, fallbackContent))
+                                        put("content", buildContentField(context, fallbackContent, role = "tool"))
                                     }
                                 )
                             }
@@ -403,12 +403,20 @@ class DeepseekProvider(
                         }
 
                         PromptTurnKind.USER,
-                        PromptTurnKind.SUMMARY,
-                        PromptTurnKind.TOOL_RESULT -> {
+                        PromptTurnKind.SUMMARY -> {
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "user")
                                     put("content", buildContentField(context, originalContent))
+                                }
+                            )
+                        }
+
+                        PromptTurnKind.TOOL_RESULT -> {
+                            messagesArray.put(
+                                JSONObject().apply {
+                                    put("role", "user")
+                                    put("content", buildContentField(context, originalContent, role = "tool"))
                                 }
                             )
                         }

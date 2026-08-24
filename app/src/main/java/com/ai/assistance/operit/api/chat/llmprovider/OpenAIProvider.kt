@@ -1138,7 +1138,7 @@ open class OpenAIProvider(
                                         JSONObject().apply {
                                             put("role", "tool")
                                             put("tool_call_id", openToolCallIds[index])
-                                            put("content", resultContent)
+                                            put("content", buildContentField(context, resultContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -1157,7 +1157,7 @@ open class OpenAIProvider(
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, textContent))
+                                            put("content", buildContentField(context, textContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -1172,7 +1172,7 @@ open class OpenAIProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "user")
-                                        put("content", buildContentField(context, fallbackContent))
+                                        put("content", buildContentField(context, fallbackContent, role = "tool"))
                                     }
                                 )
                             }
@@ -1192,7 +1192,9 @@ open class OpenAIProvider(
                     } else {
                         content
                     }
-                    historyMessage.put("content", buildContentField(context, effectiveContent, role = role))
+                    // TOOL_RESULT is serialized as user here, but its media links must remain text-only.
+                    val contentRole = if (turn.kind == PromptTurnKind.TOOL_RESULT) "tool" else role
+                    historyMessage.put("content", buildContentField(context, effectiveContent, role = contentRole))
                     messagesArray.put(historyMessage)
                 }
             }
