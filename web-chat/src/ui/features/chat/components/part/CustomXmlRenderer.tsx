@@ -37,14 +37,18 @@ const READ_ONLY_GROUPABLE_TOOL_NAMES = new Set([
 
 const RESPONSES_WEB_SEARCH_PROVIDER = 'openai:responses_web_search';
 
+interface ResponsesWebSearchAction {
+  type?: string;
+  query?: string;
+  // DeepSeek 批量搜索返回 queries；未解析该字段会隐藏合法 metadata。
+  queries?: string[];
+}
+
 interface ResponsesWebSearchPayload {
   type?: string;
   id?: string;
   status?: string;
-  action?: {
-    type?: string;
-    query?: string;
-  } | null;
+  action?: ResponsesWebSearchAction | null;
 }
 
 interface ServerToolRecord {
@@ -98,6 +102,43 @@ function decodeBase64Utf8(payload: string) {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
+function decodeWebSearchActionQuery(action: ResponsesWebSearchAction) {
+  const hasType = Object.prototype.hasOwnProperty.call(action, 'type');
+  const hasQuery = Object.prototype.hasOwnProperty.call(action, 'query');
+  const hasQueries = Object.prototype.hasOwnProperty.call(action, 'queries');
+  if (hasType && (typeof action.type !== 'string' || !action.type.trim())) {
+    throw new Error('invalid web search action type');
+  }
+
+  const singleQuery = action.query;
+  if (hasQuery && (typeof singleQuery !== 'string' || !singleQuery.trim())) {
+    throw new Error('invalid web search query');
+  }
+
+  const batchQueries = action.queries;
+  if (
+    hasQueries &&
+    (!Array.isArray(batchQueries) ||
+      batchQueries.length === 0 ||
+      batchQueries.some((batchQuery) => typeof batchQuery !== 'string' || !batchQuery.trim()))
+  ) {
+    throw new Error('invalid web search queries');
+  }
+
+  if (action.type !== 'search') {
+    return null;
+  }
+
+  const normalizedQueries = [
+    ...(typeof singleQuery === 'string' ? [singleQuery.trim()] : []),
+    ...(Array.isArray(batchQueries) ? batchQueries.map((batchQuery) => batchQuery.trim()) : [])
+  ];
+  if (normalizedQueries.length === 0) {
+    throw new Error('search action is missing a query');
+  }
+  return normalizedQueries.join(' · ');
+}
+
 function decodeResponsesWebSearchRecord(block: WebMessageContentBlock): ServerToolRecord | null {
   if (!isResponsesWebSearchMeta(block) || block.closed === false) {
     return null;
@@ -134,12 +175,7 @@ function decodeResponsesWebSearchRecord(block: WebMessageContentBlock): ServerTo
         throw new Error('invalid web search action');
       }
 
-      if (payload.action.type === 'search') {
-        if (typeof payload.action.query !== 'string' || !payload.action.query.trim()) {
-          throw new Error('search action is missing a query');
-        }
-        query = payload.action.query.trim();
-      }
+      query = decodeWebSearchActionQuery(payload.action);
     }
 
     return {

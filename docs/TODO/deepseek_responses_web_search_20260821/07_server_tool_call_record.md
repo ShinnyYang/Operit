@@ -28,8 +28,9 @@ Responses Web Search 执行期间只显示“正在搜索...”。调用完成�
 
 - Android 消息渲染已使用云端图标加具体工具名展示只读服务端调用
 - Web Chat 消息渲染已使用相同规则展示只读服务端调用
+- 修复运行时发现的协议差异：DeepSeek 批量搜索使用 `action.queries`，Web Chat 现已严格校验并汇总 `query` 与 `queries`
 - 原始 metadata、复制隔离和 Responses 历史恢复路径保持不变
 - 已增加 metadata 到服务端工具记录的解析测试代码
-- 按工程执行准则，本轮未运行编译、构建或测试
+- Web Chat 类型检查与生产构建通过；当前子项目未配置测试脚本
 
 [DONE]
