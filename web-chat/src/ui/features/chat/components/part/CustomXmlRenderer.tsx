@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { DetailsTagRenderer } from './DetailsTagRenderer';
+import { ContentDetailDialog } from './DialogComponents';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { AnimatedExpandBody, StructuredExpandRow } from './StructuredExpand';
 import { ToolDisplayComponent } from './ToolDisplayComponents';
@@ -54,6 +55,7 @@ interface ResponsesWebSearchPayload {
 interface ServerToolRecord {
   toolName: string;
   id: string;
+  rawJson: string;
   status: string;
   query: string | null;
 }
@@ -181,6 +183,7 @@ function decodeResponsesWebSearchRecord(block: WebMessageContentBlock): ServerTo
     return {
       toolName: 'web_search',
       id: payload.id.trim(),
+      rawJson: JSON.stringify(payload, null, 2),
       status: payload.status.trim(),
       query
     };
@@ -474,24 +477,37 @@ function ServerToolSourceIcon() {
 function ServerToolRecordBlock({ record }: { record: ServerToolRecord }) {
   const queryLabel = record.query ? `，查询：${record.query}` : '';
   const semanticDescription = `Server tool · ${record.toolName}，状态：${record.status}${queryLabel}`;
+  const [detailOpen, setDetailOpen] = useState(false);
 
   return (
-    <section
-      aria-label={semanticDescription}
-      className="structured-server-tool-row"
-      data-tool-call-id={record.id}
-    >
-      <ServerToolSourceIcon />
-      <div className="structured-server-tool-copy">
-        <strong className="structured-server-tool-title">{record.toolName}</strong>
-        <div className="structured-server-tool-details">
-          <span className="structured-server-tool-status">{record.status}</span>
-          {record.query ? (
-            <span className="structured-server-tool-query">{record.query}</span>
-          ) : null}
-        </div>
-      </div>
-    </section>
+    <>
+      <button
+        aria-label={`${semanticDescription}，查看详情`}
+        className="structured-server-tool-row"
+        data-tool-call-id={record.id}
+        onClick={() => setDetailOpen(true)}
+        type="button"
+      >
+        <ServerToolSourceIcon />
+        <span className="structured-server-tool-copy">
+          <strong className="structured-server-tool-title">{record.toolName}</strong>
+          <span className="structured-server-tool-details">
+            <span className="structured-server-tool-status">{record.status}</span>
+            {record.query ? (
+              <span className="structured-server-tool-query">{record.query}</span>
+            ) : null}
+          </span>
+        </span>
+      </button>
+      {detailOpen ? (
+        <ContentDetailDialog
+          content={record.rawJson}
+          iconName="search"
+          onDismiss={() => setDetailOpen(false)}
+          title={`${record.toolName} 服务端调用详情`}
+        />
+      ) : null}
+    </>
   );
 }
 
