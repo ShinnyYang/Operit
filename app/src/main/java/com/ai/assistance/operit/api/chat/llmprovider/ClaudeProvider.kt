@@ -10,6 +10,7 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
+import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -31,6 +32,7 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.UUID
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -1113,6 +1115,13 @@ open class ClaudeProvider(
         }
 
         if (enableThinking) {
+            val selectedOptionId = runBlocking {
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
+            }
+            val thinkingMapping = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName)
+            val selectedThinkingOption = thinkingMapping.optionFor(
+                thinkingMapping.selectedOptionId(selectedOptionId)
+            )
             // 添加extended thinking支持
             val format = getThinkingFormat()
             when (format) {
@@ -1124,6 +1133,9 @@ open class ClaudeProvider(
                     thinkingObject.put("type", "adaptive")
                     thinkingObject.put("display", "summarized")
                     jsonObject.put("thinking", thinkingObject)
+                    (selectedThinkingOption?.wireValue as? ThinkingQualityWireValue.Text)?.value?.let { effort ->
+                        jsonObject.put("output_config", JSONObject().put("effort", effort))
+                    }
 
                     AppLogger.d("AIService", "启用Claude adaptive thinking, display=summarized")
                 }
@@ -1132,10 +1144,12 @@ open class ClaudeProvider(
                     val thinkingObject = JSONObject()
                     thinkingObject.put("type", "enabled")
 
+                    val budgetTokensFromSelection = (selectedThinkingOption?.wireValue as? ThinkingQualityWireValue.Number)?.value
                     val budgetTokensFromParams = modelParameters
                         .firstOrNull { it.apiName == "budget_tokens" }
                         ?.currentValue
-                    val budgetTokensValue = (budgetTokensFromParams as? Number)?.toInt()?.takeIf { it > 0 }
+                    val budgetTokensValue = budgetTokensFromSelection
+                        ?: (budgetTokensFromParams as? Number)?.toInt()?.takeIf { it > 0 }
                         ?: minOf(1024, maxTokensValue ?: DEFAULT_MAX_TOKENS)
                     thinkingObject.put("budget_tokens", budgetTokensValue)
 

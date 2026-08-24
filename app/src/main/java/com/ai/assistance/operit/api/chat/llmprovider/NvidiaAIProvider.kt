@@ -96,12 +96,12 @@ class NvidiaAIProvider(
     private fun resolveGptOssReasoningEffort(context: Context): String? {
         val qualityLevel = runCatching {
             runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
         }.getOrElse {
             AppLogger.w(
                 "NvidiaAIProvider",
-                "Failed to read thinking quality level for NVIDIA GPT-OSS; reasoning_effort not applied",
+                "Failed to read thinking option id for NVIDIA GPT-OSS; reasoning_effort not applied",
                 it
             )
             return null

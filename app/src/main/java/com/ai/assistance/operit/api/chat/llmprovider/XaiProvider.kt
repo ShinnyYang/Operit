@@ -13,16 +13,13 @@ import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import org.json.JSONObject
 
-/** Maps the app's five quality levels to xAI's supported reasoning efforts. */
+/** Selects one of the efforts supported by the current Grok model. */
 internal object XaiReasoningMapper {
-    internal val supportedEfforts = listOf("low", "medium", "medium", "high", "xhigh")
-
-    fun effortForQuality(enableThinking: Boolean, qualityLevel: Int): String {
+    fun effortForOption(enableThinking: Boolean, optionId: String): String {
         if (!enableThinking) {
-            // xAI reasoning models cannot disable reasoning; use the lowest supported effort.
             return "low"
         }
-        return supportedEfforts[qualityLevel.coerceIn(1, 5) - 1]
+        return optionId.ifBlank { "low" }
     }
 }
 
@@ -78,23 +75,28 @@ class XaiProvider(
         if (xaiModelSupportsReasoningEffort(modelName)) {
             val existingEffort = requestJson.optString("reasoning_effort", "").trim()
             if (existingEffort.isEmpty()) {
-                val qualityLevel = try {
+                val optionId = try {
                     runBlocking {
-                        ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                        ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
                     }
                 } catch (error: Exception) {
                     AppLogger.e(
                         "XaiProvider",
-                        "Failed to read thinking quality level; aborting xAI request",
+                        "Failed to read thinking option id; aborting xAI request",
                         error
                     )
                     throw error
                 }
 
-                requestJson.put(
-                    "reasoning_effort",
-                    XaiReasoningMapper.effortForQuality(enableThinking, qualityLevel)
-                )
+                val effort = if (enableThinking) {
+                    ThinkingQualityMappingRegistry
+                        .resolve(ApiProviderType.XAI.name, modelName)
+                        .textValueFor(optionId)
+                        ?: XaiReasoningMapper.effortForOption(true, "")
+                } else {
+                    XaiReasoningMapper.effortForOption(false, optionId)
+                }
+                requestJson.put("reasoning_effort", effort)
             }
         }
 

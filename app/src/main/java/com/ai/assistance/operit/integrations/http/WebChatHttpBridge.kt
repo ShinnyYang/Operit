@@ -1606,7 +1606,7 @@ class WebChatHttpBridge(
             },
             parameterLabel = parameterLabel,
             options = options.map { option ->
-                WebThinkingQualityOption(level = option.level, label = option.displayLabel)
+                WebThinkingQualityOption(id = option.id, label = option.displayLabel)
             },
         )
 

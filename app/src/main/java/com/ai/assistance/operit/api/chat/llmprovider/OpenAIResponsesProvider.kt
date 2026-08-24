@@ -177,12 +177,12 @@ open class OpenAIResponsesProvider(
     private fun resolveResponsesReasoningEffort(context: Context): String? {
         val qualityLevel = runCatching {
             runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
         }.getOrElse {
             AppLogger.w(
                 "OpenAIResponsesProvider",
-                "Failed to read thinking quality level; reasoning.effort not applied",
+                "Failed to read thinking option id; reasoning.effort not applied",
                 it
             )
             return null

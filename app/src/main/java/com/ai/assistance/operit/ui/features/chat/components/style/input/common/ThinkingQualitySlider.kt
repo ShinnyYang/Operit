@@ -59,8 +59,8 @@ import kotlinx.coroutines.isActive
 internal fun ThinkingQualitySlider(
     label: String,
     mapping: ThinkingQualityMapping,
-    value: Int,
-    onValueChange: (Int) -> Unit,
+    value: String,
+    onValueChange: (String) -> Unit,
     onInfoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -69,7 +69,7 @@ internal fun ThinkingQualitySlider(
     }
 
     val options = mapping.options
-    val selectedIndex = options.indexOfFirst { it.level == value }.coerceAtLeast(0)
+    val selectedIndex = options.indexOfFirst { it.id == value }.coerceAtLeast(0)
     val maxIndex = (options.size - 1).coerceAtLeast(1)
     var sliderPosition by remember(options) { mutableFloatStateOf(selectedIndex.toFloat()) }
     val interactionSource = remember { MutableInteractionSource() }
@@ -149,7 +149,7 @@ internal fun ThinkingQualitySlider(
                 sliderPosition = newValue
             },
             onValueChangeFinished = {
-                onValueChange(options[sliderPosition.roundToInt().coerceIn(0, options.lastIndex)].level)
+                onValueChange(options[sliderPosition.roundToInt().coerceIn(0, options.lastIndex)].id)
             },
             valueRange = 0f..maxIndex.toFloat(),
             steps = (options.size - 2).coerceAtLeast(0),

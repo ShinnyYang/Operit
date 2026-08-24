@@ -469,8 +469,8 @@ data class WebCharacterSelectorResponse(
 
 @Serializable
 data class WebThinkingQualityOption(
-    @SerialName("level")
-    val level: Int,
+    @SerialName("id")
+    val id: String,
     @SerialName("label")
     val label: String,
 )
@@ -647,8 +647,8 @@ data class WebToggleMessageFavoriteRequest(
 data class WebInputSettingsState(
     @SerialName("enable_thinking_mode")
     val enableThinkingMode: Boolean,
-    @SerialName("thinking_quality_level")
-    val thinkingQualityLevel: Int,
+    @SerialName("thinking_option_id")
+    val thinkingOptionId: String,
     @SerialName("enable_memory_auto_update")
     val enableMemoryAutoUpdate: Boolean,
     @SerialName("enable_auto_read")
@@ -679,8 +679,8 @@ data class WebInputSettingsState(
 data class WebUpdateInputSettingsRequest(
     @SerialName("enable_thinking_mode")
     val enableThinkingMode: Boolean? = null,
-    @SerialName("thinking_quality_level")
-    val thinkingQualityLevel: Int? = null,
+    @SerialName("thinking_option_id")
+    val thinkingOptionId: String? = null,
     @SerialName("enable_memory_auto_update")
     val enableMemoryAutoUpdate: Boolean? = null,
     @SerialName("enable_auto_read")

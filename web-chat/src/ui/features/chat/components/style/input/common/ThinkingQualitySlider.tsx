@@ -9,28 +9,22 @@ export function ThinkingQualitySlider({
 }: {
   label: string;
   mapping: WebThinkingQualityMapping;
-  onChange: (level: number) => void;
-  value: number;
+  onChange: (optionId: string) => void;
+  value: string;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const { options } = mapping;
-  const selectedIndex = options.findIndex((option) => option.level === value);
-  const [draftIndex, setDraftIndex] = useState(selectedIndex >= 0 ? selectedIndex : 0);
-  const draftIndexRef = useRef(selectedIndex >= 0 ? selectedIndex : 0);
+  const selectedIndex = options.findIndex((option) => option.id === value);
+  const normalizedSelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const [draftIndex, setDraftIndex] = useState(normalizedSelectedIndex);
+  const draftIndexRef = useRef(normalizedSelectedIndex);
 
   useEffect(() => {
-    if (selectedIndex < 0) {
-      return;
-    }
-    setDraftIndex(selectedIndex);
-    draftIndexRef.current = selectedIndex;
-  }, [selectedIndex]);
+    setDraftIndex(normalizedSelectedIndex);
+    draftIndexRef.current = normalizedSelectedIndex;
+  }, [normalizedSelectedIndex]);
 
   if (!options.length) {
-    return null;
-  }
-
-  if (selectedIndex < 0 || !options[selectedIndex]) {
     return null;
   }
 
@@ -59,10 +53,10 @@ export function ThinkingQualitySlider({
 
   function commitDraft() {
     const option = options[draftIndexRef.current];
-    if (!option || option.level === value) {
+    if (!option || option.id === value) {
       return;
     }
-    onChange(option.level);
+    onChange(option.id);
   }
 
   function stopDragging() {
@@ -91,7 +85,7 @@ export function ThinkingQualitySlider({
               <span
                 aria-hidden="true"
                 className={`thinking-quality-slider-stop ${index <= safeDraftIndex ? 'is-active' : ''}`}
-                key={option.level}
+                key={option.id}
                 style={{ left: `calc(${stopFraction * 100}% + ${10 * (1 - stopFraction * 2)}px)` }}
               />
             );
@@ -140,7 +134,7 @@ export function ThinkingQualitySlider({
           return (
             <span
               className={`thinking-quality-slider-option ${index === safeDraftIndex ? 'is-active' : ''}`}
-              key={option.level}
+              key={option.id}
               style={{
                 left: `calc(${optionFraction * 100}% + ${10 * (1 - optionFraction * 2)}px)`,
                 maxWidth: isEdgeOption ? edgeOptionMaxWidth : interiorOptionMaxWidth,

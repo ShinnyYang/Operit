@@ -98,8 +98,8 @@ fun ClassicChatSettingsBar(
     onSetPermissionLevel: (PermissionLevel) -> Unit,
     enableThinkingMode: Boolean,
     onToggleThinkingMode: () -> Unit,
-    thinkingQualityLevel: Int,
-    onThinkingQualityLevelChange: (Int) -> Unit,
+    thinkingOptionId: String,
+    onThinkingOptionIdChange: (String) -> Unit,
     maxWindowSizeInK: Float,
     baseContextLengthInK: Float,
     maxContextLengthInK: Float,
@@ -575,10 +575,10 @@ fun ClassicChatSettingsBar(
                             ThinkingSettingsItem(
                                 enableThinkingMode = enableThinkingMode,
                                 onToggleThinkingMode = onToggleThinkingMode,
-                                thinkingQualityLevel = thinkingQualityLevel,
+                                thinkingOptionId = thinkingOptionId,
                                 thinkingQualityMapping = thinkingQualityMapping,
-                                onThinkingQualityLevelChange = { level ->
-                                    onThinkingQualityLevelChange(level)
+                                onThinkingOptionIdChange = { optionId ->
+                                    onThinkingOptionIdChange(optionId)
                                 },
                                 thinkingSlotToggles = inputMenuTogglesBySlot[InputMenuToggleSlots.THINKING].orEmpty(),
                                 expanded = showThinkingDropdown,
@@ -1106,9 +1106,9 @@ private fun ToolPermissionSettingItem(
 private fun ThinkingSettingsItem(
     enableThinkingMode: Boolean,
     onToggleThinkingMode: () -> Unit,
-    thinkingQualityLevel: Int,
+    thinkingOptionId: String,
     thinkingQualityMapping: ThinkingQualityMapping?,
-    onThinkingQualityLevelChange: (Int) -> Unit,
+    onThinkingOptionIdChange: (String) -> Unit,
     thinkingSlotToggles: List<InputMenuToggleDefinition>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
@@ -1289,8 +1289,8 @@ private fun ThinkingSettingsItem(
                             ThinkingQualitySlider(
                                 label = stringResource(R.string.thinking_quality),
                                 mapping = mapping,
-                                value = thinkingQualityLevel,
-                                onValueChange = onThinkingQualityLevelChange,
+                                value = thinkingOptionId,
+                                onValueChange = onThinkingOptionIdChange,
                                 onInfoClick = onThinkingQualityInfoClick,
                             )
                         }

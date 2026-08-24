@@ -17,7 +17,7 @@ internal sealed interface ThinkingQualityWireValue {
 }
 
 internal data class ThinkingQualityOption(
-    val level: Int,
+    val id: String,
     val displayLabel: String,
     val wireValue: ThinkingQualityWireValue,
 )
@@ -35,74 +35,85 @@ internal data class ThinkingQualityMapping(
         )
     }
 
-    fun optionFor(level: Int): ThinkingQualityOption? =
-        options.firstOrNull { it.level == level }
+    fun optionFor(id: String): ThinkingQualityOption? =
+        options.firstOrNull { it.id == id }
 
-    fun textValueFor(level: Int): String? =
-        optionFor(level)?.wireValue?.let { value ->
+    fun selectedOptionId(id: String): String =
+        optionFor(id)?.id ?: options.first().id
+
+    fun textValueFor(id: String): String? =
+        options.firstOrNull { it.id == id }?.wireValue?.let { value ->
+            (value as? ThinkingQualityWireValue.Text)?.value
+        } ?: options.firstOrNull()?.wireValue?.let { value ->
             (value as? ThinkingQualityWireValue.Text)?.value
         }
 
-    fun numberValueFor(level: Int): Int? =
-        optionFor(level)?.wireValue?.let { value ->
+    fun numberValueFor(id: String): Int? =
+        options.firstOrNull { it.id == id }?.wireValue?.let { value ->
+            (value as? ThinkingQualityWireValue.Number)?.value
+        } ?: options.firstOrNull()?.wireValue?.let { value ->
             (value as? ThinkingQualityWireValue.Number)?.value
         }
 }
 
 internal object ThinkingQualityMappingRegistry {
-    private val openAiEfforts = listOf("low", "medium", "high", "xhigh", "max")
-    private val geminiLevels = listOf("MINIMAL", "LOW", "MEDIUM", "HIGH", "HIGH")
-    private val nvidiaEfforts = listOf("low", "medium", "high", "max", "max")
-    private val deepseekEfforts = listOf("low", "high", "max", "max", "max")
-
     fun resolve(providerTypeId: String, modelName: String): ThinkingQualityMapping {
         val providerType = providerTypeId.trim().uppercase(Locale.US)
         val normalizedModelName = modelName.trim().lowercase(Locale.US)
 
         return when (providerType) {
             ApiProviderType.XAI.name ->
-                if (xaiModelSupportsReasoningEffort(normalizedModelName)) {
-                    textMapping("reasoning_effort", XaiReasoningMapper.supportedEfforts)
-                } else {
-                    ThinkingQualityMapping.toggleOnly("enable_thinking")
-                }
+                xaiMapping(normalizedModelName)
 
             ApiProviderType.OPENAI.name,
-            ApiProviderType.OPENAI_GENERIC.name,
+            ApiProviderType.OPENAI_GENERIC.name ->
+                textMapping("reasoning_effort", listOf("low", "medium", "high"))
+
             ApiProviderType.OPENAI_RESPONSES.name,
             ApiProviderType.OPENAI_RESPONSES_GENERIC.name,
             ApiProviderType.OPENAI_CODEX.name ->
-                textMapping("reasoning_effort", openAiEfforts)
+                textMapping("reasoning.effort", listOf("minimal", "low", "medium", "high"))
 
             ApiProviderType.GOOGLE.name,
             ApiProviderType.GEMINI_GENERIC.name ->
-                textMapping("thinkingLevel", geminiLevels)
+                geminiMapping(normalizedModelName)
 
             ApiProviderType.NVIDIA.name ->
                 if (normalizedModelName.contains("gpt-oss")) {
-                    textMapping("reasoning_effort", nvidiaEfforts)
+                    textMapping("reasoning_effort", listOf("low", "medium", "high"))
                 } else {
                     ThinkingQualityMapping.toggleOnly("enable_thinking")
                 }
 
             ApiProviderType.DEEPSEEK.name ->
-                textMapping("reasoning_effort", deepseekEfforts)
+                textMapping("reasoning_effort", listOf("low", "high", "max"))
 
             ApiProviderType.SILICONFLOW.name ->
                 numberMapping(
                     parameterLabel = "thinking_budget",
-                    values = listOf(null, 4_096, 8_192, 16_384, 32_768),
+                    values = listOf(4_096, 8_192, 16_384, 32_768),
                 )
 
             ApiProviderType.OPENROUTER.name ->
                 numberMapping(
                     parameterLabel = "reasoning.max_tokens",
-                    values = listOf(null, 1_024, 16_000, 32_000, 64_000),
+                    values = listOf(1_024, 16_000, 32_000, 64_000),
                 )
 
             ApiProviderType.ANTHROPIC.name,
             ApiProviderType.ANTHROPIC_GENERIC.name ->
-                ThinkingQualityMapping.toggleOnly("thinking")
+                if (
+                    normalizedModelName.contains("4-6") ||
+                    normalizedModelName.contains("4.7") ||
+                    normalizedModelName.contains("4-7") ||
+                    normalizedModelName.contains("4.8") ||
+                    normalizedModelName.contains("4-8") ||
+                    normalizedModelName.contains("5-")
+                ) {
+                    textMapping("output_config.effort", listOf("low", "medium", "high"))
+                } else {
+                    numberMapping("thinking.budget_tokens", listOf(1_024, 4_096, 8_192, 16_384))
+                }
 
             ApiProviderType.MNN.name,
             ApiProviderType.LLAMA_CPP.name ->
@@ -130,28 +141,23 @@ internal object ThinkingQualityMappingRegistry {
         val protocol = OpenCodeRouting.protocolFor(apiEndpoint, modelName)
         val effort = capability.options.filterIsInstance<OpenCodeReasoningOption.Effort>().firstOrNull()
         if (effort != null) {
-            val values = (1..5).map { qualityLevel ->
-                OpenCodeReasoningMapper.effortForQuality(effort.values, qualityLevel)
-            }
-            if (values.all { it != null }) {
+            val values = effort.values.mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
+                .filterNot { it.equals("none", ignoreCase = true) }
+            if (values.isNotEmpty()) {
                 return textMapping(
                     parameterLabel = openCodeParameterLabel(protocol, budget = false),
-                    values = values.map { requireNotNull(it) },
+                    values = values,
                 )
             }
         }
 
         val budget = capability.options.filterIsInstance<OpenCodeReasoningOption.BudgetTokens>().firstOrNull()
         if (budget != null) {
-            val values = (1..5).map { qualityLevel ->
-                (OpenCodeReasoningMapper.select(capability, true, qualityLevel)
-                    as? OpenCodeReasoningVariant.BudgetTokens)
-                    ?.value
-            }
-            if (values.all { it != null }) {
+            val values = OpenCodeReasoningMapper.budgetVariants(budget, capability.outputLimit)
+            if (values.isNotEmpty()) {
                 return numberMapping(
                     parameterLabel = openCodeParameterLabel(protocol, budget = true),
-                    values = values.map { it },
+                    values = values,
                 )
             }
         }
@@ -186,7 +192,7 @@ internal object ThinkingQualityMappingRegistry {
         parameterLabel = parameterLabel,
         options = values.mapIndexed { index, value ->
             ThinkingQualityOption(
-                level = index + 1,
+                id = value,
                 displayLabel = value,
                 wireValue = ThinkingQualityWireValue.Text(value),
             )
@@ -195,21 +201,43 @@ internal object ThinkingQualityMappingRegistry {
 
     private fun numberMapping(
         parameterLabel: String,
-        values: List<Int?>,
+        values: List<Int>,
     ): ThinkingQualityMapping = ThinkingQualityMapping(
         control = ThinkingQualityControl.LEVELS,
         parameterLabel = parameterLabel,
         options = values.mapIndexed { index, value ->
-            val wireValue = value?.let(ThinkingQualityWireValue::Number) ?: ThinkingQualityWireValue.Omitted
+            val wireValue = ThinkingQualityWireValue.Number(value)
             ThinkingQualityOption(
-                level = index + 1,
+                id = value.toString(),
                 displayLabel = when (wireValue) {
-                    ThinkingQualityWireValue.Omitted -> "auto"
                     is ThinkingQualityWireValue.Number -> wireValue.value.toString()
                     is ThinkingQualityWireValue.Text -> wireValue.value
+                    ThinkingQualityWireValue.Omitted -> ""
                 },
                 wireValue = wireValue,
             )
         },
     )
+
+    private fun geminiMapping(modelName: String): ThinkingQualityMapping =
+        when {
+            modelName.startsWith("gemini-2.5-pro") ->
+                numberMapping("thinkingBudget", listOf(1_024, 8_192, 16_384, 32_768))
+            modelName.startsWith("gemini-2.5-flash") ->
+                numberMapping("thinkingBudget", listOf(1_024, 4_096, 8_192, 16_384, 24_576))
+            modelName.startsWith("gemini-3-flash-lite") ->
+                textMapping("thinkingLevel", listOf("MINIMAL", "LOW", "MEDIUM"))
+            modelName.startsWith("gemini-3-pro") ->
+                textMapping("thinkingLevel", listOf("LOW", "HIGH"))
+            else -> textMapping("thinkingLevel", listOf("MINIMAL", "LOW", "MEDIUM", "HIGH"))
+        }
+
+    private fun xaiMapping(modelName: String): ThinkingQualityMapping =
+        when {
+            modelName.startsWith("grok-4.5") ->
+                textMapping("reasoning_effort", listOf("low", "medium", "high"))
+            modelName.startsWith("grok-4.6") ->
+                textMapping("reasoning_effort", listOf("low", "medium", "high", "xhigh"))
+            else -> ThinkingQualityMapping.toggleOnly("enable_thinking")
+        }
 }

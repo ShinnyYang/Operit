@@ -277,7 +277,7 @@ export interface WebModelSelectorConfig {
 }
 
 export interface WebThinkingQualityOption {
-  level: number;
+  id: string;
   label: string;
 }
 
@@ -337,7 +337,7 @@ export interface ContextStatsSnapshot {
 
 export interface WebInputSettingsState {
   enable_thinking_mode: boolean;
-  thinking_quality_level: number;
+  thinking_option_id: string;
   enable_memory_auto_update: boolean;
   enable_auto_read: boolean;
   enable_max_context_mode: boolean;

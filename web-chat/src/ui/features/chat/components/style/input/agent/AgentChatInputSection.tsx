@@ -491,18 +491,18 @@ function AgentThinkingSettingsItem({
   onToggle,
   onToggleInfoClick,
   qualityMapping,
-  qualityLevel
+  qualityOptionId
 }: {
   enabled: boolean;
   expanded: boolean;
   onExpandedChange: (value: boolean) => void;
   onInfoClick: () => void;
-  onQualityChange: (value: number) => void;
+  onQualityChange: (value: string) => void;
   onQualityInfoClick: () => void;
   onToggle: () => void;
   onToggleInfoClick: () => void;
   qualityMapping: WebThinkingQualityMapping | undefined;
-  qualityLevel: number;
+  qualityOptionId: string;
 }) {
   return (
     <>
@@ -541,7 +541,7 @@ function AgentThinkingSettingsItem({
                 label="思考程度"
                 mapping={qualityMapping}
                 onChange={onQualityChange}
-                value={qualityLevel}
+                value={qualityOptionId}
               />
             </AgentSettingsRow>
           ) : null}
@@ -730,7 +730,7 @@ export function AgentChatInputSection({
   onUpdateInputSettings: (
     payload: Partial<{
       enable_thinking_mode: boolean;
-      thinking_quality_level: number;
+      thinking_option_id: string;
       enable_memory_auto_update: boolean;
       enable_auto_read: boolean;
       enable_max_context_mode: boolean;
@@ -769,7 +769,7 @@ export function AgentChatInputSection({
   const thinkingEnabled = inputSettings?.enable_thinking_mode ?? false;
   const thinkingQuality = inputSettings
     ? {
-        level: inputSettings.thinking_quality_level,
+        optionId: inputSettings.thinking_option_id,
         mapping: modelSelector?.thinking_quality_mapping
       }
     : null;
@@ -959,7 +959,7 @@ export function AgentChatInputSection({
                   onExpandedChange={setShowThinkingDropdown}
                   onInfoClick={() => setInfoPopupContent(INFO_COPY.thinkingSettings)}
                   onQualityChange={(value) => {
-                    void onUpdateInputSettings({ thinking_quality_level: value });
+                    void onUpdateInputSettings({ thinking_option_id: value });
                   }}
                   onQualityInfoClick={() => setInfoPopupContent(INFO_COPY.thinkingQuality)}
                   onToggle={() => {
@@ -967,7 +967,7 @@ export function AgentChatInputSection({
                   }}
                   onToggleInfoClick={() => setInfoPopupContent(INFO_COPY.thinkingMode)}
                   qualityMapping={thinkingQuality.mapping}
-                  qualityLevel={thinkingQuality.level}
+                  qualityOptionId={thinkingQuality.optionId}
                 />
               ) : null}
 

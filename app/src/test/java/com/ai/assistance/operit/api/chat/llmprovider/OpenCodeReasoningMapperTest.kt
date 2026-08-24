@@ -6,43 +6,23 @@ import org.junit.Test
 
 class OpenCodeReasoningMapperTest {
     @Test
-    fun sixDeclaredValuesDropNoneAndMapOneToOne() {
-        val values = listOf<String?>(null, "low", "medium", "high", "xhigh", "max")
-
-        assertEquals(
-            listOf("low", "medium", "high", "xhigh", "max"),
-            (1..5).map { OpenCodeReasoningMapper.effortForQuality(values, it) }
+    fun declaredEffortIdsAreSelectedOneToOne() {
+        val capability = OpenCodeReasoningCapability(
+            reasoning = true,
+            options = listOf(OpenCodeReasoningOption.Effort(listOf(null, "low", "medium", "high"))),
+            outputLimit = 64_000,
         )
+        assertEquals(OpenCodeReasoningVariant.Effort("high"), OpenCodeReasoningMapper.select(capability, true, "high"))
     }
 
     @Test
-    fun threeDeclaredValuesUseTwoTwoOneDistribution() {
-        val values = listOf<String?>("low", "high", "max")
-
-        assertEquals(
-            listOf("low", "low", "high", "high", "max"),
-            (1..5).map { OpenCodeReasoningMapper.effortForQuality(values, it) }
+    fun unknownEffortIdUsesTheFirstDeclaredEffort() {
+        val capability = OpenCodeReasoningCapability(
+            reasoning = true,
+            options = listOf(OpenCodeReasoningOption.Effort(listOf("low", "high"))),
+            outputLimit = 64_000,
         )
-    }
-
-    @Test
-    fun fourDeclaredValuesUseOneTwoOneOneDistribution() {
-        val values = listOf<String?>("low", "medium", "high", "max")
-
-        assertEquals(
-            listOf("low", "medium", "medium", "high", "max"),
-            (1..5).map { OpenCodeReasoningMapper.effortForQuality(values, it) }
-        )
-    }
-
-    @Test
-    fun twoDeclaredValuesUseAStableLowerAndUpperSplit() {
-        val values = listOf<String?>("low", "max")
-
-        assertEquals(
-            listOf("low", "low", "max", "max", "max"),
-            (1..5).map { OpenCodeReasoningMapper.effortForQuality(values, it) }
-        )
+        assertEquals(OpenCodeReasoningVariant.Effort("low"), OpenCodeReasoningMapper.select(capability, true, "missing"))
     }
 
     @Test
@@ -50,48 +30,33 @@ class OpenCodeReasoningMapperTest {
         val capability = OpenCodeReasoningCapability(
             reasoning = true,
             options = listOf(OpenCodeReasoningOption.Effort(listOf("low", "high"))),
-            outputLimit = 64_000
+            outputLimit = 64_000,
         )
-
-        assertNull(OpenCodeReasoningMapper.select(capability, enableThinking = false, qualityLevel = 3))
+        assertNull(OpenCodeReasoningMapper.select(capability, false, "high"))
     }
 
     @Test
-    fun toggleHasTheSameVariantAtEveryQuality() {
+    fun toggleHasAnExplicitVariant() {
         val capability = OpenCodeReasoningCapability(
             reasoning = true,
             options = listOf(OpenCodeReasoningOption.Toggle),
-            outputLimit = 64_000
+            outputLimit = 64_000,
         )
-
-        val selected = (1..5).map {
-            OpenCodeReasoningMapper.select(capability, enableThinking = true, qualityLevel = it)
-        }
-        assertEquals(List(5) { OpenCodeReasoningVariant.Toggle(true) }, selected)
-        assertEquals(
-            OpenCodeReasoningVariant.Toggle(false),
-            OpenCodeReasoningMapper.select(capability, enableThinking = false, qualityLevel = 3)
-        )
+        assertEquals(OpenCodeReasoningVariant.Toggle(true), OpenCodeReasoningMapper.select(capability, true, ""))
+        assertEquals(OpenCodeReasoningVariant.Toggle(false), OpenCodeReasoningMapper.select(capability, false, ""))
     }
 
     @Test
-    fun budgetOptionsMirrorOpenCodeHighAndMaxVariants() {
+    fun budgetOptionsUseTheirWireValueIds() {
         val capability = OpenCodeReasoningCapability(
             reasoning = true,
             options = listOf(
                 OpenCodeReasoningOption.Toggle,
-                OpenCodeReasoningOption.BudgetTokens(min = null, max = 81_920)
+                OpenCodeReasoningOption.BudgetTokens(min = null, max = 81_920),
             ),
-            outputLimit = 65_536
+            outputLimit = 65_536,
         )
-
-        assertEquals(
-            OpenCodeReasoningVariant.BudgetTokens(32_768),
-            OpenCodeReasoningMapper.select(capability, enableThinking = true, qualityLevel = 1)
-        )
-        assertEquals(
-            OpenCodeReasoningVariant.BudgetTokens(65_535),
-            OpenCodeReasoningMapper.select(capability, enableThinking = true, qualityLevel = 5)
-        )
+        assertEquals(OpenCodeReasoningVariant.BudgetTokens(32_768), OpenCodeReasoningMapper.select(capability, true, "32768"))
+        assertEquals(OpenCodeReasoningVariant.BudgetTokens(65_535), OpenCodeReasoningMapper.select(capability, true, "65535"))
     }
 }

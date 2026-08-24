@@ -28,18 +28,20 @@ class XaiProviderReasoningTest {
     }
 
     @Test
-    fun enabledQualityLevelsMapToXaiEfforts() {
+    fun enabledOptionsMapToXaiEfforts() {
         assertEquals(
-            listOf("low", "medium", "medium", "high", "xhigh"),
-            (1..5).map { XaiReasoningMapper.effortForQuality(enableThinking = true, qualityLevel = it) }
+            listOf("low", "medium", "high", "xhigh"),
+            listOf("low", "medium", "high", "xhigh").map {
+                XaiReasoningMapper.effortForOption(enableThinking = true, optionId = it)
+            }
         )
     }
 
     @Test
     fun disabledThinkingUsesTheLowestSupportedEffort() {
         assertEquals(
-            List(5) { "low" },
-            (1..5).map { XaiReasoningMapper.effortForQuality(enableThinking = false, qualityLevel = it) }
+            "low",
+            XaiReasoningMapper.effortForOption(enableThinking = false, optionId = "high")
         )
     }
 

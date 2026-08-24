@@ -64,11 +64,11 @@ class OpenCodeProvider private constructor(
         recordTokenUsage: Boolean,
         onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
-        val qualityLevel =
-            if (enableThinking) ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
-            else 1
+        val optionId =
+            if (enableThinking) ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
+            else ""
         val capability = OpenCodeModelCatalog.resolve(client, baseEndpoint, modelName)
-        val variant = OpenCodeReasoningMapper.select(capability, enableThinking, qualityLevel)
+        val variant = OpenCodeReasoningMapper.select(capability, enableThinking, optionId)
         val opencodeParameters = OpenCodeReasoningParameters.forVariant(
             protocol = protocol,
             modelName = modelName,
@@ -427,15 +427,13 @@ internal sealed class OpenCodeReasoningVariant {
 }
 
 /**
- * Maps Operit's five global quality positions to the finite variants exposed by
- * OpenCode. The mapping deliberately happens after removing the optional `none`
- * value, so a model's declared capability remains the source of truth.
+ * Selects the exact option published by OpenCode for the current model.
  */
 internal object OpenCodeReasoningMapper {
     fun select(
         capability: OpenCodeReasoningCapability?,
         enableThinking: Boolean,
-        qualityLevel: Int
+        optionId: String
     ): OpenCodeReasoningVariant? {
         if (capability == null || !capability.reasoning || capability.options.isEmpty()) {
             return null
@@ -451,7 +449,11 @@ internal object OpenCodeReasoningMapper {
                     null
                 }
             }
-            val selectedEffort = effortForQuality(effort.values, qualityLevel) ?: return null
+            val activeEfforts = effort.values
+                .mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
+                .filterNot { it.equals("none", ignoreCase = true) }
+            val selectedEffort = activeEfforts.firstOrNull { it == optionId } ?: activeEfforts.firstOrNull()
+                ?: return null
             return OpenCodeReasoningVariant.Effort(selectedEffort)
         }
 
@@ -463,7 +465,8 @@ internal object OpenCodeReasoningMapper {
             }
             val budgets = budgetVariants(budget, capability.outputLimit)
             if (budgets.isEmpty()) return null
-            val selectedBudget = budgets[qualityIndex(budgets.size, qualityLevel)]
+            val selectedBudget = budgets.firstOrNull { it.toString() == optionId } ?: budgets.firstOrNull()
+                ?: return null
             return OpenCodeReasoningVariant.BudgetTokens(selectedBudget)
         }
 
@@ -471,35 +474,6 @@ internal object OpenCodeReasoningMapper {
         // the same variant. Unsupported protocol-specific toggles are left empty
         // by toParameters rather than being replaced with an invented effort value.
         return if (toggle) OpenCodeReasoningVariant.Toggle(enableThinking) else null
-    }
-
-    internal fun effortForQuality(values: List<String?>, qualityLevel: Int): String? {
-        val activeValues = values
-            .mapNotNull { it?.trim()?.takeIf { value -> value.isNotEmpty() } }
-            .filterNot { it.equals("none", ignoreCase = true) }
-        if (activeValues.isEmpty()) return null
-        return activeValues[qualityIndex(activeValues.size, qualityLevel)]
-    }
-
-    internal fun qualityIndex(optionCount: Int, qualityLevel: Int): Int {
-        require(optionCount > 0) { "optionCount must be positive" }
-        val quality = qualityLevel.coerceIn(1, 5)
-        return when (optionCount) {
-            1 -> 0
-            2 -> if (quality <= 2) 0 else 1
-            3 -> when {
-                quality <= 2 -> 0
-                quality <= 4 -> 1
-                else -> 2
-            }
-            4 -> when (quality) {
-                1 -> 0
-                2, 3 -> 1
-                4 -> 2
-                else -> 3
-            }
-            else -> (((quality - 1) * (optionCount - 1)) + 2) / 4
-        }.coerceIn(0, optionCount - 1)
     }
 
     internal fun budgetVariants(

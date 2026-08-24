@@ -144,12 +144,12 @@ class QwenAIProvider(
     ): Int? {
         val qualityLevel = runCatching {
             runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
         }.getOrElse {
             AppLogger.w(
                 "QwenAIProvider",
-                "Failed to read thinking quality level for SiliconFlow, falling back to provider default",
+                "Failed to read thinking option id for SiliconFlow; thinking_budget not applied",
                 it
             )
             return null

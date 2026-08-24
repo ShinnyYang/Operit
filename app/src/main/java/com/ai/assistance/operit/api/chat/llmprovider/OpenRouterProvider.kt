@@ -154,12 +154,12 @@ open class OpenRouterProvider(
     ): Int? {
         val qualityLevel = runCatching {
             runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
         }.getOrElse {
             AppLogger.w(
                 "OpenRouterProvider",
-                "Failed to read thinking quality level, falling back to auto reasoning",
+                "Failed to read thinking option id; OpenRouter reasoning budget not applied",
                 it
             )
             return null

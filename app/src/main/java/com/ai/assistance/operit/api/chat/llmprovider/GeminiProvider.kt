@@ -51,24 +51,32 @@ import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
 /** Keeps Gemini thinking mapping testable without invoking Android's JVM JSON stubs. */
 internal data class GeminiThinkingConfig(
     val includeThoughts: Boolean,
-    val thinkingLevel: String
+    val thinkingLevel: String? = null,
+    val thinkingBudget: Int? = null,
 ) {
-    fun toJsonObject(): JSONObject =
-        JSONObject()
-            .put(INCLUDE_THOUGHTS, includeThoughts)
-            .put(THINKING_LEVEL, thinkingLevel)
+    fun toJsonObject(): JSONObject = JSONObject()
+        .put(INCLUDE_THOUGHTS, includeThoughts)
+        .also { json ->
+            thinkingLevel?.let { json.put(THINKING_LEVEL, it) }
+            thinkingBudget?.let { json.put(THINKING_BUDGET, it) }
+        }
 
     companion object {
         private const val INCLUDE_THOUGHTS = "includeThoughts"
         private const val THINKING_LEVEL = "thinkingLevel"
-        fun fromGlobalQuality(qualityLevel: Int): GeminiThinkingConfig {
-            val thinkingLevel = ThinkingQualityMappingRegistry
-                .resolve(ApiProviderType.GOOGLE.name, "")
-                .textValueFor(qualityLevel)
-                ?: throw IllegalArgumentException(
-                    "Gemini thinking supports global quality values 1 through 5; received $qualityLevel."
-                )
-            return GeminiThinkingConfig(includeThoughts = true, thinkingLevel = thinkingLevel)
+        private const val THINKING_BUDGET = "thinkingBudget"
+        fun fromOption(modelName: String, optionId: String): GeminiThinkingConfig {
+            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.GOOGLE.name, modelName)
+            val thinkingLevel = mapping.optionFor(mapping.selectedOptionId(optionId))
+                ?: throw IllegalArgumentException("Gemini option is not supported: $optionId")
+            return when (val wireValue = thinkingLevel.wireValue) {
+                is ThinkingQualityWireValue.Text ->
+                    GeminiThinkingConfig(includeThoughts = true, thinkingLevel = wireValue.value)
+                is ThinkingQualityWireValue.Number ->
+                    GeminiThinkingConfig(includeThoughts = true, thinkingBudget = wireValue.value)
+                ThinkingQualityWireValue.Omitted ->
+                    throw IllegalArgumentException("Gemini option has no wire value: $optionId")
+            }
         }
     }
 }
@@ -1362,12 +1370,12 @@ open class GeminiProvider(
         }
 
         if (enableThinking) {
-            val thinkingQualityLevel =
+            val thinkingOptionId =
                 runBlocking {
-                    ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                    ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
                 }
             val thinkingConfig =
-                GeminiThinkingConfig.fromGlobalQuality(thinkingQualityLevel).toJsonObject()
+                GeminiThinkingConfig.fromOption(modelName, thinkingOptionId).toJsonObject()
             generationConfig.put("thinkingConfig", thinkingConfig)
             logDebug("已为Gemini模型启用“思考模式”。")
         }

@@ -444,6 +444,7 @@ object AIMessageManager {
                 val pluginStream = pluginExecution.stream.share(
                     scope = scope,
                     replay = Int.MAX_VALUE,
+                    propagateCompletionCause = false,
                     onComplete = {
                         activeMessageProcessingControllerByChatId.remove(chatKey)
                         activeEnhancedAiServiceByChatId.remove(chatKey)
@@ -502,6 +503,9 @@ object AIMessageManager {
             ).shareRevisable(
                 scope = scope,
                 replay = Int.MAX_VALUE,
+                // Provider 终态异常由消息处理主订阅读取 completionCause；
+                // 其他订阅者只观察文本，不应因同一网络错误触发全局未捕获异常。
+                propagateCompletionCause = false,
                 onComplete = {
                     activeMessageProcessingControllerByChatId.remove(chatKey)
                     activeEnhancedAiServiceByChatId.remove(chatKey)

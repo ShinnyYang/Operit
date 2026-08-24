@@ -445,12 +445,12 @@ class DeepseekProvider(
     private fun resolveDeepseekThinkingEffort(context: Context): String? {
         val qualityLevel = runCatching {
             runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
+                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
             }
         }.getOrElse {
             AppLogger.w(
                 "DeepseekProvider",
-                "Failed to read thinking quality level for DeepSeek, using provider default",
+                "Failed to read thinking option id for DeepSeek; reasoning_effort not applied",
                 it
             )
             return null
