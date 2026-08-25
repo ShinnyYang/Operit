@@ -59,6 +59,8 @@ Responses 流以 `response.completed`、`response.incomplete` 或 `response.fail
 
 `call_id` 从 Responses 输出进入内部工具调用标记，经过并行执行后写入对应的工具结果标记。下一轮按该 ID 绑定调用与结果，不依赖并行任务的完成顺序。旧聊天记录没有 `call_id` 时仍按已发布版本的位置关系读取。
 
+思考模式下发生客户端函数调用时，DeepSeek 返回的纯文本 `reasoning` item 也属于后续请求必须携带的无状态历史。该 item 使用现有 Responses reasoning 隐藏 metadata 保存，并在下一轮 input 中恢复到对应的 assistant message 与 `function_call` 之前。纯文本 `content` 必须保留原始 `reasoning_text` 和 item ID；OpenAI Responses 的加密 reasoning item 继续使用既有 `encrypted_content` 格式。
+
 ## 当前边界
 
 本协议不定义搜索引用的专用 UI。若服务端最终文本包含引用，它仍作为普通响应文本展示；结构化引用展示需要独立设计和兼容契约。

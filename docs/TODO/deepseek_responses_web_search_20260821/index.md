@@ -42,5 +42,6 @@ For_Agent: 按三个最小单元实施，未经明确授权不运行 Gradle 构�
 5. [端点驱动协议路由 [DONE]](./05_endpoint_driven_protocol.md)
 6. [服务端工具状态展示 [DONE]](./06_server_tool_status.md)
 7. [服务端工具调用记录 [DONE]](./07_server_tool_call_record.md)
+8. [Responses reasoning item 回放 [DONE]](./08_reasoning_item_replay.md)
 
 [DONE]

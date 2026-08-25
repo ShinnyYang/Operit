@@ -2270,7 +2270,7 @@ open class OpenAIProvider(
                         emitCompletedResponsesReasoningText(itemReasoningText, state, emitter)
                     }
                     if (eventType == "response.output_item.done") {
-                        OpenAIResponsesPayloadAdapter.createReasoningMetadataTag(item)?.let { metadataTag ->
+                        OpenAIResponsesPayloadAdapter.createReasoningMetadataTag(item, providerType)?.let { metadataTag ->
                             if (state.isInReasoningMode) {
                                 state.isInReasoningMode = false
                                 emitter.emitTag("</think>")
@@ -2800,7 +2800,10 @@ open class OpenAIProvider(
                                 val handledImages = tryHandleOpenAiImageResponse(jsonResponse, emitter, null)
 
                                 if (useResponsesApi) {
-                                    val parsed = OpenAIResponsesPayloadAdapter.parseNonStreamingResponse(jsonResponse)
+                                    val parsed = OpenAIResponsesPayloadAdapter.parseNonStreamingResponse(
+                                        jsonResponse,
+                                        providerType
+                                    )
 
                                     parsed.reasoningChunks.forEach { reasoningChunk ->
                                         if (reasoningChunk.isNotEmpty()) {
