@@ -25,11 +25,12 @@ open class KimiProvider(
     modelName: String,
     client: OkHttpClient,
     customHeaders: Map<String, String> = emptyMap(),
-    providerType: ApiProviderType = ApiProviderType.MOONSHOT,
+    private val providerType: ApiProviderType = ApiProviderType.MOONSHOT,
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -41,6 +42,7 @@ open class KimiProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations,
 ) {
 
     override fun createRequestBody(
@@ -53,11 +55,14 @@ open class KimiProvider(
         preserveThinkInHistory: Boolean
     ): RequestBody {
         fun applyThinkingParams(jsonObject: JSONObject) {
-            jsonObject.put(
-                "thinking",
-                JSONObject().apply {
-                    put("type", if (enableThinking) "enabled" else "disabled")
-                }
+            ThinkingConfigurationApplier.apply(
+                context = context,
+                requestJson = jsonObject,
+                providerTypeId = providerType.name,
+                modelName = modelName,
+                apiEndpoint = "",
+                thinkingConfigurations = thinkingConfigurations,
+                enableThinking = enableThinking,
             )
         }
 

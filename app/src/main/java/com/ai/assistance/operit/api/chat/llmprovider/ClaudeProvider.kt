@@ -10,7 +10,6 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -32,7 +31,6 @@ import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.UUID
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.first
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -51,7 +49,8 @@ open class ClaudeProvider(
     private val customHeaders: Map<String, String> = emptyMap(),
     private val providerType: ApiProviderType = ApiProviderType.ANTHROPIC,
     private val enableToolCall: Boolean = false, // 是否启用Tool Call接口（预留，Claude有原生tool支持）
-    private val enableClaude1hPromptCache: Boolean = false
+    private val enableClaude1hPromptCache: Boolean = false,
+    private val thinkingConfigurations: String = ""
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -65,8 +64,6 @@ open class ClaudeProvider(
     private var activeCall: Call? = null
     private var activeResponse: Response? = null
     @Volatile private var isManuallyCancelled = false
-
-    private enum class ThinkingFormat { ADAPTIVE, ENABLED }
 
     /**
      * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
@@ -1101,48 +1098,15 @@ open class ClaudeProvider(
             jsonObject.put("system", systemBlocks)
         }
 
-        if (enableThinking) {
-            val selectedOptionId = runBlocking {
-                ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-            }
-            val thinkingMapping = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName)
-            val selectedThinkingOption = thinkingMapping.optionFor(selectedOptionId)
-                ?: throw IllegalArgumentException("Claude option is not supported: $selectedOptionId")
-            // 添加extended thinking支持
-            val format = when (selectedThinkingOption.wireValue) {
-                is ThinkingQualityWireValue.Text -> ThinkingFormat.ADAPTIVE
-                is ThinkingQualityWireValue.Number -> ThinkingFormat.ENABLED
-                ThinkingQualityWireValue.Omitted -> throw IllegalArgumentException("Claude option has no thinking wire value")
-            }
-            when (format) {
-                ThinkingFormat.ADAPTIVE -> {
-                    // adaptive thinking: thinking.type=adaptive + display=summarized
-                    // Opus 4.8/4.7 default display to "omitted" (empty thinking),
-                    // must explicitly set "summarized" to receive thinking content.
-                    val thinkingObject = JSONObject()
-                    thinkingObject.put("type", "adaptive")
-                    thinkingObject.put("display", "summarized")
-                    jsonObject.put("thinking", thinkingObject)
-                    val effort = (selectedThinkingOption.wireValue as? ThinkingQualityWireValue.Text)?.value
-                        ?: throw IllegalArgumentException("Claude adaptive thinking requires an effort option")
-                    jsonObject.put("output_config", JSONObject().put("effort", effort))
-
-                    AppLogger.d("AIService", "启用Claude adaptive thinking, display=summarized")
-                }
-                ThinkingFormat.ENABLED -> {
-                    // enabled thinking: thinking.type=enabled + budget_tokens
-                    val thinkingObject = JSONObject()
-                    thinkingObject.put("type", "enabled")
-
-                    val budgetTokensValue = (selectedThinkingOption.wireValue as? ThinkingQualityWireValue.Number)?.value
-                        ?: throw IllegalArgumentException("Claude enabled thinking requires a budget option")
-                    thinkingObject.put("budget_tokens", budgetTokensValue)
-
-                    jsonObject.put("thinking", thinkingObject)
-                    AppLogger.d("AIService", "启用Claude extended thinking, budget_tokens=$budgetTokensValue")
-                }
-            }
-        }
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = jsonObject,
+            providerTypeId = providerType.name,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
 
         // 日志输出时省略过长的tools字段
         val logJson = JSONObject(jsonObject.toString())

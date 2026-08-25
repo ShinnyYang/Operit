@@ -5,10 +5,6 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.util.AppLogger
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import org.json.JSONObject
@@ -19,8 +15,7 @@ import org.json.JSONObject
  * OpenRouter chat completions are largely OpenAI-compatible, but reasoning is controlled via
  * the unified `reasoning` object instead of the app's generic `enableThinking` toggle.
  *
- * Reasoning is emitted only when the model catalog declares a supported control,
- * using the model's published effort or max-token field.
+ * Reasoning is emitted from the model config's editable thinking rules.
  *
  * This provider keeps the shared OpenAI request/response handling while applying OpenRouter's
  * request-body conventions and default headers.
@@ -35,7 +30,8 @@ open class OpenRouterProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -46,7 +42,8 @@ open class OpenRouterProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations
 ) {
 
     private val openRouterApiEndpoint: String = apiEndpoint
@@ -97,65 +94,15 @@ open class OpenRouterProvider(
         requestJson: JSONObject,
         enableThinking: Boolean
     ) {
-        val reasoningObject = requestJson.optJSONObject("reasoning")
-        val existingHasExplicitReasoningControl =
-            reasoningObject?.let {
-                it.has("enabled") || it.has("max_tokens") || it.has("effort")
-            } == true
-
-        when {
-            reasoningObject == null && requestJson.has("reasoning") && !requestJson.isNull("reasoning") -> {
-                AppLogger.w(
-                    "OpenRouterProvider",
-                    "Skipping OpenRouter reasoning adaptation because reasoning is not an object"
-                )
-            }
-
-            existingHasExplicitReasoningControl -> {
-                AppLogger.d(
-                    "OpenRouterProvider",
-                    "Preserving caller-supplied OpenRouter reasoning object"
-                )
-            }
-
-            else -> {
-                val finalReasoningObject = reasoningObject ?: JSONObject()
-                val mapping = runBlocking {
-                    ThinkingQualityMappingRegistry.resolveForModel(
-                        openRouterProviderType.name,
-                        modelName,
-                        openRouterApiEndpoint,
-                    )
-                }
-                if (mapping.control == ThinkingQualityControl.UNSUPPORTED) return
-                val thinkingEnabled = enableThinking || mapping.reasoningRequired
-                if (thinkingEnabled) {
-                    val optionId = runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-                    val selected = mapping.optionFor(optionId)
-                    if (mapping.control == ThinkingQualityControl.LEVELS && selected == null) {
-                        throw IllegalArgumentException("OpenRouter option is not supported: $optionId")
-                    }
-                    when (val wireValue = selected?.wireValue) {
-                        is ThinkingQualityWireValue.Text -> finalReasoningObject.put("effort", wireValue.value)
-                        is ThinkingQualityWireValue.Number -> finalReasoningObject.put("max_tokens", wireValue.value)
-                        ThinkingQualityWireValue.Omitted, null -> Unit
-                    }
-                    requestJson.put("reasoning", finalReasoningObject)
-                    AppLogger.d(
-                        "OpenRouterProvider",
-                        "OpenRouter thinking enabled via " + mapping.parameterLabel
-                    )
-                } else {
-                    mapping.disabledValue?.let { finalReasoningObject.put("effort", it) }
-                        ?: finalReasoningObject.put("enabled", false)
-                    requestJson.put("reasoning", finalReasoningObject)
-                    AppLogger.d(
-                        "OpenRouterProvider",
-                        "OpenRouter thinking disabled via reasoning.enabled=false"
-                    )
-                }
-            }
-        }
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = requestJson,
+            providerTypeId = openRouterProviderType.name,
+            modelName = modelName,
+            apiEndpoint = openRouterApiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
     }
 
     companion object {

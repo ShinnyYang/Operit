@@ -7,14 +7,10 @@ import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.stream.Stream
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -33,7 +29,8 @@ class DeepseekProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
         apiEndpoint = apiEndpoint,
         apiKeyProvider = apiKeyProvider,
@@ -45,6 +42,7 @@ class DeepseekProvider(
         supportsAudio = supportsAudio,
         supportsVideo = supportsVideo,
         enableToolCall = enableToolCall,
+        thinkingConfigurations = thinkingConfigurations,
     ) {
 
     /**
@@ -61,24 +59,15 @@ class DeepseekProvider(
         preserveThinkInHistory: Boolean
     ): RequestBody {
         fun applyThinkingParamsIfNeeded(jsonObject: JSONObject) {
-            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.DEEPSEEK.name, modelName)
-            if (mapping.control == ThinkingQualityControl.UNSUPPORTED) {
-                return
-            }
-            val thinkingObject = jsonObject.optJSONObject("thinking") ?: JSONObject()
-            val thinkingType = if (enableThinking) "enabled" else "disabled"
-            thinkingObject.put("type", thinkingType)
-            jsonObject.put("thinking", thinkingObject)
-
-            if (!enableThinking) {
-                AppLogger.d("DeepseekProvider", "DeepSeek thinking mode explicitly set to disabled")
-                return
-            }
-
-            val effort = resolveDeepseekThinkingEffort(context)
-            if (effort != null && !jsonObject.has("reasoning_effort")) {
-                jsonObject.put("reasoning_effort", effort)
-            }
+            ThinkingConfigurationApplier.apply(
+                context = context,
+                requestJson = jsonObject,
+                providerTypeId = ApiProviderType.DEEPSEEK.name,
+                modelName = modelName,
+                apiEndpoint = "",
+                thinkingConfigurations = thinkingConfigurations,
+                enableThinking = enableThinking,
+            )
         }
 
         // 如果未启用推理模式，直接使用父类的实现
@@ -444,19 +433,6 @@ class DeepseekProvider(
 
         flushOpenToolCallsAsCancelled("history_end")
         return messagesArray
-    }
-
-    private fun resolveDeepseekThinkingEffort(context: Context): String? {
-        val qualityLevel = try {
-            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-        } catch (error: Exception) {
-            AppLogger.e("DeepseekProvider", "Failed to read thinking option id", error)
-            throw error
-        }
-
-        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.DEEPSEEK.name, modelName)
-        return mapping.textValueFor(qualityLevel)
-            ?: throw IllegalArgumentException("DeepSeek option is not supported: $qualityLevel")
     }
 
     override suspend fun sendMessage(

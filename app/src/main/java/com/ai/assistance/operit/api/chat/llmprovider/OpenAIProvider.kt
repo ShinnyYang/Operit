@@ -11,7 +11,6 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
@@ -39,8 +38,6 @@ import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -101,6 +98,7 @@ open class OpenAIProvider(
     protected val supportsFiles: Boolean = false, // 是否支持文件输入
     val enableToolCall: Boolean = false, // 是否启用Tool Call接口
     private val includeUsageInStream: Boolean = false,
+    protected val thinkingConfigurations: String = "",
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -567,60 +565,18 @@ open class OpenAIProvider(
     ): RequestBody {
         val jsonString =
             createRequestBodyInternal(context, chatHistory, modelParameters, stream, availableTools, preserveThinkInHistory)
-        if (!supportsOpenAiChatReasoningEffort()) {
-            return createJsonRequestBody(jsonString)
-        }
         val requestJson = JSONObject(jsonString)
-        applyOpenAiChatReasoning(context, requestJson, enableThinking)
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = requestJson,
+            providerTypeId = providerType.name,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
         return createJsonRequestBody(requestJson.toString())
     }
-
-    private fun applyOpenAiChatReasoning(
-        context: Context,
-        requestJson: JSONObject,
-        enableThinking: Boolean
-    ) {
-        if (!supportsOpenAiChatReasoningEffort()) {
-            return
-        }
-
-        val existingEffort = requestJson.optString("reasoning_effort", "").trim()
-        if (existingEffort.isNotEmpty()) {
-            AppLogger.d(
-                "OpenAIProvider",
-                "Preserving caller-supplied Chat Completions reasoning_effort=$existingEffort"
-            )
-            return
-        }
-
-        if (!enableThinking) {
-            val disabledValue = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName).disabledValue ?: return
-            requestJson.put("reasoning_effort", disabledValue)
-            return
-        }
-        val effort = resolveOpenAiChatReasoningEffort(context) ?: return
-        requestJson.put("reasoning_effort", effort)
-        AppLogger.d(
-            "OpenAIProvider",
-            "OpenAI Chat Completions reasoning_effort=$effort"
-        )
-    }
-
-    private fun resolveOpenAiChatReasoningEffort(context: Context): String? {
-        val qualityLevel = try {
-            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-        } catch (error: Exception) {
-            AppLogger.e("OpenAIProvider", "Failed to read thinking option id", error)
-            throw error
-        }
-
-        val mapping = ThinkingQualityMappingRegistry.resolve(providerType.name, modelName)
-        return mapping.textValueFor(qualityLevel)
-            ?: throw IllegalArgumentException("OpenAI option is not supported: $qualityLevel")
-    }
-
-    private fun supportsOpenAiChatReasoningEffort(): Boolean =
-        providerType == ApiProviderType.OPENAI || providerType == ApiProviderType.OPENAI_GENERIC
 
     protected fun createJsonRequestBody(jsonString: String): RequestBody {
         return jsonString.toByteArray(Charsets.UTF_8).toRequestBody(JSON)

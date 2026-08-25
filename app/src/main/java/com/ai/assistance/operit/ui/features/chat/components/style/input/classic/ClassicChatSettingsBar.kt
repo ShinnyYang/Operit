@@ -226,13 +226,21 @@ fun ClassicChatSettingsBar(
         currentConfig?.id,
         currentConfig?.apiProviderTypeId,
         currentConfig?.apiEndpoint,
+        currentConfig?.thinkingConfigurations,
         currentModelName,
     ) { mutableStateOf<ThinkingQualityMapping?>(null) }
-    LaunchedEffect(currentConfig?.id, currentConfig?.apiProviderTypeId, currentConfig?.apiEndpoint, currentModelName) {
+    LaunchedEffect(
+        currentConfig?.id,
+        currentConfig?.apiProviderTypeId,
+        currentConfig?.apiEndpoint,
+        currentConfig?.thinkingConfigurations,
+        currentModelName
+    ) {
         thinkingQualityMapping = ThinkingQualityMappingRegistry.resolveForModel(
             providerTypeId = currentConfig?.apiProviderTypeId.orEmpty(),
             modelName = currentModelName,
             apiEndpoint = currentConfig?.apiEndpoint.orEmpty(),
+            thinkingConfigurations = currentConfig?.thinkingConfigurations.orEmpty(),
         )
     }
     LaunchedEffect(thinkingQualityMapping, thinkingOptionId) {

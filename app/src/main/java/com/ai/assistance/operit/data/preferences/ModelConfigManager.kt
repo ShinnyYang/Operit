@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.data.collects.ModelThinkingConfigDefaults
 import com.ai.assistance.operit.data.model.CustomParameterData
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelConfigData
@@ -54,6 +55,19 @@ class ModelConfigManager(private val context: Context) {
         // Default API provider type
         private val DEFAULT_API_PROVIDER_TYPE = ApiProviderType.DEEPSEEK
     }
+
+    private fun thinkingRulesForProvider(providerTypeId: String): String =
+            ModelThinkingConfigDefaults.forProvider(providerTypeId)
+
+    private fun nextThinkingRulesForProvider(
+            current: ModelConfigData,
+            providerTypeId: String
+    ): String =
+            if (current.apiProviderTypeId == providerTypeId) {
+                current.thinkingConfigurations
+            } else {
+                thinkingRulesForProvider(providerTypeId)
+            }
 
     // Json解析器，支持宽松模式
     private val json = Json {
@@ -115,7 +129,8 @@ class ModelConfigManager(private val context: Context) {
                 presencePenalty = StandardModelParameters.DEFAULT_PRESENCE_PENALTY,
                 frequencyPenalty = StandardModelParameters.DEFAULT_FREQUENCY_PENALTY,
                 repetitionPenalty = StandardModelParameters.DEFAULT_REPETITION_PENALTY,
-                customParameters = "[]"
+                customParameters = "[]",
+                thinkingConfigurations = thinkingRulesForProvider(DEFAULT_API_PROVIDER_TYPE.name)
         )
     }
 
@@ -235,7 +250,8 @@ class ModelConfigManager(private val context: Context) {
                             modelName = config.modelName,
                             apiEndpoint = config.apiEndpoint,
                             apiProviderType = config.apiProviderType,
-                            apiProviderTypeId = config.apiProviderTypeId
+                            apiProviderTypeId = config.apiProviderTypeId,
+                            thinkingConfigurations = config.thinkingConfigurations
                     )
             )
         }
@@ -254,6 +270,7 @@ class ModelConfigManager(private val context: Context) {
                         name = name,
                         apiProviderType = ApiProviderType.OPENAI_GENERIC,
                         apiProviderTypeId = ApiProviderType.OPENAI_GENERIC.name,
+                        thinkingConfigurations = thinkingRulesForProvider(ApiProviderType.OPENAI_GENERIC.name),
                         enableToolCall = ModelConfigDefaults.DEFAULT_ENABLE_TOOL_CALL
                 )
 
@@ -332,7 +349,8 @@ class ModelConfigManager(private val context: Context) {
                     apiEndpoint = apiEndpoint,
                     modelName = modelName,
                     apiProviderType = apiProviderType,
-                    apiProviderTypeId = apiProviderTypeId
+                    apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId)
             )
         }
     }
@@ -355,6 +373,7 @@ class ModelConfigManager(private val context: Context) {
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount
             )
@@ -387,6 +406,7 @@ class ModelConfigManager(private val context: Context) {
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount,
                     llamaThreadCount = llamaThreadCount.coerceAtLeast(1),
@@ -405,6 +425,12 @@ class ModelConfigManager(private val context: Context) {
     suspend fun updateCustomHeaders(configId: String, customHeaders: String): ModelConfigData {
         return updateConfigInternal(configId) {
             it.copy(customHeaders = customHeaders)
+        }
+    }
+
+    suspend fun updateThinkingConfigurations(configId: String, thinkingConfigurations: String): ModelConfigData {
+        return updateConfigInternal(configId) {
+            it.copy(thinkingConfigurations = thinkingConfigurations)
         }
     }
 

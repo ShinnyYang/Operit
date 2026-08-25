@@ -1563,6 +1563,7 @@ class WebChatHttpBridge(
                 providerTypeId = currentConfig?.apiProviderTypeId.orEmpty(),
                 modelName = currentModelName,
                 apiEndpoint = currentConfig?.apiEndpoint.orEmpty(),
+                thinkingConfigurations = currentConfig?.thinkingConfigurations.orEmpty(),
             )
             .toWebThinkingQualityMapping()
 

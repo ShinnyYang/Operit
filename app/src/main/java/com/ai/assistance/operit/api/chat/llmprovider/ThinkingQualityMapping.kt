@@ -1,15 +1,16 @@
 package com.ai.assistance.operit.api.chat.llmprovider
 
+import android.content.Context
 import com.ai.assistance.operit.data.model.ApiProviderType
+import com.ai.assistance.operit.data.model.ModelParameter
+import com.ai.assistance.operit.data.model.ParameterCategory
+import com.ai.assistance.operit.data.model.ParameterValueType
+import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.AppLogger
-import java.net.URL
 import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
 import org.json.JSONObject
 
 internal enum class ThinkingQualityControl { LEVELS, TOGGLE_ONLY, UNSUPPORTED }
@@ -24,6 +25,13 @@ internal data class ThinkingQualityOption(
     val id: String,
     val displayLabel: String,
     val wireValue: ThinkingQualityWireValue,
+    val actions: List<ThinkingQualityJsonAction> = emptyList(),
+)
+
+internal data class ThinkingQualityJsonAction(
+    val path: String,
+    val value: Any?,
+    val overwrite: Boolean = false,
 )
 
 internal data class ThinkingQualityMapping(
@@ -32,6 +40,8 @@ internal data class ThinkingQualityMapping(
     val options: List<ThinkingQualityOption>,
     val reasoningRequired: Boolean = false,
     val disabledValue: String? = null,
+    val enabledActions: List<ThinkingQualityJsonAction> = emptyList(),
+    val disabledActions: List<ThinkingQualityJsonAction> = emptyList(),
 ) {
     companion object {
         fun toggleOnly(parameterLabel: String, reasoningRequired: Boolean = false): ThinkingQualityMapping =
@@ -46,231 +56,501 @@ internal data class ThinkingQualityMapping(
 }
 
 internal object ThinkingQualityMappingRegistry {
-    fun resolve(providerTypeId: String, modelName: String): ThinkingQualityMapping {
-        val providerType = providerTypeId.trim().uppercase(Locale.US)
-        val model = modelName.trim().lowercase(Locale.US)
-        return when (providerType) {
-            ApiProviderType.XAI.name -> xaiMapping(model)
-            ApiProviderType.OPENAI.name, ApiProviderType.OPENAI_GENERIC.name -> openAiMapping(model, false)
-            ApiProviderType.OPENAI_RESPONSES.name, ApiProviderType.OPENAI_RESPONSES_GENERIC.name, ApiProviderType.OPENAI_CODEX.name -> openAiMapping(model, true)
-            ApiProviderType.GOOGLE.name, ApiProviderType.GEMINI_GENERIC.name -> geminiMapping(model)
-            ApiProviderType.NVIDIA.name -> nvidiaMapping(model)
-            ApiProviderType.DEEPSEEK.name -> deepSeekMapping(model)
-            ApiProviderType.SILICONFLOW.name -> siliconFlowMapping(model)
-            ApiProviderType.ANTHROPIC.name, ApiProviderType.ANTHROPIC_GENERIC.name -> anthropicMapping(model)
-            ApiProviderType.MNN.name -> ThinkingQualityMapping.toggleOnly("enable_thinking")
-            ApiProviderType.LLAMA_CPP.name -> ThinkingQualityMapping.toggleOnly("enable_thinking")
-            ApiProviderType.OPENROUTER.name, ApiProviderType.NOUS_PORTAL.name ->
-                numberMapping("reasoning.max_tokens", listOf(1_024, 8_192, 16_384, 32_768, 65_536))
-            else -> ThinkingQualityMapping.toggleOnly("enable_thinking")
-        }
+    fun resolve(providerTypeId: String, modelName: String): ThinkingQualityMapping =
+        resolve(providerTypeId, modelName, "")
+
+    fun resolve(
+        providerTypeId: String,
+        modelName: String,
+        thinkingConfigurations: String
+    ): ThinkingQualityMapping {
+        return parseRules(thinkingConfigurations)
+            .firstOrNull { it.matches(providerTypeId, modelName) }
+            ?.toMapping()
+            ?: ThinkingQualityMapping.unsupported()
     }
 
-    suspend fun resolveForModel(providerTypeId: String, modelName: String, apiEndpoint: String): ThinkingQualityMapping {
-        val providerType = providerTypeId.trim().uppercase(Locale.US)
-        if (providerType == ApiProviderType.OPENCODE.name) {
-            val capability = try {
-                OpenCodeModelCatalog.resolve(SharedHttpClient.instance, apiEndpoint, modelName)
-            } catch (error: Exception) {
-                AppLogger.w("ThinkingQualityMapping", "OpenCode model capability lookup failed", error)
-                return genericOpenCodeMapping(OpenCodeRouting.protocolFor(apiEndpoint, modelName))
-            } ?: return genericOpenCodeMapping(OpenCodeRouting.protocolFor(apiEndpoint, modelName))
-            if (!capability.reasoning) return genericOpenCodeMapping(OpenCodeRouting.protocolFor(apiEndpoint, modelName))
-            val protocol = OpenCodeRouting.protocolFor(apiEndpoint, modelName)
-            val effort = capability.options.filterIsInstance<OpenCodeReasoningOption.Effort>().firstOrNull()
-            if (effort != null) {
-                val values = effort.values.mapNotNull { it?.trim()?.takeIf(String::isNotEmpty) }
-                    .filterNot { it.equals("none", true) }
-                if (values.isNotEmpty()) return textMapping(openCodeParameterLabel(protocol, false), values, capability.reasoningRequired)
-            }
-            val budget = capability.options.filterIsInstance<OpenCodeReasoningOption.BudgetTokens>().firstOrNull()
-            if (budget != null) {
-                val values = OpenCodeReasoningMapper.budgetVariants(budget, capability.outputLimit)
-                if (values.isNotEmpty() && (protocol.isGeminiProtocol() || protocol.isAnthropicProtocol())) {
-                    return numberMapping(openCodeParameterLabel(protocol, true), values, capability.reasoningRequired)
-                }
-            }
-            if (capability.options.any { it is OpenCodeReasoningOption.Toggle } && protocol.isAnthropicProtocol() && modelName.contains("minimax", true)) {
-                return ThinkingQualityMapping.toggleOnly("model reasoning", capability.reasoningRequired)
-            }
-            return genericOpenCodeMapping(protocol)
-        }
-        if (providerType == ApiProviderType.OPENROUTER.name || providerType == ApiProviderType.NOUS_PORTAL.name) {
-            val capability = try {
-                OpenRouterModelCatalog.resolve(SharedHttpClient.instance, apiEndpoint, modelName)
-            } catch (error: Exception) {
-                AppLogger.w("ThinkingQualityMapping", "OpenRouter model capability lookup failed", error)
-                return numberMapping("reasoning.max_tokens", listOf(1_024, 8_192, 16_384, 32_768, 65_536))
-            } ?: return numberMapping("reasoning.max_tokens", listOf(1_024, 8_192, 16_384, 32_768, 65_536))
-            if (capability.supportedEfforts.isNotEmpty()) {
-                val disabledValue = capability.supportedEfforts.firstOrNull { it.equals("none", true) }
-                val efforts = capability.supportedEfforts.filterNot { it.equals("none", true) }
-                if (efforts.isEmpty()) return numberMapping("reasoning.max_tokens", listOf(1_024, 8_192, 16_384, 32_768, 65_536))
-                return textMapping("reasoning.effort", efforts, capability.mandatory, disabledValue = disabledValue)
-            }
-            if (capability.supportsMaxTokens) {
-                val max = capability.maxTokens ?: 65_537
-                val values = (listOf(1_024, 8_192, 16_384, 32_768, 65_536).filter { it < max } + listOf(max - 1).filter { max > 1 }).distinct()
-                if (values.isNotEmpty()) return numberMapping("reasoning.max_tokens", values, capability.mandatory)
-            }
-            return if (capability.reasoning) ThinkingQualityMapping.toggleOnly("reasoning", capability.mandatory)
-            else ThinkingQualityMapping.unsupported()
-        }
-        return resolve(providerType, modelName)
+    suspend fun resolveForModel(
+        providerTypeId: String,
+        modelName: String,
+        apiEndpoint: String,
+        thinkingConfigurations: String = ""
+    ): ThinkingQualityMapping {
+        return resolve(providerTypeId, modelName, thinkingConfigurations)
     }
 
-    private fun openAiMapping(model: String, responses: Boolean): ThinkingQualityMapping {
-        val parameterLabel = if (responses) "reasoning.effort" else "reasoning_effort"
+    fun validateConfigurations(thinkingConfigurations: String) {
+        parseRules(thinkingConfigurations)
+    }
+
+    fun formatConfigurations(thinkingConfigurations: String): String {
+        val text = normalizedJsonText(thinkingConfigurations)
         return when {
-            model.contains("codex") -> textMapping(parameterLabel, listOf("low", "medium", "high", "xhigh"))
-            model.startsWith("o1") || model.startsWith("o3") || model.startsWith("o4") ->
-                textMapping(parameterLabel, listOf("low", "medium", "high"))
-            model.startsWith("gpt-5.6") ->
-                textMapping(parameterLabel, listOf("low", "medium", "high", "xhigh", "max"), disabledValue = "none")
-            model.startsWith("gpt-5") ->
-                textMapping(parameterLabel, listOf("low", "medium", "high", "xhigh"), disabledValue = "none")
-            else -> textMapping(parameterLabel, listOf("low", "medium", "high"))
+            text.startsWith("[") -> JSONArray(text).toString(2)
+            text.startsWith("{") -> JSONObject(text).toString(2)
+            else -> JSONArray(text).toString(2)
         }
     }
 
-    private fun geminiMapping(model: String): ThinkingQualityMapping = when {
-        model.startsWith("gemini-2.5") -> numberMapping("thinkingBudget", listOf(1_024, 4_096, 8_192, 16_384, 32_768))
-        else -> textMapping("thinkingLevel", listOf("MINIMAL", "LOW", "MEDIUM", "HIGH"), reasoningRequired = true)
-    }
-
-    private fun nvidiaMapping(model: String): ThinkingQualityMapping = when {
-        model.contains("gpt-oss") -> textMapping("reasoning_effort", listOf("low", "medium", "high"))
-        model.contains("nemotron") -> textMapping(
-            "reasoning_effort",
-            listOf("low", "medium", "high"),
-            disabledValue = "none",
-        )
-        else -> ThinkingQualityMapping.toggleOnly("chat_template_kwargs.enable_thinking")
-    }
-
-    private fun deepSeekMapping(model: String): ThinkingQualityMapping {
-        // DeepSeek documents three actual effort values. Its medium/xhigh compatibility aliases
-        // are normalized to high by the service, so they must not become fake duplicate slider stops.
-        // Keep this family-based so new DeepSeek model aliases receive the same documented options.
-        return textMapping("reasoning_effort", listOf("low", "high", "max"))
-    }
-
-    private fun siliconFlowMapping(model: String): ThinkingQualityMapping {
-        // SiliconFlow capability docs are family-based; keep the service tier (for example pro/) separate from the vendor path.
-        val path = model.split('/').filter(String::isNotEmpty)
-        val modelId = path.lastOrNull().orEmpty()
-        val family = when {
-            path.firstOrNull() == "pro" -> path.getOrNull(1).orEmpty()
-            path.size == 1 && (modelId.startsWith("qwen3-") || modelId.startsWith("qwen3.") || modelId == "qwen3") -> "qwen"
-            path.size == 1 && modelId.startsWith("deepseek-v") -> "deepseek-ai"
-            path.size == 1 && modelId.startsWith("glm-") -> "zai-org"
-            path.size == 1 && modelId.startsWith("hunyuan-") -> "tencent"
-            else -> path.firstOrNull().orEmpty()
+    private fun parseRules(thinkingConfigurations: String): List<ThinkingConfigurationRule> {
+        val array = rulesArray(thinkingConfigurations)
+        return buildList {
+            for (index in 0 until array.length()) {
+                val ruleObject = array.optJSONObject(index) ?: continue
+                val rule = ThinkingConfigurationRule.fromJson(ruleObject)
+                if (rule.enabled) add(rule)
+            }
         }
+    }
+
+    private fun rulesArray(thinkingConfigurations: String): JSONArray {
+        val text = normalizedJsonText(thinkingConfigurations)
         return when {
-            family == "zai-org" && modelId.startsWith("glm-") ||
-                family == "tencent" && modelId.startsWith("hunyuan-") ->
-                ThinkingQualityMapping.toggleOnly("enable_thinking")
-            family == "deepseek-ai" && modelId.startsWith("deepseek-v4") ->
-                textMapping("reasoning_effort", listOf("high", "max"), reasoningRequired = true)
-            family == "deepseek-ai" || family == "qwen" ->
-                numberMapping("thinking_budget", listOf(128, 4_096, 8_192, 16_384, 32_768))
-            else -> numberMapping("thinking_budget", listOf(128, 4_096, 8_192, 16_384, 32_768))
+            text.startsWith("[") -> JSONArray(text)
+            text.startsWith("{") -> {
+                val objectValue = JSONObject(text)
+                objectValue.optJSONArray("rules") ?: JSONArray().put(objectValue)
+            }
+            else -> JSONArray(text)
         }
     }
 
-    private fun anthropicMapping(model: String): ThinkingQualityMapping = when {
-        model.startsWith("claude-3") -> numberMapping("thinking.budget_tokens", listOf(1_024, 4_096, 8_192, 16_384))
-        else -> textMapping("output_config.effort", listOf("low", "medium", "high"))
-    }
-
-    private fun xaiMapping(model: String): ThinkingQualityMapping = when {
-        model.startsWith("grok-") -> textMapping("reasoning_effort", listOf("low", "medium", "high", "xhigh"), true)
-        else -> textMapping("reasoning_effort", listOf("low", "medium", "high"))
-    }
-
-    private fun textMapping(parameterLabel: String, values: List<String>, reasoningRequired: Boolean = false, ids: List<String> = values, disabledValue: String? = null): ThinkingQualityMapping = ThinkingQualityMapping(
-        ThinkingQualityControl.LEVELS, parameterLabel,
-        values.mapIndexed { index, value -> ThinkingQualityOption(ids[index], value, ThinkingQualityWireValue.Text(value)) }, reasoningRequired, disabledValue,
-    )
-
-    private fun numberMapping(parameterLabel: String, values: List<Int>, reasoningRequired: Boolean = false): ThinkingQualityMapping = ThinkingQualityMapping(
-        ThinkingQualityControl.LEVELS, parameterLabel,
-        values.map { value -> ThinkingQualityOption(value.toString(), value.toString(), ThinkingQualityWireValue.Number(value)) }, reasoningRequired,
-    )
-
-    private fun openCodeParameterLabel(protocol: ApiProviderType, budget: Boolean): String = when {
-        budget && protocol.isGeminiProtocol() -> "thinkingBudget"
-        budget && protocol.isAnthropicProtocol() -> "thinking.budget_tokens"
-        protocol.isGeminiProtocol() -> "thinkingLevel"
-        protocol.isAnthropicProtocol() -> "output_config.effort"
-        protocol.isOpenAiResponsesProtocol() -> "reasoning.effort"
-        else -> "reasoning_effort"
-    }
-
-    private fun genericOpenCodeMapping(protocol: ApiProviderType): ThinkingQualityMapping = when {
-        protocol.isGeminiProtocol() -> textMapping("thinkingLevel", listOf("LOW", "MEDIUM", "HIGH"))
-        protocol.isAnthropicProtocol() -> textMapping("output_config.effort", listOf("low", "medium", "high"))
-        protocol.isOpenAiResponsesProtocol() -> textMapping("reasoning.effort", listOf("low", "medium", "high"))
-        else -> textMapping("reasoning_effort", listOf("low", "medium", "high"))
-    }
-
-    private fun ApiProviderType.isOpenAiResponsesProtocol() = this == ApiProviderType.OPENAI_RESPONSES_GENERIC || this == ApiProviderType.OPENAI_RESPONSES
-    private fun ApiProviderType.isAnthropicProtocol() = this == ApiProviderType.ANTHROPIC_GENERIC || this == ApiProviderType.ANTHROPIC
-    private fun ApiProviderType.isGeminiProtocol() = this == ApiProviderType.GEMINI_GENERIC || this == ApiProviderType.GOOGLE
+    private fun normalizedJsonText(thinkingConfigurations: String): String =
+        thinkingConfigurations.trim().ifEmpty { "[]" }
 }
 
-internal data class OpenRouterModelCapability(val reasoning: Boolean, val mandatory: Boolean, val supportedEfforts: List<String>, val supportsMaxTokens: Boolean, val maxTokens: Int?)
-
-internal object OpenRouterModelCatalog {
-    private const val CACHE_TTL_MS = 5 * 60 * 1000L
-    private data class Snapshot(val fetchedAt: Long, val models: Map<String, OpenRouterModelCapability>)
-    @Volatile private var snapshot: Snapshot? = null
-    private val mutex = Mutex()
-
-    suspend fun resolve(client: OkHttpClient, endpoint: String, modelName: String): OpenRouterModelCapability? {
-        val current = snapshot
-        if (current != null && System.currentTimeMillis() - current.fetchedAt < CACHE_TTL_MS) return current.models[modelName.lowercase(Locale.US)]
-        return mutex.withLock {
-            val cached = snapshot
-            val fresh = if (cached != null && System.currentTimeMillis() - cached.fetchedAt < CACHE_TTL_MS) cached else fetch(client, endpoint)
-            snapshot = fresh
-            fresh.models[modelName.lowercase(Locale.US)]
-        }
+private data class ThinkingConfigurationRule(
+    val id: String,
+    val enabled: Boolean,
+    val providerIds: List<String>,
+    val matcher: ThinkingModelMatcher,
+    val control: ThinkingQualityControl,
+    val parameterLabel: String,
+    val reasoningRequired: Boolean,
+    val disabledValue: String?,
+    val enabledActions: List<ThinkingQualityJsonAction>,
+    val disabledActions: List<ThinkingQualityJsonAction>,
+    val options: List<ThinkingQualityOption>,
+) {
+    fun matches(providerTypeId: String, modelName: String): Boolean {
+        val provider = providerTypeId.trim().uppercase(Locale.US)
+        val providerMatches =
+            providerIds.isEmpty() || providerIds.any { it.equals(provider, ignoreCase = true) }
+        return providerMatches && matcher.matches(modelName)
     }
 
-    private suspend fun fetch(client: OkHttpClient, endpoint: String): Snapshot = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(modelsUrl(endpoint)).get().header("Accept", "application/json").build()
-        val body = client.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("OpenRouter model catalog HTTP " + response.code)
-            response.body?.string() ?: throw IllegalStateException("OpenRouter model catalog response is empty")
-        }
-        val data = JSONObject(body).optJSONArray("data") ?: throw IllegalStateException("OpenRouter model catalog has no data")
-        val result = mutableMapOf<String, OpenRouterModelCapability>()
-        for (index in 0 until data.length()) {
-            val model = data.optJSONObject(index) ?: continue
-            val id = model.optString("id").trim().lowercase(Locale.US)
-            if (id.isEmpty()) continue
-            val reasoning = model.optJSONObject("reasoning")
-            val supported = reasoning?.optJSONArray("supported_efforts")?.let { array ->
-                buildList { for (i in 0 until array.length()) array.optString(i).trim().takeIf(String::isNotEmpty)?.let(::add) }
-            }.orEmpty()
-            val topProvider = model.optJSONObject("top_provider")
-            result[id] = OpenRouterModelCapability(
-                reasoning = reasoning != null || model.optJSONArray("supported_parameters")?.toString()?.contains("reasoning") == true,
-                mandatory = reasoning?.optBoolean("mandatory", false) ?: false,
-                supportedEfforts = supported,
-                supportsMaxTokens = reasoning?.optBoolean("supports_max_tokens", false) ?: false,
-                maxTokens = topProvider?.optInt("max_completion_tokens", 0)?.takeIf { it > 1 },
+    fun toMapping(): ThinkingQualityMapping =
+        ThinkingQualityMapping(
+            control = control,
+            parameterLabel = parameterLabel,
+            options = options,
+            reasoningRequired = reasoningRequired,
+            disabledValue = disabledValue,
+            enabledActions = enabledActions,
+            disabledActions = disabledActions,
+        )
+
+    companion object {
+        fun fromJson(json: JSONObject): ThinkingConfigurationRule {
+            val parameterLabel = json.optString("parameterLabel", json.optString("label", "")).trim()
+            val enabledActions = json.actionList("enable", "enabledActions", "on")
+            val disabledActions = json.actionList("disable", "disabledActions", "off")
+            val options = json.optionList(parameterLabel)
+            val disabledValue = json.optString("disabledValue", "").trim().ifEmpty {
+                disabledActions.firstOrNull { it.path == parameterLabel }?.value as? String ?: ""
+            }.ifEmpty { null }
+
+            return ThinkingConfigurationRule(
+                id = json.optString("id", ""),
+                enabled = json.optBoolean("enabled", true),
+                providerIds = json.stringList("providers") + json.stringList("providerTypeIds"),
+                matcher = ThinkingModelMatcher.fromJson(json.optJSONObject("match") ?: JSONObject(), json),
+                control = when (json.optString("control", "unsupported").trim().lowercase(Locale.US)) {
+                    "levels" -> ThinkingQualityControl.LEVELS
+                    "toggle_only", "toggle" -> ThinkingQualityControl.TOGGLE_ONLY
+                    else -> ThinkingQualityControl.UNSUPPORTED
+                },
+                parameterLabel = parameterLabel,
+                reasoningRequired = json.optBoolean("required", json.optBoolean("reasoningRequired", false)),
+                disabledValue = disabledValue,
+                enabledActions = enabledActions,
+                disabledActions = disabledActions,
+                options = options,
             )
         }
-        Snapshot(System.currentTimeMillis(), result)
-    }
-
-    private fun modelsUrl(endpoint: String): String {
-        val parsed = URL(endpoint)
-        val path = parsed.path.substringBeforeLast("/chat/completions").trimEnd('/')
-        return if (parsed.host.equals("openrouter.ai", true)) parsed.protocol + "://" + parsed.authority + "/api/v1/models"
-        else parsed.protocol + "://" + parsed.authority + path + "/models"
     }
 }
+
+private data class ThinkingModelMatcher(
+    val modelPrefix: List<String>,
+    val modelContains: List<String>,
+    val modelSuffix: List<String>,
+    val modelRegex: List<String>,
+    val firstSegment: List<String>,
+    val lastSegmentPrefix: List<String>,
+    val lastSegmentContains: List<String>,
+    val lastSegmentRegex: List<String>,
+) {
+    fun matches(modelName: String): Boolean {
+        if (isEmpty()) return true
+
+        val model = modelName.trim().lowercase(Locale.US)
+        val segments = model.split('/').filter(String::isNotEmpty)
+        val first = segments.firstOrNull().orEmpty()
+        val last = segments.lastOrNull() ?: model
+
+        return modelPrefix.any { model.startsWith(it) } ||
+            modelContains.any { model.contains(it) } ||
+            modelSuffix.any { model.endsWith(it) } ||
+            modelRegex.any { Regex(it, RegexOption.IGNORE_CASE).containsMatchIn(modelName) } ||
+            firstSegment.any { first == it } ||
+            lastSegmentPrefix.any { last.startsWith(it) } ||
+            lastSegmentContains.any { last.contains(it) } ||
+            lastSegmentRegex.any { Regex(it, RegexOption.IGNORE_CASE).containsMatchIn(last) }
+    }
+
+    private fun isEmpty(): Boolean =
+        modelPrefix.isEmpty() &&
+            modelContains.isEmpty() &&
+            modelSuffix.isEmpty() &&
+            modelRegex.isEmpty() &&
+            firstSegment.isEmpty() &&
+            lastSegmentPrefix.isEmpty() &&
+            lastSegmentContains.isEmpty() &&
+            lastSegmentRegex.isEmpty()
+
+    companion object {
+        fun fromJson(match: JSONObject, root: JSONObject): ThinkingModelMatcher =
+            ThinkingModelMatcher(
+                modelPrefix = match.stringList("modelPrefix") + root.stringList("modelPrefix"),
+                modelContains = match.stringList("modelContains") + root.stringList("modelContains"),
+                modelSuffix = match.stringList("modelSuffix") + root.stringList("modelSuffix"),
+                modelRegex = match.stringList("modelRegex") + root.stringList("modelRegex"),
+                firstSegment = match.stringList("firstSegment") + root.stringList("firstSegment"),
+                lastSegmentPrefix = match.stringList("lastSegmentPrefix") + root.stringList("lastSegmentPrefix"),
+                lastSegmentContains = match.stringList("lastSegmentContains") + root.stringList("lastSegmentContains"),
+                lastSegmentRegex = match.stringList("lastSegmentRegex") + root.stringList("lastSegmentRegex"),
+            )
+    }
+}
+
+internal object ThinkingConfigurationApplier {
+    fun apply(
+        context: Context,
+        requestJson: JSONObject,
+        providerTypeId: String,
+        modelName: String,
+        apiEndpoint: String,
+        thinkingConfigurations: String,
+        enableThinking: Boolean,
+    ) {
+        val optionId = readOptionId(context)
+        apply(
+            requestJson = requestJson,
+            providerTypeId = providerTypeId,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+            optionId = optionId,
+        )
+    }
+
+    fun apply(
+        requestJson: JSONObject,
+        providerTypeId: String,
+        modelName: String,
+        apiEndpoint: String,
+        thinkingConfigurations: String,
+        enableThinking: Boolean,
+        optionId: String,
+    ): ThinkingQualityMapping {
+        val mapping = ThinkingQualityMappingRegistry.resolve(providerTypeId, modelName, thinkingConfigurations)
+        if (mapping.control == ThinkingQualityControl.UNSUPPORTED) return mapping
+
+        val thinkingEnabled = enableThinking || mapping.reasoningRequired
+        val modeActions = if (thinkingEnabled) mapping.enabledActions else mapping.disabledActions
+        modeActions.forEach { applyAction(requestJson, it) }
+
+        if (thinkingEnabled && mapping.control == ThinkingQualityControl.LEVELS) {
+            val selected = mapping.optionFor(optionId)
+                ?: throw IllegalArgumentException("$providerTypeId option is not supported: $optionId")
+            selected.actions.forEach { applyAction(requestJson, it) }
+        }
+        return mapping
+    }
+
+    fun modelParameters(
+        providerTypeId: String,
+        modelName: String,
+        apiEndpoint: String,
+        thinkingConfigurations: String,
+        enableThinking: Boolean,
+        optionId: String,
+        protocol: ApiProviderType,
+    ): Pair<ThinkingQualityMapping, List<ModelParameter<*>>> {
+        val requestJson = JSONObject()
+        val mapping = apply(
+            requestJson = requestJson,
+            providerTypeId = providerTypeId,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+            optionId = optionId,
+        )
+        return mapping to requestJson.toModelParameters(protocol)
+    }
+
+    private fun readOptionId(context: Context): String {
+        return try {
+            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
+        } catch (error: Exception) {
+            AppLogger.e("ThinkingConfigurationApplier", "Failed to read thinking option id", error)
+            throw error
+        }
+    }
+
+    private fun applyAction(root: JSONObject, action: ThinkingQualityJsonAction) {
+        val path = action.path.trim()
+        if (path.isEmpty()) return
+        if (!action.overwrite && root.hasJsonPath(path)) return
+        root.putJsonPath(path, action.value, action.overwrite)
+    }
+}
+
+private fun JSONObject.optionList(parameterLabel: String): List<ThinkingQualityOption> {
+    val array = optJSONArray("options") ?: return emptyList()
+    return buildList {
+        for (index in 0 until array.length()) {
+            val option = array.optJSONObject(index) ?: continue
+            val value = option.jsonValue("value")
+            val id = option.optString("id", value?.toString().orEmpty()).trim()
+            if (id.isEmpty()) continue
+            val label = option.optString("label", id).trim()
+            val path = option.optString("path", parameterLabel).trim()
+            val wireValue = when (value) {
+                is Number -> ThinkingQualityWireValue.Number(value.toInt())
+                is String -> ThinkingQualityWireValue.Text(value)
+                else -> ThinkingQualityWireValue.Omitted
+            }
+            val directAction =
+                if (path.isNotEmpty() && value != null) {
+                    listOf(
+                        ThinkingQualityJsonAction(
+                            path = path,
+                            value = value,
+                            overwrite = option.optBoolean("overwrite", false),
+                        )
+                    )
+                } else {
+                    emptyList()
+                }
+            add(
+                ThinkingQualityOption(
+                    id = id,
+                    displayLabel = label,
+                    wireValue = wireValue,
+                    actions = directAction + option.actionList("actions"),
+                )
+            )
+        }
+    }
+}
+
+private fun JSONObject.actionList(vararg keys: String): List<ThinkingQualityJsonAction> =
+    keys.flatMap { key -> actionsFromValue(opt(key)) }
+
+private fun actionsFromValue(value: Any?): List<ThinkingQualityJsonAction> {
+    return when (value) {
+        is JSONArray -> buildList {
+            for (index in 0 until value.length()) {
+                val item = value.optJSONObject(index) ?: continue
+                item.toAction()?.let(::add)
+            }
+        }
+        is JSONObject -> listOfNotNull(value.toAction())
+        else -> emptyList()
+    }
+}
+
+private fun JSONObject.toAction(): ThinkingQualityJsonAction? {
+    val path = optString("path", "").trim()
+    if (path.isEmpty()) return null
+    return ThinkingQualityJsonAction(
+        path = path,
+        value = jsonValue("value"),
+        overwrite = optBoolean("overwrite", false),
+    )
+}
+
+private fun JSONObject.stringList(key: String): List<String> {
+    val value = opt(key)
+    return when (value) {
+        is JSONArray -> buildList {
+            for (index in 0 until value.length()) {
+                value.optString(index, "").trim().lowercase(Locale.US).takeIf(String::isNotEmpty)?.let(::add)
+            }
+        }
+        is String -> value.trim().lowercase(Locale.US).takeIf(String::isNotEmpty)?.let(::listOf).orEmpty()
+        else -> emptyList()
+    }
+}
+
+private fun JSONObject.jsonValue(key: String): Any? {
+    if (!has(key) || isNull(key)) return null
+    return opt(key)
+}
+
+private fun JSONObject.hasJsonPath(path: String): Boolean {
+    val parts = path.split('.').filter(String::isNotEmpty)
+    if (parts.isEmpty()) return false
+    var current: JSONObject = this
+    for (segment in parts.dropLast(1)) {
+        val next = current.opt(segment)
+        if (next !is JSONObject) return false
+        current = next
+    }
+    return current.has(parts.last())
+}
+
+private fun JSONObject.putJsonPath(path: String, value: Any?, overwrite: Boolean) {
+    val parts = path.split('.').filter(String::isNotEmpty)
+    if (parts.isEmpty()) return
+
+    var current: JSONObject = this
+    for (segment in parts.dropLast(1)) {
+        val next = current.opt(segment)
+        current = when {
+            next is JSONObject -> next
+            current.has(segment) && !overwrite -> return
+            else -> JSONObject().also { current.put(segment, it) }
+        }
+    }
+    current.put(parts.last(), value.cloneJsonValue())
+}
+
+private fun Any?.cloneJsonValue(): Any =
+    when (this) {
+        null -> JSONObject.NULL
+        is JSONObject -> JSONObject(toString())
+        is JSONArray -> JSONArray(toString())
+        else -> this
+    }
+
+private fun JSONObject.toModelParameters(protocol: ApiProviderType): List<ModelParameter<*>> {
+    val result = mutableListOf<ModelParameter<*>>()
+    val keys = keys()
+    while (keys.hasNext()) {
+        val key = keys.next()
+        val value = opt(key)
+        val category =
+            if (protocol.isGeminiProtocol() && key == "thinkingConfig") {
+                ParameterCategory.GENERATION
+            } else {
+                ParameterCategory.OTHER
+            }
+        when (value) {
+            is JSONObject, is JSONArray -> result += thinkingObjectParameter(key, value.toString(), category)
+            is Boolean -> result += thinkingBooleanParameter(key, value, category)
+            is Number -> {
+                val number = value.toDouble()
+                if (number % 1.0 == 0.0) {
+                    result += thinkingIntParameter(key, value.toInt(), category)
+                } else {
+                    result += thinkingFloatParameter(key, value.toFloat(), category)
+                }
+            }
+            is String -> result += thinkingStringParameter(key, value, category)
+        }
+    }
+    return result
+}
+
+private fun ApiProviderType.isGeminiProtocol(): Boolean =
+    this == ApiProviderType.GOOGLE || this == ApiProviderType.GEMINI_GENERIC
+
+private fun thinkingStringParameter(
+    apiName: String,
+    value: String,
+    category: ParameterCategory
+): ModelParameter<String> =
+    ModelParameter(
+        id = "thinking-$apiName",
+        name = apiName,
+        apiName = apiName,
+        defaultValue = value,
+        currentValue = value,
+        isEnabled = true,
+        valueType = ParameterValueType.STRING,
+        category = category,
+        isCustom = false,
+    )
+
+private fun thinkingIntParameter(
+    apiName: String,
+    value: Int,
+    category: ParameterCategory
+): ModelParameter<Int> =
+    ModelParameter(
+        id = "thinking-$apiName",
+        name = apiName,
+        apiName = apiName,
+        defaultValue = value,
+        currentValue = value,
+        isEnabled = true,
+        valueType = ParameterValueType.INT,
+        category = category,
+        isCustom = false,
+    )
+
+private fun thinkingFloatParameter(
+    apiName: String,
+    value: Float,
+    category: ParameterCategory
+): ModelParameter<Float> =
+    ModelParameter(
+        id = "thinking-$apiName",
+        name = apiName,
+        apiName = apiName,
+        defaultValue = value,
+        currentValue = value,
+        isEnabled = true,
+        valueType = ParameterValueType.FLOAT,
+        category = category,
+        isCustom = false,
+    )
+
+private fun thinkingBooleanParameter(
+    apiName: String,
+    value: Boolean,
+    category: ParameterCategory
+): ModelParameter<Boolean> =
+    ModelParameter(
+        id = "thinking-$apiName",
+        name = apiName,
+        apiName = apiName,
+        defaultValue = value,
+        currentValue = value,
+        isEnabled = true,
+        valueType = ParameterValueType.BOOLEAN,
+        category = category,
+        isCustom = false,
+    )
+
+private fun thinkingObjectParameter(
+    apiName: String,
+    value: String,
+    category: ParameterCategory
+): ModelParameter<String> =
+    ModelParameter(
+        id = "thinking-$apiName",
+        name = apiName,
+        apiName = apiName,
+        defaultValue = value,
+        currentValue = value,
+        isEnabled = true,
+        valueType = ParameterValueType.OBJECT,
+        category = category,
+        isCustom = false,
+    )
