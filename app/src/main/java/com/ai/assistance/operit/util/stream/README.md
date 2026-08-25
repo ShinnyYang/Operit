@@ -279,7 +279,7 @@ class MyViewModel : ViewModel() {
 
 您可以使用 `shareIn` 和 `stateIn` 将任何冷流转换为热流。
 
--   `share(scope, ...)`: 将冷流转换为 `SharedStream`。默认将上游异常抛给收集器；需要由主订阅者读取 `completionCause`、同时让其他订阅者正常收尾时，传入 `propagateCompletionCause = false`。
+-   `share(scope, ...)`: 将冷流转换为 `SharedStream`。默认将上游异常抛给收集器；需要保留 `completionCause`、同时让订阅者正常收尾时，传入 `propagateCompletionCause = false`。
 -   `state(scope, ...)`: 将冷流转换为 `StateStream`。
 
 ```kotlin

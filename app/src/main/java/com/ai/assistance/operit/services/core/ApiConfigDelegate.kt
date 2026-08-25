@@ -308,9 +308,6 @@ class ApiConfigDelegate(
     init {
         configScope.launch {
             try {
-                modelConfigManager.initializeIfNeeded()
-                functionalConfigManager.initializeIfNeeded()
-
                 functionalConfigManager.functionConfigMappingFlow.collect { mapping ->
                     val chatConfigId =
                             mapping[FunctionType.CHAT] ?: FunctionalConfigManager.DEFAULT_CONFIG_ID
@@ -336,8 +333,6 @@ class ApiConfigDelegate(
 
         configScope.launch {
             try {
-                modelConfigManager.initializeIfNeeded()
-
                 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
                 _activeConfigId
                     .flatMapLatest { configId -> modelConfigManager.getModelConfigFlow(configId) }
@@ -405,7 +400,6 @@ class ApiConfigDelegate(
     }
 
     suspend fun resolveChatContextSettings(configIdOverride: String? = null): ChatContextSettings {
-        modelConfigManager.initializeIfNeeded()
         val configId =
             configIdOverride?.trim()?.takeIf { it.isNotEmpty() } ?: effectiveChatConfigId.value
         val config = requireNotNull(modelConfigManager.getModelConfig(configId)) {
@@ -415,7 +409,6 @@ class ApiConfigDelegate(
     }
 
     private suspend fun resolveEditableChatConfigId(): String {
-        modelConfigManager.initializeIfNeeded()
         return effectiveChatConfigId.value
     }
 

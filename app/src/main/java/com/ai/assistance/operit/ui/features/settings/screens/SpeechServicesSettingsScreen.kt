@@ -131,14 +131,6 @@ fun SpeechServicesSettingsScreen(
     var ttsCleanerExpanded by remember { mutableStateOf(false) }
     var ttsHttpAdvancedExpanded by remember { mutableStateOf(false) }
 
-    LaunchedEffect(profilePrefs) {
-        try {
-            profilePrefs.ensureMigrated()
-        } catch (error: Exception) {
-            AppLogger.e("SpeechServicesSettings", "Failed to migrate speech service profiles", error)
-        }
-    }
-
     LaunchedEffect(ttsProfileError, sttProfileError) {
         val message = ttsProfileError ?: sttProfileError
         if (message != null) {

@@ -33,6 +33,7 @@ class CodexProvider(
     supportsVideo: Boolean = false,
     supportsFiles: Boolean = false,
     enableToolCall: Boolean = false,
+    thinkingConfigurations: String = "",
 ) : OpenAIResponsesProvider(
     responsesApiEndpoint = CodexOAuthProtocol.CODEX_RESPONSES_ENDPOINT,
     apiKeyProvider = CodexAccessTokenProvider(authManager),
@@ -45,6 +46,7 @@ class CodexProvider(
     supportsVideo = supportsVideo,
     supportsFiles = supportsFiles,
     enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations,
 ) {
     override fun applyAuthenticationHeaders(builder: Request.Builder, currentApiKey: String) {
         super.applyAuthenticationHeaders(builder, currentApiKey)

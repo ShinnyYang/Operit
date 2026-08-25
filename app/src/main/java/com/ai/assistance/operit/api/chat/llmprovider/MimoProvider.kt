@@ -19,7 +19,8 @@ class MimoProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : KimiProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -30,7 +31,8 @@ class MimoProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations
 ) {
     override fun applyAuthenticationHeaders(
         builder: Request.Builder,

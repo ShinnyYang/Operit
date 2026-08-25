@@ -5,23 +5,9 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.util.AppLogger
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import org.json.JSONObject
-
-/** Selects one of the efforts supported by the current Grok model. */
-internal object XaiReasoningMapper {
-    fun effortForOption(optionId: String): String = optionId
-}
-
-internal fun xaiModelSupportsReasoningEffort(modelName: String): Boolean {
-    val normalized = modelName.trim().lowercase()
-    return normalized.isNotEmpty()
-}
 
 /** xAI's OpenAI-compatible Chat Completions provider for Grok models. */
 class XaiProvider(
@@ -33,7 +19,8 @@ class XaiProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -45,7 +32,8 @@ class XaiProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
-    includeUsageInStream = true
+    includeUsageInStream = true,
+    thinkingConfigurations = thinkingConfigurations
 ) {
     override fun createRequestBody(
         context: Context,
@@ -67,31 +55,15 @@ class XaiProvider(
             )
         )
 
-        if (xaiModelSupportsReasoningEffort(modelName)) {
-            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.XAI.name, modelName)
-            if (!enableThinking && !mapping.reasoningRequired) {
-                return createJsonRequestBody(requestJson.toString())
-            }
-            val existingEffort = requestJson.optString("reasoning_effort", "").trim()
-            if (existingEffort.isEmpty()) {
-                val optionId = try {
-                    runBlocking {
-                        ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
-                    }
-                } catch (error: Exception) {
-                    AppLogger.e(
-                        "XaiProvider",
-                        "Failed to read thinking option id; aborting xAI request",
-                        error
-                    )
-                    throw error
-                }
-
-                val effort = mapping.textValueFor(optionId)
-                    ?: throw IllegalArgumentException("xAI option is not supported: $optionId")
-                requestJson.put("reasoning_effort", effort)
-            }
-        }
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = requestJson,
+            providerTypeId = ApiProviderType.XAI.name,
+            modelName = modelName,
+            apiEndpoint = "",
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
 
         return createJsonRequestBody(requestJson.toString())
     }

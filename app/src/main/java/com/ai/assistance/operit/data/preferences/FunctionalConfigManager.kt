@@ -3,11 +3,11 @@ package com.ai.assistance.operit.data.preferences
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
-import androidx.datastore.preferences.preferencesDataStore
 import com.ai.assistance.operit.data.model.FunctionType
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
@@ -15,7 +15,17 @@ import kotlinx.serialization.json.Json
 
 // 为功能配置创建专用的DataStore
 private val Context.functionalConfigDataStore: DataStore<Preferences> by
-        preferencesDataStore(name = "functional_configs")
+        versionedPreferencesDataStore(
+                name = "functional_configs",
+                currentVersion = 1,
+        ) {
+            preferenceSchemaMigration { version, preferences ->
+                when (version) {
+                    0 -> FunctionalConfigManager.migratePreferencesFromVersionZero(preferences)
+                    else -> missingPreferencesSchemaMigration(version)
+                }
+            }
+        }
 
 /** 功能配置映射数据，包含配置ID和模型索引 */
 @Serializable
@@ -62,77 +72,77 @@ class FunctionalConfigManager(private val context: Context) {
 
         // 默认映射值
         const val DEFAULT_CONFIG_ID = "default"
-    }
 
-    // Json解析器
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+        private val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
 
-    // 获取ModelConfigManager实例用于配置查询
-    private val modelConfigManager = ModelConfigManager(context)
+        internal fun migratePreferencesFromVersionZero(preferences: MutablePreferences) {
+            val mapping = readSchemaZeroMapping(preferences[FUNCTION_CONFIG_MAPPING])
+            writeFunctionConfigMapping(preferences, mapping)
+        }
+
+        private fun readSchemaZeroMapping(raw: String?): Map<FunctionType, FunctionConfigMapping> {
+            if (raw.isNullOrBlank() || raw == "{}") {
+                return defaultMapping()
+            }
+
+            val decoded =
+                    try {
+                        json.decodeFromString<Map<String, FunctionConfigMapping>>(raw)
+                    } catch (error: SerializationException) {
+                        json.decodeFromString<Map<String, String>>(raw)
+                                .mapValues { (_, configId) -> FunctionConfigMapping(configId, 0) }
+                    }
+
+            return normalizeMapping(decoded)
+        }
+
+        private fun readFunctionConfigMapping(
+                preferences: Preferences
+        ): Map<FunctionType, FunctionConfigMapping> {
+            val raw = preferences[FUNCTION_CONFIG_MAPPING]
+            if (raw.isNullOrBlank() || raw == "{}") {
+                return defaultMapping()
+            }
+            return normalizeMapping(json.decodeFromString<Map<String, FunctionConfigMapping>>(raw))
+        }
+
+        private fun writeFunctionConfigMapping(
+                preferences: MutablePreferences,
+                mapping: Map<FunctionType, FunctionConfigMapping>
+        ) {
+            val stringMapping = mapping.entries.associate { it.key.name to it.value }
+            preferences[FUNCTION_CONFIG_MAPPING] = json.encodeToString(stringMapping)
+        }
+
+        private fun normalizeMapping(
+                decoded: Map<String, FunctionConfigMapping>
+        ): Map<FunctionType, FunctionConfigMapping> {
+            val normalized = defaultMapping().toMutableMap()
+            decoded.forEach { (key, value) ->
+                normalized[FunctionType.valueOf(key)] = value
+            }
+            return normalized
+        }
+
+        private fun defaultMapping(): Map<FunctionType, FunctionConfigMapping> {
+            return FunctionType.values().associateWith { FunctionConfigMapping(DEFAULT_CONFIG_ID, 0) }
+        }
+    }
 
     // 获取功能配置映射（保持向后兼容）
     val functionConfigMappingFlow: Flow<Map<FunctionType, String>> =
-            context.functionalConfigDataStore.data.map { preferences ->
-                val mappingJson = preferences[FUNCTION_CONFIG_MAPPING] ?: "{}"
-                if (mappingJson == "{}") {
-                    FunctionType.values().associateWith { DEFAULT_CONFIG_ID }
-                } else {
-                    try {
-                        // 尝试新格式（包含modelIndex）
-                        val rawMap = json.decodeFromString<Map<String, FunctionConfigMapping>>(mappingJson)
-                        rawMap.entries.associate { FunctionType.valueOf(it.key) to it.value.configId }
-                    } catch (e: Exception) {
-                        try {
-                            // 回退到旧格式（只有configId）
-                            val rawMap = json.decodeFromString<Map<String, String>>(mappingJson)
-                            rawMap.entries.associate { FunctionType.valueOf(it.key) to it.value }
-                        } catch (e2: Exception) {
-                            FunctionType.values().associateWith { DEFAULT_CONFIG_ID }
-                        }
-                    }
-                }
+            functionConfigMappingWithIndexFlow.map { mapping ->
+                mapping.entries.associate { it.key to it.value.configId }
             }
 
     // 获取完整的功能配置映射（包含modelIndex）
     val functionConfigMappingWithIndexFlow: Flow<Map<FunctionType, FunctionConfigMapping>> =
             context.functionalConfigDataStore.data.map { preferences ->
-                val mappingJson = preferences[FUNCTION_CONFIG_MAPPING] ?: "{}"
-                if (mappingJson == "{}") {
-                    FunctionType.values().associateWith { FunctionConfigMapping(DEFAULT_CONFIG_ID, 0) }
-                } else {
-                    try {
-                        val rawMap = json.decodeFromString<Map<String, FunctionConfigMapping>>(mappingJson)
-                        rawMap.entries.associate { FunctionType.valueOf(it.key) to it.value }
-                    } catch (e: Exception) {
-                        try {
-                            // 从旧格式迁移
-                            val rawMap = json.decodeFromString<Map<String, String>>(mappingJson)
-                            rawMap.entries.associate { 
-                                FunctionType.valueOf(it.key) to FunctionConfigMapping(it.value, 0) 
-                            }
-                        } catch (e2: Exception) {
-                            FunctionType.values().associateWith { FunctionConfigMapping(DEFAULT_CONFIG_ID, 0) }
-                        }
-                    }
-                }
+                readFunctionConfigMapping(preferences)
             }
-
-    // 初始化，确保有默认映射
-    suspend fun initializeIfNeeded() {
-        val mapping = functionConfigMappingWithIndexFlow.first()
-
-        // 只在映射真正为空时才创建默认映射，避免覆盖用户已保存的modelIndex
-        if (mapping.isEmpty()) {
-            val defaultMapping = FunctionType.values().associateWith { FunctionConfigMapping(DEFAULT_CONFIG_ID, 0) }
-            saveFunctionConfigMappingWithIndex(defaultMapping)
-        }
-
-        // 确保ModelConfigManager也已初始化
-        modelConfigManager.initializeIfNeeded()
-    }
 
     // 保存功能配置映射（保持向后兼容）
     suspend fun saveFunctionConfigMapping(mapping: Map<FunctionType, String>) {
@@ -144,9 +154,8 @@ class FunctionalConfigManager(private val context: Context) {
 
     // 保存功能配置映射（包含modelIndex）
     suspend fun saveFunctionConfigMappingWithIndex(mapping: Map<FunctionType, FunctionConfigMapping>) {
-        val stringMapping = mapping.entries.associate { it.key.name to it.value }
         context.functionalConfigDataStore.edit { preferences ->
-            preferences[FUNCTION_CONFIG_MAPPING] = json.encodeToString(stringMapping)
+            writeFunctionConfigMapping(preferences, mapping)
         }
     }
 

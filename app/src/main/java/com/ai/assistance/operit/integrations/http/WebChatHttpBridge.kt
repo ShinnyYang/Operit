@@ -396,9 +396,6 @@ class WebChatHttpBridge(
         }
 
         val response = runBlocking {
-            functionalConfigManager.initializeIfNeeded()
-            modelConfigManager.initializeIfNeeded()
-
             val selectorBefore = resolveModelSelectorState()
             val targetConfig = selectorBefore.configs.firstOrNull { it.id == selectedId }
                 ?: return@runBlocking null
@@ -1520,9 +1517,6 @@ class WebChatHttpBridge(
     }
 
     private suspend fun resolveModelSelectorState(): WebModelSelectorState {
-        functionalConfigManager.initializeIfNeeded()
-        modelConfigManager.initializeIfNeeded()
-
         val configSummaries = modelConfigManager.getAllConfigSummaries()
         val activePrompt = activePromptManager.getActivePrompt()
         val lockedCard = when (activePrompt) {
@@ -1563,6 +1557,7 @@ class WebChatHttpBridge(
                 providerTypeId = currentConfig?.apiProviderTypeId.orEmpty(),
                 modelName = currentModelName,
                 apiEndpoint = currentConfig?.apiEndpoint.orEmpty(),
+                thinkingConfigurations = currentConfig?.thinkingConfigurations.orEmpty(),
             )
             .toWebThinkingQualityMapping()
 

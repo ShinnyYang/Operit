@@ -5,13 +5,8 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.util.AppLogger
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
 /**
@@ -32,7 +27,8 @@ class NvidiaAIProvider(
     supportsVision: Boolean = false,
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -43,7 +39,8 @@ class NvidiaAIProvider(
     supportsVision = supportsVision,
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations
 ) {
 
     override fun createRequestBody(
@@ -65,38 +62,16 @@ class NvidiaAIProvider(
         )
         val jsonObject = JSONObject(baseRequestBodyJson)
 
-        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.NVIDIA.name, modelName)
-        when (mapping.control) {
-            ThinkingQualityControl.TOGGLE_ONLY -> {
-                val chatTemplateKwargs = jsonObject.optJSONObject("chat_template_kwargs") ?: JSONObject()
-                chatTemplateKwargs.put("enable_thinking", enableThinking)
-                jsonObject.put("chat_template_kwargs", chatTemplateKwargs)
-            }
-            ThinkingQualityControl.LEVELS -> if (!jsonObject.has("reasoning_effort")) {
-                val effort = if (enableThinking) resolveNvidiaReasoningEffort(context) else mapping.disabledValue
-                if (effort != null) jsonObject.put("reasoning_effort", effort)
-            }
-            ThinkingQualityControl.UNSUPPORTED -> Unit
-        }
-
-        AppLogger.d(
-            "NvidiaAIProvider",
-            "NVIDIA thinking mapping applied: control=" + mapping.control + ", enabled=" + enableThinking
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = jsonObject,
+            providerTypeId = ApiProviderType.NVIDIA.name,
+            modelName = modelName,
+            apiEndpoint = "",
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
         )
 
         return createJsonRequestBody(jsonObject.toString())
-    }
-
-    private fun resolveNvidiaReasoningEffort(context: Context): String? {
-        val qualityLevel = try {
-            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-        } catch (error: Exception) {
-            AppLogger.e("NvidiaAIProvider", "Failed to read thinking option id", error)
-            throw error
-        }
-
-        val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.NVIDIA.name, modelName)
-        return mapping.textValueFor(qualityLevel)
-            ?: throw IllegalArgumentException("NVIDIA option is not supported: $qualityLevel")
     }
 }

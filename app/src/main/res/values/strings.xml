@@ -3456,6 +3456,8 @@
     <string name="settings_speech_services_subtitle">TTS/STT服务设置</string>
     <string name="settings_custom_headers">自定义请求头</string>
     <string name="settings_custom_headers_subtitle">API请求头字段配置</string>
+    <string name="thinking_config_title">思考配置</string>
+    <string name="thinking_config_subtitle">按模型匹配思考参数</string>
     <string name="headers_configured_count">已配置 %1$d 条</string>
     <string name="screen_title_external_http_chat_settings">外部 HTTP 调用</string>
     <string name="settings_system_prompts_subtitle">系统和模型提示词</string>
@@ -6455,6 +6457,7 @@
     <string name="headers_preset_lang_en">设置语言为英文</string>
     <string name="headers_preset_cmcc_gateway">模拟中国移动网关</string>
     <string name="headers_preset_us_la">模拟美国洛杉矶 (需配合)</string>
+    <string name="thinking_config_invalid_json">思考配置无效</string>
 
     <!-- Context Summary Settings Screen -->
     <string name="context_validation_failed">验证失败</string>

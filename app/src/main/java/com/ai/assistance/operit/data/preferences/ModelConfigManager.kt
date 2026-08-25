@@ -6,9 +6,8 @@ import com.ai.assistance.operit.R
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
+import com.ai.assistance.operit.data.collects.ModelThinkingConfigDefaults
 import com.ai.assistance.operit.data.model.CustomParameterData
 import com.ai.assistance.operit.data.model.FunctionType
 import com.ai.assistance.operit.data.model.ModelConfigData
@@ -30,11 +29,18 @@ import kotlinx.serialization.json.Json
 
 // 为ModelConfig创建专用的DataStore
 private val Context.modelConfigDataStore: DataStore<Preferences> by
-        preferencesDataStore(name = "model_configs")
-
-// 获取ApiPreferences的DataStore
-private val Context.apiDataStore: DataStore<Preferences> by
-        preferencesDataStore(name = "api_settings")
+        versionedPreferencesDataStore(
+                name = "model_configs",
+                currentVersion = 2,
+        ) { appContext ->
+            preferenceSchemaMigration { version, preferences ->
+                when (version) {
+                    0 -> ModelConfigManager.migratePreferencesFromVersionZero(appContext, preferences)
+                    1 -> ModelConfigManager.migratePreferencesFromVersionOne(preferences)
+                    else -> missingPreferencesSchemaMigration(version)
+                }
+            }
+        }
 
 class ModelConfigManager(private val context: Context) {
 
@@ -53,13 +59,90 @@ class ModelConfigManager(private val context: Context) {
 
         // Default API provider type
         private val DEFAULT_API_PROVIDER_TYPE = ApiProviderType.DEEPSEEK
+
+        internal val json = Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
+
+        internal fun migratePreferencesFromVersionZero(
+                context: Context,
+                preferences: MutablePreferences
+        ) {
+            val configList = preferences[CONFIG_LIST_KEY]?.let { json.decodeFromString<List<String>>(it) }
+                    ?: emptyList()
+            if (configList.isNotEmpty()) return
+
+            val defaultConfig = createFreshDefaultConfig(context)
+            preferences[stringPreferencesKey("config_${DEFAULT_CONFIG_ID}")] =
+                    json.encodeToString(defaultConfig)
+            preferences[CONFIG_LIST_KEY] = json.encodeToString(listOf(DEFAULT_CONFIG_ID))
+        }
+
+        internal fun createFreshDefaultConfig(context: Context): ModelConfigData {
+            return ModelConfigData(
+                    id = DEFAULT_CONFIG_ID,
+                    name = context.getString(R.string.model_config_default_name),
+                    apiKey = "",
+                    apiEndpoint = ApiPreferences.DEFAULT_API_ENDPOINT,
+                    modelName = ApiPreferences.DEFAULT_MODEL_NAME,
+                    apiProviderType = DEFAULT_API_PROVIDER_TYPE,
+                    apiProviderTypeId = DEFAULT_API_PROVIDER_TYPE.name,
+                    enableToolCall = ModelConfigDefaults.DEFAULT_ENABLE_TOOL_CALL,
+                    hasCustomParameters = false,
+                    maxTokensEnabled = false,
+                    temperatureEnabled = false,
+                    topPEnabled = false,
+                    topKEnabled = false,
+                    presencePenaltyEnabled = false,
+                    frequencyPenaltyEnabled = false,
+                    repetitionPenaltyEnabled = false,
+                    maxTokens = StandardModelParameters.DEFAULT_MAX_TOKENS,
+                    temperature = StandardModelParameters.DEFAULT_TEMPERATURE,
+                    topP = StandardModelParameters.DEFAULT_TOP_P,
+                    topK = StandardModelParameters.DEFAULT_TOP_K,
+                    presencePenalty = StandardModelParameters.DEFAULT_PRESENCE_PENALTY,
+                    frequencyPenalty = StandardModelParameters.DEFAULT_FREQUENCY_PENALTY,
+                    repetitionPenalty = StandardModelParameters.DEFAULT_REPETITION_PENALTY,
+                    customParameters = "[]",
+                    thinkingConfigurations = thinkingRulesForProvider(DEFAULT_API_PROVIDER_TYPE.name)
+            )
+        }
+
+        internal fun migratePreferencesFromVersionOne(preferences: MutablePreferences) {
+            val configIds = preferences[CONFIG_LIST_KEY]?.let { json.decodeFromString<List<String>>(it) }
+                    ?: emptyList()
+
+            configIds.forEach { configId ->
+                val configKey = stringPreferencesKey("config_${configId}")
+                val configJson = preferences[configKey] ?: return@forEach
+                val config = json.decodeFromString<ModelConfigData>(configJson)
+                preferences[configKey] =
+                        json.encodeToString(
+                                config.copy(
+                                        thinkingConfigurations =
+                                                thinkingRulesForProvider(config.apiProviderTypeId)
+                                )
+                        )
+            }
+        }
+
+        internal fun thinkingRulesForProvider(providerTypeId: String): String =
+                ModelThinkingConfigDefaults.forProvider(providerTypeId)
+
+        internal fun nextThinkingRulesForProvider(
+                current: ModelConfigData,
+                providerTypeId: String
+        ): String =
+                if (current.apiProviderTypeId == providerTypeId) {
+                    current.thinkingConfigurations
+                } else {
+                    thinkingRulesForProvider(providerTypeId)
+                }
     }
 
     // Json解析器，支持宽松模式
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-    }
+    private val json = ModelConfigManager.json
 
     // 获取所有配置ID列表
     val configListFlow: Flow<List<String>> =
@@ -69,54 +152,9 @@ class ModelConfigManager(private val context: Context) {
                 else json.decodeFromString<List<String>>(configList)
             }
 
-    // 删除获取当前活跃配置ID的流
-
-    // 初始化，确保至少有一个默认配置
-    suspend fun initializeIfNeeded() {
-        // 检查配置列表，如果为空则创建默认配置
-        // This is important for first-time users
-        val configList = configListFlow.first()
-        if (configList.isEmpty()) {
-            val defaultConfig = createFreshDefaultConfig()
-            saveConfigToDataStore(defaultConfig)
-
-            // 保存配置列表，移除活跃ID
-            context.modelConfigDataStore.edit { preferences ->
-                preferences[CONFIG_LIST_KEY] = json.encodeToString(listOf(DEFAULT_CONFIG_ID))
-            }
-        } else {
-            AppLogger.d("CONFIG_TIMING", "配置列表不为空，跳过初始化")
-        }
-    }
-
     // 从原有ApiPreferences创建默认配置
     private fun createFreshDefaultConfig(): ModelConfigData {
-        return ModelConfigData(
-                id = DEFAULT_CONFIG_ID,
-                name = context.getString(R.string.model_config_default_name),
-                apiKey = "",
-                apiEndpoint = ApiPreferences.DEFAULT_API_ENDPOINT,
-                modelName = ApiPreferences.DEFAULT_MODEL_NAME,
-                apiProviderType = DEFAULT_API_PROVIDER_TYPE,
-                apiProviderTypeId = DEFAULT_API_PROVIDER_TYPE.name,
-                enableToolCall = ModelConfigDefaults.DEFAULT_ENABLE_TOOL_CALL,
-                hasCustomParameters = false,
-                maxTokensEnabled = false,
-                temperatureEnabled = false,
-                topPEnabled = false,
-                topKEnabled = false,
-                presencePenaltyEnabled = false,
-                frequencyPenaltyEnabled = false,
-                repetitionPenaltyEnabled = false,
-                maxTokens = StandardModelParameters.DEFAULT_MAX_TOKENS,
-                temperature = StandardModelParameters.DEFAULT_TEMPERATURE,
-                topP = StandardModelParameters.DEFAULT_TOP_P,
-                topK = StandardModelParameters.DEFAULT_TOP_K,
-                presencePenalty = StandardModelParameters.DEFAULT_PRESENCE_PENALTY,
-                frequencyPenalty = StandardModelParameters.DEFAULT_FREQUENCY_PENALTY,
-                repetitionPenalty = StandardModelParameters.DEFAULT_REPETITION_PENALTY,
-                customParameters = "[]"
-        )
+        return createFreshDefaultConfig(context)
     }
 
     // 保存配置
@@ -235,7 +273,8 @@ class ModelConfigManager(private val context: Context) {
                             modelName = config.modelName,
                             apiEndpoint = config.apiEndpoint,
                             apiProviderType = config.apiProviderType,
-                            apiProviderTypeId = config.apiProviderTypeId
+                            apiProviderTypeId = config.apiProviderTypeId,
+                            thinkingConfigurations = config.thinkingConfigurations
                     )
             )
         }
@@ -254,6 +293,7 @@ class ModelConfigManager(private val context: Context) {
                         name = name,
                         apiProviderType = ApiProviderType.OPENAI_GENERIC,
                         apiProviderTypeId = ApiProviderType.OPENAI_GENERIC.name,
+                        thinkingConfigurations = thinkingRulesForProvider(ApiProviderType.OPENAI_GENERIC.name),
                         enableToolCall = ModelConfigDefaults.DEFAULT_ENABLE_TOOL_CALL
                 )
 
@@ -282,7 +322,6 @@ class ModelConfigManager(private val context: Context) {
         }
 
         val functionalConfigManager = FunctionalConfigManager(context)
-        functionalConfigManager.initializeIfNeeded()
         val mappingRepair = remapDeletedConfigReferences(
             mapping = functionalConfigManager.functionConfigMappingWithIndexFlow.first(),
             deletedConfigId = configId,
@@ -332,7 +371,8 @@ class ModelConfigManager(private val context: Context) {
                     apiEndpoint = apiEndpoint,
                     modelName = modelName,
                     apiProviderType = apiProviderType,
-                    apiProviderTypeId = apiProviderTypeId
+                    apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId)
             )
         }
     }
@@ -355,6 +395,7 @@ class ModelConfigManager(private val context: Context) {
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount
             )
@@ -387,6 +428,7 @@ class ModelConfigManager(private val context: Context) {
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount,
                     llamaThreadCount = llamaThreadCount.coerceAtLeast(1),
@@ -399,6 +441,12 @@ class ModelConfigManager(private val context: Context) {
                     enableClaude1hPromptCache = enableClaude1hPromptCache,
                     enableToolCall = enableToolCall
             )
+        }
+    }
+
+    suspend fun updateThinkingConfigurations(configId: String, thinkingConfigurations: String): ModelConfigData {
+        return updateConfigInternal(configId) {
+            it.copy(thinkingConfigurations = thinkingConfigurations)
         }
     }
 

@@ -6,13 +6,10 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.ChatUtils
 import java.security.MessageDigest
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import org.json.JSONArray
@@ -29,7 +26,8 @@ open class OpenAIResponsesProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     supportsFiles: Boolean = false,
-    enableToolCall: Boolean = false
+    enableToolCall: Boolean = false,
+    thinkingConfigurations: String = ""
 ) : OpenAIProvider(
     apiEndpoint = responsesApiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -41,7 +39,8 @@ open class OpenAIResponsesProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     supportsFiles = supportsFiles,
-    enableToolCall = enableToolCall
+    enableToolCall = enableToolCall,
+    thinkingConfigurations = thinkingConfigurations
 ) {
     override val useResponsesApi: Boolean = true
 
@@ -110,85 +109,15 @@ open class OpenAIResponsesProvider(
         requestJson: JSONObject,
         enableThinking: Boolean
     ) {
-        val reasoningObject = requestJson.optJSONObject("reasoning")
-
-        val mapping = ThinkingQualityMappingRegistry.resolve(responsesProviderType.name, modelName)
-        if (!enableThinking && reasoningObject == null && mapping.disabledValue == null) {
-            return
-        }
-
-        if (reasoningObject == null && requestJson.has("reasoning") && !requestJson.isNull("reasoning")) {
-            AppLogger.w(
-                "OpenAIResponsesProvider",
-                "Skipping Responses reasoning adaptation because reasoning is not an object"
-            )
-            return
-        }
-
-        val finalReasoningObject = reasoningObject ?: JSONObject()
-        if (!enableThinking) {
-            val disabledValue = mapping.disabledValue ?: return
-            finalReasoningObject.put("effort", disabledValue)
-            requestJson.put("reasoning", finalReasoningObject)
-            return
-        }
-        val existingEffort =
-            finalReasoningObject.optString("effort", "").trim().takeIf { it.isNotEmpty() }
-        if (existingEffort == null) {
-            val effort = resolveResponsesReasoningEffort(context)
-            if (effort != null) {
-                finalReasoningObject.put("effort", effort)
-                AppLogger.d(
-                    "OpenAIResponsesProvider",
-                    "Responses reasoning.effort=$effort"
-                )
-            }
-        } else {
-            AppLogger.d(
-                "OpenAIResponsesProvider",
-                "Preserving caller-supplied Responses reasoning.effort=$existingEffort"
-            )
-        }
-
-        val existingSummary =
-            finalReasoningObject.optString("summary", "").trim().takeIf { it.isNotEmpty() }
-        if (enableThinking && existingSummary == null) {
-            finalReasoningObject.put("summary", "auto")
-            AppLogger.d(
-                "OpenAIResponsesProvider",
-                "Responses reasoning summary enabled via reasoning.summary=auto"
-            )
-        }
-
-        requestJson.put("reasoning", finalReasoningObject)
-        if (finalReasoningObject.optString("effort", "").trim() != "none") {
-            ensureResponsesReasoningEncryptedContentIncluded(requestJson)
-        }
-    }
-
-    private fun ensureResponsesReasoningEncryptedContentIncluded(requestJson: JSONObject) {
-        val includeArray = requestJson.optJSONArray("include") ?: JSONArray().also {
-            requestJson.put("include", it)
-        }
-        for (i in 0 until includeArray.length()) {
-            if (includeArray.optString(i, "") == "reasoning.encrypted_content") {
-                return
-            }
-        }
-        includeArray.put("reasoning.encrypted_content")
-    }
-
-    private fun resolveResponsesReasoningEffort(context: Context): String? {
-        val qualityLevel = try {
-            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-        } catch (error: Exception) {
-            AppLogger.e("OpenAIResponsesProvider", "Failed to read thinking option id", error)
-            throw error
-        }
-
-        val mapping = ThinkingQualityMappingRegistry.resolve(responsesProviderType.name, modelName)
-        return mapping.textValueFor(qualityLevel)
-            ?: throw IllegalArgumentException("OpenAI Responses option is not supported: $qualityLevel")
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = requestJson,
+            providerTypeId = responsesProviderType.name,
+            modelName = modelName,
+            apiEndpoint = responsesApiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
     }
 
     private fun shouldAttachPromptCacheKey(): Boolean {

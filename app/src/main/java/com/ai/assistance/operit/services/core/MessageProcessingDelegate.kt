@@ -1363,10 +1363,6 @@ class MessageProcessingDelegate(
                                         tryEmitScrollToBottomThrottled(chatId)
                                     }
                                 }
-                                sharedCharStream.completionCause?.let { cause ->
-                                    AppLogger.e(TAG, "共享响应流以失败原因结束", cause)
-                                    throw cause
-                                }
                             } finally {
                                 withContext(NonCancellable) {
                                     revisionJob?.cancelAndJoin()

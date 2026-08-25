@@ -10,7 +10,6 @@ import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.stats.ProviderUsageNormalizer
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.HttpLogSanitizer
@@ -38,8 +37,6 @@ import java.net.UnknownHostException
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -65,8 +62,16 @@ internal data class GeminiThinkingConfig(
         private const val INCLUDE_THOUGHTS = "includeThoughts"
         private const val THINKING_LEVEL = "thinkingLevel"
         private const val THINKING_BUDGET = "thinkingBudget"
-        fun fromOption(modelName: String, optionId: String): GeminiThinkingConfig {
-            val mapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.GOOGLE.name, modelName)
+        fun fromOption(
+            modelName: String,
+            optionId: String,
+            thinkingConfigurations: String
+        ): GeminiThinkingConfig {
+            val mapping = ThinkingQualityMappingRegistry.resolve(
+                providerTypeId = ApiProviderType.GOOGLE.name,
+                modelName = modelName,
+                thinkingConfigurations = thinkingConfigurations
+            )
             val thinkingLevel = mapping.optionFor(optionId)
                 ?: throw IllegalArgumentException("Gemini option is not supported: $optionId")
             return when (val wireValue = thinkingLevel.wireValue) {
@@ -90,7 +95,8 @@ open class GeminiProvider(
     private val customHeaders: Map<String, String> = emptyMap(),
     private val providerType: ApiProviderType = ApiProviderType.GOOGLE,
     private val enableGoogleSearch: Boolean = false,
-    private val enableToolCall: Boolean = false // 是否启用Tool Call接口（预留，Gemini有原生tool支持）
+    private val enableToolCall: Boolean = false, // 是否启用Tool Call接口（预留，Gemini有原生tool支持）
+    private val thinkingConfigurations: String = ""
 ) : AIService {
     companion object {
         private const val TAG = "GeminiProvider"
@@ -1369,19 +1375,16 @@ open class GeminiProvider(
             }
         }
 
-        val thinkingMapping = ThinkingQualityMappingRegistry.resolve(ApiProviderType.GOOGLE.name, modelName)
-        if (thinkingMapping.control == ThinkingQualityControl.LEVELS) {
-            if (enableThinking || thinkingMapping.reasoningRequired) {
-                val thinkingOptionId = runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-                generationConfig.put("thinkingConfig", GeminiThinkingConfig.fromOption(modelName, thinkingOptionId).toJsonObject())
-                logDebug("已为Gemini模型启用“思考模式”。")
-            } else if (!thinkingMapping.reasoningRequired && thinkingMapping.options.any { it.wireValue is ThinkingQualityWireValue.Number }) {
-                generationConfig.put("thinkingConfig", GeminiThinkingConfig(includeThoughts = false, thinkingBudget = 0).toJsonObject())
-                logDebug("已为Gemini模型关闭思考模式。")
-            }
-        }
-
         json.put("generationConfig", generationConfig)
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = json,
+            providerTypeId = providerType.name,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
 
         val jsonString = json.toString()
         // 使用分块日志函数记录请求体（省略过长的tools字段）
