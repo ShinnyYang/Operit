@@ -132,16 +132,16 @@ class FunctionalConfigManager(private val context: Context) {
         }
     }
 
-    // 获取功能配置映射（保持向后兼容）
-    val functionConfigMappingFlow: Flow<Map<FunctionType, String>> =
-            functionConfigMappingWithIndexFlow.map { mapping ->
-                mapping.entries.associate { it.key to it.value.configId }
-            }
-
     // 获取完整的功能配置映射（包含modelIndex）
     val functionConfigMappingWithIndexFlow: Flow<Map<FunctionType, FunctionConfigMapping>> =
             context.functionalConfigDataStore.data.map { preferences ->
                 readFunctionConfigMapping(preferences)
+            }
+
+    // 获取功能配置映射（保持向后兼容）
+    val functionConfigMappingFlow: Flow<Map<FunctionType, String>> =
+            functionConfigMappingWithIndexFlow.map { mapping ->
+                mapping.entries.associate { it.key to it.value.configId }
             }
 
     // 保存功能配置映射（保持向后兼容）
