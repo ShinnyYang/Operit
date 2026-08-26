@@ -7215,7 +7215,6 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="market_manage_resubmit">Reenviar</string>
     <string name="market_manage_resubmitting_title">Reenviando</string>
     <string name="market_manage_resubmitting_message">Enviando solicitação de revisão, aguarde…</string>
-    <string name="market_manage_resubmit_cooldown_message">Este item está em período de espera local. Restam %1$s antes de poder reenviar.</string>
     <string name="market_manage_resubmit_rejected_blocked">Este item foi rejeitado e o cliente não permite reenvio.</string>
     <string name="market_manage_resubmit_state_blocked">Apenas itens devolvidos podem ser reenviados.</string>
     <string name="market_manage_resubmit_confirm_title">Confirmar reenvio?</string>
@@ -7224,7 +7223,6 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="market_manage_resubmit_last_reason">Motivo da devolução: %1$s</string>
     <string name="market_manage_review_detail">Detalhes da revisão: %1$s</string>
     <string name="market_manage_review_dialog_title">Status da revisão</string>
-    <string name="market_manage_resubmit_confirm_warning">Confirme que as alterações foram feitas conforme o motivo da devolução. Após o envio bem-sucedido, não será possível reenviar por 12 horas localmente.</string>
     <string name="market_manage_resubmit_confirm_action">Confirmar envio</string>
     <string name="market_error_load_failed">Falha ao carregar</string>
     <string name="market_error_action_failed">Falha na operação</string>

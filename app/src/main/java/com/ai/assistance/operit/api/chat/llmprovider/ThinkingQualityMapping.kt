@@ -5,11 +5,7 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterCategory
 import com.ai.assistance.operit.data.model.ParameterValueType
-import com.ai.assistance.operit.data.preferences.ApiPreferences
-import com.ai.assistance.operit.util.AppLogger
 import java.util.Locale
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -64,6 +60,8 @@ internal object ThinkingQualityMappingRegistry {
         modelName: String,
         thinkingConfigurations: String
     ): ThinkingQualityMapping {
+        // The JSON array order is the user-visible priority order: the first enabled rule
+        // matching both provider and model wins, and later rules are not evaluated.
         return parseRules(thinkingConfigurations)
             .firstOrNull { it.matches(providerTypeId, modelName) }
             ?.toMapping()
@@ -243,8 +241,9 @@ internal object ThinkingConfigurationApplier {
         apiEndpoint: String,
         thinkingConfigurations: String,
         enableThinking: Boolean,
+        // The selected option belongs to the model configuration; never read a global preference here.
+        optionId: String,
     ) {
-        val optionId = readOptionId(context)
         apply(
             requestJson = requestJson,
             providerTypeId = providerTypeId,
@@ -300,15 +299,6 @@ internal object ThinkingConfigurationApplier {
             optionId = optionId,
         )
         return mapping to requestJson.toModelParameters(protocol)
-    }
-
-    private fun readOptionId(context: Context): String {
-        return try {
-            runBlocking { ApiPreferences.getInstance(context).thinkingOptionIdFlow.first() }
-        } catch (error: Exception) {
-            AppLogger.e("ThinkingConfigurationApplier", "Failed to read thinking option id", error)
-            throw error
-        }
     }
 
     private fun applyAction(root: JSONObject, action: ThinkingQualityJsonAction) {

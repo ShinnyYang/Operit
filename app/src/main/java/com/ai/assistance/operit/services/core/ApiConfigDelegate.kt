@@ -79,10 +79,6 @@ class ApiConfigDelegate(
     private val _enableThinkingMode = MutableStateFlow(ApiPreferences.DEFAULT_ENABLE_THINKING_MODE)
     val enableThinkingMode: StateFlow<Boolean> = _enableThinkingMode.asStateFlow()
 
-    private val _thinkingOptionId =
-            MutableStateFlow(ApiPreferences.DEFAULT_THINKING_OPTION_ID)
-    val thinkingOptionId: StateFlow<String> = _thinkingOptionId.asStateFlow()
-
     private val _enableMemoryAutoUpdate =
             MutableStateFlow(ApiPreferences.DEFAULT_ENABLE_MEMORY_AUTO_UPDATE)
     val enableMemoryAutoUpdate: StateFlow<Boolean> = _enableMemoryAutoUpdate.asStateFlow()
@@ -226,6 +222,15 @@ class ApiConfigDelegate(
                         id = FunctionalConfigManager.DEFAULT_CONFIG_ID,
                         name = FunctionalConfigManager.DEFAULT_CONFIG_ID
                     )
+                )
+
+    val thinkingOptionId: StateFlow<String> =
+            effectiveChatConfig
+                .map { config -> config.thinkingOptionId }
+                .stateIn(
+                    configScope,
+                    kotlinx.coroutines.flow.SharingStarted.Eagerly,
+                    ""
                 )
 
     val effectiveBaseContextLength: StateFlow<Float> =
@@ -427,12 +432,6 @@ class ApiConfigDelegate(
             }
         }
 
-        configScope.launch {
-            apiPreferences.thinkingOptionIdFlow.collect { optionId ->
-                _thinkingOptionId.value = optionId
-            }
-        }
-
         // Collect memory auto update setting
         configScope.launch {
             apiPreferences.enableMemoryAutoUpdateFlow.collect { enabled ->
@@ -629,8 +628,13 @@ class ApiConfigDelegate(
 
     fun updateThinkingOptionId(optionId: String) {
         configScope.launch {
-            apiPreferences.saveThinkingOptionId(optionId)
-            _thinkingOptionId.value = optionId.trim()
+            modelConfigManager.updateThinkingOptionId(effectiveChatConfigId.value, optionId)
+            val enhancedAiService =
+                withContext(Dispatchers.IO) {
+                    EnhancedAIService.refreshServiceForFunction(context, FunctionType.CHAT)
+                    EnhancedAIService.getInstance(context)
+                }
+            withContext(Dispatchers.Main) { onConfigChanged(enhancedAiService) }
         }
     }
 

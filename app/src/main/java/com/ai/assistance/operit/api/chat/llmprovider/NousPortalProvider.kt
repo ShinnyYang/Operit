@@ -14,7 +14,8 @@ class NousPortalProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenRouterProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -26,5 +27,6 @@ class NousPortalProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
-    thinkingConfigurations = thinkingConfigurations
+    thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
 )

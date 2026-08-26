@@ -373,6 +373,7 @@ object ModelThinkingConfigDefaults {
                 }
                 return target.toString()
         }
+
 }
 
 private fun JSONArray?.containsProvider(provider: String): Boolean {

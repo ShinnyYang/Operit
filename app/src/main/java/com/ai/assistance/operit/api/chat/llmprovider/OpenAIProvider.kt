@@ -99,6 +99,7 @@ open class OpenAIProvider(
     val enableToolCall: Boolean = false, // 是否启用Tool Call接口
     private val includeUsageInStream: Boolean = false,
     protected val thinkingConfigurations: String = "",
+    protected val thinkingOptionId: String = "",
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -574,6 +575,7 @@ open class OpenAIProvider(
             apiEndpoint = apiEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
         return createJsonRequestBody(requestJson.toString())
     }

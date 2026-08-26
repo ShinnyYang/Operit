@@ -28,7 +28,8 @@ class NvidiaAIProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -40,7 +41,8 @@ class NvidiaAIProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
-    thinkingConfigurations = thinkingConfigurations
+    thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
 ) {
 
     override fun createRequestBody(
@@ -70,6 +72,7 @@ class NvidiaAIProvider(
             apiEndpoint = "",
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
 
         return createJsonRequestBody(jsonObject.toString())

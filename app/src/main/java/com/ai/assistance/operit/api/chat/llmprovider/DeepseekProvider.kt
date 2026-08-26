@@ -30,7 +30,8 @@ class DeepseekProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
         apiEndpoint = apiEndpoint,
         apiKeyProvider = apiKeyProvider,
@@ -43,6 +44,7 @@ class DeepseekProvider(
         supportsVideo = supportsVideo,
         enableToolCall = enableToolCall,
         thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
     ) {
 
     /**
@@ -67,6 +69,7 @@ class DeepseekProvider(
                 apiEndpoint = "",
                 thinkingConfigurations = thinkingConfigurations,
                 enableThinking = enableThinking,
+                optionId = thinkingOptionId,
             )
         }
 
