@@ -30,7 +30,8 @@ open class KimiProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -42,7 +43,8 @@ open class KimiProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
-    thinkingConfigurations = thinkingConfigurations,
+        thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
 ) {
 
     override fun createRequestBody(
@@ -63,6 +65,7 @@ open class KimiProvider(
                 apiEndpoint = "",
                 thinkingConfigurations = thinkingConfigurations,
                 enableThinking = enableThinking,
+                optionId = thinkingOptionId,
             )
         }
 

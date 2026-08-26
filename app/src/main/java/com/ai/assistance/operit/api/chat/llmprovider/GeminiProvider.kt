@@ -96,7 +96,8 @@ open class GeminiProvider(
     private val providerType: ApiProviderType = ApiProviderType.GOOGLE,
     private val enableGoogleSearch: Boolean = false,
     private val enableToolCall: Boolean = false, // 是否启用Tool Call接口（预留，Gemini有原生tool支持）
-    private val thinkingConfigurations: String = ""
+    private val thinkingConfigurations: String = "",
+    private val thinkingOptionId: String = ""
 ) : AIService {
     companion object {
         private const val TAG = "GeminiProvider"
@@ -1384,6 +1385,7 @@ open class GeminiProvider(
             apiEndpoint = apiEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
 
         val jsonString = json.toString()

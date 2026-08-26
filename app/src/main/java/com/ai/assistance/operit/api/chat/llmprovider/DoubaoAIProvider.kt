@@ -22,7 +22,8 @@ class DoubaoAIProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
         apiEndpoint = apiEndpoint,
         apiKeyProvider = apiKeyProvider,
@@ -34,7 +35,8 @@ class DoubaoAIProvider(
         supportsAudio = supportsAudio,
         supportsVideo = supportsVideo,
         enableToolCall = enableToolCall,
-        thinkingConfigurations = thinkingConfigurations
+        thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
     ) {
 
     /**
@@ -62,6 +64,7 @@ class DoubaoAIProvider(
             apiEndpoint = "",
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
 
         return createJsonRequestBody(jsonObject.toString())

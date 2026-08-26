@@ -71,6 +71,7 @@ import com.ai.assistance.operit.ui.features.packages.market.PublishProgressStage
 import com.ai.assistance.operit.ui.features.packages.market.isOperit2VersionAllowed
 import com.ai.assistance.operit.ui.features.packages.market.sameArtifactRuntimePackageId
 import com.ai.assistance.operit.ui.features.packages.screens.artifact.viewmodel.ArtifactMarketViewModel
+import com.ai.assistance.operit.ui.features.packages.screens.artifact.viewmodel.ArtifactPublishDraft
 import com.ai.assistance.operit.ui.common.icons.rememberLogoPainter
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ToolPkgArtifactMinifier
@@ -170,6 +171,30 @@ fun ArtifactPublishScreen(
     val isContinuationCategoryLocked = isContinuationMode && !canEditContinuationEntry
     val continuationDescription =
         stringResource(R.string.artifact_publish_continuation_description)
+    val draftScopeKey =
+        remember(
+            isEditMode,
+            activePublishContext?.entryId,
+            activePublishContext?.runtimePackageId,
+            activePublishContext?.projectId
+        ) {
+            if (isEditMode) {
+                "edit-${editingEntry?.id.orEmpty()}"
+            } else {
+                listOf(
+                    activePublishContext?.entryId.orEmpty(),
+                    activePublishContext?.runtimePackageId.orEmpty(),
+                    activePublishContext?.projectId.orEmpty()
+                )
+                    .firstOrNull { it.isNotBlank() }
+                    ?.let { "entry-$it" }
+                    ?: "fresh"
+            }
+        }
+    val savedPublishDraft =
+        remember(draftScopeKey) {
+            if (isEditMode) null else viewModel.loadPublishDraft(activePublishContext)
+        }
 
     val filteredArtifacts =
         remember(artifacts, activePublishContext, isEditMode, lockedRuntimePackageId) {
@@ -188,32 +213,60 @@ fun ArtifactPublishScreen(
             }
         }
 
-    var selectedPackageName by rememberSaveable { mutableStateOf("") }
-    var displayName by rememberSaveable(initialInfo?.title, lockedDisplayName) {
+    var selectedPackageName by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.selectedPackageName.orEmpty())
+    }
+    var displayName by rememberSaveable(draftScopeKey, initialInfo?.title, lockedDisplayName) {
         mutableStateOf(
-            initialInfo?.title.orEmpty().ifBlank { lockedDisplayName }
+            savedPublishDraft?.displayName
+                ?: initialInfo?.title.orEmpty().ifBlank { lockedDisplayName }
         )
     }
-    var description by rememberSaveable(activePublishContext?.marketDescription) {
-        mutableStateOf(initialInfo?.description.orEmpty().ifBlank { activePublishContext?.marketDescription.orEmpty() })
+    var description by rememberSaveable(draftScopeKey, activePublishContext?.marketDescription) {
+        mutableStateOf(
+            savedPublishDraft?.description
+                ?: initialInfo?.description.orEmpty().ifBlank { activePublishContext?.marketDescription.orEmpty() }
+        )
     }
-    var detail by rememberSaveable(activePublishContext?.marketDetail) {
-        mutableStateOf(initialInfo?.detail.orEmpty().ifBlank { activePublishContext?.marketDetail.orEmpty() })
+    var detail by rememberSaveable(draftScopeKey, activePublishContext?.marketDetail) {
+        mutableStateOf(
+            savedPublishDraft?.detail
+                ?: initialInfo?.detail.orEmpty().ifBlank { activePublishContext?.marketDetail.orEmpty() }
+        )
     }
-    var categoryId by rememberSaveable(activePublishContext?.categoryId) {
-        mutableStateOf(initialInfo?.categoryId.orEmpty().ifBlank { activePublishContext?.categoryId.orEmpty() })
+    var categoryId by rememberSaveable(draftScopeKey, activePublishContext?.categoryId) {
+        mutableStateOf(
+            savedPublishDraft?.categoryId
+                ?: initialInfo?.categoryId.orEmpty().ifBlank { activePublishContext?.categoryId.orEmpty() }
+        )
     }
-    var allowPublicUpdates by rememberSaveable(initialInfo?.allowPublicUpdates) {
-        mutableStateOf(initialInfo?.allowPublicUpdates ?: true)
+    var allowPublicUpdates by rememberSaveable(draftScopeKey, initialInfo?.allowPublicUpdates) {
+        mutableStateOf(savedPublishDraft?.allowPublicUpdates ?: initialInfo?.allowPublicUpdates ?: true)
     }
-    var minifyArtifact by rememberSaveable { mutableStateOf(false) }
-    var useGitHubReleaseAsset by rememberSaveable { mutableStateOf(false) }
-    var githubRepositoryUrl by rememberSaveable { mutableStateOf("") }
-    var selectedReleaseTag by rememberSaveable { mutableStateOf("") }
-    var selectedReleaseAssetName by rememberSaveable { mutableStateOf("") }
-    var version by rememberSaveable { mutableStateOf(initialInfo?.version.orEmpty().ifBlank { "1.0.0" }) }
-    var minSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.minSupportedAppVersion.orEmpty()) }
-    var maxSupportedAppVersion by rememberSaveable { mutableStateOf(initialInfo?.maxSupportedAppVersion.orEmpty()) }
+    var minifyArtifact by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.minifyArtifact ?: false)
+    }
+    var useGitHubReleaseAsset by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.useGitHubReleaseAsset ?: false)
+    }
+    var githubRepositoryUrl by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.githubRepositoryUrl.orEmpty())
+    }
+    var selectedReleaseTag by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.selectedReleaseTag.orEmpty())
+    }
+    var selectedReleaseAssetName by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.selectedReleaseAssetName.orEmpty())
+    }
+    var version by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.version ?: initialInfo?.version.orEmpty().ifBlank { "1.0.0" })
+    }
+    var minSupportedAppVersion by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.minSupportedAppVersion ?: initialInfo?.minSupportedAppVersion.orEmpty())
+    }
+    var maxSupportedAppVersion by rememberSaveable(draftScopeKey) {
+        mutableStateOf(savedPublishDraft?.maxSupportedAppVersion ?: initialInfo?.maxSupportedAppVersion.orEmpty())
+    }
     var selectorExpanded by remember { mutableStateOf(false) }
     var releaseSelectorExpanded by remember { mutableStateOf(false) }
     var releaseAssetSelectorExpanded by remember { mutableStateOf(false) }
@@ -230,6 +283,60 @@ fun ArtifactPublishScreen(
             onSuccess = { manifest -> categories = manifest.categories.filter { it.id.isNotBlank() } },
             onFailure = {}
         )
+    }
+
+    LaunchedEffect(draftScopeKey) {
+        val draft = savedPublishDraft
+        if (!isEditMode && draft?.useGitHubReleaseAsset == true && draft.githubRepositoryUrl.isNotBlank()) {
+            viewModel.loadGitHubReleaseCatalog(draft.githubRepositoryUrl)
+        }
+    }
+
+    LaunchedEffect(
+        draftScopeKey,
+        selectedPackageName,
+        displayName,
+        description,
+        detail,
+        categoryId,
+        allowPublicUpdates,
+        minifyArtifact,
+        useGitHubReleaseAsset,
+        githubRepositoryUrl,
+        selectedReleaseTag,
+        selectedReleaseAssetName,
+        version,
+        minSupportedAppVersion,
+        maxSupportedAppVersion
+    ) {
+        if (!isEditMode) {
+            viewModel.savePublishDraft(
+                publishContext = activePublishContext,
+                draft =
+                    ArtifactPublishDraft(
+                        selectedPackageName = selectedPackageName,
+                        displayName = displayName,
+                        description = description,
+                        detail = detail,
+                        categoryId = categoryId,
+                        allowPublicUpdates = allowPublicUpdates,
+                        minifyArtifact = minifyArtifact,
+                        useGitHubReleaseAsset = useGitHubReleaseAsset,
+                        githubRepositoryUrl = githubRepositoryUrl,
+                        selectedReleaseTag = selectedReleaseTag,
+                        selectedReleaseAssetName = selectedReleaseAssetName,
+                        version = version,
+                        minSupportedAppVersion = minSupportedAppVersion,
+                        maxSupportedAppVersion = maxSupportedAppVersion
+                    )
+            )
+        }
+    }
+
+    LaunchedEffect(draftScopeKey, publishSuccess) {
+        if (!isEditMode && publishSuccess != null) {
+            viewModel.clearPublishDraft(activePublishContext)
+        }
     }
 
     LaunchedEffect(filteredArtifacts, activePublishContext?.runtimePackageId, initialInfo?.normalizedId) {
@@ -263,7 +370,29 @@ fun ArtifactPublishScreen(
 
     val selectedArtifact = filteredArtifacts.firstOrNull { it.packageName == selectedPackageName }
     val selectedType = selectedArtifact?.type ?: initialInfo?.type
+    val toolPkgManifestVersion =
+        if (selectedType == PublishArtifactType.PACKAGE) {
+            selectedArtifact?.inferredVersion?.trim()?.takeIf { it.isNotBlank() }
+        } else {
+            null
+        }
+    val isToolPkgVersionLocked = !isEditMode && toolPkgManifestVersion != null
+    val effectiveVersion =
+        if (isToolPkgVersionLocked) {
+            toolPkgManifestVersion.orEmpty()
+        } else {
+            version
+        }
     val isPublishing = publishStage !in listOf(PublishProgressStage.IDLE, PublishProgressStage.COMPLETED)
+    LaunchedEffect(selectedPackageName, selectedType, toolPkgManifestVersion, isEditMode) {
+        if (!isEditMode && selectedType == PublishArtifactType.PACKAGE) {
+            val lockedVersion = toolPkgManifestVersion ?: return@LaunchedEffect
+            if (version != lockedVersion) {
+                viewModel.clearPendingMarketRegistrationRetry()
+                version = lockedVersion
+            }
+        }
+    }
     val packageLogo by
         produceState<ToolPkgLogoAsset?>(
             initialValue = null,
@@ -933,9 +1062,9 @@ fun ArtifactPublishScreen(
             }
         }
         OutlinedTextField(
-            value = version,
+            value = effectiveVersion,
             onValueChange = {
-                if (!isEditMode) {
+                if (!isEditMode && !isToolPkgVersionLocked) {
                     viewModel.clearPendingMarketRegistrationRetry()
                     version = it
                 }
@@ -943,10 +1072,11 @@ fun ArtifactPublishScreen(
             label = { Text(stringResource(R.string.version_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            readOnly = isEditMode,
+            readOnly = isEditMode || isToolPkgVersionLocked,
             supportingText = {
-                if (isEditMode) {
-                    Text(stringResource(R.string.artifact_publish_published_version_readonly))
+                when {
+                    isEditMode -> Text(stringResource(R.string.artifact_publish_published_version_readonly))
+                    isToolPkgVersionLocked -> Text(stringResource(R.string.artifact_publish_toolpkg_version_readonly))
                 }
             }
         )
@@ -1026,7 +1156,7 @@ fun ArtifactPublishScreen(
                         if (isEditMode) {
                             initialInfo?.type != null
                         } else {
-                            selectedPackageName.isNotBlank() &&
+                            selectedArtifact != null &&
                                 publishSource != null &&
                                 (activePublishContext == null || filteredArtifacts.isNotEmpty())
                         }
@@ -1110,7 +1240,7 @@ fun ArtifactPublishScreen(
                             Text(stringResource(R.string.detail_colon, detail))
                         }
                         Text(stringResource(R.string.market_detail_category_label) + ": " + categoryId)
-                        Text(stringResource(R.string.version_colon, version))
+                        Text(stringResource(R.string.version_colon, effectiveVersion))
                         if (selectedType == PublishArtifactType.PACKAGE && displayedLogo != null) {
                             Text(
                                 stringResource(
@@ -1190,7 +1320,7 @@ fun ArtifactPublishScreen(
                                     detail = detail,
                                     categoryId = categoryId,
                                     allowPublicUpdates = allowPublicUpdates,
-                                    version = version,
+                                    version = effectiveVersion,
                                     minSupportedAppVersion = minSupportedAppVersion.ifBlank { null },
                                     maxSupportedAppVersion = maxSupportedAppVersion.ifBlank { GitHubForgePublishService.DEFAULT_MAX_SUPPORTED_APP_VERSION },
                                     publishContext = activePublishContext,
@@ -1328,7 +1458,7 @@ fun ArtifactPublishScreen(
             title = displayName,
             description = description,
             detail = detail,
-            version = version,
+            version = effectiveVersion,
             author = selectedArtifact?.author?.firstOrNull().orEmpty(),
             logoAsset = displayedLogo,
             onDismiss = { showMarketPreview = false }

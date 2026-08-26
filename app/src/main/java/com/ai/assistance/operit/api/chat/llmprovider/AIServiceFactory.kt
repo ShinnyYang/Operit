@@ -328,7 +328,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             ApiProviderType.OPENAI ->
@@ -344,6 +345,7 @@ object AIServiceFactory {
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
                     thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                     includeUsageInStream = true,
                 )
 
@@ -360,7 +362,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             ApiProviderType.OPENAI_RESPONSES,
@@ -376,7 +379,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             ApiProviderType.OPENAI_CODEX ->
@@ -390,7 +394,8 @@ object AIServiceFactory {
                     supportsVideo = false,
                     supportsFiles = supportsVision,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             // Claude格式，支持Anthropic Claude系列
@@ -405,7 +410,8 @@ object AIServiceFactory {
                     providerType,
                     enableToolCall,
                     config.enableClaude1hPromptCache,
-                    config.thinkingConfigurations
+                    config.thinkingConfigurations,
+                    config.thinkingOptionId
                 )
 
             // Gemini格式，支持Google Gemini系列及通用Gemini端点
@@ -420,7 +426,8 @@ object AIServiceFactory {
                     providerType,
                     config.enableGoogleSearch,
                     enableToolCall,
-                    config.thinkingConfigurations
+                    config.thinkingConfigurations,
+                    config.thinkingOptionId
                 )
 
             // LM Studio使用OpenAI兼容格式
@@ -436,7 +443,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             // Ollama使用OpenAI兼容格式
@@ -452,7 +460,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             // MNN本地推理引擎
@@ -492,7 +501,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             // 其他中文服务商，当前使用OpenAI Provider (大多数兼容OpenAI格式)
@@ -518,7 +528,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
 
             ApiProviderType.MOONSHOT ->
@@ -533,7 +544,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.MIMO ->
                 MimoProvider(
@@ -547,7 +559,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.DEEPSEEK ->
                 DeepseekProvider(
@@ -561,7 +574,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.MISTRAL ->
                 MistralProvider(
@@ -575,7 +589,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.SILICONFLOW ->
                 QwenAIProvider(
@@ -589,7 +604,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.OPENCODE ->
                 OpenCodeProvider.create(
@@ -615,7 +631,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.FOUR_ROUTER ->
                 FourRouterProvider(
@@ -629,7 +646,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.NOUS_PORTAL ->
                 NousPortalProvider(
@@ -643,7 +661,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.DOUBAO ->
                 DoubaoAIProvider(
@@ -657,7 +676,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.NVIDIA ->
                 NvidiaAIProvider(
@@ -671,7 +691,8 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations
+                    thinkingConfigurations = config.thinkingConfigurations,
+                    thinkingOptionId = config.thinkingOptionId,
                 )
         }
     }

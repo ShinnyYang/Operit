@@ -8,12 +8,10 @@ import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ParameterValueType
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.stats.ProviderUsageSnapshot
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatUtils
 import com.ai.assistance.operit.util.stream.Stream
-import kotlinx.coroutines.flow.first
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
@@ -27,7 +25,8 @@ class OpenCodeProvider private constructor(
     private val modelName: String,
     private val protocol: ApiProviderType,
     private val apiKeyProvider: ApiKeyProvider,
-    private val thinkingConfigurations: String
+    private val thinkingConfigurations: String,
+    private val thinkingOptionId: String
 ) : AIService by delegate {
     // Keep the routed provider identity so shared response handling recognizes Responses/Gemini streams.
     override val providerModel: String = delegate.providerModel
@@ -56,14 +55,13 @@ class OpenCodeProvider private constructor(
         recordTokenUsage: Boolean,
         onUsageFinalized: (suspend (attempt: Int?) -> Unit)?,
     ): Stream<String> {
-        val optionId = ApiPreferences.getInstance(context).thinkingOptionIdFlow.first()
         val (thinkingMapping, opencodeParameters) = ThinkingConfigurationApplier.modelParameters(
             providerTypeId = ApiProviderType.OPENCODE.name,
             modelName = modelName,
             apiEndpoint = baseEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
-            optionId = optionId,
+            optionId = thinkingOptionId,
             protocol = protocol,
         )
         val thinkingEnabled = enableThinking || thinkingMapping.reasoningRequired
@@ -122,7 +120,8 @@ class OpenCodeProvider private constructor(
                 modelName = model,
                 protocol = provider,
                 apiKeyProvider = apiKeyProvider,
-                thinkingConfigurations = config.thinkingConfigurations
+                thinkingConfigurations = config.thinkingConfigurations,
+                thinkingOptionId = config.thinkingOptionId
             )
         }
     }

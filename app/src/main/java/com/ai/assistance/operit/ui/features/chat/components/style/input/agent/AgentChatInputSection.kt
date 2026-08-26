@@ -126,7 +126,6 @@ import com.ai.assistance.operit.data.model.getValidModelIndex
 import com.ai.assistance.operit.data.preferences.CharacterCardManager
 import com.ai.assistance.operit.data.preferences.ActivePromptManager
 import com.ai.assistance.operit.data.model.ActivePrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.data.preferences.FunctionConfigMapping
 import com.ai.assistance.operit.data.preferences.FunctionalConfigManager
 import com.ai.assistance.operit.data.preferences.ModelConfigManager
@@ -197,7 +196,7 @@ fun AgentChatInputSection(
     isWorkspaceOpen: Boolean = false,
     enableThinkingMode: Boolean = false,
     onToggleThinkingMode: () -> Unit = {},
-    thinkingOptionId: String = ApiPreferences.DEFAULT_THINKING_OPTION_ID,
+    thinkingOptionId: String = "",
     onThinkingOptionIdChange: (String) -> Unit = {},
     enableMaxContextMode: Boolean = false,
     onToggleEnableMaxContextMode: () -> Unit = {},

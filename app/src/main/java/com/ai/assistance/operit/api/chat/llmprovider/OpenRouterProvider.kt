@@ -31,7 +31,8 @@ open class OpenRouterProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -43,7 +44,8 @@ open class OpenRouterProvider(
     supportsAudio = supportsAudio,
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
-    thinkingConfigurations = thinkingConfigurations
+    thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
 ) {
 
     private val openRouterApiEndpoint: String = apiEndpoint
@@ -102,6 +104,7 @@ open class OpenRouterProvider(
             apiEndpoint = openRouterApiEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
     }
 

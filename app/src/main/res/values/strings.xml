@@ -3457,7 +3457,10 @@
     <string name="settings_custom_headers">自定义请求头</string>
     <string name="settings_custom_headers_subtitle">API请求头字段配置</string>
     <string name="thinking_config_title">思考配置</string>
-    <string name="thinking_config_subtitle">按模型匹配思考参数</string>
+    <string name="thinking_config_subtitle">按规则顺序匹配思考参数，首条命中生效</string>
+    <string name="thinking_config_rule_order_hint">规则会从上到下依次匹配模型，第一条启用且命中的规则生效。使用每条规则右侧的箭头调整顺序。</string>
+    <string name="thinking_config_rule_move_up">上移规则</string>
+    <string name="thinking_config_rule_move_down">下移规则</string>
     <string name="headers_configured_count">已配置 %1$d 条</string>
     <string name="screen_title_external_http_chat_settings">外部 HTTP 调用</string>
     <string name="settings_system_prompts_subtitle">系统和模型提示词</string>
@@ -4432,12 +4435,10 @@
     <string name="market_manage_resubmitted">已提交重新上架「%1$s」的请求</string>
     <string name="market_manage_resubmit">重新提交</string>
     <string name="market_manage_submit_revision">修改后提交新版本</string>
-    <string name="market_manage_revision_cooldown">被打回后的修改版提交仍在冷却中，还需等待 %1$s。</string>
     <string name="market_manage_loading_request_title">正在加载请求</string>
     <string name="market_manage_loading_request_message">请求正在处理中，请稍候…</string>
     <string name="market_manage_resubmitting_title">正在重新提交</string>
     <string name="market_manage_resubmitting_message">正在提交审核请求，请稍候…</string>
-    <string name="market_manage_resubmit_cooldown_message">该条目已进入本地冷却期，剩余 %1$s 后才能再次提交。</string>
     <string name="market_manage_resubmit_rejected_blocked">该条目已被拒绝，客户端不允许再次提交。</string>
     <string name="market_manage_resubmit_state_blocked">只有已打回的条目可以重新提交。</string>
     <string name="market_manage_resubmit_confirm_title">确认重新提交？</string>
@@ -4446,7 +4447,6 @@
     <string name="market_manage_resubmit_last_reason">打回原因：%1$s</string>
     <string name="market_manage_review_detail">审核说明：%1$s</string>
     <string name="market_manage_review_dialog_title">审核状态</string>
-    <string name="market_manage_resubmit_confirm_warning">请确认已经按打回原因完成修改。提交成功后，本地 12 小时内不可再次提交。</string>
     <string name="market_manage_resubmit_confirm_action">确认提交</string>
     <string name="market_error_load_failed">加载失败</string>
     <string name="market_error_action_failed">操作失败</string>
@@ -4714,6 +4714,7 @@
     <string name="artifact_publish_published_name_readonly">已发布作品的命名不可修改</string>
     <string name="artifact_publish_locked_name_must_match_source">基于版本发布时，插件名字必须和来源版本保持一致</string>
     <string name="artifact_publish_published_version_readonly">已发布节点的版本号不可修改</string>
+    <string name="artifact_publish_toolpkg_version_readonly">ToolPkg 发布版本来自包内 manifest，发布前不可手动修改</string>
     <string name="artifact_publish_save_artifact_info">保存作品信息</string>
     <string name="artifact_publish_publish_update_version">发布更新版本</string>
     <string name="artifact_publish_confirm_save_artifact_info">确认保存作品信息</string>
