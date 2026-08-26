@@ -194,7 +194,7 @@ private class LlmNetworkEventListener(
     }
 }
 
-private object SharedHttpClient {
+internal object SharedHttpClient {
     val instance: OkHttpClient by lazy {
         UnsafeModelSsl.apply(
             OkHttpClient.Builder()
@@ -316,6 +316,21 @@ object AIServiceFactory {
 
         return when (providerType) {
             // OpenAI格式，支持原生和兼容OpenAI API的服务
+            // xAI uses the OpenAI-compatible Chat Completions protocol.
+            ApiProviderType.XAI ->
+                XaiProvider(
+                    apiEndpoint = config.apiEndpoint,
+                    apiKeyProvider = apiKeyProvider,
+                    modelName = config.modelName,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
+                )
+
             ApiProviderType.OPENAI ->
                 OpenAIProvider(
                     apiEndpoint = config.apiEndpoint,
@@ -328,6 +343,7 @@ object AIServiceFactory {
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
                     enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations,
                     includeUsageInStream = true,
                 )
 
@@ -343,7 +359,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             ApiProviderType.OPENAI_RESPONSES,
@@ -358,7 +375,22 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
+                )
+
+            ApiProviderType.OPENAI_CODEX ->
+                CodexProvider(
+                    authManager = com.ai.assistance.operit.data.api.CodexAuthManager.getInstance(context),
+                    modelName = config.modelName,
+                    httpClient = httpClient,
+                    customHeaders = customHeaders,
+                    supportsVision = supportsVision,
+                    supportsAudio = false,
+                    supportsVideo = false,
+                    supportsFiles = supportsVision,
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             // Claude格式，支持Anthropic Claude系列
@@ -372,7 +404,8 @@ object AIServiceFactory {
                     customHeaders,
                     providerType,
                     enableToolCall,
-                    config.enableClaude1hPromptCache
+                    config.enableClaude1hPromptCache,
+                    config.thinkingConfigurations
                 )
 
             // Gemini格式，支持Google Gemini系列及通用Gemini端点
@@ -386,7 +419,8 @@ object AIServiceFactory {
                     customHeaders,
                     providerType,
                     config.enableGoogleSearch,
-                    enableToolCall
+                    enableToolCall,
+                    config.thinkingConfigurations
                 )
 
             // LM Studio使用OpenAI兼容格式
@@ -401,7 +435,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             // Ollama使用OpenAI兼容格式
@@ -416,7 +451,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             // MNN本地推理引擎
@@ -455,7 +491,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             // 其他中文服务商，当前使用OpenAI Provider (大多数兼容OpenAI格式)
@@ -480,7 +517,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
 
             ApiProviderType.MOONSHOT ->
@@ -494,7 +532,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.MIMO ->
                 MimoProvider(
@@ -507,7 +546,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.DEEPSEEK ->
                 DeepseekProvider(
@@ -520,7 +560,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.MISTRAL ->
                 MistralProvider(
@@ -533,7 +574,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.SILICONFLOW ->
                 QwenAIProvider(
@@ -546,12 +588,12 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.OPENCODE ->
                 OpenCodeProvider.create(
                     config = config,
-                    modelConfigManager = modelConfigManager,
                     context = context,
                     client = httpClient,
                     customHeaders = customHeaders,
@@ -572,7 +614,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.FOUR_ROUTER ->
                 FourRouterProvider(
@@ -585,7 +628,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.NOUS_PORTAL ->
                 NousPortalProvider(
@@ -598,7 +642,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.DOUBAO ->
                 DoubaoAIProvider(
@@ -611,7 +656,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
             ApiProviderType.NVIDIA ->
                 NvidiaAIProvider(
@@ -624,7 +670,8 @@ object AIServiceFactory {
                     supportsVision = supportsVision,
                     supportsAudio = supportsAudio,
                     supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall
+                    enableToolCall = enableToolCall,
+                    thinkingConfigurations = config.thinkingConfigurations
                 )
         }
     }

@@ -24,9 +24,20 @@ object ApiProviderConfigs {
             defaultApiEndpoint = "https://api.openai.com/v1/chat/completions"
         ),
         ProviderApiConfig(
+            providerType = ApiProviderType.XAI,
+            defaultModelName = "grok-4.6",
+            defaultApiEndpoint = "https://api.x.ai/v1/chat/completions"
+        ),
+        ProviderApiConfig(
             providerType = ApiProviderType.OPENAI_RESPONSES,
             defaultModelName = "gpt-4o",
             defaultApiEndpoint = "https://api.openai.com/v1/responses"
+        ),
+        ProviderApiConfig(
+            providerType = ApiProviderType.OPENAI_CODEX,
+            defaultModelName = "gpt-5.6-luna",
+            defaultApiEndpoint = "https://chatgpt.com/backend-api/codex/responses",
+            requiresApiKey = false,
         ),
         ProviderApiConfig(
             providerType = ApiProviderType.OPENAI_RESPONSES_GENERIC,

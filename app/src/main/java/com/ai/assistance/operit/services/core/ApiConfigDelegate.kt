@@ -79,9 +79,9 @@ class ApiConfigDelegate(
     private val _enableThinkingMode = MutableStateFlow(ApiPreferences.DEFAULT_ENABLE_THINKING_MODE)
     val enableThinkingMode: StateFlow<Boolean> = _enableThinkingMode.asStateFlow()
 
-    private val _thinkingQualityLevel =
-            MutableStateFlow(ApiPreferences.DEFAULT_THINKING_QUALITY_LEVEL)
-    val thinkingQualityLevel: StateFlow<Int> = _thinkingQualityLevel.asStateFlow()
+    private val _thinkingOptionId =
+            MutableStateFlow(ApiPreferences.DEFAULT_THINKING_OPTION_ID)
+    val thinkingOptionId: StateFlow<String> = _thinkingOptionId.asStateFlow()
 
     private val _enableMemoryAutoUpdate =
             MutableStateFlow(ApiPreferences.DEFAULT_ENABLE_MEMORY_AUTO_UPDATE)
@@ -308,9 +308,6 @@ class ApiConfigDelegate(
     init {
         configScope.launch {
             try {
-                modelConfigManager.initializeIfNeeded()
-                functionalConfigManager.initializeIfNeeded()
-
                 functionalConfigManager.functionConfigMappingFlow.collect { mapping ->
                     val chatConfigId =
                             mapping[FunctionType.CHAT] ?: FunctionalConfigManager.DEFAULT_CONFIG_ID
@@ -336,8 +333,6 @@ class ApiConfigDelegate(
 
         configScope.launch {
             try {
-                modelConfigManager.initializeIfNeeded()
-
                 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
                 _activeConfigId
                     .flatMapLatest { configId -> modelConfigManager.getModelConfigFlow(configId) }
@@ -405,7 +400,6 @@ class ApiConfigDelegate(
     }
 
     suspend fun resolveChatContextSettings(configIdOverride: String? = null): ChatContextSettings {
-        modelConfigManager.initializeIfNeeded()
         val configId =
             configIdOverride?.trim()?.takeIf { it.isNotEmpty() } ?: effectiveChatConfigId.value
         val config = requireNotNull(modelConfigManager.getModelConfig(configId)) {
@@ -415,7 +409,6 @@ class ApiConfigDelegate(
     }
 
     private suspend fun resolveEditableChatConfigId(): String {
-        modelConfigManager.initializeIfNeeded()
         return effectiveChatConfigId.value
     }
 
@@ -435,8 +428,8 @@ class ApiConfigDelegate(
         }
 
         configScope.launch {
-            apiPreferences.thinkingQualityLevelFlow.collect { level ->
-                _thinkingQualityLevel.value = level
+            apiPreferences.thinkingOptionIdFlow.collect { optionId ->
+                _thinkingOptionId.value = optionId
             }
         }
 
@@ -634,14 +627,10 @@ class ApiConfigDelegate(
         }
     }
 
-    fun updateThinkingQualityLevel(level: Int) {
+    fun updateThinkingOptionId(optionId: String) {
         configScope.launch {
-            val clampedLevel = level.coerceIn(
-                ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-                ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-            )
-            apiPreferences.saveThinkingQualityLevel(clampedLevel)
-            _thinkingQualityLevel.value = clampedLevel
+            apiPreferences.saveThinkingOptionId(optionId)
+            _thinkingOptionId.value = optionId.trim()
         }
     }
 

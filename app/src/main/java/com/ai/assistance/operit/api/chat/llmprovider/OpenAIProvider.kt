@@ -11,7 +11,6 @@ import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ModelOption
 import com.ai.assistance.operit.data.model.ModelParameter
 import com.ai.assistance.operit.data.model.ToolPrompt
-import com.ai.assistance.operit.data.preferences.ApiPreferences
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
@@ -39,8 +38,6 @@ import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
@@ -98,8 +95,10 @@ open class OpenAIProvider(
     protected val supportsVision: Boolean = false, // 是否支持图片处理
     protected val supportsAudio: Boolean = false, // 是否支持音频输入
     protected val supportsVideo: Boolean = false, // 是否支持视频输入
+    protected val supportsFiles: Boolean = false, // 是否支持文件输入
     val enableToolCall: Boolean = false, // 是否启用Tool Call接口
     private val includeUsageInStream: Boolean = false,
+    protected val thinkingConfigurations: String = "",
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -147,11 +146,11 @@ open class OpenAIProvider(
         attemptNumber: Int = 1
     ) {
         val parsed = OpenAIResponsesPayloadAdapter.parseUsageCounts(usage) ?: return
-        tokenCacheManager.updateActualTokens(parsed.actualInputTokens.toLong(), parsed.cachedInputTokens.toLong())
-        tokenCacheManager.setOutputTokens(parsed.outputTokens.toLong())
+        tokenCacheManager.updateActualTokens(parsed.actualInputTokens, parsed.cachedInputTokens)
+        tokenCacheManager.setOutputTokens(parsed.outputTokens)
         onTokensUpdated(
-            parsed.totalInputTokens.toLong(),
-            parsed.cachedInputTokens.toLong(),
+            parsed.totalInputTokens,
+            parsed.cachedInputTokens,
             tokenCacheManager.outputTokenCount
         )
         onUsageReported?.invoke(
@@ -566,68 +565,18 @@ open class OpenAIProvider(
     ): RequestBody {
         val jsonString =
             createRequestBodyInternal(context, chatHistory, modelParameters, stream, availableTools, preserveThinkInHistory)
-        if (!supportsOpenAiChatReasoningEffort()) {
-            return createJsonRequestBody(jsonString)
-        }
         val requestJson = JSONObject(jsonString)
-        applyOpenAiChatReasoning(context, requestJson, enableThinking)
+        ThinkingConfigurationApplier.apply(
+            context = context,
+            requestJson = requestJson,
+            providerTypeId = providerType.name,
+            modelName = modelName,
+            apiEndpoint = apiEndpoint,
+            thinkingConfigurations = thinkingConfigurations,
+            enableThinking = enableThinking,
+        )
         return createJsonRequestBody(requestJson.toString())
     }
-
-    private fun applyOpenAiChatReasoning(
-        context: Context,
-        requestJson: JSONObject,
-        enableThinking: Boolean
-    ) {
-        if (!supportsOpenAiChatReasoningEffort()) {
-            return
-        }
-
-        val existingEffort = requestJson.optString("reasoning_effort", "").trim()
-        if (existingEffort.isNotEmpty()) {
-            AppLogger.d(
-                "OpenAIProvider",
-                "Preserving caller-supplied Chat Completions reasoning_effort=$existingEffort"
-            )
-            return
-        }
-
-        val effort = if (enableThinking) {
-            resolveOpenAiChatReasoningEffort(context)
-        } else {
-            "none"
-        } ?: return
-        requestJson.put("reasoning_effort", effort)
-        AppLogger.d(
-            "OpenAIProvider",
-            "OpenAI Chat Completions reasoning_effort=$effort"
-        )
-    }
-
-    private fun resolveOpenAiChatReasoningEffort(context: Context): String? {
-        val qualityLevel = runCatching {
-            runBlocking {
-                ApiPreferences.getInstance(context).thinkingQualityLevelFlow.first()
-            }
-        }.getOrElse {
-            AppLogger.w(
-                "OpenAIProvider",
-                "Failed to read thinking quality level; reasoning_effort not applied",
-                it
-            )
-            return null
-        }
-
-        val effortLevels = listOf("low", "medium", "high", "xhigh", "max")
-        val qualityIndex = qualityLevel.coerceIn(
-            ApiPreferences.MIN_THINKING_QUALITY_LEVEL,
-            ApiPreferences.MAX_THINKING_QUALITY_LEVEL
-        ) - 1
-        return effortLevels[qualityIndex]
-    }
-
-    private fun supportsOpenAiChatReasoningEffort(): Boolean =
-        providerType == ApiProviderType.OPENAI || providerType == ApiProviderType.OPENAI_GENERIC
 
     protected fun createJsonRequestBody(jsonString: String): RequestBody {
         return jsonString.toByteArray(Charsets.UTF_8).toRequestBody(JSON)
@@ -834,9 +783,12 @@ open class OpenAIProvider(
     /**
      * 构建content字段（可能是字符串或数组）
      * @param text 要处理的文本内容
+     * @param role API消息角色；只有user/summary允许注入多媒体内容
      * @return 纯文本字符串或包含图片和文本的JSONArray
      */
-    fun buildContentField(context: Context, text: String): Any {
+    fun buildContentField(context: Context, text: String, role: String = "user"): Any {
+        val allowRichContent =
+            role.equals("user", ignoreCase = true) || role.equals("summary", ignoreCase = true)
         val hasImages = MediaLinkParser.hasImageLinks(text)
         val hasMedia = MediaLinkParser.hasMediaLinks(text)
 
@@ -845,9 +797,12 @@ open class OpenAIProvider(
 
         val audioLinks = mediaLinks.filter { it.type == "audio" }
         val videoLinks = mediaLinks.filter { it.type == "video" }
+        val fileLinks = mediaLinks.filter { it.type == "file" }
 
         val hasSupportedMedia =
-            (supportsAudio && audioLinks.isNotEmpty()) || (supportsVideo && videoLinks.isNotEmpty())
+            (supportsAudio && audioLinks.isNotEmpty()) ||
+                (supportsVideo && videoLinks.isNotEmpty()) ||
+                (supportsFiles && fileLinks.isNotEmpty())
 
         var textWithoutLinks = text
         if (hasMedia) {
@@ -868,13 +823,15 @@ open class OpenAIProvider(
             AppLogger.w("AIService", "检测到图片链接，但当前Provider不支持图片处理，已移除图片。原始文本长度: ${text.length}, 处理后: ${textWithoutLinks.length}")
         }
 
-        val hasAnySupportedRichContent = hasSupportedMedia || (supportsVision && imageLinks.isNotEmpty())
+        val hasAnySupportedRichContent =
+            allowRichContent && (hasSupportedMedia || (supportsVision && imageLinks.isNotEmpty()))
         if (!hasAnySupportedRichContent) {
             if (textWithoutLinks.isNotEmpty()) return textWithoutLinks
 
             return when {
                 audioLinks.isNotEmpty() || videoLinks.isNotEmpty() -> context.getString(R.string.openai_audio_video_omitted)
                 imageLinks.isNotEmpty() -> context.getString(R.string.openai_image_omitted)
+                fileLinks.isNotEmpty() -> context.getString(R.string.openai_file_omitted)
                 else -> "[Empty]"
             }
         }
@@ -900,6 +857,17 @@ open class OpenAIProvider(
                             put("url", "data:${link.mimeType};base64,${link.base64Data}")
                         }
                     )
+                })
+            }
+        }
+
+        if (supportsFiles) {
+            fileLinks.forEach { link ->
+                val fileName = requireNotNull(link.fileName?.takeIf { it.isNotBlank() })
+                contentArray.put(JSONObject().apply {
+                    put("type", "input_file")
+                    put("filename", fileName)
+                    put("file_data", "data:${link.mimeType};base64,${link.base64Data}")
                 })
             }
         }
@@ -990,7 +958,7 @@ open class OpenAIProvider(
                 else -> null
             }
             if (effectiveContent != null) {
-                historyMessage.put("content", buildContentField(context, effectiveContent))
+                historyMessage.put("content", buildContentField(context, effectiveContent, role = "assistant"))
             } else {
                 historyMessage.put("content", null)
             }
@@ -1035,7 +1003,7 @@ open class OpenAIProvider(
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "system")
-                                    put("content", buildContentField(context, content))
+                                    put("content", buildContentField(context, content, role = "system"))
                                 }
                             )
                         }
@@ -1076,7 +1044,7 @@ open class OpenAIProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "assistant")
-                                        put("content", buildContentField(context, effectiveContent))
+                                        put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
                             }
@@ -1102,7 +1070,7 @@ open class OpenAIProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "assistant")
-                                        put("content", buildContentField(context, effectiveContent))
+                                        put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
                             }
@@ -1175,8 +1143,7 @@ open class OpenAIProvider(
                     } else {
                         content
                     }
-
-                    historyMessage.put("content", buildContentField(context, effectiveContent))
+                    historyMessage.put("content", buildContentField(context, effectiveContent, role = role))
                     messagesArray.put(historyMessage)
                 }
             }

@@ -148,7 +148,7 @@ class ArtifactMarketViewModel(
         minSupportedAppVersion: String?,
         maxSupportedAppVersion: String?,
         publishContext: ArtifactPublishClusterContext? = null,
-        source: PublishArtifactSource
+        source: PublishArtifactSource,
     ) {
         val localArtifact = _publishableArtifacts.value.firstOrNull { it.packageName == packageName }
         if (localArtifact == null) {
