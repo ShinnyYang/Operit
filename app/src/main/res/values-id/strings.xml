@@ -7377,7 +7377,6 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="market_manage_resubmit">Ajukan Ulang</string>
     <string name="market_manage_resubmitting_title">Sedang mengajukan ulang</string>
     <string name="market_manage_resubmitting_message">Sedang mengirim permintaan peninjauan, harap tunggu…</string>
-    <string name="market_manage_resubmit_cooldown_message">Entri ini sedang dalam masa pendinginan lokal, sisa %1$s sebelum dapat diajukan lagi.</string>
     <string name="market_manage_resubmit_rejected_blocked">Entri ini telah ditolak, klien tidak mengizinkan pengajuan ulang.</string>
     <string name="market_manage_resubmit_state_blocked">Hanya entri yang ditolak yang dapat diajukan ulang.</string>
     <string name="market_manage_resubmit_confirm_title">Konfirmasi pengajuan ulang?</string>
@@ -7386,7 +7385,6 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="market_manage_resubmit_last_reason">Alasan penolakan: %1$s</string>
     <string name="market_manage_review_detail">Detail peninjauan: %1$s</string>
     <string name="market_manage_review_dialog_title">Status Peninjauan</string>
-    <string name="market_manage_resubmit_confirm_warning">Pastikan Anda telah melakukan perubahan sesuai alasan penolakan. Setelah berhasil diajukan, tidak dapat diajukan lagi dalam 12 jam ke depan secara lokal.</string>
     <string name="market_manage_resubmit_confirm_action">Konfirmasi Pengajuan</string>
     <string name="market_error_load_failed">Gagal memuat</string>
     <string name="market_error_action_failed">Gagal melakukan tindakan</string>

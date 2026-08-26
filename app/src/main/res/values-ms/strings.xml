@@ -7374,7 +7374,6 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="market_manage_resubmit">Hantar Semula</string>
     <string name="market_manage_resubmitting_title">Sedang Menghantar Semula</string>
     <string name="market_manage_resubmitting_message">Sedang menghantar permintaan semakan, sila tunggu…</string>
-    <string name="market_manage_resubmit_cooldown_message">Entri ini telah memasuki tempoh sejuk tempatan, hanya boleh dihantar semula selepas %1$s lagi.</string>
     <string name="market_manage_resubmit_rejected_blocked">Entri ini telah ditolak, klien tidak membenarkan penghantaran semula.</string>
     <string name="market_manage_resubmit_state_blocked">Hanya entri yang telah dikembalikan boleh dihantar semula.</string>
     <string name="market_manage_resubmit_confirm_title">Sahkan Hantar Semula?</string>
@@ -7383,7 +7382,6 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="market_manage_resubmit_last_reason">Sebab Dikembalikan: %1$s</string>
     <string name="market_manage_review_detail">Butiran semakan: %1$s</string>
     <string name="market_manage_review_dialog_title">Status Semakan</string>
-    <string name="market_manage_resubmit_confirm_warning">Sila sahkan bahawa pengubahsuaian telah dibuat mengikut sebab pengembalian. Selepas penghantaran berjaya, ia tidak boleh dihantar semula dalam tempoh 12 jam tempatan.</string>
     <string name="market_manage_resubmit_confirm_action">Sahkan Hantar</string>
     <string name="market_error_load_failed">Muat Gagal</string>
     <string name="market_error_action_failed">Tindakan Gagal</string>

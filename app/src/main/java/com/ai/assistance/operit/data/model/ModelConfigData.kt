@@ -114,6 +114,9 @@ data class ModelConfigData(
         // 当前模型配置的思考规则；内置适配规则由data.collects集中维护并在配置创建或供应商切换时写入
         val thinkingConfigurations: String = "[]",
 
+        // 当前模型配置选中的思考档位
+        val thinkingOptionId: String = "",
+
         // 自定义请求头JSON字符串
         val customHeaders: String = "{}",
 
@@ -177,6 +180,7 @@ data class ModelConfigSummary(
         val apiProviderType: ApiProviderType = ApiProviderType.DEEPSEEK,
         val apiProviderTypeId: String = apiProviderType.name,
         val thinkingConfigurations: String = "[]",
+        val thinkingOptionId: String = "",
         val modelIndex: Int = 0 // 当modelName包含多个模型（逗号分隔）时，选择第几个模型（从0开始）
 )
 

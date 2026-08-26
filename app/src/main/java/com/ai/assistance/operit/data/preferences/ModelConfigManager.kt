@@ -1,6 +1,7 @@
 package com.ai.assistance.operit.data.preferences
 
 import android.content.Context
+import com.ai.assistance.operit.api.chat.llmprovider.ThinkingQualityMappingRegistry
 import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.R
 import androidx.datastore.core.DataStore
@@ -107,7 +108,11 @@ class ModelConfigManager(private val context: Context) {
                     frequencyPenalty = StandardModelParameters.DEFAULT_FREQUENCY_PENALTY,
                     repetitionPenalty = StandardModelParameters.DEFAULT_REPETITION_PENALTY,
                     customParameters = "[]",
-                    thinkingConfigurations = thinkingRulesForProvider(DEFAULT_API_PROVIDER_TYPE.name)
+                    thinkingConfigurations = thinkingRulesForProvider(DEFAULT_API_PROVIDER_TYPE.name),
+                    thinkingOptionId = firstThinkingOptionIdForModel(
+                            DEFAULT_API_PROVIDER_TYPE.name,
+                            ApiPreferences.DEFAULT_MODEL_NAME
+                    )
             )
         }
 
@@ -120,14 +125,27 @@ class ModelConfigManager(private val context: Context) {
                 val configJson = preferences[configKey] ?: return@forEach
                 val config = json.decodeFromString<ModelConfigData>(configJson)
                 val currentThinkingConfigurations = config.thinkingConfigurations.trim()
-                if (currentThinkingConfigurations.isNotEmpty() && currentThinkingConfigurations != "[]") {
+                val thinkingConfigurations =
+                        if (currentThinkingConfigurations.isNotEmpty() && currentThinkingConfigurations != "[]") {
+                            config.thinkingConfigurations
+                        } else {
+                            thinkingRulesForProvider(config.apiProviderTypeId)
+                        }
+                val thinkingOptionId =
+                        if (currentThinkingConfigurations.isNotEmpty() && currentThinkingConfigurations != "[]") {
+                            config.thinkingOptionId
+                        } else {
+                            firstThinkingOptionIdForModel(config.apiProviderTypeId, config.modelName)
+                        }
+                if (thinkingConfigurations == config.thinkingConfigurations &&
+                                thinkingOptionId == config.thinkingOptionId) {
                     return@forEach
                 }
                 preferences[configKey] =
                         json.encodeToString(
                                 config.copy(
-                                        thinkingConfigurations =
-                                                thinkingRulesForProvider(config.apiProviderTypeId)
+                                        thinkingConfigurations = thinkingConfigurations,
+                                        thinkingOptionId = thinkingOptionId
                                 )
                         )
             }
@@ -135,6 +153,27 @@ class ModelConfigManager(private val context: Context) {
 
         internal fun thinkingRulesForProvider(providerTypeId: String): String =
                 ModelThinkingConfigDefaults.forProvider(providerTypeId)
+
+        internal fun firstThinkingOptionIdForProvider(providerTypeId: String): String =
+                firstThinkingOptionIdForModel(providerTypeId, "")
+
+        internal fun firstThinkingOptionIdForModel(providerTypeId: String, modelName: String): String {
+                val rules = thinkingRulesForProvider(providerTypeId)
+                return firstThinkingOptionIdForRules(providerTypeId, modelName, rules)
+        }
+
+        internal fun firstThinkingOptionIdForRules(
+                providerTypeId: String,
+                modelName: String,
+                thinkingConfigurations: String
+        ): String {
+                return ThinkingQualityMappingRegistry
+                        .resolve(providerTypeId, modelName, thinkingConfigurations)
+                        .options
+                        .firstOrNull()
+                        ?.id
+                        .orEmpty()
+        }
 
         internal fun nextThinkingRulesForProvider(
                 current: ModelConfigData,
@@ -144,6 +183,18 @@ class ModelConfigManager(private val context: Context) {
                     current.thinkingConfigurations
                 } else {
                     thinkingRulesForProvider(providerTypeId)
+                }
+
+        internal fun nextThinkingOptionIdForProvider(
+                current: ModelConfigData,
+                providerTypeId: String,
+                modelName: String
+        ): String =
+                // Keep a model's choice while editing it; built-in defaults apply only on provider changes.
+                if (current.apiProviderTypeId == providerTypeId) {
+                    current.thinkingOptionId
+                } else {
+                    firstThinkingOptionIdForModel(providerTypeId, modelName)
                 }
     }
 
@@ -280,7 +331,8 @@ class ModelConfigManager(private val context: Context) {
                             apiEndpoint = config.apiEndpoint,
                             apiProviderType = config.apiProviderType,
                             apiProviderTypeId = config.apiProviderTypeId,
-                            thinkingConfigurations = config.thinkingConfigurations
+                            thinkingConfigurations = config.thinkingConfigurations,
+                            thinkingOptionId = config.thinkingOptionId
                     )
             )
         }
@@ -300,6 +352,7 @@ class ModelConfigManager(private val context: Context) {
                         apiProviderType = ApiProviderType.OPENAI_GENERIC,
                         apiProviderTypeId = ApiProviderType.OPENAI_GENERIC.name,
                         thinkingConfigurations = thinkingRulesForProvider(ApiProviderType.OPENAI_GENERIC.name),
+                        thinkingOptionId = firstThinkingOptionIdForProvider(ApiProviderType.OPENAI_GENERIC.name),
                         enableToolCall = ModelConfigDefaults.DEFAULT_ENABLE_TOOL_CALL
                 )
 
@@ -378,7 +431,8 @@ class ModelConfigManager(private val context: Context) {
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
-                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId)
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName)
             )
         }
     }
@@ -402,6 +456,7 @@ class ModelConfigManager(private val context: Context) {
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
                     thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount
             )
@@ -435,6 +490,7 @@ class ModelConfigManager(private val context: Context) {
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
                     thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount,
                     llamaThreadCount = llamaThreadCount.coerceAtLeast(1),
@@ -453,6 +509,12 @@ class ModelConfigManager(private val context: Context) {
     suspend fun updateThinkingConfigurations(configId: String, thinkingConfigurations: String): ModelConfigData {
         return updateConfigInternal(configId) {
             it.copy(thinkingConfigurations = thinkingConfigurations)
+        }
+    }
+
+    suspend fun updateThinkingOptionId(configId: String, thinkingOptionId: String): ModelConfigData {
+        return updateConfigInternal(configId) {
+            it.copy(thinkingOptionId = thinkingOptionId.trim())
         }
     }
 

@@ -20,7 +20,8 @@ class XaiProvider(
     supportsAudio: Boolean = false,
     supportsVideo: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
     apiEndpoint = apiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -33,7 +34,8 @@ class XaiProvider(
     supportsVideo = supportsVideo,
     enableToolCall = enableToolCall,
     includeUsageInStream = true,
-    thinkingConfigurations = thinkingConfigurations
+    thinkingConfigurations = thinkingConfigurations,
+        thinkingOptionId = thinkingOptionId
 ) {
     override fun createRequestBody(
         context: Context,
@@ -63,6 +65,7 @@ class XaiProvider(
             apiEndpoint = "",
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
 
         return createJsonRequestBody(requestJson.toString())

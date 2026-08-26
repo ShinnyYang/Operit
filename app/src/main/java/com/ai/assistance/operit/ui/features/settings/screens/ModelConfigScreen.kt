@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -1103,6 +1104,7 @@ private fun ThinkingConfigurationsSection(
     }
     var sectionExpanded by rememberSaveable(config.id) { mutableStateOf(false) }
     var editingRuleIndex by rememberSaveable(config.id) { mutableStateOf<Int?>(null) }
+    var editingRule by remember(config.id) { mutableStateOf<ThinkingRuleEditor?>(null) }
     val saveFailedText = stringResource(R.string.save_failed)
     val invalidConfigText = stringResource(R.string.thinking_config_invalid_json)
     val saveMutex = remember(config.id) { Mutex() }
@@ -1175,6 +1177,7 @@ private fun ThinkingConfigurationsSection(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    SettingsInfoBanner(text = stringResource(R.string.thinking_config_rule_order_hint))
                     configurationError?.let { message ->
                         Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
@@ -1189,16 +1192,39 @@ private fun ThinkingConfigurationsSection(
                     } else {
                         rules.forEachIndexed { index, rule ->
                             ThinkingRulePreviewCard(
+                                index = index,
+                                totalCount = rules.size,
                                 rule = rule,
-                                onClick = { editingRuleIndex = index }
+                                onClick = {
+                                    editingRuleIndex = index
+                                    editingRule = rule
+                                },
+                                onMoveUp = {
+                                    if (index > 0) {
+                                        rules = rules.toMutableList().also {
+                                            val movedRule = it.removeAt(index)
+                                            it.add(index - 1, movedRule)
+                                        }
+                                    }
+                                },
+                                onMoveDown = {
+                                    if (index < rules.lastIndex) {
+                                        rules = rules.toMutableList().also {
+                                            val movedRule = it.removeAt(index)
+                                            it.add(index + 1, movedRule)
+                                        }
+                                    }
+                                },
                             )
                         }
                     }
                     TextButton(
                         onClick = {
-                            val newIndex = rules.size
-                            rules = rules + ThinkingRuleEditor(id = "custom-thinking-${newIndex + 1}", parameterLabel = "reasoning_effort")
-                            editingRuleIndex = newIndex
+                            editingRuleIndex = null
+                            editingRule = ThinkingRuleEditor(
+                                id = "custom-thinking-${rules.size + 1}",
+                                parameterLabel = "reasoning_effort"
+                            )
                         },
                         modifier = Modifier.align(Alignment.End)
                     ) {
@@ -1212,11 +1238,19 @@ private fun ThinkingConfigurationsSection(
     }
 
     val currentEditingIndex = editingRuleIndex
-    if (currentEditingIndex != null && currentEditingIndex in rules.indices) {
-        val editingRule = rules[currentEditingIndex]
+    val currentEditingRule = editingRule
+    if (currentEditingRule != null) {
+        val isNewRule = currentEditingIndex == null
         AlertDialog(
-            onDismissRequest = { editingRuleIndex = null },
-            title = { Text(thinkingRulePreviewTitle(editingRule)) },
+            onDismissRequest = {
+                editingRuleIndex = null
+                editingRule = null
+            },
+            title = {
+                Text(
+                    if (isNewRule) "新建思考配置" else thinkingRulePreviewTitle(currentEditingRule)
+                )
+            },
             text = {
                 Column(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
@@ -1226,24 +1260,48 @@ private fun ThinkingConfigurationsSection(
                         Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }
                     ThinkingRuleEditForm(
-                        rule = editingRule,
-                        onRuleChange = { nextRule -> rules = rules.toMutableList().also { it[currentEditingIndex] = nextRule } }
+                        rule = currentEditingRule,
+                        onRuleChange = { nextRule -> editingRule = nextRule }
                     )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { editingRuleIndex = null }) {
-                    Text(stringResource(R.string.done))
+                TextButton(
+                    onClick = {
+                        if (currentEditingIndex == null) {
+                            rules = rules + currentEditingRule
+                        } else if (currentEditingIndex in rules.indices) {
+                            rules = rules.toMutableList().also {
+                                it[currentEditingIndex] = currentEditingRule
+                            }
+                        }
+                        editingRuleIndex = null
+                        editingRule = null
+                    }
+                ) {
+                    Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
-                TextButton(
-                    onClick = {
-                        rules = rules.toMutableList().also { it.removeAt(currentEditingIndex) }
-                        editingRuleIndex = null
+                if (currentEditingIndex == null) {
+                    TextButton(
+                        onClick = {
+                            editingRuleIndex = null
+                            editingRule = null
+                        }
+                    ) {
+                        Text(stringResource(R.string.cancel))
                     }
-                ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                } else {
+                    TextButton(
+                        onClick = {
+                            rules = rules.toMutableList().also { it.removeAt(currentEditingIndex) }
+                            editingRuleIndex = null
+                            editingRule = null
+                        }
+                    ) {
+                        Text(stringResource(R.string.delete_action), color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
             shape = RoundedCornerShape(16.dp)
@@ -1262,8 +1320,12 @@ private fun thinkingRulePreviewTitle(rule: ThinkingRuleEditor): String {
 
 @Composable
 private fun ThinkingRulePreviewCard(
+    index: Int,
+    totalCount: Int,
     rule: ThinkingRuleEditor,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
 ) {
     val controlText = thinkingControlChoices.firstOrNull { it.first == rule.control }?.second ?: rule.control
     val detail = if (rule.control == "levels") "${rule.options.size} 档" else "开关"
@@ -1274,16 +1336,33 @@ private fun ThinkingRulePreviewCard(
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Text(
+                    text = (index + 1).toString(),
+                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 10.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
                 Text(
                     text = thinkingRulePreviewTitle(rule),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Medium,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
                 )
                 Text(
                     text = "$controlText · $detail · $parameterText",
@@ -1293,7 +1372,28 @@ private fun ThinkingRulePreviewCard(
                     overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(
+                onClick = onMoveUp,
+                enabled = index > 0,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowUp,
+                    contentDescription = stringResource(R.string.thinking_config_rule_move_up),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+            IconButton(
+                onClick = onMoveDown,
+                enabled = index < totalCount - 1,
+                modifier = Modifier.size(32.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.KeyboardArrowDown,
+                    contentDescription = stringResource(R.string.thinking_config_rule_move_down),
+                    modifier = Modifier.size(20.dp),
+                )
+            }
             Icon(
                 imageVector = if (rule.enabled) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                 contentDescription = if (rule.enabled) "已启用" else "已停用",

@@ -4311,7 +4311,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="market_manage_resubmit">Trimite din nou</string>
     <string name="market_manage_resubmitting_title">Se trimite din nou</string>
     <string name="market_manage_resubmitting_message">Se trimite cererea de verificare, vă rugăm să așteptați puțin…</string>
-    <string name="market_manage_resubmit_cooldown_message">Această intrare a intrat în perioada de răcire locală, rămânând %1$s Abia apoi îl puteți trimite din nou.</string>
     <string name="market_manage_resubmit_rejected_blocked">Această intrare a fost respinsă; clientul nu are permisiunea să o trimită din nou.</string>
     <string name="market_manage_resubmit_state_blocked">Numai înregistrările respinse pot fi retrimise.</string>
     <string name="market_manage_resubmit_confirm_title">Doriți să confirmați retrimiterea?</string>
@@ -4320,7 +4319,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="market_manage_resubmit_last_reason">Motivul respingerii:%1$s</string>
     <string name="market_manage_review_detail">Detalii privind evaluarea: %1$s</string>
     <string name="market_manage_review_dialog_title">Starea verificării</string>
-    <string name="market_manage_resubmit_confirm_warning">Vă rugăm să vă asigurați că ați efectuat modificările în conformitate cu motivul respingerii. După trimiterea cu succes, la nivel local 12 Nu se poate trimite din nou în decurs de o oră.</string>
     <string name="market_manage_resubmit_confirm_action">Confirmare trimitere</string>
     <string name="market_error_load_failed">Încărcarea a eșuat</string>
     <string name="market_error_action_failed">Operațiunea a eșuat</string>

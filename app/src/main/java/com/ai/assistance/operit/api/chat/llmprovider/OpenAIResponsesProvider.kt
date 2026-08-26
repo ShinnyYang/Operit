@@ -27,7 +27,8 @@ open class OpenAIResponsesProvider(
     supportsVideo: Boolean = false,
     supportsFiles: Boolean = false,
     enableToolCall: Boolean = false,
-    thinkingConfigurations: String = ""
+    thinkingConfigurations: String = "",
+    thinkingOptionId: String = ""
 ) : OpenAIProvider(
     apiEndpoint = responsesApiEndpoint,
     apiKeyProvider = apiKeyProvider,
@@ -40,7 +41,8 @@ open class OpenAIResponsesProvider(
     supportsVideo = supportsVideo,
     supportsFiles = supportsFiles,
     enableToolCall = enableToolCall,
-    thinkingConfigurations = thinkingConfigurations
+    thinkingConfigurations = thinkingConfigurations,
+    thinkingOptionId = thinkingOptionId
 ) {
     override val useResponsesApi: Boolean = true
 
@@ -117,6 +119,7 @@ open class OpenAIResponsesProvider(
             apiEndpoint = responsesApiEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
     }
 

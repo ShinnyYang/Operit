@@ -111,9 +111,8 @@ class ApiPreferences private constructor(private val context: Context) {
         // Default values
         const val DEFAULT_FEATURE_TOGGLE_STATE = false
         const val DEFAULT_KEEP_SCREEN_ON = true
-        // Keys for Thinking Mode and Thinking Guidance
+        // Key for the global thinking-mode toggle
         val ENABLE_THINKING_MODE = booleanPreferencesKey("enable_thinking_mode")
-        val THINKING_OPTION_ID = stringPreferencesKey("thinking_option_id")
 
         // Key for Memory Auto Update
         val ENABLE_MEMORY_AUTO_UPDATE = booleanPreferencesKey("enable_memory_auto_update")
@@ -148,9 +147,8 @@ class ApiPreferences private constructor(private val context: Context) {
         val MAX_IMAGE_HISTORY_USER_TURNS = intPreferencesKey("max_image_history_user_turns")
         val MAX_MEDIA_HISTORY_USER_TURNS = intPreferencesKey("max_media_history_user_turns")
 
-        // Default values for Thinking Mode
+        // Default value for the global Thinking Mode toggle
         const val DEFAULT_ENABLE_THINKING_MODE = false
-        const val DEFAULT_THINKING_OPTION_ID = ""
 
         // Default value for Memory Auto Update
         const val DEFAULT_ENABLE_MEMORY_AUTO_UPDATE = true
@@ -257,11 +255,6 @@ class ApiPreferences private constructor(private val context: Context) {
     val enableThinkingModeFlow: Flow<Boolean> =
         context.apiDataStore.data.map { preferences ->
             preferences[ENABLE_THINKING_MODE] ?: DEFAULT_ENABLE_THINKING_MODE
-        }
-
-    val thinkingOptionIdFlow: Flow<String> =
-        context.apiDataStore.data.map { preferences ->
-            preferences[THINKING_OPTION_ID] ?: DEFAULT_THINKING_OPTION_ID
         }
 
     // Flow for Memory Auto Update
@@ -372,22 +365,11 @@ class ApiPreferences private constructor(private val context: Context) {
         context.apiDataStore.edit { preferences -> preferences[ENABLE_THINKING_MODE] = isEnabled }
     }
 
-    suspend fun saveThinkingOptionId(optionId: String) {
-        context.apiDataStore.edit { preferences ->
-            preferences[THINKING_OPTION_ID] = optionId.trim()
-        }
-    }
-
     suspend fun updateThinkingSettings(
-        enableThinkingMode: Boolean? = null,
-        thinkingOptionId: String? = null
+        enableThinkingMode: Boolean? = null
     ) {
         context.apiDataStore.edit { preferences ->
             enableThinkingMode?.let { preferences[ENABLE_THINKING_MODE] = it }
-
-            thinkingOptionId?.let {
-                preferences[THINKING_OPTION_ID] = it.trim()
-            }
         }
     }
 

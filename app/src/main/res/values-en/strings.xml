@@ -8053,6 +8053,7 @@
     <string name="artifact_publish_published_name_readonly">The name of a published artifact cannot be modified</string>
     <string name="artifact_publish_locked_name_must_match_source">When publishing based on a version, the plugin name must match the source version</string>
     <string name="artifact_publish_published_version_readonly">The version number of a published node cannot be modified</string>
+    <string name="artifact_publish_toolpkg_version_readonly">ToolPkg publish version comes from the package manifest and cannot be edited before publishing</string>
     <string name="artifact_publish_save_artifact_info">Save artifact info</string>
     <string name="artifact_publish_publish_update_version">Publish update version</string>
     <string name="artifact_publish_confirm_save_artifact_info">Confirm save artifact info</string>
@@ -8112,10 +8113,8 @@
     <string name="artifact_publish_encrypt_market_toolpkg_title">Minify and Obfuscate for Publishing</string>
 
     <string name="market_manage_resubmit">Resubmit</string>
-    <string name="market_manage_revision_cooldown">Revision submission is cooling down after the review return. Please wait %1$s.</string>
     <string name="market_manage_resubmitting_title">Resubmitting</string>
     <string name="market_manage_resubmitting_message">Submitting review request, please wait…</string>
-    <string name="market_manage_resubmit_cooldown_message">This entry is in local cooldown. Remaining %1$s before resubmission.</string>
     <string name="market_manage_resubmit_rejected_blocked">This entry has been rejected and the client does not allow resubmission.</string>
     <string name="market_manage_resubmit_state_blocked">Only returned entries can be resubmitted.</string>
     <string name="market_manage_resubmit_confirm_title">Confirm resubmission?</string>
@@ -8124,7 +8123,6 @@
     <string name="market_manage_resubmit_last_reason">Return reason: %1$s</string>
     <string name="market_manage_review_detail">Review detail: %1$s</string>
     <string name="market_manage_review_dialog_title">Review Status</string>
-    <string name="market_manage_resubmit_confirm_warning">Please confirm that modifications have been made according to the return reason. After successful submission, resubmission is not allowed within 12 hours locally.</string>
     <string name="market_manage_resubmit_confirm_action">Confirm Submission</string>
     <string name="artifact_publish_encrypt_market_toolpkg_desc">When enabled, executable scripts in ToolPkg will undergo JS syntax tree compression. The compressed package remains a normal ZIP and can be imported directly.</string>
     <string name="artifact_publish_encrypt_market_toolpkg_confirmation">Compress and obfuscate release: %1$s</string>

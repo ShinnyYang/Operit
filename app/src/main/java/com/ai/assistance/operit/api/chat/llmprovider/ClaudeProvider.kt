@@ -50,7 +50,8 @@ open class ClaudeProvider(
     private val providerType: ApiProviderType = ApiProviderType.ANTHROPIC,
     private val enableToolCall: Boolean = false, // 是否启用Tool Call接口（预留，Claude有原生tool支持）
     private val enableClaude1hPromptCache: Boolean = false,
-    private val thinkingConfigurations: String = ""
+    private val thinkingConfigurations: String = "",
+    private val thinkingOptionId: String = ""
 ) : AIService {
     // private val client: OkHttpClient = HttpClientFactory.instance
 
@@ -1106,6 +1107,7 @@ open class ClaudeProvider(
             apiEndpoint = apiEndpoint,
             thinkingConfigurations = thinkingConfigurations,
             enableThinking = enableThinking,
+            optionId = thinkingOptionId,
         )
 
         // 日志输出时省略过长的tools字段
