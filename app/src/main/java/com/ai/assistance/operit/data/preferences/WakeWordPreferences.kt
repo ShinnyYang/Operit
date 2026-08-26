@@ -134,7 +134,9 @@ class WakeWordPreferences(private val context: Context) {
             val raw = preferences[KEY_VOICE_AUTO_ATTACH_ITEMS_JSON]
             if (raw.isNullOrBlank()) return
 
-            val existingItems = json.decodeFromString<List<VoiceAutoAttachItem>>(raw)
+            val existingItems = runCatching {
+                json.decodeFromString<List<VoiceAutoAttachItem>>(raw)
+            }.getOrNull() ?: return
             val usedTypes = existingItems.map { it.type }.toSet()
             val missingDefaults = getDefaultVoiceAutoAttachItems(context)
                 .filterNot { usedTypes.contains(it.type) }

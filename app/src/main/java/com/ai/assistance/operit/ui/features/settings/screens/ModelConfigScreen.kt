@@ -1168,13 +1168,13 @@ private fun ThinkingConfigurationsSection(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            Text(
-                text = "$enabledRuleCount/${rules.size} 条启用 · $controlSummary",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
             AnimatedVisibility(visible = sectionExpanded) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "$enabledRuleCount/${rules.size} 条启用 · $controlSummary",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     configurationError?.let { message ->
                         Text(message, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                     }

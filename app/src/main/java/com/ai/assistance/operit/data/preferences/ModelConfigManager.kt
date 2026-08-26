@@ -73,9 +73,11 @@ class ModelConfigManager(private val context: Context) {
                     ?: emptyList()
             if (configList.isNotEmpty()) return
 
-            val defaultConfig = createFreshDefaultConfig(context)
-            preferences[stringPreferencesKey("config_${DEFAULT_CONFIG_ID}")] =
-                    json.encodeToString(defaultConfig)
+            val defaultConfigKey = stringPreferencesKey("config_${DEFAULT_CONFIG_ID}")
+            if (preferences[defaultConfigKey].isNullOrBlank()) {
+                val defaultConfig = createFreshDefaultConfig(context)
+                preferences[defaultConfigKey] = json.encodeToString(defaultConfig)
+            }
             preferences[CONFIG_LIST_KEY] = json.encodeToString(listOf(DEFAULT_CONFIG_ID))
         }
 
@@ -117,6 +119,10 @@ class ModelConfigManager(private val context: Context) {
                 val configKey = stringPreferencesKey("config_${configId}")
                 val configJson = preferences[configKey] ?: return@forEach
                 val config = json.decodeFromString<ModelConfigData>(configJson)
+                val currentThinkingConfigurations = config.thinkingConfigurations.trim()
+                if (currentThinkingConfigurations.isNotEmpty() && currentThinkingConfigurations != "[]") {
+                    return@forEach
+                }
                 preferences[configKey] =
                         json.encodeToString(
                                 config.copy(
