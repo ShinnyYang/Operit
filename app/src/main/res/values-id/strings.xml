@@ -3574,6 +3574,8 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="enable_direct_video_processing_desc">Setelah diaktifkan, video akan langsung dikirim ke AI untuk diproses, bukan dianalisis melalui alat ekstraksi frame/analisis</string>
     <string name="enable_google_search">Aktifkan Google Search</string>
     <string name="enable_google_search_desc">Setelah diaktifkan, Gemini akan menggunakan Google Search untuk meningkatkan jawaban (mungkin menimbulkan biaya tambahan)</string>
+    <string name="enable_deepseek_web_search">Aktifkan pencarian web DeepSeek</string>
+    <string name="enable_deepseek_web_search_desc">Izinkan API Responses DeepSeek memanggil alat pencarian web di server.</string>
     <string name="enable_claude_1h_prompt_cache">Aktifkan cache prompt Claude 1 jam</string>
     <string name="enable_claude_1h_prompt_cache_desc">Setelah diaktifkan, Claude dan penyedia kompatibel Claude akan memakai TTL cache prompt 1 jam</string>
     <string name="enable_tool_call">Model mendukung ToolCall</string>
@@ -6415,6 +6417,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="enhanced_processing_message">Memproses pesan...</string>
     <string name="enhanced_connecting_service">Menghubungkan ke layanan AI...</string>
     <string name="enhanced_receiving_response">Menerima respons AI...</string>
+    <string name="server_tool_running">Memanggil alat sisi server: %1$s...</string>
     <string name="enhanced_error_with_message">Kesalahan: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Peringatan: Harap keluarkan konten utama, dilarang hanya mengeluarkan konten pemikiran.</string>
     <string name="enhanced_truncated_tool_call_warning">Peringatan: Terdeteksi output panggilan alat terpotong. Semua panggilan alat pada putaran ini telah dibatalkan dan tidak akan dieksekusi. Coba kurangi output sekali pakai, pecah tugas, atau ganti model/penyedia yang lebih sesuai dan coba lagi.</string>

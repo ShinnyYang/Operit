@@ -563,20 +563,40 @@ object AIServiceFactory {
                     thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.DEEPSEEK ->
-                DeepseekProvider(
-                    apiEndpoint = config.apiEndpoint,
-                    apiKeyProvider = apiKeyProvider,
-                    modelName = config.modelName,
-                    client = httpClient,
-                    customHeaders = customHeaders,
-                    providerType = providerType,
-                    supportsVision = supportsVision,
-                    supportsAudio = supportsAudio,
-                    supportsVideo = supportsVideo,
-                    enableToolCall = enableToolCall,
-                    thinkingConfigurations = config.thinkingConfigurations,
-                    thinkingOptionId = config.thinkingOptionId,
-                )
+                when (EndpointCompleter.resolveDeepSeekProtocol(config.apiEndpoint)) {
+                    DeepSeekApiProtocol.CHAT_COMPLETIONS ->
+                        DeepseekProvider(
+                            apiEndpoint = config.apiEndpoint,
+                            apiKeyProvider = apiKeyProvider,
+                            modelName = config.modelName,
+                            client = httpClient,
+                            customHeaders = customHeaders,
+                            providerType = providerType,
+                            supportsVision = supportsVision,
+                            supportsAudio = supportsAudio,
+                            supportsVideo = supportsVideo,
+                            enableToolCall = enableToolCall,
+                            thinkingConfigurations = config.thinkingConfigurations,
+                            thinkingOptionId = config.thinkingOptionId,
+                        )
+
+                    DeepSeekApiProtocol.RESPONSES ->
+                        OpenAIResponsesProvider(
+                            responsesApiEndpoint = config.apiEndpoint,
+                            apiKeyProvider = apiKeyProvider,
+                            modelName = config.modelName,
+                            client = httpClient,
+                            customHeaders = customHeaders,
+                            responsesProviderType = providerType,
+                            supportsVision = supportsVision,
+                            supportsAudio = supportsAudio,
+                            supportsVideo = supportsVideo,
+                            enableToolCall = enableToolCall,
+                            thinkingConfigurations = config.thinkingConfigurations,
+                            thinkingOptionId = config.thinkingOptionId,
+                            enableServerWebSearch = config.enableDeepSeekWebSearch,
+                        )
+                }
             ApiProviderType.MISTRAL ->
                 MistralProvider(
                     apiEndpoint = config.apiEndpoint,

@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.VisualTransformation
 import com.ai.assistance.operit.R
+import com.ai.assistance.operit.api.chat.llmprovider.DeepSeekApiProtocol
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.llmprovider.AIServiceFactory
@@ -209,6 +210,10 @@ fun ModelApiSettingsSection(
     // Google Search Grounding 配置状态 (仅Gemini)
     var enableGoogleSearchInput by remember(config.id) { mutableStateOf(config.enableGoogleSearch) }
 
+    var enableDeepSeekWebSearchInput by remember(config.id) {
+        mutableStateOf(config.enableDeepSeekWebSearch)
+    }
+
     // Claude 1小时提示缓存配置状态 (仅Claude)
     var enableClaude1hPromptCacheInput by remember(config.id) {
         mutableStateOf(config.enableClaude1hPromptCache)
@@ -241,6 +246,7 @@ fun ModelApiSettingsSection(
         val enableDirectAudioProcessing: Boolean,
         val enableDirectVideoProcessing: Boolean,
         val enableGoogleSearch: Boolean,
+        val enableDeepSeekWebSearch: Boolean,
         val enableClaude1hPromptCache: Boolean,
         val enableToolCall: Boolean,
     )
@@ -265,6 +271,7 @@ fun ModelApiSettingsSection(
                     enableDirectAudioProcessing = state.enableDirectAudioProcessing,
                     enableDirectVideoProcessing = state.enableDirectVideoProcessing,
                     enableGoogleSearch = state.enableGoogleSearch,
+                    enableDeepSeekWebSearch = state.enableDeepSeekWebSearch,
                     enableClaude1hPromptCache = state.enableClaude1hPromptCache,
                     enableToolCall = state.enableToolCall,
                 )
@@ -292,6 +299,7 @@ fun ModelApiSettingsSection(
             enableDirectAudioProcessing = enableDirectAudioProcessingInput,
             enableDirectVideoProcessing = enableDirectVideoProcessingInput,
             enableGoogleSearch = enableGoogleSearchInput,
+            enableDeepSeekWebSearch = enableDeepSeekWebSearchInput,
             enableClaude1hPromptCache = enableClaude1hPromptCacheInput,
             enableToolCall = enableToolCallInput,
         )
@@ -868,6 +876,17 @@ fun ModelApiSettingsSection(
                             checked = enableGoogleSearchInput,
                             onCheckedChange = { enableGoogleSearchInput = it }
                     )
+            }
+
+            if (selectedApiProvider == ApiProviderType.DEEPSEEK &&
+                EndpointCompleter.resolveDeepSeekProtocol(apiEndpointInput) ==
+                    DeepSeekApiProtocol.RESPONSES) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.enable_deepseek_web_search),
+                    subtitle = stringResource(R.string.enable_deepseek_web_search_desc),
+                    checked = enableDeepSeekWebSearchInput,
+                    onCheckedChange = { enableDeepSeekWebSearchInput = it }
+                )
             }
 
             // Claude 1小时提示缓存开关 (仅Claude支持)

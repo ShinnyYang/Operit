@@ -3763,6 +3763,8 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="enable_direct_video_processing_desc">Al activarlo, el video se enviará directamente a la IA para su procesamiento, en lugar de extraer fotogramas/analizar mediante una herramienta</string>
     <string name="enable_google_search">Habilitar Google Search</string>
     <string name="enable_google_search_desc">Al activarlo, Gemini usará Google Search para mejorar las respuestas (pueden generarse costos adicionales)</string>
+    <string name="enable_deepseek_web_search">Habilitar búsqueda web de DeepSeek</string>
+    <string name="enable_deepseek_web_search_desc">Permite que la API Responses de DeepSeek use su herramienta de búsqueda web del servidor.</string>
     <string name="enable_claude_1h_prompt_cache">Habilitar caché de prompts de Claude de 1 hora</string>
     <string name="enable_claude_1h_prompt_cache_desc">Al activarlo, Claude y proveedores compatibles con Claude usarán un TTL de caché de prompts de 1 hora</string>
     <string name="search_sources">Fuentes de búsqueda</string>
@@ -6903,6 +6905,7 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="enhanced_processing_message">Procesando mensaje...</string>
     <string name="enhanced_connecting_service">Conectando al servicio de IA...</string>
     <string name="enhanced_receiving_response">Recibiendo respuesta de la IA...</string>
+    <string name="server_tool_running">Llamando a la herramienta del servidor: %1$s...</string>
     <string name="enhanced_error_with_message">Error: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Advertencia: por favor, genere contenido del cuerpo del texto; no está permitido generar solo contenido de pensamiento.</string>
     <string name="enhanced_truncated_tool_call_warning">Advertencia: se detectó que la salida de la invocación de herramientas fue truncada. Todas las invocaciones de herramientas de esta ronda han sido invalidadas y no se ejecutarán. Intente reducir la salida única, dividir la tarea o cambiar a un modelo/proveedor más adecuado y vuelva a intentarlo.</string>

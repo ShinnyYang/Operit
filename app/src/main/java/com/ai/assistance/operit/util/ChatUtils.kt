@@ -31,6 +31,20 @@ object ChatUtils {
         }
     }
 
+    fun stripOpenAiResponsesWebSearchMeta(content: String): String {
+        return ChatMarkupRegex.removeOpenAiResponsesWebSearchMeta(content)
+    }
+
+    fun stripOpenAiResponsesMetadata(content: String): String {
+        return stripOpenAiResponsesWebSearchMeta(stripOpenAiResponsesReasoningMeta(content))
+    }
+
+    fun stripOpenAiResponsesMetadataTurns(messages: List<PromptTurn>): List<PromptTurn> {
+        return messages.map { turn ->
+            turn.withContent(stripOpenAiResponsesMetadata(turn.content))
+        }
+    }
+
     fun isGeminiProviderModel(providerModel: String): Boolean {
         return when (providerModel.substringBefore(":").uppercase()) {
             "GOOGLE", "GEMINI_GENERIC" -> true
