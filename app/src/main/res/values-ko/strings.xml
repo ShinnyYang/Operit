@@ -3469,8 +3469,6 @@
     <string name="enable_direct_video_processing_desc">활성화되면 도구 기반 프레임 추출/분석 대신 처리를 위해 비디오가 AI로 직접 전송됩니다.</string>
     <string name="enable_google_search">Google 검색 활성화</string>
     <string name="enable_google_search_desc">활성화하면 Gemini는 Google 검색을 사용하여 응답을 향상합니다(추가 비용이 발생할 수 있음).</string>
-    <string name="enable_deepseek_web_search">DeepSeek 웹 검색 활성화</string>
-    <string name="enable_deepseek_web_search_desc">DeepSeek Responses API가 서버 웹 검색 도구를 호출하도록 허용합니다.</string>
     <string name="enable_claude_1h_prompt_cache">Claude 1시간 프롬프트 캐시 활성화</string>
     <string name="enable_claude_1h_prompt_cache_desc">활성화되면 Claude 및 Claude 호환 제공자는 1시간 프롬프트 캐시 TTL을 사용합니다.</string>
     <string name="enable_tool_call">ToolCall을 지원하는 모델</string>
@@ -6521,7 +6519,6 @@
     <string name="enhanced_processing_message">메시지 처리 중...</string>
     <string name="enhanced_connecting_service">AI 서비스에 연결하는 중...</string>
     <string name="enhanced_receiving_response">AI 응답을 받는 중...</string>
-    <string name="server_tool_running">서버 도구 호출 중: %1$s...</string>
     <string name="enhanced_error_with_message">오류: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">경고: 주요 내용을 출력하고 생각만 하는 응답은 출력하지 마십시오.</string>
     <string name="enhanced_truncated_tool_call_warning">경고: 모델 출력 제한으로 인해 도구 호출이 잘렸습니다. 이번 라운드의 모든 도구 호출이 무효화되어 실행되지 않습니다. 단일 회전 출력을 줄이거나, 작업을 분할하거나, 더 적합한 모델/공급업체로 전환해 보세요.</string>

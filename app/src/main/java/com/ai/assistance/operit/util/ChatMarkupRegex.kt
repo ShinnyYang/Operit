@@ -1,23 +1,12 @@
 package com.ai.assistance.operit.util
 
 import java.security.SecureRandom
-import java.util.Base64
-import org.json.JSONObject
-
-data class ServerToolCallRecord(
-    val callId: String,
-    val toolType: String,
-    val status: String,
-    val actionType: String,
-    val actionSummary: String,
-    val rawJson: String,
-)
 
 object ChatMarkupRegex {
     private const val TOOL_TAG_SUFFIX_REGEX_SOURCE = "[A-Za-z0-9_]+"
     private const val GEMINI_THOUGHT_SIGNATURE_PROVIDER = "gemini:thought_signature"
     private const val OPENAI_RESPONSES_REASONING_PROVIDER = "openai:responses_reasoning"
-    private const val OPENAI_RESPONSES_WEB_SEARCH_PROVIDER = "openai:responses_web_search"
+    private const val OPENAI_RESPONSES_OUTPUT_ITEM_PROVIDER = "openai:responses_output_item"
     const val TOOL_TAG_NAME_REGEX_SOURCE =
         "tool(?:_(?!result(?:_|\\b))$TOOL_TAG_SUFFIX_REGEX_SOURCE)?"
     const val TOOL_RESULT_TAG_NAME_REGEX_SOURCE = "tool_result(?:_${TOOL_TAG_SUFFIX_REGEX_SOURCE})?"
@@ -102,8 +91,6 @@ object ChatMarkupRegex {
     val toolParamPattern = Regex("<param\\s+name=\"([^\"]+)\">([\\s\\S]*?)</param>")
 
     val nameAttr = Regex("name\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
-
-    val toolCallIdAttr = Regex("call_id\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
 
     val statusAttr = Regex("status\\s*=\\s*\"([^\"]+)\"", RegexOption.IGNORE_CASE)
 
@@ -256,8 +243,8 @@ object ChatMarkupRegex {
         return """<meta provider="$OPENAI_RESPONSES_REASONING_PROVIDER">$payloadBase64</meta>"""
     }
 
-    fun openAiResponsesWebSearchMetaTag(payloadBase64: String): String {
-        return """<meta provider="$OPENAI_RESPONSES_WEB_SEARCH_PROVIDER">$payloadBase64</meta>"""
+    fun openAiResponsesOutputItemMetaTag(payloadBase64: String): String {
+        return """<meta provider="$OPENAI_RESPONSES_OUTPUT_ITEM_PROVIDER">$payloadBase64</meta>"""
     }
 
     fun extractGeminiThoughtSignature(content: String): String? {
@@ -278,11 +265,19 @@ object ChatMarkupRegex {
     }
 
     fun extractOpenAiResponsesReasoningPayloads(content: String): List<String> {
+        return extractMetaPayloads(content, OPENAI_RESPONSES_REASONING_PROVIDER)
+    }
+
+    fun extractOpenAiResponsesOutputItemPayloads(content: String): List<String> {
+        return extractMetaPayloads(content, OPENAI_RESPONSES_OUTPUT_ITEM_PROVIDER)
+    }
+
+    private fun extractMetaPayloads(content: String, expectedProvider: String): List<String> {
         return metaTag.findAll(content)
             .mapNotNull { match ->
                 val tagContent = match.value
                 val provider = extractMetaProvider(tagContent)
-                if (!provider.equals(OPENAI_RESPONSES_REASONING_PROVIDER, ignoreCase = true)) {
+                if (!provider.equals(expectedProvider, ignoreCase = true)) {
                     return@mapNotNull null
                 }
                 metaBodyRegex.find(tagContent)
@@ -292,87 +287,29 @@ object ChatMarkupRegex {
                     ?.takeIf { it.isNotEmpty() }
             }
             .toList()
-    }
-
-    fun extractOpenAiResponsesWebSearchPayloads(content: String): List<String> {
-        return metaTag.findAll(content)
-            .mapNotNull { match ->
-                val tagContent = match.value
-                val provider = extractMetaProvider(tagContent)
-                if (!provider.equals(OPENAI_RESPONSES_WEB_SEARCH_PROVIDER, ignoreCase = true)) {
-                    return@mapNotNull null
-                }
-                metaBodyRegex.find(tagContent)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.trim()
-                    ?.takeIf { it.isNotEmpty() }
-            }
-            .toList()
-    }
-
-    fun parseOpenAiResponsesServerToolCall(content: String): ServerToolCallRecord? {
-        val payload = extractOpenAiResponsesWebSearchPayloads(content).singleOrNull() ?: return null
-
-        return runCatching {
-            val decodedPayload = String(Base64.getDecoder().decode(payload), Charsets.UTF_8)
-            val item = JSONObject(decodedPayload)
-            val callId = item.optString("id", "").trim()
-            val status = item.optString("status", "").trim()
-            if (
-                item.optString("type", "") != "web_search_call" ||
-                    callId.isEmpty() ||
-                    status.isEmpty()
-            ) {
-                return null
-            }
-
-            val action = item.optJSONObject("action")
-            val actionType = action?.optString("type", "")?.trim().orEmpty()
-            ServerToolCallRecord(
-                callId = callId,
-                toolType = "web_search",
-                status = status,
-                actionType = actionType,
-                actionSummary = extractWebSearchActionSummary(action, actionType),
-                rawJson = item.toString(2),
-            )
-        }.getOrNull()
     }
 
     fun removeGeminiThoughtSignatureMeta(content: String): String {
-        var removed = false
-        val result = metaTag.replace(content) { match ->
-            val provider = extractMetaProvider(match.value)
-            if (provider.equals(GEMINI_THOUGHT_SIGNATURE_PROVIDER, ignoreCase = true)) {
-                removed = true
-                ""
-            } else {
-                match.value
-            }
-        }
-        return if (removed) result.trimEnd() else result
+        return removeMetaByProvider(content, GEMINI_THOUGHT_SIGNATURE_PROVIDER)
     }
 
     fun removeOpenAiResponsesReasoningMeta(content: String): String {
-        var removed = false
-        val result = metaTag.replace(content) { match ->
-            val provider = extractMetaProvider(match.value)
-            if (provider.equals(OPENAI_RESPONSES_REASONING_PROVIDER, ignoreCase = true)) {
-                removed = true
-                ""
-            } else {
-                match.value
-            }
-        }
-        return if (removed) result.trimEnd() else result
+        return removeMetaByProvider(content, OPENAI_RESPONSES_REASONING_PROVIDER)
     }
 
-    fun removeOpenAiResponsesWebSearchMeta(content: String): String {
+    fun removeOpenAiResponsesOutputItemMeta(content: String): String {
+        return removeMetaByProvider(content, OPENAI_RESPONSES_OUTPUT_ITEM_PROVIDER)
+    }
+
+    fun removeOpenAiResponsesProtocolMeta(content: String): String {
+        return removeOpenAiResponsesOutputItemMeta(removeOpenAiResponsesReasoningMeta(content))
+    }
+
+    private fun removeMetaByProvider(content: String, expectedProvider: String): String {
         var removed = false
         val result = metaTag.replace(content) { match ->
             val provider = extractMetaProvider(match.value)
-            if (provider.equals(OPENAI_RESPONSES_WEB_SEARCH_PROVIDER, ignoreCase = true)) {
+            if (provider.equals(expectedProvider, ignoreCase = true)) {
                 removed = true
                 ""
             } else {
@@ -387,29 +324,6 @@ object ChatMarkupRegex {
             .find(metaTagContent.substringBefore('>'))
             ?.groupValues
             ?.getOrNull(1)
-    }
-
-    private fun extractWebSearchActionSummary(action: JSONObject?, actionType: String): String {
-        if (action == null) return ""
-
-        return when (actionType) {
-            "search" -> {
-                val query = action.optString("query", "").trim()
-                if (query.isNotEmpty()) {
-                    query
-                } else {
-                    val queries = action.optJSONArray("queries") ?: return ""
-                    buildList {
-                        for (index in 0 until queries.length()) {
-                            queries.optString(index, "").trim().takeIf { it.isNotEmpty() }?.let(::add)
-                        }
-                    }.joinToString(" · ")
-                }
-            }
-            "open_page" -> action.optString("url", "").trim()
-            "find" -> action.optString("pattern", "").trim()
-            else -> ""
-        }
     }
 
     private fun generateRandomTagCode(length: Int = 4): String {

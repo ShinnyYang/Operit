@@ -4,15 +4,12 @@ import kotlinx.coroutines.CoroutineScope
 
 data class TextStreamEvent(
     val eventType: TextStreamEventType,
-    val id: String,
-    val toolType: String? = null
+    val id: String
 )
 
 enum class TextStreamEventType {
     SAVEPOINT,
-    ROLLBACK,
-    SERVER_TOOL_STARTED,
-    SERVER_TOOL_COMPLETED
+    ROLLBACK
 }
 
 interface TextStreamEventCarrier {

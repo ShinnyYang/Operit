@@ -3843,8 +3843,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="enable_direct_video_processing_desc">După activare, videoclipul va fi trimis direct cătreAIPrelucrare, nu extragerea cadrelor cu ajutorul unor instrumente/Analiză</string>
     <string name="enable_google_search">Activare Google Search</string>
     <string name="enable_google_search_desc">După activare,Gemini Se va utiliza Google Căutare pentru a îmbunătăți răspunsul (pot apărea costuri suplimentare)</string>
-    <string name="enable_deepseek_web_search">Activare căutare web DeepSeek</string>
-    <string name="enable_deepseek_web_search_desc">Permiteți API-ului Responses DeepSeek să apeleze instrumentul de căutare web al serverului.</string>
     <string name="enable_claude_1h_prompt_cache">Activare Claude 1 Cache pentru alerte orare</string>
     <string name="enable_claude_1h_prompt_cache_desc">După activare,Claude și Claude Cache-ul de sugestii compatibil cu furnizorul TTL Se va utiliza 1 oră</string>
     <string name="enable_tool_call">Suport pentru modeleToolCall</string>
@@ -7428,7 +7426,6 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="enhanced_processing_message">Se procesează mesajul...</string>
     <string name="enhanced_connecting_service">Se conecteazăAIServicii...</string>
     <string name="enhanced_receiving_response">Se recepționeazăAIRăspuns...</string>
-    <string name="server_tool_running">Se apelează instrumentul de pe server: %1$s...</string>
     <string name="enhanced_error_with_message">Eroare: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Avertisment: Vă rugăm să introduceți conținutul principal; nu este permisă introducerea exclusivă a gândurilor personale.</string>
     <string name="enhanced_truncated_tool_call_warning">Avertisment: s-a detectat că ieșirea apelurilor de instrumente a fost trunchiată. Toate apelurile de instrumente din această rundă au fost anulate și nu vor fi executate. Vă rugăm să încercați să reduceți ieșirea pe apel, să împărțiți sarcina sau să utilizați un model mai adecvat./Încercați din nou după ce ați selectat furnizorul.</string>

@@ -394,6 +394,7 @@ object AIServiceFactory {
                     supportsVideo = false,
                     supportsFiles = supportsVision,
                     enableToolCall = enableToolCall,
+                    enableWebSearch = config.enableCodexWebSearch,
                     thinkingConfigurations = config.thinkingConfigurations,
                     thinkingOptionId = config.thinkingOptionId,
                 )
@@ -563,40 +564,16 @@ object AIServiceFactory {
                     thinkingOptionId = config.thinkingOptionId,
                 )
             ApiProviderType.DEEPSEEK ->
-                when (EndpointCompleter.resolveDeepSeekProtocol(config.apiEndpoint)) {
-                    DeepSeekApiProtocol.CHAT_COMPLETIONS ->
-                        DeepseekProvider(
-                            apiEndpoint = config.apiEndpoint,
-                            apiKeyProvider = apiKeyProvider,
-                            modelName = config.modelName,
-                            client = httpClient,
-                            customHeaders = customHeaders,
-                            providerType = providerType,
-                            supportsVision = supportsVision,
-                            supportsAudio = supportsAudio,
-                            supportsVideo = supportsVideo,
-                            enableToolCall = enableToolCall,
-                            thinkingConfigurations = config.thinkingConfigurations,
-                            thinkingOptionId = config.thinkingOptionId,
-                        )
-
-                    DeepSeekApiProtocol.RESPONSES ->
-                        OpenAIResponsesProvider(
-                            responsesApiEndpoint = config.apiEndpoint,
-                            apiKeyProvider = apiKeyProvider,
-                            modelName = config.modelName,
-                            client = httpClient,
-                            customHeaders = customHeaders,
-                            responsesProviderType = providerType,
-                            supportsVision = supportsVision,
-                            supportsAudio = supportsAudio,
-                            supportsVideo = supportsVideo,
-                            enableToolCall = enableToolCall,
-                            thinkingConfigurations = config.thinkingConfigurations,
-                            thinkingOptionId = config.thinkingOptionId,
-                            enableServerWebSearch = config.enableDeepSeekWebSearch,
-                        )
-                }
+                DeepseekProvider.create(
+                    config = config,
+                    client = httpClient,
+                    customHeaders = customHeaders,
+                    apiKeyProvider = apiKeyProvider,
+                    supportsVision = supportsVision,
+                    supportsAudio = supportsAudio,
+                    supportsVideo = supportsVideo,
+                    enableToolCall = enableToolCall
+                )
             ApiProviderType.MISTRAL ->
                 MistralProvider(
                     apiEndpoint = config.apiEndpoint,

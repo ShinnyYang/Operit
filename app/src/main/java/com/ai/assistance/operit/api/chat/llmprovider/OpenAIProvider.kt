@@ -114,7 +114,9 @@ open class OpenAIProvider(
     @Volatile
     private var isManuallyCancelled = false
 
-    /** 由客户端请求错误触发的异常；是否重试由 HTTP 状态码策略决定。 */
+    /**
+     * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
+     */
     class NonRetriableException(
         message: String,
         override val statusCode: Int,
@@ -125,9 +127,6 @@ open class OpenAIProvider(
     val tokenCacheManager = TokenCacheManager()
 
     protected open val useResponsesApi: Boolean = false
-
-    override val usesResponsesApi: Boolean
-        get() = useResponsesApi
 
     // 公开token计数
     override val inputTokenCount: Long
@@ -790,13 +789,19 @@ open class OpenAIProvider(
      * @return 纯文本字符串或包含图片和文本的JSONArray
      */
     fun buildContentField(context: Context, text: String, role: String = "user"): Any {
+        val contentText =
+            if (useResponsesApi) {
+                text
+            } else {
+                ChatUtils.stripOpenAiResponsesProtocolMarkup(text)
+            }
         val allowRichContent =
             role.equals("user", ignoreCase = true) || role.equals("summary", ignoreCase = true)
-        val hasImages = MediaLinkParser.hasImageLinks(text)
-        val hasMedia = MediaLinkParser.hasMediaLinks(text)
+        val hasImages = MediaLinkParser.hasImageLinks(contentText)
+        val hasMedia = MediaLinkParser.hasMediaLinks(contentText)
 
-        val mediaLinks = if (hasMedia) MediaLinkParser.extractMediaLinks(text) else emptyList()
-        val imageLinks = if (hasImages) MediaLinkParser.extractImageLinks(text) else emptyList()
+        val mediaLinks = if (hasMedia) MediaLinkParser.extractMediaLinks(contentText) else emptyList()
+        val imageLinks = if (hasImages) MediaLinkParser.extractImageLinks(contentText) else emptyList()
 
         val audioLinks = mediaLinks.filter { it.type == "audio" }
         val videoLinks = mediaLinks.filter { it.type == "video" }
@@ -807,7 +812,7 @@ open class OpenAIProvider(
                 (supportsVideo && videoLinks.isNotEmpty()) ||
                 (supportsFiles && fileLinks.isNotEmpty())
 
-        var textWithoutLinks = text
+        var textWithoutLinks = contentText
         if (hasMedia) {
             textWithoutLinks = MediaLinkParser.removeMediaLinks(textWithoutLinks)
         }
@@ -817,13 +822,13 @@ open class OpenAIProvider(
         textWithoutLinks = textWithoutLinks.trim()
 
         if (audioLinks.isNotEmpty() && !supportsAudio) {
-            AppLogger.w("AIService", "检测到音频链接，但当前Provider不支持音频多模态输入，已移除音频。原始文本长度: ${text.length}, 处理后: ${textWithoutLinks.length}")
+            AppLogger.w("AIService", "检测到音频链接，但当前Provider不支持音频多模态输入，已移除音频。原始文本长度: ${contentText.length}, 处理后: ${textWithoutLinks.length}")
         }
         if (videoLinks.isNotEmpty() && !supportsVideo) {
-            AppLogger.w("AIService", "检测到视频链接，但当前Provider不支持视频多模态输入，已移除视频。原始文本长度: ${text.length}, 处理后: ${textWithoutLinks.length}")
+            AppLogger.w("AIService", "检测到视频链接，但当前Provider不支持视频多模态输入，已移除视频。原始文本长度: ${contentText.length}, 处理后: ${textWithoutLinks.length}")
         }
         if (imageLinks.isNotEmpty() && !supportsVision) {
-            AppLogger.w("AIService", "检测到图片链接，但当前Provider不支持图片处理，已移除图片。原始文本长度: ${text.length}, 处理后: ${textWithoutLinks.length}")
+            AppLogger.w("AIService", "检测到图片链接，但当前Provider不支持图片处理，已移除图片。原始文本长度: ${contentText.length}, 处理后: ${textWithoutLinks.length}")
         }
 
         val hasAnySupportedRichContent =
@@ -944,14 +949,7 @@ open class OpenAIProvider(
             for (i in 0 until toolCalls.length()) {
                 val sourceToolCall = toolCalls.optJSONObject(i) ?: continue
                 val toolCall = JSONObject(sourceToolCall.toString())
-                val sourceCallId = sourceToolCall.optString("id", "").trim()
-                val callId =
-                    if (useResponsesApi && sourceCallId.isNotEmpty()) {
-                        sourceCallId
-                    } else {
-                        generatedToolCallId(nextToolCallOrdinal)
-                    }
-                nextToolCallOrdinal++
+                val callId = generatedToolCallId(nextToolCallOrdinal++)
                 toolCall.put("id", callId)
                 queuedToolCalls.put(toolCall)
                 queuedToolCallIds.add(callId)
@@ -1092,37 +1090,25 @@ open class OpenAIProvider(
                             val resultsList = toolResults ?: emptyList()
 
                             if (resultsList.isNotEmpty() && openToolCallIds.isNotEmpty()) {
-                                var matchedCount = 0
-                                for ((resultCallId, resultContent) in resultsList) {
-                                    if (openToolCallIds.isEmpty()) break
-                                    val openCallIndex =
-                                        if (resultCallId == null) {
-                                            0
-                                        } else {
-                                            openToolCallIds.indexOf(resultCallId)
-                                        }
-                                    if (openCallIndex < 0) {
-                                        AppLogger.w(
-                                            "AIService",
-                                            "tool_result call_id does not match an open tool call: $resultCallId"
-                                        )
-                                        continue
-                                    }
-                                    val matchedCallId = openToolCallIds.removeAt(openCallIndex)
+                                val validCount = minOf(resultsList.size, openToolCallIds.size)
+                                repeat(validCount) { index ->
+                                    val (_, resultContent) = resultsList[index]
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "tool")
-                                            put("tool_call_id", matchedCallId)
+                                            put("tool_call_id", openToolCallIds[index])
                                             put("content", resultContent)
                                         }
                                     )
-                                    matchedCount++
+                                }
+                                repeat(validCount) {
+                                    openToolCallIds.removeAt(0)
                                 }
 
-                                if (resultsList.size > matchedCount) {
+                                if (resultsList.size > validCount) {
                                     AppLogger.w(
                                         "AIService",
-                                        "发现未匹配的tool_result: ${resultsList.size} results vs $matchedCount matched tool_calls"
+                                        "发现多余的tool_result: ${resultsList.size} results vs ${validCount} pending tool_calls"
                                     )
                                 }
 
@@ -1296,14 +1282,7 @@ open class OpenAIProvider(
 
             // 构建XML格式
             val toolTagName = ChatMarkupRegex.generateRandomToolTagName()
-            val callId = toolCall.optString("id", "").trim()
-            val callIdAttribute =
-                if (useResponsesApi && callId.isNotEmpty()) {
-                    " call_id=\"${escapeXml(callId)}\""
-                } else {
-                    ""
-                }
-            xml.append("\n<$toolTagName name=\"$name\"$callIdAttribute>")
+            xml.append("\n<$toolTagName name=\"$name\">")
 
             // 添加所有参数
             val keys = params.keys()
@@ -1463,26 +1442,6 @@ open class OpenAIProvider(
             return true
         }
 
-        suspend fun emitServerToolStarted(id: String, toolType: String) {
-            eventChannel.emit(
-                TextStreamEvent(
-                    eventType = TextStreamEventType.SERVER_TOOL_STARTED,
-                    id = id,
-                    toolType = toolType
-                )
-            )
-        }
-
-        suspend fun emitServerToolCompleted(id: String, toolType: String) {
-            eventChannel.emit(
-                TextStreamEvent(
-                    eventType = TextStreamEventType.SERVER_TOOL_COMPLETED,
-                    id = id,
-                    toolType = toolType
-                )
-            )
-        }
-
         /**
          * 处理 StreamingJsonXmlConverter 事件，转换为 XML 输出
          */
@@ -1544,12 +1503,6 @@ open class OpenAIProvider(
         buildRetryMessage: (String, Int) -> String
     ): Int {
         if (exception is UserCancellationException || exception is CancellationException) {
-            throw exception
-        }
-        if (
-            exception is NonRetriableException &&
-                !LlmRetryPolicy.isRetryableClientStatus(exception.statusCode)
-        ) {
             throw exception
         }
         checkCancellation(context, exception)
@@ -1642,12 +1595,6 @@ open class OpenAIProvider(
         matches.forEach { match ->
             val toolName = match.groupValues[2]
             val toolBody = match.groupValues[3]
-            val sourceCallId =
-                ChatMarkupRegex.toolCallIdAttr.find(match.value)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.let(XmlEscaper::unescape)
-                    ?.takeIf { it.isNotBlank() }
 
             // 解析参数
             val params = JSONObject()
@@ -1662,9 +1609,7 @@ open class OpenAIProvider(
             // 使用工具名和参数的哈希生成确定性ID
             val toolNamePart = sanitizeToolCallId(toolName)
             val hashPart = stableIdHashPart("${toolName}:${params}")
-            val callId =
-                sourceCallId
-                    ?: sanitizeToolCallId("call_${toolNamePart}_${hashPart}_$callIndex")
+            val callId = sanitizeToolCallId("call_${toolNamePart}_${hashPart}_$callIndex")
             toolCalls.put(JSONObject().apply {
                 put("id", callId)
                 put("type", "function")
@@ -1687,7 +1632,7 @@ open class OpenAIProvider(
      * 解析XML格式的tool_result，转换为OpenAI Tool消息格式
      * @return List<Pair<tool_call_id, result_content>>
      */
-    fun parseXmlToolResults(content: String): Pair<String, List<Pair<String?, String>>?> {
+    fun parseXmlToolResults(content: String): Pair<String, List<Pair<String, String>>?> {
         // 匹配带属性的tool_result标签，例如: <tool_result name="..." status="...">...</tool_result>
         val matches = ChatMarkupRegex.toolResultAnyPattern.findAll(content)
 
@@ -1695,16 +1640,11 @@ open class OpenAIProvider(
             return Pair(content, null)
         }
 
-        val results = mutableListOf<Pair<String?, String>>()
+        val results = mutableListOf<Pair<String, String>>()
         var textContent = content
+        var resultIndex = 0
 
         matches.forEach { match ->
-            val callId =
-                ChatMarkupRegex.toolCallIdAttr.find(match.value)
-                    ?.groupValues
-                    ?.getOrNull(1)
-                    ?.let(XmlEscaper::unescape)
-                    ?.takeIf { it.isNotBlank() }
             // 提取<content>标签内的内容，如果有的话
             val fullContent = match.groupValues[2].trim()
             val contentMatch = ChatMarkupRegex.contentTag.find(fullContent)
@@ -1714,10 +1654,12 @@ open class OpenAIProvider(
                 fullContent
             }
 
-            results.add(Pair(callId, resultContent))
+            // 生成一个tool_call_id（这里需要与之前的call对应，但因为历史记录可能不完整，我们使用索引）
+            results.add(Pair("call_result_${resultIndex}", resultContent))
 
             // 从文本内容中移除tool_result标签（包括前后的空白符）
             textContent = textContent.replace(match.value, "").trim()
+            resultIndex++
         }
 
         // trim 确保移除所有空白字符
@@ -1773,7 +1715,6 @@ open class OpenAIProvider(
         var isInReasoningMode: Boolean = false,
         var hasEmittedThinkStart: Boolean = false,
         var hasEmittedRegularContent: Boolean = false,
-        var streamedReasoningContentLength: Int = 0,
         var reasoningObserved: Boolean = false,
         var isFirstResponse: Boolean = true,
         var streamCompletionConfirmed: Boolean = false,
@@ -1781,8 +1722,11 @@ open class OpenAIProvider(
         val toolCallState: ToolCallState = ToolCallState(),
         var lastProcessedToolIndex: Int? = null,
         val imageBuffers: MutableMap<Int, ImageBufferState> = mutableMapOf(),
-        var activeWebSearchCalls: Set<Int> = emptySet(),
-        var emittedWebSearchCallIds: Set<String> = emptySet()
+        val emittedResponsesReasoningTextKeys: MutableSet<String> = mutableSetOf(),
+        val responsesWebSearchItems: MutableMap<Int, JSONObject> = linkedMapOf(),
+        val emittedResponsesWebSearchKeys: MutableSet<String> = mutableSetOf(),
+        val emittedResponsesOutputItemMetadataKeys: MutableSet<String> = mutableSetOf(),
+        val responsesOutputTextBuffers: MutableMap<Int, StringBuilder> = linkedMapOf()
     )
 
     /**
@@ -1835,14 +1779,7 @@ open class OpenAIProvider(
                 val toolTagName = state.toolCallState.getTagName(index)
                 val toolStartTag = if (state.toolCallState.emitted[index] != true) {
                     state.toolCallState.emitted[index] = true
-                    val callId = accumulated.optString("id", "").trim()
-                    val callIdAttribute =
-                        if (useResponsesApi && callId.isNotEmpty()) {
-                            " call_id=\"${escapeXml(callId)}\""
-                        } else {
-                            ""
-                        }
-                    "\n<$toolTagName name=\"$name\"$callIdAttribute>"
+                    "\n<$toolTagName name=\"$name\">"
                 } else {
                     ""
                 }
@@ -2009,169 +1946,486 @@ open class OpenAIProvider(
         }
     }
 
-    private fun hasResponsesReasoningItem(responseObj: JSONObject?): Boolean {
-        val output = responseObj?.optJSONArray("output") ?: return false
-        for (i in 0 until output.length()) {
-            val item = output.optJSONObject(i) ?: continue
-            if (item.optString("type", "") == "reasoning") {
-                return true
-            }
-        }
-        return false
-    }
+    protected open fun formatResponsesWebSearchDisplayXml(
+        context: Context,
+        item: JSONObject,
+        response: JSONObject? = null
+    ): String? = null
 
-    private fun extractResponsesReasoningText(responseObj: JSONObject?): String {
-        val output = responseObj?.optJSONArray("output") ?: return ""
-        val chunks = mutableListOf<String>()
+    protected open val bufferResponsesOutputTextUntilItemDone: Boolean = false
 
-        for (i in 0 until output.length()) {
-            val item = output.optJSONObject(i) ?: continue
-            if (item.optString("type", "") != "reasoning") {
+    protected open fun isResponsesCommentaryMessage(item: JSONObject): Boolean = false
+
+    protected data class ResponsesWebSearchSource(
+        val type: String,
+        val title: String,
+        val url: String,
+        val metadata: Map<String, String> = emptyMap()
+    )
+
+    private val responsesWebSearchReservedSourceKeys = setOf("type", "title", "url", "uri")
+    private val responsesSearchXmlAttributeName = Regex("[A-Za-z_:][A-Za-z0-9_.:-]*")
+
+    protected fun collectResponsesWebSearchSources(
+        response: JSONObject?
+    ): List<ResponsesWebSearchSource> {
+        val output = response?.optJSONArray("output") ?: return emptyList()
+        val sources = mutableListOf<ResponsesWebSearchSource>()
+        for (outputIndex in 0 until output.length()) {
+            val outputItem = output.optJSONObject(outputIndex) ?: continue
+
+            if (outputItem.optString("type", "") == "web_search_call") {
+                sources += collectResponsesWebSearchSourceArray(
+                    outputItem.optJSONObject("action")?.optJSONArray("sources")
+                )
                 continue
             }
 
-            val itemText = extractResponsesReasoningTextFromItem(item)
-            if (itemText.isNotEmpty()) {
-                chunks.add(itemText)
+            if (outputItem.optString("type", "") != "message") {
+                continue
             }
-        }
 
-        return chunks.joinToString("\n\n")
-    }
-
-    private fun extractResponsesReasoningTextFromItem(item: JSONObject): String {
-        val chunks = mutableListOf<String>()
-
-        val summaryArray = item.optJSONArray("summary")
-        if (summaryArray != null) {
-            for (i in 0 until summaryArray.length()) {
-                val summaryPart = summaryArray.optJSONObject(i) ?: continue
-                val text = summaryPart.optString("text", "").trim()
-                if (text.isNotEmpty()) {
-                    chunks.add(text)
+            val content = outputItem.optJSONArray("content") ?: continue
+            for (contentIndex in 0 until content.length()) {
+                val contentPart = content.optJSONObject(contentIndex) ?: continue
+                val annotations = contentPart.optJSONArray("annotations") ?: continue
+                for (annotationIndex in 0 until annotations.length()) {
+                    val annotation = annotations.optJSONObject(annotationIndex) ?: continue
+                    responseWebSearchAnnotationSource(annotation)?.let { sources += it }
                 }
             }
         }
+        return sources
+    }
 
-        val contentArray = item.optJSONArray("content")
-        if (contentArray != null) {
-            for (i in 0 until contentArray.length()) {
-                val contentPart = contentArray.optJSONObject(i) ?: continue
-                val text = contentPart.optString("text", "").trim()
-                if (text.isNotEmpty()) {
-                    chunks.add(text)
-                }
+    protected fun collectResponsesWebSearchSourceArray(
+        sources: JSONArray?
+    ): List<ResponsesWebSearchSource> {
+        if (sources == null) {
+            return emptyList()
+        }
+        val result = mutableListOf<ResponsesWebSearchSource>()
+        for (index in 0 until sources.length()) {
+            val source = sources.optJSONObject(index) ?: continue
+            responseWebSearchSourceFromJson(source)?.let { result += it }
+        }
+        return result
+    }
+
+    protected fun collectResponsesWebSearchActionSources(
+        action: JSONObject?,
+        actionType: String
+    ): List<ResponsesWebSearchSource> {
+        if (action == null) {
+            return emptyList()
+        }
+        val url = action.optString("url", "").trim()
+        if (url.isEmpty()) {
+            return emptyList()
+        }
+
+        val metadata = linkedMapOf<String, String>()
+        listOf("site_name", "siteName", "source", "name", "pattern").forEach { key ->
+            val value = action.optString(key, "").trim()
+            if (value.isNotEmpty()) {
+                metadata[key] = value
             }
         }
 
-        return chunks.joinToString("\n\n")
+        return listOf(
+            ResponsesWebSearchSource(
+                type = actionType,
+                title = action.optString("title", "").trim(),
+                url = url,
+                metadata = metadata
+            )
+        )
     }
 
-    private fun responsesWebSearchCallKey(event: JSONObject): Int? {
-        val outputIndex = event.optInt("output_index", -1)
-        return outputIndex.takeIf { it >= 0 }
+    protected fun mergeResponsesWebSearchSources(
+        primary: List<ResponsesWebSearchSource>,
+        additional: List<ResponsesWebSearchSource>
+    ): List<ResponsesWebSearchSource> {
+        val merged = linkedMapOf<String, ResponsesWebSearchSource>()
+        (primary + additional).forEach { source ->
+            val existing = merged[source.url]
+            if (existing == null) {
+                merged[source.url] = source
+            } else {
+                merged[source.url] = existing.copy(
+                    type = existing.type.ifEmpty { source.type },
+                    title = existing.title.ifEmpty { source.title },
+                    metadata = mergeResponsesWebSearchMetadata(existing, source)
+                )
+            }
+        }
+        return merged.values.toList()
     }
 
-    private suspend fun markWebSearchStarted(
-        event: JSONObject,
-        state: StreamingState,
-        emitter: StreamEmitter
+    protected fun appendResponsesWebSearchSourceAttributes(
+        output: StringBuilder,
+        source: ResponsesWebSearchSource
     ) {
-        val key = responsesWebSearchCallKey(event) ?: return
-        if (key in state.activeWebSearchCalls) {
+        appendResponsesSearchXmlAttribute(output, "type", source.type)
+        appendResponsesSearchXmlAttribute(output, "title", source.title)
+        appendResponsesSearchXmlAttribute(output, "url", source.url)
+        source.metadata.forEach { (name, value) ->
+            appendResponsesSearchXmlAttribute(output, name, value)
+        }
+    }
+
+    protected fun collectResponsesWebSearchQueries(
+        action: JSONObject?,
+        actionType: String
+    ): List<String> {
+        if (action == null || actionType != "search") {
+            return emptyList()
+        }
+
+        val queries = linkedSetOf<String>()
+        fun addQuery(value: String) {
+            val query = value.trim()
+            if (query.isNotEmpty() && !query.startsWith("ws_call_id=", ignoreCase = true)) {
+                queries.add(query)
+            }
+        }
+
+        addQuery(action.optString("query", ""))
+        val queryArray = action.optJSONArray("queries")
+        if (queryArray != null) {
+            for (index in 0 until queryArray.length()) {
+                addQuery(queryArray.optString(index, ""))
+            }
+        }
+
+        return queries.toList()
+    }
+
+    private fun responseWebSearchAnnotationSource(annotation: JSONObject): ResponsesWebSearchSource? {
+        val type = annotation.optString("type", "").trim()
+        if (type != "url_citation") {
+            return null
+        }
+        return responseWebSearchSourceFromJson(annotation)
+    }
+
+    private fun responseWebSearchSourceFromJson(source: JSONObject): ResponsesWebSearchSource? {
+        val urlField = source.optString("url", "").trim()
+        val uriField = source.optString("uri", "").trim()
+        val url = if (urlField.isNotEmpty()) urlField else uriField
+        if (url.isEmpty()) {
+            return null
+        }
+
+        return ResponsesWebSearchSource(
+            type = source.optString("type", "").trim(),
+            title = source.optString("title", "").trim(),
+            url = url,
+            metadata = extractResponsesWebSearchMetadata(source)
+        )
+    }
+
+    private fun extractResponsesWebSearchMetadata(source: JSONObject): Map<String, String> {
+        val metadata = linkedMapOf<String, String>()
+        val keys = source.keys()
+        while (keys.hasNext()) {
+            val rawKey = keys.next()
+            val key = rawKey.trim()
+            if (
+                key.isEmpty() ||
+                    responsesWebSearchReservedSourceKeys.contains(key.lowercase()) ||
+                    !responsesSearchXmlAttributeName.matches(key)
+            ) {
+                continue
+            }
+
+            val value =
+                when (val rawValue = source.opt(rawKey)) {
+                    is String -> rawValue.trim()
+                    is Number -> rawValue.toString()
+                    is Boolean -> rawValue.toString()
+                    else -> ""
+                }
+            if (value.isNotEmpty()) {
+                metadata[key] = value
+            }
+        }
+        return metadata
+    }
+
+    private fun mergeResponsesWebSearchMetadata(
+        existing: ResponsesWebSearchSource,
+        source: ResponsesWebSearchSource
+    ): Map<String, String> {
+        if (existing.metadata.isEmpty() && source.metadata.isEmpty()) {
+            return emptyMap()
+        }
+        val metadata = linkedMapOf<String, String>()
+        source.metadata.forEach { (key, value) ->
+            if (value.isNotEmpty()) {
+                metadata[key] = value
+            }
+        }
+        existing.metadata.forEach { (key, value) ->
+            if (value.isNotEmpty()) {
+                metadata[key] = value
+            }
+        }
+        return metadata
+    }
+
+    private fun appendResponsesSearchXmlAttribute(
+        output: StringBuilder,
+        name: String,
+        value: String
+    ) {
+        if (value.isEmpty() || !responsesSearchXmlAttributeName.matches(name)) {
             return
         }
-        val wasEmpty = state.activeWebSearchCalls.isEmpty()
-        state.activeWebSearchCalls = state.activeWebSearchCalls + key
-        if (wasEmpty) {
-            emitter.emitServerToolStarted(key.toString(), "web_search")
-        }
+        output.append(" ")
+        output.append(name)
+        output.append("=\"")
+        output.append(escapeResponsesSearchXmlAttribute(value))
+        output.append("\"")
     }
 
-    private suspend fun markWebSearchCompleted(
-        event: JSONObject,
-        state: StreamingState,
-        emitter: StreamEmitter
-    ) {
-        val key = responsesWebSearchCallKey(event) ?: return
-        if (key !in state.activeWebSearchCalls) {
-            return
-        }
-        state.activeWebSearchCalls = state.activeWebSearchCalls - key
-        if (state.activeWebSearchCalls.isEmpty()) {
-            emitter.emitServerToolCompleted(key.toString(), "web_search")
-        }
+    private fun escapeResponsesSearchXmlAttribute(text: String): String {
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+            .replace("\"", "&quot;")
+            .replace("'", "&apos;")
     }
 
-    private suspend fun emitWebSearchMetadata(
-        item: JSONObject,
-        state: StreamingState,
-        emitter: StreamEmitter
-    ) {
+    private fun responsesWebSearchDisplayKey(item: JSONObject, outputIndex: Int): String {
         val itemId = item.optString("id", "").trim()
-        if (itemId.isEmpty() || itemId in state.emittedWebSearchCallIds) {
-            return
+        if (itemId.isNotEmpty()) {
+            return itemId
         }
-        state.emittedWebSearchCallIds = state.emittedWebSearchCallIds + itemId
-        if (state.isInReasoningMode) {
-            state.isInReasoningMode = false
-            emitter.emitTag("</think>")
-            state.hasEmittedThinkStart = false
+        if (outputIndex >= 0) {
+            return "output_$outputIndex"
         }
-        OpenAIResponsesPayloadAdapter.createWebSearchMetadataTag(item)?.let { metadataTag ->
-            emitter.emitTag(metadataTag)
-        }
+        return "item_${item.toString().hashCode()}"
     }
 
-    private suspend fun emitWebSearchMetadataFromResponse(
-        responseObj: JSONObject?,
-        state: StreamingState,
-        emitter: StreamEmitter
-    ) {
-        val output = responseObj?.optJSONArray("output") ?: return
-        for (index in 0 until output.length()) {
-            val item = output.optJSONObject(index) ?: continue
-            if (item.optString("type", "") == "web_search_call") {
-                emitWebSearchMetadata(item, state, emitter)
-            }
-        }
-    }
-
-    private suspend fun finalizeResponsesStream(
-        responseObj: JSONObject?,
+    private suspend fun emitResponsesWebSearchDisplay(
+        context: Context,
+        item: JSONObject,
+        outputIndex: Int,
         state: StreamingState,
         emitter: StreamEmitter,
-        onTokensUpdated: suspend (input: Long, cachedInput: Long, output: Long) -> Unit,
-        onUsageReported: (suspend (com.ai.assistance.operit.data.stats.ProviderUsageSnapshot, attempt: Int) -> Unit)?,
-        attemptNumber: Int
+        responseObj: JSONObject? = null
     ) {
-        val usage = responseObj?.optJSONObject("usage")
-        val reasoningTokens =
-            usage?.optJSONObject("output_tokens_details")?.optLong("reasoning_tokens", 0L) ?: 0L
-        if (reasoningTokens > 0 || hasResponsesReasoningItem(responseObj)) {
-            state.reasoningObserved = true
+        if (item.optString("type", "") != "web_search_call") {
+            return
+        }
+        val displayXml = formatResponsesWebSearchDisplayXml(context, item, responseObj)?.trim()
+        if (displayXml.isNullOrEmpty()) {
+            return
+        }
+        val displayKey = responsesWebSearchDisplayKey(item, outputIndex)
+        if (!state.emittedResponsesWebSearchKeys.add(displayKey)) {
+            return
+        }
+        closeReasoningModeIfOpen(state, emitter)
+        emitter.emitTag("\n")
+        emitter.emitTag(displayXml)
+        emitter.emitTag("\n\n")
+    }
+
+    private suspend fun emitResponsesOutputItemMetadata(
+        item: JSONObject,
+        outputIndex: Int,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        val metadataTag = OpenAIResponsesPayloadAdapter.createOutputItemMetadataTag(item) ?: return
+        val metadataKey = responsesWebSearchDisplayKey(item, outputIndex)
+        if (!state.emittedResponsesOutputItemMetadataKeys.add(metadataKey)) {
+            return
+        }
+        closeReasoningModeIfOpen(state, emitter)
+        emitter.emitTag(metadataTag)
+    }
+
+    private suspend fun emitResponsesOutputItemMetadataFromResponse(
+        responseObj: JSONObject?,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        val searchItems = collectResponsesWebSearchItems(responseObj, state)
+        searchItems.forEach { (outputIndex, item) ->
+            emitResponsesOutputItemMetadata(item, outputIndex, state, emitter)
+        }
+    }
+
+    private suspend fun emitResponsesWebSearchDisplayFromResponse(
+        context: Context,
+        responseObj: JSONObject?,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        val searchItems = collectResponsesWebSearchItems(responseObj, state)
+        val displayItem =
+            buildResponsesWebSearchDisplayItem(responseObj, searchItems)
+                ?: if (collectResponsesWebSearchSources(responseObj).isNotEmpty()) {
+                    JSONObject()
+                        .put("type", "web_search_call")
+                        .put("id", responsesWebSearchSyntheticDisplayKey(responseObj))
+                } else {
+                    null
+                }
+
+        if (displayItem != null) {
+            emitResponsesWebSearchDisplay(context, displayItem, -1, state, emitter, responseObj)
+        }
+    }
+
+    private fun buildResponsesWebSearchDisplayItem(
+        responseObj: JSONObject?,
+        searchItems: List<Pair<Int, JSONObject>>
+    ): JSONObject? {
+        if (searchItems.isEmpty()) {
+            return null
+        }
+        if (searchItems.size == 1) {
+            return searchItems.first().second
         }
 
-        if (state.isInReasoningMode) {
-            state.isInReasoningMode = false
-            emitter.emitTag("</think>")
-            state.hasEmittedThinkStart = false
-        } else {
-            val lateReasoningText = extractResponsesReasoningText(responseObj)
-            if (lateReasoningText.isNotEmpty() && state.streamedReasoningContentLength == 0) {
-                emitCompletedResponsesReasoningText(lateReasoningText, state, emitter)
+        val action = JSONObject().put("type", "search")
+        val queries = JSONArray()
+        val sources = JSONArray()
+        val querySet = linkedSetOf<String>()
+        val statusSet = linkedSetOf<String>()
+        val itemIds = mutableListOf<String>()
+
+        searchItems.forEach { (_, item) ->
+            val itemId = item.optString("id", "").trim()
+            if (itemId.isNotEmpty()) {
+                itemIds += itemId
+            }
+            val status = item.optString("status", "").trim()
+            if (status.isNotEmpty()) {
+                statusSet += status
+            }
+
+            val itemAction = item.optJSONObject("action")
+            val itemActionType = itemAction?.optString("type", "")?.trim().orEmpty()
+            collectResponsesWebSearchQueries(itemAction, itemActionType).forEach { query ->
+                if (querySet.add(query)) {
+                    queries.put(query)
+                }
+            }
+            appendResponsesWebSearchActionSourceJson(sources, itemAction, itemActionType)
+            appendResponsesWebSearchSourceJsonArray(sources, itemAction?.optJSONArray("sources"))
+        }
+
+        if (queries.length() > 0) {
+            action.put("queries", queries)
+        }
+        if (sources.length() > 0) {
+            action.put("sources", sources)
+        }
+
+        return JSONObject()
+            .put("type", "web_search_call")
+            .put("id", responsesWebSearchAggregateDisplayKey(responseObj, itemIds, searchItems.size))
+            .put("status", statusSet.joinToString(","))
+            .put("action", action)
+    }
+
+    private fun collectResponsesWebSearchItems(
+        responseObj: JSONObject?,
+        state: StreamingState
+    ): List<Pair<Int, JSONObject>> {
+        val items = mutableListOf<Pair<Int, JSONObject>>()
+        val seenKeys = mutableSetOf<String>()
+
+        fun addItem(outputIndex: Int, item: JSONObject) {
+            if (item.optString("type", "") != "web_search_call") {
+                return
+            }
+            val displayKey = responsesWebSearchDisplayKey(item, outputIndex)
+            if (seenKeys.add(displayKey)) {
+                items += outputIndex to item
             }
         }
 
-        emitWebSearchMetadataFromResponse(responseObj, state, emitter)
-        closeAllOpenToolCalls(state, emitter)
-        applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
-        if (state.activeWebSearchCalls.isNotEmpty()) {
-            val lastKey = state.activeWebSearchCalls.last().toString()
-            state.activeWebSearchCalls = emptySet()
-            emitter.emitServerToolCompleted(lastKey, "web_search")
+        val output = responseObj?.optJSONArray("output")
+        if (output != null) {
+            for (index in 0 until output.length()) {
+                val item = output.optJSONObject(index) ?: continue
+                addItem(index, item)
+            }
         }
-        state.streamCompletionConfirmed = true
+
+        state.responsesWebSearchItems.forEach { (outputIndex, item) ->
+            addItem(outputIndex, item)
+        }
+
+        return items
+    }
+
+    private fun appendResponsesWebSearchActionSourceJson(
+        sources: JSONArray,
+        action: JSONObject?,
+        actionType: String
+    ) {
+        if (action == null) {
+            return
+        }
+        val url = action.optString("url", "").trim()
+        if (url.isEmpty()) {
+            return
+        }
+
+        val source = JSONObject()
+            .put("type", actionType)
+            .put("url", url)
+        listOf("title", "site_name", "siteName", "source", "name", "pattern").forEach { key ->
+            val value = action.optString(key, "").trim()
+            if (value.isNotEmpty()) {
+                source.put(key, value)
+            }
+        }
+        sources.put(source)
+    }
+
+    private fun appendResponsesWebSearchSourceJsonArray(
+        output: JSONArray,
+        sources: JSONArray?
+    ) {
+        if (sources == null) {
+            return
+        }
+        for (index in 0 until sources.length()) {
+            val source = sources.optJSONObject(index) ?: continue
+            output.put(JSONObject(source.toString()))
+        }
+    }
+
+    private fun responsesWebSearchSyntheticDisplayKey(responseObj: JSONObject?): String {
+        val responseId = responseObj?.optString("id", "")?.trim().orEmpty()
+        if (responseId.isNotEmpty()) {
+            return "response_${responseId}_web_search_sources"
+        }
+        return "response_web_search_sources_${responseObj?.toString()?.hashCode() ?: 0}"
+    }
+
+    private fun responsesWebSearchAggregateDisplayKey(
+        responseObj: JSONObject?,
+        itemIds: List<String>,
+        itemCount: Int
+    ): String {
+        val responseId = responseObj?.optString("id", "")?.trim().orEmpty()
+        if (itemIds.isNotEmpty()) {
+            return "web_search_${itemIds.joinToString("_")}"
+        }
+        if (responseId.isNotEmpty()) {
+            return "response_${responseId}_web_search"
+        }
+        return "web_search_items_$itemCount"
     }
 
     private suspend fun processResponsesStreamingEvent(
@@ -2200,7 +2454,13 @@ open class OpenAIProvider(
             "response.output_text.delta" -> {
                 val delta = jsonResponse.optString("delta", "")
                 if (delta.isNotEmpty()) {
-                    processContentDelta("", delta, state, emitter)
+                    val outputIndex = jsonResponse.optInt("output_index", -1)
+                    if (bufferResponsesOutputTextUntilItemDone && outputIndex >= 0) {
+                        state.responsesOutputTextBuffers.getOrPut(outputIndex) { StringBuilder() }
+                            .append(delta)
+                    } else {
+                        processResponsesRegularContentDelta(delta, state, emitter)
+                    }
                 }
             }
 
@@ -2208,6 +2468,9 @@ open class OpenAIProvider(
                 state.reasoningObserved = true
                 val delta = jsonResponse.optString("delta", "")
                 if (delta.isNotEmpty()) {
+                    responsesReasoningTextKey(jsonResponse)?.let { key ->
+                        state.emittedResponsesReasoningTextKeys.add(key)
+                    }
                     processContentDelta(delta, "", state, emitter)
                 }
             }
@@ -2215,26 +2478,16 @@ open class OpenAIProvider(
             "response.reasoning_text.done", "response.reasoning_summary_text.done" -> {
                 state.reasoningObserved = true
                 val text = jsonResponse.optString("text", "")
-                if (text.isNotEmpty() && state.streamedReasoningContentLength == 0) {
-                    emitCompletedResponsesReasoningText(text, state, emitter)
+                val key = responsesReasoningTextKey(jsonResponse)
+                if (text.isNotEmpty() &&
+                    (key == null || state.emittedResponsesReasoningTextKeys.add(key))
+                ) {
+                    processContentDelta(text, "", state, emitter)
                 }
             }
 
             "response.reasoning_summary_part.done" -> {
                 state.reasoningObserved = true
-                val part = jsonResponse.optJSONObject("part")
-                val text = part?.optString("text", "") ?: ""
-                if (text.isNotEmpty() && state.streamedReasoningContentLength == 0) {
-                    emitCompletedResponsesReasoningText(text, state, emitter)
-                }
-            }
-
-            "response.web_search_call.in_progress", "response.web_search_call.searching" -> {
-                markWebSearchStarted(jsonResponse, state, emitter)
-            }
-
-            "response.web_search_call.completed" -> {
-                markWebSearchCompleted(jsonResponse, state, emitter)
             }
 
             "response.output_item.added", "response.output_item.done" -> {
@@ -2245,11 +2498,22 @@ open class OpenAIProvider(
                 }
 
                 if (item.optString("type", "") == "web_search_call") {
-                    if (eventType == "response.output_item.added") {
-                        markWebSearchStarted(jsonResponse, state, emitter)
+                    if (outputIndex >= 0) {
+                        state.responsesWebSearchItems[outputIndex] = JSONObject(item.toString())
                     }
                     if (eventType == "response.output_item.done") {
-                        emitWebSearchMetadata(item, state, emitter)
+                        emitResponsesOutputItemMetadata(item, outputIndex, state, emitter)
+                    }
+                    return
+                }
+
+                if (item.optString("type", "") == "message") {
+                    if (eventType == "response.output_item.added") {
+                        // Responses output item 的顺序是 reasoning -> web search -> message。
+                        // 消息边界只负责把已完成的搜索来源放到正文之前。
+                        emitResponsesWebSearchDisplayFromResponse(context, null, state, emitter)
+                    } else if (eventType == "response.output_item.done" && bufferResponsesOutputTextUntilItemDone) {
+                        emitBufferedResponsesMessageItemContent(item, outputIndex, state, emitter)
                     }
                     return
                 }
@@ -2260,22 +2524,16 @@ open class OpenAIProvider(
 
                 if (item.optString("type", "") == "reasoning") {
                     state.reasoningObserved = true
-                    val itemReasoningText =
-                        if (eventType == "response.output_item.done") {
-                            extractResponsesReasoningTextFromItem(item)
-                        } else {
-                            ""
-                        }
-                    if (itemReasoningText.isNotEmpty() && state.streamedReasoningContentLength == 0) {
-                        emitCompletedResponsesReasoningText(itemReasoningText, state, emitter)
-                    }
                     if (eventType == "response.output_item.done") {
-                        OpenAIResponsesPayloadAdapter.createReasoningMetadataTag(item, providerType)?.let { metadataTag ->
-                            if (state.isInReasoningMode) {
-                                state.isInReasoningMode = false
-                                emitter.emitTag("</think>")
-                                state.hasEmittedThinkStart = false
-                            }
+                        // reasoning item 的边界负责结束思考；正文 delta 已经按事件实时输出。
+                        emitResponsesReasoningItemContent(
+                            item,
+                            outputIndex,
+                            state,
+                            emitter
+                        )
+                        closeReasoningModeIfOpen(state, emitter)
+                        OpenAIResponsesPayloadAdapter.createReasoningMetadataTag(item)?.let { metadataTag ->
                             emitter.emitTag(metadataTag)
                         }
                     }
@@ -2285,6 +2543,8 @@ open class OpenAIProvider(
                 if (!enableToolCall || item.optString("type", "") != "function_call") {
                     return
                 }
+
+                closeReasoningModeIfOpen(state, emitter)
 
                 val functionObj = JSONObject().apply {
                     val name = item.optString("name", "")
@@ -2316,6 +2576,8 @@ open class OpenAIProvider(
                 if (!enableToolCall) return
                 val outputIndex = jsonResponse.optInt("output_index", -1)
                 if (outputIndex < 0) return
+
+                closeReasoningModeIfOpen(state, emitter)
 
                 val deltaCall = JSONObject().apply {
                     put("index", outputIndex)
@@ -2349,14 +2611,24 @@ open class OpenAIProvider(
             }
 
             "response.completed", "response.incomplete" -> {
-                finalizeResponsesStream(
-                    responseObj = jsonResponse.optJSONObject("response"),
-                    state = state,
-                    emitter = emitter,
-                    onTokensUpdated = onTokensUpdated,
-                    onUsageReported = onUsageReported,
-                    attemptNumber = attemptNumber
-                )
+                val responseObj = jsonResponse.optJSONObject("response")
+                val usage = responseObj?.optJSONObject("usage")
+                val reasoningTokens =
+                    usage
+                        ?.optJSONObject("output_tokens_details")
+                        ?.optLong("reasoning_tokens", 0L)
+                        ?: 0L
+                if (reasoningTokens > 0) {
+                    state.reasoningObserved = true
+                }
+
+                closeReasoningModeIfOpen(state, emitter)
+
+                emitResponsesOutputItemMetadataFromResponse(responseObj, state, emitter)
+                emitResponsesWebSearchDisplayFromResponse(context, responseObj, state, emitter)
+                closeAllOpenToolCalls(state, emitter)
+                applyUsageToCounters(usage, onTokensUpdated, onUsageReported, attemptNumber)
+                state.streamCompletionConfirmed = true
             }
 
             "response.failed", "response.error" -> {
@@ -2427,7 +2699,6 @@ open class OpenAIProvider(
 
         // 处理思考内容
         if (hasReasoning && !state.hasEmittedRegularContent) {
-            state.streamedReasoningContentLength += reasoningContent.length
             if (!state.isInReasoningMode) {
                 state.isInReasoningMode = true
                 if (!state.hasEmittedThinkStart) {
@@ -2459,16 +2730,97 @@ open class OpenAIProvider(
         }
     }
 
-    private suspend fun emitCompletedResponsesReasoningText(
-        reasoningText: String,
+    private suspend fun closeReasoningModeIfOpen(
         state: StreamingState,
         emitter: StreamEmitter
     ) {
-        if (state.hasEmittedRegularContent) {
-            emitter.emitThinkContent(reasoningText)
-            state.streamedReasoningContentLength += reasoningText.length
+        if (!state.isInReasoningMode) {
+            return
+        }
+        state.isInReasoningMode = false
+        emitter.emitTag("</think>")
+        state.hasEmittedThinkStart = false
+    }
+
+    private fun responsesReasoningTextKey(event: JSONObject): String? {
+        val itemId = event.optString("item_id", "").trim()
+        val outputIndex = event.optInt("output_index", -1)
+        val contentIndex = event.optInt("content_index", -1)
+        if (itemId.isNotEmpty()) {
+            return "${itemId}_${contentIndex}"
+        }
+        if (outputIndex >= 0) {
+            return "output_${outputIndex}_${contentIndex}"
+        }
+        return null
+    }
+
+    private suspend fun emitResponsesReasoningItemContent(
+        item: JSONObject,
+        outputIndex: Int,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        val content = item.optJSONArray("content") ?: return
+        val itemId = item.optString("id", "").trim()
+        for (contentIndex in 0 until content.length()) {
+            val part = content.optJSONObject(contentIndex) ?: continue
+            if (part.optString("type", "") != "reasoning_text") {
+                continue
+            }
+            val text = part.optString("text", "")
+            if (text.isEmpty()) {
+                continue
+            }
+            val key =
+                if (itemId.isNotEmpty()) {
+                    "${itemId}_${contentIndex}"
+                } else if (outputIndex >= 0) {
+                    "output_${outputIndex}_${contentIndex}"
+                } else {
+                    null
+                }
+            if (key == null || state.emittedResponsesReasoningTextKeys.add(key)) {
+                processContentDelta(text, "", state, emitter)
+            }
+        }
+    }
+
+    private suspend fun processResponsesRegularContentDelta(
+        regularContent: String,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        if (regularContent.isEmpty()) {
+            return
+        }
+        // Responses 的 output_text.delta 就是正文通道；按事件到达顺序交给上层，
+        // 不等待 output_item.done 或 response.completed，否则正文会被错误延迟。
+        processContentDelta("", regularContent, state, emitter)
+    }
+
+    private suspend fun emitBufferedResponsesMessageItemContent(
+        item: JSONObject,
+        outputIndex: Int,
+        state: StreamingState,
+        emitter: StreamEmitter
+    ) {
+        val bufferedText =
+            if (outputIndex >= 0) {
+                state.responsesOutputTextBuffers.remove(outputIndex)?.toString().orEmpty()
+            } else {
+                ""
+            }
+        if (bufferedText.isEmpty()) {
+            return
+        }
+
+        if (isResponsesCommentaryMessage(item)) {
+            state.reasoningObserved = true
+            processContentDelta(bufferedText, "", state, emitter)
+            closeReasoningModeIfOpen(state, emitter)
         } else {
-            processContentDelta(reasoningText, "", state, emitter)
+            processResponsesRegularContentDelta(bufferedText, state, emitter)
         }
     }
 
@@ -2800,10 +3152,8 @@ open class OpenAIProvider(
                                 val handledImages = tryHandleOpenAiImageResponse(jsonResponse, emitter, null)
 
                                 if (useResponsesApi) {
-                                    val parsed = OpenAIResponsesPayloadAdapter.parseNonStreamingResponse(
-                                        jsonResponse,
-                                        providerType
-                                    )
+                                    val parsed = OpenAIResponsesPayloadAdapter.parseNonStreamingResponse(jsonResponse)
+                                    val responseDisplayState = StreamingState()
 
                                     parsed.reasoningChunks.forEach { reasoningChunk ->
                                         if (reasoningChunk.isNotEmpty()) {
@@ -2813,9 +3163,15 @@ open class OpenAIProvider(
                                     parsed.reasoningMetadataTags.forEach { metadataTag ->
                                         emitter.emitTag(metadataTag)
                                     }
-                                    parsed.webSearchMetadataTags.forEach { metadataTag ->
+                                    parsed.outputItemMetadataTags.forEach { metadataTag ->
                                         emitter.emitTag(metadataTag)
                                     }
+                                    emitResponsesWebSearchDisplayFromResponse(
+                                        context,
+                                        jsonResponse,
+                                        responseDisplayState,
+                                        emitter
+                                    )
 
                                     if (!handledImages) {
                                         parsed.textChunks.forEach { textChunk ->

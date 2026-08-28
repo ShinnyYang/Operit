@@ -46,7 +46,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.VisualTransformation
 import com.ai.assistance.operit.R
-import com.ai.assistance.operit.api.chat.llmprovider.DeepSeekApiProtocol
 import com.ai.assistance.operit.api.chat.llmprovider.EndpointCompleter
 import com.ai.assistance.operit.api.chat.EnhancedAIService
 import com.ai.assistance.operit.api.chat.llmprovider.AIServiceFactory
@@ -214,6 +213,10 @@ fun ModelApiSettingsSection(
         mutableStateOf(config.enableDeepSeekWebSearch)
     }
 
+    var enableCodexWebSearchInput by remember(config.id) {
+        mutableStateOf(config.enableCodexWebSearch)
+    }
+
     // Claude 1小时提示缓存配置状态 (仅Claude)
     var enableClaude1hPromptCacheInput by remember(config.id) {
         mutableStateOf(config.enableClaude1hPromptCache)
@@ -247,6 +250,7 @@ fun ModelApiSettingsSection(
         val enableDirectVideoProcessing: Boolean,
         val enableGoogleSearch: Boolean,
         val enableDeepSeekWebSearch: Boolean,
+        val enableCodexWebSearch: Boolean,
         val enableClaude1hPromptCache: Boolean,
         val enableToolCall: Boolean,
     )
@@ -272,6 +276,7 @@ fun ModelApiSettingsSection(
                     enableDirectVideoProcessing = state.enableDirectVideoProcessing,
                     enableGoogleSearch = state.enableGoogleSearch,
                     enableDeepSeekWebSearch = state.enableDeepSeekWebSearch,
+                    enableCodexWebSearch = state.enableCodexWebSearch,
                     enableClaude1hPromptCache = state.enableClaude1hPromptCache,
                     enableToolCall = state.enableToolCall,
                 )
@@ -300,6 +305,7 @@ fun ModelApiSettingsSection(
             enableDirectVideoProcessing = enableDirectVideoProcessingInput,
             enableGoogleSearch = enableGoogleSearchInput,
             enableDeepSeekWebSearch = enableDeepSeekWebSearchInput,
+            enableCodexWebSearch = enableCodexWebSearchInput,
             enableClaude1hPromptCache = enableClaude1hPromptCacheInput,
             enableToolCall = enableToolCallInput,
         )
@@ -480,6 +486,8 @@ fun ModelApiSettingsSection(
                                 enableDirectAudioProcessing = enableDirectAudioProcessingInput,
                                 enableDirectVideoProcessing = enableDirectVideoProcessingInput,
                                 enableGoogleSearch = enableGoogleSearchInput,
+                                enableDeepSeekWebSearch = enableDeepSeekWebSearchInput,
+                                enableCodexWebSearch = enableCodexWebSearchInput,
                                 enableClaude1hPromptCache = enableClaude1hPromptCacheInput,
                                 enableToolCall = enableToolCallInput
                             ),
@@ -845,6 +853,12 @@ fun ModelApiSettingsSection(
                      checked = enableDirectImageProcessingInput,
                      onCheckedChange = { enableDirectImageProcessingInput = it }
                  )
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.enable_codex_web_search),
+                     subtitle = stringResource(R.string.enable_codex_web_search_desc),
+                     checked = enableCodexWebSearchInput,
+                     onCheckedChange = { enableCodexWebSearchInput = it }
+                 )
              } else {
                  SettingsSwitchRow(
                      title = stringResource(R.string.enable_direct_image_processing),
@@ -878,9 +892,7 @@ fun ModelApiSettingsSection(
                     )
             }
 
-            if (selectedApiProvider == ApiProviderType.DEEPSEEK &&
-                EndpointCompleter.resolveDeepSeekProtocol(apiEndpointInput) ==
-                    DeepSeekApiProtocol.RESPONSES) {
+            if (selectedApiProvider == ApiProviderType.DEEPSEEK) {
                 SettingsSwitchRow(
                     title = stringResource(R.string.enable_deepseek_web_search),
                     subtitle = stringResource(R.string.enable_deepseek_web_search_desc),

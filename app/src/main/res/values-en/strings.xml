@@ -4008,7 +4008,9 @@
     <string name="enable_google_search">Enable Google Search</string>
     <string name="enable_google_search_desc">When enabled, Gemini will use Google Search to enhance responses (may incur additional charges)</string>
     <string name="enable_deepseek_web_search">Enable DeepSeek web search</string>
-    <string name="enable_deepseek_web_search_desc">Allow the DeepSeek Responses API to call its server-side web search tool.</string>
+    <string name="enable_deepseek_web_search_desc">When using a DeepSeek Responses endpoint, allow the model to use server-side web search.</string>
+    <string name="enable_codex_web_search">Enable Codex web search</string>
+    <string name="enable_codex_web_search_desc">When signed in to Codex, allow the model to use server-side web search.</string>
     <string name="enable_claude_1h_prompt_cache">Enable Claude 1-hour prompt cache</string>
     <string name="enable_claude_1h_prompt_cache_desc">When enabled, Claude and Claude-compatible providers use a 1-hour prompt cache TTL</string>
     <string name="enable_tool_call">Model supports ToolCall</string>
@@ -4016,6 +4018,10 @@
     <string name="enable_deepseek_reasoning">Enable DeepSeek Reasoning Mode</string>
     <string name="enable_deepseek_reasoning_desc">When enabled, content within &lt;think&gt; tags will be sent as reasoning_content to DeepSeek models, supporting tool invocation for reasoning models like DeepSeek-R1</string>
     <string name="search_sources">Search Sources</string>
+    <string name="search_query_label">Query</string>
+    <string name="search_action_label">Action</string>
+    <string name="search_status_label">Status</string>
+    <string name="search_source_count">%1$d sources</string>
     <string name="api_settings_saved">API settings saved</string>
     <string name="save_api_settings">Save API Settings</string>
     <string name="available_models_list">Available Models List</string>
@@ -5251,6 +5257,9 @@
     <string name="mood_tag_block">Mood Tag</string>
     <string name="thinking_tools_group_title_with_count">Thinking &amp; Tool Calls (%1$d)</string>
     <string name="tools_group_title_with_count">Tool Calls (%1$d)</string>
+    <string name="search_group_title">Search</string>
+    <string name="thinking_search_group_title">Thinking and searching</string>
+    <string name="thinking_search_tools_group_title_with_count">Thinking, searching, and calling tools (%1$d)</string>
     
     <!-- Backup Settings Screen -->
     <string name="backup_data_overview">Data Overview</string>
@@ -6290,6 +6299,13 @@
 
     <!-- Workflow -->
     <string name="workflow_load_failed">Failed to load workflow</string>
+    <string name="workflow_storage_dir_unavailable">Unable to create workflow directory: %1$s</string>
+    <string name="workflow_storage_dir_unreadable">Unable to read workflow directory: %1$s</string>
+    <string name="workflow_storage_path_not_directory">Workflow storage path is not a directory: %1$s</string>
+    <string name="workflow_storage_file_parent_missing">Workflow file has no parent directory: %1$s</string>
+    <string name="workflow_storage_file_root_invalid">Workflow file format is invalid: %1$s is not a JSON object</string>
+    <string name="workflow_storage_invalid_files">Found %1$d invalid workflow file(s), skipped: %2$s</string>
+    <string name="workflow_storage_single_file_invalid">Workflow file format is invalid and cannot be opened: %1$s</string>
     <string name="workflow_create_failed">Failed to create workflow</string>
     <string name="workflow_update_condition_failed">Failed to update connection condition</string>
     <string name="workflow_update_failed">Failed to update workflow</string>
@@ -7051,7 +7067,6 @@
     <string name="enhanced_processing_message">Processing message...</string>
     <string name="enhanced_connecting_service">Connecting to AI service...</string>
     <string name="enhanced_receiving_response">Receiving AI response...</string>
-    <string name="server_tool_running">Calling server-side tool: %1$s...</string>
     <string name="enhanced_error_with_message">Error: %1$s</string>
     <string name="enhanced_pure_thinking_only_warning">Warning: Please output main content and do not output thinking-only responses.</string>
     <string name="enhanced_truncated_tool_call_warning">Warning: A tool call was truncated by the model output limit. All tool calls in this round were invalidated and will not be executed. Try reducing single-turn output, splitting the task, or switching to a more suitable model/provider.</string>

@@ -26,13 +26,6 @@ class MessageCopyTextTest {
         assertEquals("prefixsuffix", cleanMessageContentForCopy(content))
     }
 
-    @Test fun cleanMessageContentForCopy_removesResponsesWebSearchMetadata() {
-        val content =
-            "answer<meta provider=\"openai:responses_web_search\">payload</meta>suffix"
-
-        assertEquals("answersuffix", cleanMessageContentForCopy(content))
-    }
-
     @Test fun cleanMessageContentForCopy_preservesOtherMetaAndMarkdown() {
         val content = "<meta provider=\"other\">value</meta>\n**answer**"
 
@@ -45,6 +38,15 @@ class MessageCopyTextTest {
                 "<meta provider=\"openai:responses_reasoning\">payload</meta>answer"
 
         assertEquals("<meta charset=\"utf-8\">visibleanswer", cleanMessageContentForCopy(content))
+    }
+
+    @Test fun cleanMessageContentForCopy_removesOpenAiResponsesOutputItemMetadata() {
+        val content =
+            "answer" +
+                "<meta provider=\"openai:responses_output_item\">payload</meta>" +
+                "<search provider=\"deepseek\"><query>q</query></search>"
+
+        assertEquals("answer", cleanMessageContentForCopy(content))
     }
 
     @Test fun buildSelectedMessagesPlainText_usesMessageOrderAndPlainTextConversion() = runTest {

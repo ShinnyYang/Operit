@@ -1,23 +1,23 @@
 ---
-title: DeepSeek Responses 与服务器搜索协议
-description: DeepSeek Chat Completions 兼容、Responses 路由、搜索状态和历史恢复约定
+title: DeepSeek Responses 与 Web Search 协议
+description: DeepSeek Chat Completions 兼容、Responses 路由、搜索识别和历史恢复约定
 keywords: DeepSeek,Responses,web_search,配置兼容,聊天历史
 For_Agent: 本文是协作实现协议，不代表功能已经进入发布版本
 ---
 
-# DeepSeek Responses 与服务器搜索协议
+# DeepSeek Responses 与 Web Search 协议
 
 ## 配置兼容
 
 DeepSeek 继续使用 `ApiProviderType.DEEPSEEK`。API 端点是该 provider 内部传输协议的唯一配置来源，不建立新的 provider 身份，因此模型价格、Token 统计和既有配置归属保持不变。
 
-已发布版本保存的 `/chat/completions` 端点继续使用 Chat Completions。端点路径以 `/responses` 结尾时使用 Responses。服务器搜索开关只在 Responses 端点生效；关闭开关或使用 Chat Completions 时不声明 `web_search`。
+已发布版本保存的 `/chat/completions` 端点继续使用 Chat Completions。端点路径以 `/responses` 结尾时使用 Responses。Web Search 开关只在 Responses 端点生效；关闭开关或使用 Chat Completions 时不声明 `web_search`。
 
 设置中的 API 端点选择器提供官方 Chat Completions 与 Responses 完整地址，并直接保存用户选择的地址。运行时不再保存独立协议字段，也不互相改写两种协议路径。
 
 ## Responses 请求
 
-Responses 端点复用通用 Responses provider，并保持 `DEEPSEEK` 作为运行时身份。启用服务器搜索时，在已有函数工具旁加入以下工具声明：
+Responses 端点由 `DeepseekProvider` 在内部选择，不把端点判断扩散到 `AIServiceFactory` 之外。启用 Web Search 时，在已有函数工具旁加入以下工具声明：
 
 ```json
 {"type":"web_search"}
@@ -25,33 +25,25 @@ Responses 端点复用通用 Responses provider，并保持 `DEEPSEEK` 作为运
 
 工具声明允许模型选择是否搜索，不把每轮搜索设为强制行为。
 
-## 服务端工具状态
+DeepSeek Responses 当前不声明 `include`。兼容表没有列出 `include` 支持；2026-08-28 实测返回的 `web_search_call.action` 包含 `type` 与 `queries`，不包含 `sources`，最终 `output_text.annotations` 为空数组。provider 先按 `output[].type == "web_search_call"` 识别搜索调用并读取 `action.queries`，同一轮出现多条 `web_search_call` 时合并到一个 `<search>` 展示块。若响应同时提供 `web_search_call.action.sources`、`web_search_call.action.url` 或最终文本 `annotations[].url_citation`，再把这些结构化来源写入同一个 `<search>` 块。
 
-服务端工具生命周期通过 `SERVER_TOOL_STARTED` 与 `SERVER_TOOL_COMPLETED` 两种内部流事件传递。事件携带 `toolType`，只驱动用户界面状态，不写入模型正文或聊天历史。
+多轮上下文中，服务端返回的完整 `web_search_call` output item 需要继续作为 Responses `input` item 提交。当前消息模型没有独立的 provider metadata 字段，因此 provider 将该官方 JSON item 编码进 `<meta provider="openai:responses_output_item">` 协议标记；下一轮构造请求时，adapter 解码并原样写回 `input`。同一条 assistant 消息中的 `<search>` 展示块会在构造请求文本时移除，避免把 UI 展示文本交回模型。
 
-DeepSeek Web Search 的以下服务器事件转换为 `toolType=web_search` 的服务端工具事件：
-
-- `response.web_search_call.in_progress`
-- `response.web_search_call.searching`
-- `response.web_search_call.completed`
-
-开始和搜索中事件把当前输入处理状态显示为正在搜索；完成事件恢复为接收回复。多个搜索调用同时活动时，只有全部完成后才恢复接收回复状态。其他服务端工具可以复用同一事件通道，并由 `toolType` 映射对应的本地化状态文案。
+发送前清理不根据 DeepSeek 的 providerModel 猜测端点协议。DeepSeek 历史保留 Responses 协议标记到 provider 内部；Chat Completions 内容构造移除这些标记与 `<search>` 展示块，Responses adapter 消费并恢复官方 input item。
 
 Responses 流以 `response.completed`、`response.incomplete` 或 `response.failed` 结束。`completed` 和 `incomplete` 都是服务器确认的终止事件；`failed` 按响应错误处理。连接在收到终止事件前结束仍视为网络中断。
 
-## 搜索历史恢复
+`response.reasoning_text.delta` 和 `response.reasoning_summary_text.delta` 到达时立即输出 reasoning。DeepSeek Responses 的 `message.phase` 可能到 `response.output_item.done` 才稳定，因此 DeepSeek 子 provider 按 output item 缓冲 `response.output_text.delta`：`phase=commentary` 输出到 `<think>`，最终回答再输出正文。`response.reasoning_text.done` 只在事件携带完整文本且该文本尚未通过 delta 输出时处理，`response.output_item.done` 只补充 reasoning item 自带的 `content[].reasoning_text`。终止事件不补写 reasoning 或正文，避免答案完成后才追加思考。
 
-服务端 `output` 中的 `web_search_call` 保存为 assistant 内容里的隐藏协议元数据。下一轮 Responses 请求从该元数据恢复原始 input item，维持 DeepSeek 的无状态多轮搜索上下文。
+## 搜索展示
 
-隐藏元数据不是自然语言聊天内容：复制和非 Responses 请求必须移除它。普通渲染器可以从通过校验的 `web_search_call` 派生只读的服务端工具记录，但不得显示 Base64 内容或把它转换成客户端 `<tool>`。Responses 请求在恢复 item 后也从 message 文本中移除对应标签，避免把协议数据作为自然语言重复发送。
+服务端 `web_search_call` 与客户端函数工具严格分离。`web_search_call` 不进入 `AITool`、`ToolInvocation`、工具授权、工具执行或 `function_call_output` 链路，也不创建独立的本地 stream 事件。
 
-## 服务端工具记录
+provider 从 `web_search_call.action.queries` 生成 `<query>` 子节点；从 `web_search_call.action.sources`、`web_search_call.action.url` 与最终 message content 的 `annotations[].url_citation` 合并结构化来源，生成 `<source>` 子节点。`<search>` 保留 provider、action、status、query、title、url、type 和额外来源属性；Android 与 Web 渲染层优先列出全部可点击来源，每项显示网站图标和站点名。真实响应只有查询词而没有来源 URL 时，界面列出查询词，保证用户能看到本轮确实发生了搜索。搜索块跟随相邻思考与工具调用进入同一折叠组，组标题按内容显示为思考并搜索或思考、搜索并调用工具。
 
-服务端工具记录与客户端函数工具严格分离。它不进入 `AITool`、`ToolInvocation`、工具授权、工具执行或 `function_call_output` 链路，只用于呈现供应商已经执行的调用。
+默认 Responses 返回的是调用条目和最终回答，并不提供与客户端函数工具等价的独立工具输出。DeepSeek 当前可稳定读取的是 `web_search_call.action.queries`；引用可能由最终文本中的 `url_citation` 承载，完整来源列表也可能位于 `web_search_call.action.sources`。provider 只把这些结构化字段转换为展示 XML，不把搜索状态包装成工具调用行。
 
-`web_search` 记录从 `web_search_call` 读取调用 ID、状态和 action。消息列表直接以协议工具标识 `web_search` 作为标题，并用前置云端图标区分调用来源；摘要包含 query 和状态，详情保留服务端返回的原始调用 JSON。格式错误或缺少调用 ID 的 metadata 不渲染。
-
-默认 Responses 返回的是调用条目和最终回答，并不提供与客户端函数工具等价的独立工具输出。引用由最终文本中的 `url_citation` 承载；完整来源列表需要请求显式声明 `web_search_call.action.sources`，当前协议不主动请求该字段。
+`openai:responses_output_item` 属于隐藏协议标记，Android、Web 渲染层和复制文本清理都不展示它。用户可见面只保留 `<search>` 中的网站图标、站点名、可点击来源或无 URL 时的查询词。
 
 ## 客户端函数工具历史
 
@@ -63,4 +55,4 @@ Responses 流以 `response.completed`、`response.incomplete` 或 `response.fail
 
 ## 当前边界
 
-本协议不定义搜索引用的专用 UI。若服务端最终文本包含引用，它仍作为普通响应文本展示；结构化引用展示需要独立设计和兼容契约。
+`<search>` 块当前保存搜索查询和来源列表。若服务端最终文本包含行内引用，它仍作为普通响应文本展示，不在本协议中定义额外的行内 citation 组件。
