@@ -431,12 +431,12 @@ object OpenAIResponsesPayloadAdapter {
             if (role == "tool") {
                 val callId = message.optString("tool_call_id", "")
                 if (callId.isNotEmpty()) {
-                    val outputText = extractToolOutputText(message.opt("content"))
+                    val outputContent = extractToolOutputContent(message.opt("content"))
                     input.put(
                         JSONObject().apply {
                             put("type", "function_call_output")
                             put("call_id", callId)
-                            put("output", outputText)
+                            put("output", outputContent)
                         }
                     )
                     continue
@@ -609,6 +609,22 @@ object OpenAIResponsesPayloadAdapter {
             }
 
             else -> content.toString()
+        }
+    }
+
+    private fun extractToolOutputContent(content: Any?): Any {
+        return when (content) {
+            is JSONArray -> {
+                val convertedContent = convertMessageContentForResponses(content)
+                if (convertedContent is JSONArray && convertedContent.length() > 0) {
+                    convertedContent
+                } else {
+                    extractToolOutputText(content)
+                }
+            }
+
+            is String -> stripResponsesControlMarkupForInput(content)
+            else -> extractToolOutputText(content)
         }
     }
 

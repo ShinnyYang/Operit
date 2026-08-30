@@ -782,21 +782,99 @@ open class OpenAIProvider(
         }
     }
 
+    private fun inputContentText(text: String): String {
+        return if (useResponsesApi) {
+            text
+        } else {
+            ChatUtils.stripOpenAiResponsesProtocolMarkup(text)
+        }
+    }
+
+    private fun canCarryUserRichContent(role: String): Boolean {
+        return role.equals("user", ignoreCase = true) ||
+            role.equals("summary", ignoreCase = true)
+    }
+
+    private fun canCarryResponsesToolImages(role: String): Boolean {
+        return useResponsesApi && role.equals("tool", ignoreCase = true)
+    }
+
+    protected fun appendReadableImageMessageIfNeeded(
+        messagesArray: JSONArray,
+        sourceContent: String,
+        sourceLabel: String
+    ) {
+        appendReadableImageMessageIfNeeded(messagesArray, listOf(sourceContent), sourceLabel)
+    }
+
+    protected fun appendReadableImageMessageIfNeeded(
+        messagesArray: JSONArray,
+        sourceContents: List<String>,
+        sourceLabel: String
+    ) {
+        if (!supportsVision) return
+
+        val imageLinks = mutableListOf<ImageLink>()
+        val seenIds = mutableSetOf<String>()
+        sourceContents.forEach { sourceContent ->
+            val contentText = inputContentText(sourceContent)
+            if (!MediaLinkParser.hasImageLinks(contentText)) return@forEach
+            MediaLinkParser.extractImageLinks(contentText).forEach { link ->
+                if (seenIds.add(link.id)) {
+                    imageLinks.add(link)
+                }
+            }
+        }
+
+        if (imageLinks.isEmpty()) return
+
+        val contentArray = JSONArray().apply {
+            put(
+                JSONObject().apply {
+                    put("type", "text")
+                    put(
+                        "text",
+                        if (imageLinks.size == 1) {
+                            "The previous $sourceLabel included this image."
+                        } else {
+                            "The previous $sourceLabel included these images."
+                        }
+                    )
+                }
+            )
+        }
+        imageLinks.forEach { link ->
+            contentArray.put(
+                JSONObject().apply {
+                    put("type", "image_url")
+                    put(
+                        "image_url",
+                        JSONObject().apply {
+                            put("url", "data:${link.mimeType};base64,${link.base64Data}")
+                        }
+                    )
+                }
+            )
+        }
+
+        messagesArray.put(
+            JSONObject().apply {
+                put("role", "user")
+                put("content", contentArray)
+            }
+        )
+    }
+
     /**
      * 构建content字段（可能是字符串或数组）
      * @param text 要处理的文本内容
-     * @param role API消息角色；只有user/summary允许注入多媒体内容
+     * @param role API消息角色；user/summary允许注入多媒体内容，Responses的tool输出可携带结构化图片
      * @return 纯文本字符串或包含图片和文本的JSONArray
      */
     fun buildContentField(context: Context, text: String, role: String = "user"): Any {
-        val contentText =
-            if (useResponsesApi) {
-                text
-            } else {
-                ChatUtils.stripOpenAiResponsesProtocolMarkup(text)
-            }
-        val allowRichContent =
-            role.equals("user", ignoreCase = true) || role.equals("summary", ignoreCase = true)
+        val contentText = inputContentText(text)
+        val allowUserRichContent = canCarryUserRichContent(role)
+        val allowResponsesToolImages = canCarryResponsesToolImages(role)
         val hasImages = MediaLinkParser.hasImageLinks(contentText)
         val hasMedia = MediaLinkParser.hasMediaLinks(contentText)
 
@@ -832,7 +910,10 @@ open class OpenAIProvider(
         }
 
         val hasAnySupportedRichContent =
-            allowRichContent && (hasSupportedMedia || (supportsVision && imageLinks.isNotEmpty()))
+            (allowUserRichContent && hasSupportedMedia) ||
+                ((allowUserRichContent || allowResponsesToolImages) &&
+                    supportsVision &&
+                    imageLinks.isNotEmpty())
         if (!hasAnySupportedRichContent) {
             if (textWithoutLinks.isNotEmpty()) return textWithoutLinks
 
@@ -846,7 +927,7 @@ open class OpenAIProvider(
 
         val contentArray = JSONArray()
 
-        if (supportsAudio) {
+        if (allowUserRichContent && supportsAudio) {
             audioLinks.forEach { link ->
                 contentArray.put(JSONObject().apply {
                     put("type", "input_audio")
@@ -855,7 +936,7 @@ open class OpenAIProvider(
             }
         }
 
-        if (supportsVideo) {
+        if (allowUserRichContent && supportsVideo) {
             videoLinks.forEach { link ->
                 contentArray.put(JSONObject().apply {
                     put("type", "video_url")
@@ -869,7 +950,7 @@ open class OpenAIProvider(
             }
         }
 
-        if (supportsFiles) {
+        if (allowUserRichContent && supportsFiles) {
             fileLinks.forEach { link ->
                 val fileName = requireNotNull(link.fileName?.takeIf { it.isNotBlank() })
                 contentArray.put(JSONObject().apply {
@@ -880,7 +961,7 @@ open class OpenAIProvider(
             }
         }
 
-        if (supportsVision) {
+        if ((allowUserRichContent || allowResponsesToolImages) && supportsVision) {
             imageLinks.forEach { link ->
                 contentArray.put(JSONObject().apply {
                     put("type", "image_url")
@@ -1055,6 +1136,11 @@ open class OpenAIProvider(
                                         put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    effectiveContent,
+                                    "assistant message"
+                                )
                             }
                         }
 
@@ -1081,6 +1167,11 @@ open class OpenAIProvider(
                                         put("content", buildContentField(context, effectiveContent, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    effectiveContent,
+                                    "assistant tool-call message"
+                                )
                             }
                         }
 
@@ -1091,13 +1182,15 @@ open class OpenAIProvider(
 
                             if (resultsList.isNotEmpty() && openToolCallIds.isNotEmpty()) {
                                 val validCount = minOf(resultsList.size, openToolCallIds.size)
+                                val readableImageSources = mutableListOf<String>()
                                 repeat(validCount) { index ->
                                     val (_, resultContent) = resultsList[index]
+                                    readableImageSources.add(resultContent)
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "tool")
                                             put("tool_call_id", openToolCallIds[index])
-                                            put("content", resultContent)
+                                            put("content", buildContentField(context, resultContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -1109,6 +1202,14 @@ open class OpenAIProvider(
                                     AppLogger.w(
                                         "AIService",
                                         "发现多余的tool_result: ${resultsList.size} results vs ${validCount} pending tool_calls"
+                                    )
+                                }
+
+                                if (!useResponsesApi) {
+                                    appendReadableImageMessageIfNeeded(
+                                        messagesArray,
+                                        readableImageSources,
+                                        "tool result"
                                     )
                                 }
 
@@ -1153,6 +1254,13 @@ open class OpenAIProvider(
                     }
                     historyMessage.put("content", buildContentField(context, effectiveContent, role = role))
                     messagesArray.put(historyMessage)
+                    if (role == "assistant") {
+                        appendReadableImageMessageIfNeeded(
+                            messagesArray,
+                            effectiveContent,
+                            "assistant message"
+                        )
+                    }
                 }
             }
         }

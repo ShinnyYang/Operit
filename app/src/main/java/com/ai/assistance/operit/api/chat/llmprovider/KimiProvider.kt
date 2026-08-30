@@ -298,6 +298,11 @@ open class KimiProvider(
                                         put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    content,
+                                    "assistant message"
+                                )
                             }
                         }
 
@@ -324,6 +329,11 @@ open class KimiProvider(
                                         put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    originalContent,
+                                    "assistant tool-call message"
+                                )
                             }
                         }
 
@@ -334,13 +344,15 @@ open class KimiProvider(
 
                             if (resultsList.isNotEmpty() && openToolCallIds.isNotEmpty()) {
                                 val validCount = minOf(resultsList.size, openToolCallIds.size)
+                                val readableImageSources = mutableListOf<String>()
                                 repeat(validCount) { index ->
                                     val (_, resultContent) = resultsList[index]
+                                    readableImageSources.add(resultContent)
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "tool")
                                             put("tool_call_id", openToolCallIds[index])
-                                            put("content", resultContent)
+                                            put("content", buildContentField(context, resultContent, role = "tool"))
                                         }
                                     )
                                 }
@@ -354,6 +366,12 @@ open class KimiProvider(
                                         "发现多余的tool_result: ${resultsList.size} results vs ${validCount} pending tool_calls"
                                     )
                                 }
+
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    readableImageSources,
+                                    "tool result"
+                                )
 
                                 if (textContent.isNotEmpty()) {
                                     messagesArray.put(
@@ -392,7 +410,15 @@ open class KimiProvider(
                         }
 
                         PromptTurnKind.USER,
-                        PromptTurnKind.SUMMARY,
+                        PromptTurnKind.SUMMARY -> {
+                            messagesArray.put(
+                                JSONObject().apply {
+                                    put("role", "user")
+                                    put("content", buildContentField(context, originalContent))
+                                }
+                            )
+                        }
+
                         PromptTurnKind.TOOL_RESULT -> {
                             messagesArray.put(
                                 JSONObject().apply {
@@ -411,6 +437,11 @@ open class KimiProvider(
                                     put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
                             )
+                            appendReadableImageMessageIfNeeded(
+                                messagesArray,
+                                content,
+                                "assistant message"
+                            )
                         }
 
                         PromptTurnKind.TOOL_CALL -> {
@@ -420,6 +451,11 @@ open class KimiProvider(
                                     put("reasoning_content", "")
                                     put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
+                            )
+                            appendReadableImageMessageIfNeeded(
+                                messagesArray,
+                                originalContent,
+                                "assistant tool-call message"
                             )
                         }
                     }
