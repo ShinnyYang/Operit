@@ -53,7 +53,7 @@ class DeepseekProviderMediaRoleTest {
     }
 
     @Test
-    fun `DeepSeek injects user images but strips assistant and tool image links`() {
+    fun `DeepSeek keeps history images readable through user image inputs`() {
         val history =
             listOf(
                 PromptTurn(
@@ -66,12 +66,13 @@ class DeepseekProviderMediaRoleTest {
                 ),
                 PromptTurn(
                     PromptTurnKind.TOOL_RESULT,
-                    "tool text<link type=\"image\" id=\"missing\">Image</link>"
+                    "tool text<link type=\"image\" id=\"$IMAGE_ID\">Image</link>"
                 )
             )
 
         val request = buildRequestJson(history)
         val messages = request.getJSONArray("messages")
+        assertEquals(4, messages.length())
 
         val userContent = messages.getJSONObject(0).getJSONArray("content")
         assertEquals("image_url", userContent.getJSONObject(0).getString("type"))
@@ -85,16 +86,33 @@ class DeepseekProviderMediaRoleTest {
         assertEquals("assistant", assistantMessage.getString("role"))
         assertEquals("assistant text", assistantMessage.getString("content"))
 
-        val toolHistoryMessage = messages.getJSONObject(2)
+        val assistantImageMessage = messages.getJSONObject(2)
+        assertEquals("user", assistantImageMessage.getString("role"))
+        val assistantImageContent = assistantImageMessage.getJSONArray("content")
+        assertEquals("text", assistantImageContent.getJSONObject(0).getString("type"))
+        assertTrue(assistantImageContent.getJSONObject(0).getString("text").contains("assistant"))
+        assertEquals("image_url", assistantImageContent.getJSONObject(1).getString("type"))
+        assertEquals(
+            "data:image/png;base64,$IMAGE_BASE64",
+            assistantImageContent.getJSONObject(1).getJSONObject("image_url").getString("url")
+        )
+
+        val toolHistoryMessage = messages.getJSONObject(3)
         assertEquals("user", toolHistoryMessage.getString("role"))
-        assertEquals("tool text", toolHistoryMessage.getString("content"))
+        val toolHistoryContent = toolHistoryMessage.getJSONArray("content")
+        assertEquals("image_url", toolHistoryContent.getJSONObject(0).getString("type"))
+        assertEquals(
+            "data:image/png;base64,$IMAGE_BASE64",
+            toolHistoryContent.getJSONObject(0).getJSONObject("image_url").getString("url")
+        )
+        assertEquals("tool text", toolHistoryContent.getJSONObject(1).getString("text"))
 
         assertFalse(request.toString().contains("<link"))
         assertTrue(request.toString().contains("image_url"))
     }
 
     @Test
-    fun `DeepSeek strips image links from structured tool results`() {
+    fun `DeepSeek emits structured tool result images as readable user input`() {
         val history =
             listOf(
                 PromptTurn(
@@ -103,7 +121,7 @@ class DeepseekProviderMediaRoleTest {
                 ),
                 PromptTurn(
                     PromptTurnKind.TOOL_RESULT,
-                    """<tool_result name="read_file"><content>tool text<link type="image" id="missing">Image</link></content></tool_result>"""
+                    """<tool_result name="read_file"><content>tool text<link type="image" id="$IMAGE_ID">Image</link></content></tool_result>"""
                 )
             )
 
@@ -120,8 +138,58 @@ class DeepseekProviderMediaRoleTest {
                 .single { it.getString("role") == "tool" }
 
         assertEquals("tool text", toolMessage.getString("content"))
+
+        val imageMessage =
+            (0 until messages.length())
+                .map { messages.getJSONObject(it) }
+                .single {
+                    it.getString("role") == "user" &&
+                        it.optJSONArray("content")?.toString()?.contains("image_url") == true
+                }
+        val imageContent = imageMessage.getJSONArray("content")
+        assertEquals("text", imageContent.getJSONObject(0).getString("type"))
+        assertTrue(imageContent.getJSONObject(0).getString("text").contains("tool result"))
+        assertEquals("image_url", imageContent.getJSONObject(1).getString("type"))
+        assertEquals(
+            "data:image/png;base64,$IMAGE_BASE64",
+            imageContent.getJSONObject(1).getJSONObject("image_url").getString("url")
+        )
+
         assertFalse(request.toString().contains("<link"))
-        assertFalse(request.toString().contains("image_url"))
+        assertTrue(request.toString().contains("image_url"))
+    }
+
+    @Test
+    fun `OpenAI Responses keeps structured tool result images in function output`() {
+        val history =
+            listOf(
+                PromptTurn(
+                    PromptTurnKind.TOOL_CALL,
+                    """<tool name="read_file"><param name="path">/tmp/image.png</param></tool>"""
+                ),
+                PromptTurn(
+                    PromptTurnKind.TOOL_RESULT,
+                    """<tool_result name="read_file"><content>tool text<link type="image" id="$IMAGE_ID">Image</link></content></tool_result>"""
+                )
+            )
+
+        val request =
+            buildResponsesRequestJson(
+                history = history,
+                availableTools = listOf(ToolPrompt(name = "read_file", description = "Read a file"))
+            )
+        val input = request.getJSONArray("input")
+        val functionOutput =
+            (0 until input.length())
+                .map { input.getJSONObject(it) }
+                .single { it.getString("type") == "function_call_output" }
+        val output = functionOutput.getJSONArray("output")
+
+        assertEquals("input_image", output.getJSONObject(0).getString("type"))
+        assertEquals("data:image/png;base64,$IMAGE_BASE64", output.getJSONObject(0).getString("image_url"))
+        assertEquals("input_text", output.getJSONObject(1).getString("type"))
+        assertEquals("tool text", output.getJSONObject(1).getString("text"))
+        assertFalse(request.toString().contains("<link"))
     }
 
     private fun buildRequestJson(
@@ -154,6 +222,34 @@ class DeepseekProviderMediaRoleTest {
                 availableTools,
                 false
             ) as RequestBody
+        val buffer = Buffer()
+        body.writeTo(buffer)
+        return JSONObject(buffer.readUtf8())
+    }
+
+    private fun buildResponsesRequestJson(
+        history: List<PromptTurn>,
+        availableTools: List<ToolPrompt>
+    ): JSONObject {
+        val provider =
+            OpenAIResponsesProvider(
+                responsesApiEndpoint = "https://example.test/v1/responses",
+                apiKeyProvider = SingleApiKeyProvider("test-key"),
+                modelName = "openai-responses-test",
+                client = OkHttpClient(),
+                supportsVision = true,
+                enableToolCall = true
+            )
+        val body =
+            provider.createRequestBody(
+                context = mock<Context>(),
+                chatHistory = history,
+                modelParameters = emptyList<ModelParameter<*>>(),
+                enableThinking = false,
+                stream = false,
+                availableTools = availableTools,
+                preserveThinkInHistory = false
+            )
         val buffer = Buffer()
         body.writeTo(buffer)
         return JSONObject(buffer.readUtf8())

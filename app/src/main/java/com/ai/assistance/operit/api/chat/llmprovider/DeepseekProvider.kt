@@ -353,6 +353,11 @@ class DeepseekProvider(
                                         put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    content,
+                                    "assistant message"
+                                )
                             }
                         }
 
@@ -379,6 +384,11 @@ class DeepseekProvider(
                                         put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                     }
                                 )
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    originalContent,
+                                    "assistant tool-call message"
+                                )
                             }
                         }
 
@@ -389,8 +399,10 @@ class DeepseekProvider(
 
                             if (resultsList.isNotEmpty() && openToolCallIds.isNotEmpty()) {
                                 val validCount = minOf(resultsList.size, openToolCallIds.size)
+                                val readableImageSources = mutableListOf<String>()
                                 repeat(validCount) { index ->
                                     val (_, resultContent) = resultsList[index]
+                                    readableImageSources.add(resultContent)
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "tool")
@@ -410,11 +422,17 @@ class DeepseekProvider(
                                     )
                                 }
 
+                                appendReadableImageMessageIfNeeded(
+                                    messagesArray,
+                                    readableImageSources,
+                                    "tool result"
+                                )
+
                                 if (textContent.isNotEmpty()) {
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, textContent, role = "tool"))
+                                            put("content", buildContentField(context, textContent))
                                         }
                                     )
                                 }
@@ -429,7 +447,7 @@ class DeepseekProvider(
                                 messagesArray.put(
                                     JSONObject().apply {
                                         put("role", "user")
-                                        put("content", buildContentField(context, fallbackContent, role = "tool"))
+                                        put("content", buildContentField(context, fallbackContent))
                                     }
                                 )
                             }
@@ -460,7 +478,7 @@ class DeepseekProvider(
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "user")
-                                    put("content", buildContentField(context, originalContent, role = "tool"))
+                                    put("content", buildContentField(context, originalContent))
                                 }
                             )
                         }
@@ -474,6 +492,11 @@ class DeepseekProvider(
                                     put("content", buildContentField(context, content.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
                             )
+                            appendReadableImageMessageIfNeeded(
+                                messagesArray,
+                                content,
+                                "assistant message"
+                            )
                         }
 
                         PromptTurnKind.TOOL_CALL -> {
@@ -483,6 +506,11 @@ class DeepseekProvider(
                                     put("reasoning_content", "")
                                     put("content", buildContentField(context, originalContent.ifBlank { "[Empty]" }, role = "assistant"))
                                 }
+                            )
+                            appendReadableImageMessageIfNeeded(
+                                messagesArray,
+                                originalContent,
+                                "assistant tool-call message"
                             )
                         }
                     }
