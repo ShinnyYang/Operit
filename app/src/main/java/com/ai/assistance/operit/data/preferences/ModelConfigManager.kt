@@ -20,6 +20,7 @@ import com.ai.assistance.operit.data.model.ParameterValueType
 import com.ai.assistance.operit.data.model.StandardModelParameters
 import com.ai.assistance.operit.data.model.ApiProviderType
 import com.ai.assistance.operit.data.model.ApiKeyInfo
+import java.util.Locale
 import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -27,17 +28,20 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.json.JSONArray
+import org.json.JSONObject
 
 // 为ModelConfig创建专用的DataStore
 private val Context.modelConfigDataStore: DataStore<Preferences> by
         versionedPreferencesDataStore(
                 name = "model_configs",
-                currentVersion = 2,
+                currentVersion = 3,
         ) { appContext ->
             preferenceSchemaMigration { version, preferences ->
                 when (version) {
                     0 -> ModelConfigManager.migratePreferencesFromVersionZero(appContext, preferences)
                     1 -> ModelConfigManager.migratePreferencesFromVersionOne(preferences)
+                    2 -> ModelConfigManager.migratePreferencesFromVersionTwo(preferences)
                     else -> missingPreferencesSchemaMigration(version)
                 }
             }
@@ -65,6 +69,21 @@ class ModelConfigManager(
 
         // Default API provider type
         private val DEFAULT_API_PROVIDER_TYPE = ApiProviderType.DEEPSEEK
+        private const val OPENAI_CHAT_REASONING_EFFORT_RULE_ID = "openai-chat-reasoning-effort"
+        private val OPENAI_CHAT_PROVIDER_TYPES =
+                setOf(ApiProviderType.OPENAI.name, ApiProviderType.OPENAI_GENERIC.name)
+        private val OPENAI_CHAT_MATCHER_FIELDS =
+                setOf(
+                        "match",
+                        "modelPrefix",
+                        "modelContains",
+                        "modelSuffix",
+                        "modelRegex",
+                        "firstSegment",
+                        "lastSegmentPrefix",
+                        "lastSegmentContains",
+                        "lastSegmentRegex",
+                )
 
         internal val json = Json {
             ignoreUnknownKeys = true
@@ -153,6 +172,117 @@ class ModelConfigManager(
                                         thinkingOptionId = thinkingOptionId
                                 )
                         )
+            }
+        }
+
+        internal fun migratePreferencesFromVersionTwo(preferences: MutablePreferences) {
+            val configIds = preferences[CONFIG_LIST_KEY]?.let { json.decodeFromString<List<String>>(it) }
+                    ?: emptyList()
+
+            configIds.forEach { configId ->
+                val configKey = stringPreferencesKey("config_${configId}")
+                val configJson = preferences[configKey] ?: return@forEach
+                val config = json.decodeFromString<ModelConfigData>(configJson)
+                val providerTypeId = config.apiProviderTypeId.trim().uppercase(Locale.US)
+                if (providerTypeId !in OPENAI_CHAT_PROVIDER_TYPES) {
+                    return@forEach
+                }
+
+                val migratedThinkingConfigurations =
+                        migrateOpenAiChatThinkingConfigurations(
+                                providerTypeId,
+                                config.thinkingConfigurations
+                        )
+                if (migratedThinkingConfigurations == config.thinkingConfigurations) {
+                    return@forEach
+                }
+
+                // Version 2 stored OpenAI Chat's built-in reasoning rule as model-agnostic.
+                // Version 3 narrows the built-in rule set while leaving custom rules in place.
+                val migratedMapping =
+                        ThinkingQualityMappingRegistry.resolve(
+                                config.apiProviderTypeId,
+                                config.modelName,
+                                migratedThinkingConfigurations
+                        )
+                val migratedThinkingOptionId =
+                        if (migratedMapping.optionFor(config.thinkingOptionId) != null) {
+                            config.thinkingOptionId
+                        } else {
+                            migratedMapping.options.firstOrNull()?.id.orEmpty()
+                        }
+
+                preferences[configKey] =
+                        json.encodeToString(
+                                config.copy(
+                                        thinkingConfigurations = migratedThinkingConfigurations,
+                                        thinkingOptionId = migratedThinkingOptionId
+                                )
+                        )
+            }
+        }
+
+        private fun migrateOpenAiChatThinkingConfigurations(
+                providerTypeId: String,
+                thinkingConfigurations: String
+        ): String {
+            val sourceRules = thinkingRulesJsonArray(thinkingConfigurations)
+            val currentRules = thinkingRulesJsonArray(thinkingRulesForProvider(providerTypeId))
+            val existingCurrentRuleIds = currentRuleIds(sourceRules)
+            val targetRules = JSONArray()
+            var changed = false
+
+            for (index in 0 until sourceRules.length()) {
+                val sourceRule = sourceRules.optJSONObject(index)
+                if (sourceRule == null) {
+                    targetRules.put(sourceRules.get(index))
+                    continue
+                }
+
+                if (isLegacyOpenAiChatReasoningRule(sourceRule)) {
+                    for (currentIndex in 0 until currentRules.length()) {
+                        val currentRule = currentRules.optJSONObject(currentIndex) ?: continue
+                        val currentRuleId = currentRule.optString("id", "").trim()
+                        if (currentRuleId !in existingCurrentRuleIds) {
+                            targetRules.put(JSONObject(currentRule.toString()))
+                        }
+                    }
+                    changed = true
+                } else {
+                    targetRules.put(JSONObject(sourceRule.toString()))
+                }
+            }
+
+            return if (changed) targetRules.toString() else thinkingConfigurations
+        }
+
+        private fun currentRuleIds(rules: JSONArray): Set<String> {
+            val ruleIds = mutableSetOf<String>()
+            for (index in 0 until rules.length()) {
+                val rule = rules.optJSONObject(index) ?: continue
+                val ruleId = rule.optString("id", "").trim()
+                if (ruleId.isNotEmpty() && !isLegacyOpenAiChatReasoningRule(rule)) {
+                    ruleIds.add(ruleId)
+                }
+            }
+            return ruleIds
+        }
+
+        private fun isLegacyOpenAiChatReasoningRule(rule: JSONObject): Boolean {
+            val ruleId = rule.optString("id", "").trim()
+            return ruleId == OPENAI_CHAT_REASONING_EFFORT_RULE_ID &&
+                    OPENAI_CHAT_MATCHER_FIELDS.none(rule::has)
+        }
+
+        private fun thinkingRulesJsonArray(thinkingConfigurations: String): JSONArray {
+            val text = thinkingConfigurations.trim().ifEmpty { "[]" }
+            return when {
+                text.startsWith("[") -> JSONArray(text)
+                text.startsWith("{") -> {
+                    val objectValue = JSONObject(text)
+                    objectValue.optJSONArray("rules") ?: JSONArray().put(objectValue)
+                }
+                else -> JSONArray(text)
             }
         }
 
