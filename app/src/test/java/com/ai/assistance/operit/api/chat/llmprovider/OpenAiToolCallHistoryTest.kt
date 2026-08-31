@@ -7,6 +7,7 @@ import com.ai.assistance.operit.util.AppLogger
 import okhttp3.OkHttpClient
 import org.json.JSONArray
 import org.json.JSONObject
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -22,10 +23,21 @@ import org.mockito.kotlin.mock
  */
 class OpenAiToolCallHistoryTest {
 
+    private var previousSystemLogEnabled = true
+    private var previousFileLogEnabled = true
+
     @Before
     fun disableAndroidLogging() {
+        previousSystemLogEnabled = AppLogger.enableSystemLog
+        previousFileLogEnabled = AppLogger.enableFileLogging
         AppLogger.enableSystemLog = false
         AppLogger.enableFileLogging = false
+    }
+
+    @After
+    fun restoreAndroidLogging() {
+        AppLogger.enableSystemLog = previousSystemLogEnabled
+        AppLogger.enableFileLogging = previousFileLogEnabled
     }
 
     @Test
@@ -137,6 +149,32 @@ class OpenAiToolCallHistoryTest {
                 .getJSONObject("function").getString("name")
         )
         assertEquals("done", messages.at(2).getString("content"))
+    }
+
+    @Test
+    fun `unmatched tool results are preserved as user content without stealing a call id`() {
+        val messages =
+            buildMessages(
+                listOf(
+                    PromptTurn(kind = PromptTurnKind.USER, content = "Do both."),
+                    PromptTurn(
+                        kind = PromptTurnKind.ASSISTANT,
+                        content = toolCall("first", "value" to "1") +
+                            toolCall("second", "value" to "2")
+                    ),
+                    PromptTurn(
+                        kind = PromptTurnKind.TOOL_RESULT,
+                        content = toolResult("missing", "unmatched") + toolResult("first", "ok")
+                    )
+                )
+            )
+
+        val toolCalls = messages.at(1).getJSONArray("tool_calls")
+        assertEquals(toolCalls.getJSONObject(0).getString("id"), messages.at(2).getString("tool_call_id"))
+        assertEquals("ok", messages.at(2).getString("content"))
+        assertEquals(toolCalls.getJSONObject(1).getString("id"), messages.at(3).getString("tool_call_id"))
+        assertEquals("User cancelled", messages.at(3).getString("content"))
+        assertEquals("unmatched", messages.at(4).getString("content"))
     }
 
     @Test

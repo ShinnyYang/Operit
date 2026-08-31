@@ -1189,27 +1189,28 @@ open class OpenAIProvider(
 
                             if (resultsList.isNotEmpty() && openToolCalls.isNotEmpty()) {
                                 val readableImageSources = mutableListOf<String>()
-                                val matchedIds =
-                                    StructuredToolCallBridge.consumeMatchingToolCallIds(
+                                val matchedCalls =
+                                    StructuredToolCallBridge.consumeMatchingToolCalls(
                                         openToolCalls,
                                         resultsList.map { it.first }
                                     )
-                                matchedIds.forEachIndexed { index, toolCallId ->
-                                    val resultContent = resultsList[index].second
+                                val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
+                                matchedCalls.forEach { matchedCall ->
+                                    val resultContent = resultsList[matchedCall.resultIndex].second
                                     readableImageSources.add(resultContent)
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "tool")
-                                            put("tool_call_id", toolCallId)
+                                            put("tool_call_id", matchedCall.call.id)
                                             put("content", buildContentField(context, resultContent, role = "tool"))
                                         }
                                     )
                                 }
 
-                                if (resultsList.size > matchedIds.size) {
+                                if (matchedCalls.size < resultsList.size) {
                                     AppLogger.w(
                                         "AIService",
-                                        "发现多余的tool_result: ${resultsList.size} results vs ${matchedIds.size} pending tool_calls"
+                                        "发现未匹配的tool_result: ${resultsList.size - matchedCalls.size}"
                                     )
                                 }
 
@@ -1226,11 +1227,21 @@ open class OpenAIProvider(
                                     )
                                 }
 
-                                if (textContent.isNotEmpty()) {
+                                val unmatchedContent =
+                                    resultsList
+                                        .filterIndexed { index, _ -> index !in matchedResultIndexes }
+                                        .joinToString("\n") { result ->
+                                            if (result.second.isBlank()) "[Empty]" else result.second
+                                        }
+                                val userContent =
+                                    listOf(unmatchedContent, textContent)
+                                        .filter { it.isNotBlank() }
+                                        .joinToString("\n")
+                                if (userContent.isNotEmpty()) {
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, textContent))
+                                            put("content", buildContentField(context, userContent))
                                         }
                                     )
                                 }

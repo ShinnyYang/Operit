@@ -4,6 +4,7 @@ import com.ai.assistance.operit.core.chat.hooks.PromptTurn
 import com.ai.assistance.operit.core.chat.hooks.PromptTurnKind
 import com.ai.assistance.operit.data.model.ToolParameterSchema
 import com.ai.assistance.operit.data.model.ToolPrompt
+import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.ChatUtils
 import kotlin.math.abs
@@ -25,46 +26,49 @@ internal object StructuredToolCallBridge {
     /** A tool call that has been sent to the model but has no `tool` message answering it yet. */
     data class OpenToolCall(val id: String, val name: String)
 
+    data class MatchedToolCall(val resultIndex: Int, val call: OpenToolCall)
+
     /**
      * The callable tool name behind a queued tool call, unwrapping the `package_proxy` envelope so
      * that a `pkg:tool` result can still be matched back to the call that produced it.
      */
     fun toolCallName(toolCall: JSONObject): String {
         val function = toolCall.optJSONObject("function") ?: return ""
-        val name = function.optString("name", "")
+        val name = function.optString("name", "").trim()
         if (name != "package_proxy") {
             return name
         }
-        val arguments =
-            kotlin.runCatching { JSONObject(function.optString("arguments", "{}")) }.getOrNull()
-        return arguments?.optString("tool_name", "")?.takeIf { it.isNotBlank() } ?: name
+
+        return try {
+            JSONObject(function.optString("arguments", "{}"))
+                .optString("tool_name", "")
+                .trim()
+        } catch (e: Exception) {
+            AppLogger.w("StructuredToolCallBridge", "package_proxy arguments are not valid JSON", e)
+            ""
+        }
     }
 
     /**
-     * Consumes one open tool call per tool result, preferring the call whose tool name matches the
-     * result and falling back to the oldest open call. Tool results are not guaranteed to come back
-     * in call order (denied invocations are hoisted to the front of the result list), so pairing by
-     * position alone can attach a result to the wrong `tool_call_id`.
+     * Consumes only the open tool call whose name exactly matches each result. Tool results are not
+     * guaranteed to come back in call order (denied invocations are hoisted to the front of the
+     * result list), so pairing by position alone can attach a result to the wrong call ID.
      *
-     * @return the matched `tool_call_id` per result, in result order; shorter than [resultToolNames]
-     *   when there are fewer open calls than results.
+     * @return matched calls with their source result indexes; unmatched results remain unconsumed.
      */
-    fun consumeMatchingToolCallIds(
+    fun consumeMatchingToolCalls(
         openToolCalls: MutableList<OpenToolCall>,
         resultToolNames: List<String?>
-    ): List<String> {
-        val matched = ArrayList<String>(minOf(openToolCalls.size, resultToolNames.size))
-        for (resultName in resultToolNames) {
-            if (openToolCalls.isEmpty()) {
-                break
+    ): List<MatchedToolCall> {
+        val matched = ArrayList<MatchedToolCall>(minOf(openToolCalls.size, resultToolNames.size))
+        resultToolNames.forEachIndexed { resultIndex, resultName ->
+            val normalizedResultName = resultName?.trim().orEmpty()
+            if (normalizedResultName.isEmpty()) return@forEachIndexed
+
+            val callIndex = openToolCalls.indexOfFirst { it.name == normalizedResultName }
+            if (callIndex >= 0) {
+                matched.add(MatchedToolCall(resultIndex, openToolCalls.removeAt(callIndex)))
             }
-            val byName =
-                if (resultName.isNullOrBlank()) {
-                    -1
-                } else {
-                    openToolCalls.indexOfFirst { it.name.equals(resultName, ignoreCase = true) }
-                }
-            matched.add(openToolCalls.removeAt(if (byName >= 0) byName else 0).id)
         }
         return matched
     }
@@ -361,13 +365,14 @@ internal object StructuredToolCallBridge {
                     val resultsList = toolResults ?: emptyList()
 
                     if (resultsList.isNotEmpty() && openToolCalls.isNotEmpty()) {
-                        val matchedIds =
-                            consumeMatchingToolCallIds(openToolCalls, resultsList.map { it.name })
-                        matchedIds.forEachIndexed { index, toolCallId ->
-                            val result = resultsList[index]
+                        val matchedCalls =
+                            consumeMatchingToolCalls(openToolCalls, resultsList.map { it.name })
+                        val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
+                        matchedCalls.forEach { matchedCall ->
+                            val result = resultsList[matchedCall.resultIndex]
                             val toolMessage = JSONObject().apply {
                                 put("role", "tool")
-                                put("tool_call_id", toolCallId)
+                                put("tool_call_id", matchedCall.call.id)
                                 if (!result.name.isNullOrBlank()) {
                                     put("name", result.name)
                                 }
@@ -375,14 +380,26 @@ internal object StructuredToolCallBridge {
                             }
                             messagesArray.put(toolMessage)
                         }
+                        if (matchedCalls.size < resultsList.size) {
+                            logDebug("发现未匹配的tool_result: ${resultsList.size - matchedCalls.size}")
+                        }
+
                         // Close the batch before any user message, otherwise the leftover calls are
                         // answered after it and their `tool` messages no longer follow their call.
                         flushOpenToolCallsAsCancelled()
-                        if (textContent.isNotBlank()) {
+                        val unmatchedContent =
+                            resultsList
+                                .filterIndexed { index, _ -> index !in matchedResultIndexes }
+                                .joinToString("\n") { nonEmptyContent(it.content) }
+                        val userContent =
+                            listOf(unmatchedContent, textContent)
+                                .filter { it.isNotBlank() }
+                                .joinToString("\n")
+                        if (userContent.isNotBlank()) {
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "user")
-                                    put("content", textContent)
+                                    put("content", userContent)
                                 }
                             )
                         }

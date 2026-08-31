@@ -69,6 +69,25 @@ class StructuredToolCallBridgeHistoryTest {
     }
 
     @Test
+    fun `unmatched result does not consume an unrelated open call`() {
+        val openToolCalls =
+            mutableListOf(
+                StructuredToolCallBridge.OpenToolCall("first-id", "first"),
+                StructuredToolCallBridge.OpenToolCall("second-id", "second")
+            )
+
+        val matched =
+            StructuredToolCallBridge.consumeMatchingToolCalls(
+                openToolCalls,
+                listOf("missing", "first")
+            )
+
+        assertEquals(listOf(1), matched.map { it.resultIndex })
+        assertEquals(listOf("first-id"), matched.map { it.call.id })
+        assertEquals(listOf("second"), openToolCalls.map { it.name })
+    }
+
+    @Test
     fun `built-in tool channel compiles tool turns into plain roles`() {
         val compiled =
             StructuredToolCallBridge.compileHistoryForProvider(
