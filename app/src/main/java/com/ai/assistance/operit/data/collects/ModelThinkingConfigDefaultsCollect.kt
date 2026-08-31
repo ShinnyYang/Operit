@@ -11,6 +11,26 @@ object ModelThinkingConfigDefaults {
                   {
                     "id": "openai-chat-reasoning-effort",
                     "providers": ["OPENAI", "OPENAI_GENERIC"],
+                    "match": {"modelRegex": ["(?:^|/)(?:o[1-9]|gpt-[5-9]|gpt-oss|codex)"]},
+                    "control": "levels",
+                    "parameterLabel": "reasoning_effort",
+                    "options": [
+                      {"id": "low", "label": "low", "path": "reasoning_effort", "value": "low"},
+                      {"id": "medium", "label": "medium", "path": "reasoning_effort", "value": "medium"},
+                      {"id": "high", "label": "high", "path": "reasoning_effort", "value": "high"},
+                      {"id": "xhigh", "label": "xhigh", "path": "reasoning_effort", "value": "xhigh"},
+                      {"id": "max", "label": "max", "path": "reasoning_effort", "value": "max"}
+                    ]
+                  },
+                  {
+                    "id": "openai-chat-non-reasoning-models",
+                    "providers": ["OPENAI_GENERIC"],
+                    "match": {"modelRegex": ["(?:^|/)(?:chatgpt-|gpt-3|gpt-4)"]},
+                    "control": "unsupported"
+                  },
+                  {
+                    "id": "openai-compatible-chat-reasoning-effort",
+                    "providers": ["OPENAI_GENERIC"],
                     "control": "levels",
                     "parameterLabel": "reasoning_effort",
                     "options": [
