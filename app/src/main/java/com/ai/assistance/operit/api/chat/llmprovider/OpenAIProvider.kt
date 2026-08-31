@@ -1053,10 +1053,6 @@ open class OpenAIProvider(
             }
             if (effectiveContent != null) {
                 historyMessage.put("content", buildContentField(context, effectiveContent, role = "assistant"))
-            } else {
-                // JSONObject.put(name, null) drops the key; gateways that translate this request to
-                // another protocol need the assistant turn to stay recognizable as `content: null`.
-                historyMessage.put("content", JSONObject.NULL)
             }
             historyMessage.put("tool_calls", queuedToolCalls)
             messagesArray.put(historyMessage)
@@ -1194,7 +1190,6 @@ open class OpenAIProvider(
                                         openToolCalls,
                                         resultsList.map { it.first }
                                     )
-                                val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
                                 matchedCalls.forEach { matchedCall ->
                                     val resultContent = resultsList[matchedCall.resultIndex].second
                                     readableImageSources.add(resultContent)
@@ -1214,9 +1209,6 @@ open class OpenAIProvider(
                                     )
                                 }
 
-                                // Close the batch before any user message, otherwise the leftover
-                                // calls are answered after it and their `tool` messages no longer
-                                // follow the assistant message that opened them.
                                 flushOpenToolCallsAsCancelled("tool_result_partial_batch")
 
                                 if (!useResponsesApi) {
@@ -1227,38 +1219,24 @@ open class OpenAIProvider(
                                     )
                                 }
 
-                                val unmatchedContent =
-                                    resultsList
-                                        .filterIndexed { index, _ -> index !in matchedResultIndexes }
-                                        .joinToString("\n") { result ->
-                                            if (result.second.isBlank()) "[Empty]" else result.second
-                                        }
-                                val userContent =
-                                    listOf(unmatchedContent, textContent)
-                                        .filter { it.isNotBlank() }
-                                        .joinToString("\n")
-                                if (userContent.isNotEmpty()) {
+                                if (textContent.isNotEmpty()) {
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, userContent))
+                                            put("content", buildContentField(context, textContent))
                                         }
                                     )
                                 }
                             } else {
                                 flushOpenToolCallsAsCancelled("tool_result_without_structured_match")
-                                val fallbackContent =
-                                    when {
-                                        textContent.isNotEmpty() -> textContent
-                                        content.isNotBlank() -> content
-                                        else -> "[Empty]"
-                                    }
-                                messagesArray.put(
-                                    JSONObject().apply {
-                                        put("role", "user")
-                                        put("content", buildContentField(context, fallbackContent))
-                                    }
-                                )
+                                if (textContent.isNotEmpty()) {
+                                    messagesArray.put(
+                                        JSONObject().apply {
+                                            put("role", "user")
+                                            put("content", buildContentField(context, textContent))
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

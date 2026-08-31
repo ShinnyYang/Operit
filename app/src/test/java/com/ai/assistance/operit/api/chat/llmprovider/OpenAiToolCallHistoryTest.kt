@@ -58,16 +58,6 @@ class OpenAiToolCallHistoryTest {
     }
 
     @Test
-    fun `assistant tool call message keeps an explicit null content`() {
-        val messages =
-            buildMessages(ModelConfigConnectionTester.buildToolCallProbeHistory("echo"))
-
-        val assistant = messages.at(2)
-        assertTrue(assistant.has("content"))
-        assertTrue(assistant.isNull("content"))
-    }
-
-    @Test
     fun `unanswered calls are closed before the trailing tool result text`() {
         val messages =
             buildMessages(
@@ -152,7 +142,15 @@ class OpenAiToolCallHistoryTest {
     }
 
     @Test
-    fun `unmatched tool results are preserved as user content without stealing a call id`() {
+    fun `assistant tool call message omits empty content`() {
+        val messages =
+            buildMessages(ModelConfigConnectionTester.buildToolCallProbeHistory("echo"))
+
+        assertFalse(messages.at(2).has("content"))
+    }
+
+    @Test
+    fun `unmatched tool results are ignored without stealing a call id`() {
         val messages =
             buildMessages(
                 listOf(
@@ -174,7 +172,7 @@ class OpenAiToolCallHistoryTest {
         assertEquals("ok", messages.at(2).getString("content"))
         assertEquals(toolCalls.getJSONObject(1).getString("id"), messages.at(3).getString("tool_call_id"))
         assertEquals("User cancelled", messages.at(3).getString("content"))
-        assertEquals("unmatched", messages.at(4).getString("content"))
+        assertEquals(4, messages.length())
     }
 
     @Test

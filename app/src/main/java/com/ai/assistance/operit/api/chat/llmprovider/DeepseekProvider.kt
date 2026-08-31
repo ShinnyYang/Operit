@@ -409,7 +409,6 @@ class DeepseekProvider(
                                         openToolCalls,
                                         resultsList.map { it.first }
                                     )
-                                val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
                                 matchedCalls.forEach { matchedCall ->
                                     val resultContent = resultsList[matchedCall.resultIndex].second
                                     readableImageSources.add(resultContent)
@@ -437,38 +436,24 @@ class DeepseekProvider(
                                     "tool result"
                                 )
 
-                                val unmatchedContent =
-                                    resultsList
-                                        .filterIndexed { index, _ -> index !in matchedResultIndexes }
-                                        .joinToString("\n") { result ->
-                                            if (result.second.isBlank()) "[Empty]" else result.second
-                                        }
-                                val userContent =
-                                    listOf(unmatchedContent, textContent)
-                                        .filter { it.isNotBlank() }
-                                        .joinToString("\n")
-                                if (userContent.isNotEmpty()) {
+                                if (textContent.isNotEmpty()) {
                                     messagesArray.put(
                                         JSONObject().apply {
                                             put("role", "user")
-                                            put("content", buildContentField(context, userContent))
+                                            put("content", buildContentField(context, textContent))
                                         }
                                     )
                                 }
                             } else {
                                 flushOpenToolCallsAsCancelled("tool_result_without_structured_match")
-                                val fallbackContent =
-                                    when {
-                                        textContent.isNotEmpty() -> textContent
-                                        originalContent.isNotBlank() -> originalContent
-                                        else -> "[Empty]"
-                                    }
-                                messagesArray.put(
-                                    JSONObject().apply {
-                                        put("role", "user")
-                                        put("content", buildContentField(context, fallbackContent))
-                                    }
-                                )
+                                if (textContent.isNotEmpty()) {
+                                    messagesArray.put(
+                                        JSONObject().apply {
+                                            put("role", "user")
+                                            put("content", buildContentField(context, textContent))
+                                        }
+                                    )
+                                }
                             }
                         }
                     }

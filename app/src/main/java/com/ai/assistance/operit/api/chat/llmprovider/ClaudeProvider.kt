@@ -916,8 +916,6 @@ open class ClaudeProvider(
                                         openToolUses,
                                         resultsList.map { it.first }
                                     )
-                                val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
-
                                 matchedCalls.forEach { matchedCall ->
                                     val resultContent = resultsList[matchedCall.resultIndex].second
                                     contentArray.put(
@@ -942,19 +940,8 @@ open class ClaudeProvider(
 
                                 appendCancelledOpenToolUses(contentArray, "tool_result_partial_batch")
 
-                                val unmatchedContent =
-                                    resultsList
-                                        .filterIndexed { index, _ -> index !in matchedResultIndexes }
-                                        .joinToString("\n") { result ->
-                                            if (result.second.isBlank()) "[Empty]" else result.second
-                                        }
-                                val userContent =
-                                    listOf(unmatchedContent, textContent)
-                                        .filter { it.isNotBlank() }
-                                        .joinToString("\n")
-
-                                if (userContent.isNotEmpty()) {
-                                    appendContentBlocks(contentArray, buildContentArray(userContent))
+                                if (textContent.isNotEmpty()) {
+                                    appendContentBlocks(contentArray, buildContentArray(textContent))
                                 }
 
                             messagesArray.put(
@@ -966,22 +953,17 @@ open class ClaudeProvider(
                         } else {
                             val contentArray = JSONArray()
                             appendCancelledOpenToolUses(contentArray, "tool_result_without_structured_match")
-                            appendContentBlocks(
-                                contentArray,
-                                buildContentArray(
-                                    when {
-                                        textContent.isNotEmpty() -> textContent
-                                        else -> content
-                                    },
-                                    allowEmptyArray = contentArray.length() > 0
+                            if (textContent.isNotEmpty()) {
+                                appendContentBlocks(contentArray, buildContentArray(textContent))
+                            }
+                            if (contentArray.length() > 0) {
+                                messagesArray.put(
+                                    JSONObject().apply {
+                                        put("role", "user")
+                                        put("content", contentArray)
+                                    }
                                 )
-                            )
-                            messagesArray.put(
-                                JSONObject().apply {
-                                    put("role", "user")
-                                    put("content", contentArray)
-                                }
-                            )
+                            }
                         }
                     }
                 }

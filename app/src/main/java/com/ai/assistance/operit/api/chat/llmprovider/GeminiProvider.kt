@@ -823,8 +823,6 @@ open class GeminiProvider(
                                     openFunctionCalls,
                                     resultNames
                                 )
-                            val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
-
                             matchedCalls.forEach { matchedCall ->
                                 val response = JSONObject(responsesList[matchedCall.resultIndex].toString())
                                 val pendingName = matchedCall.call.name
@@ -845,21 +843,8 @@ open class GeminiProvider(
 
                             appendCancelledOpenFunctionResponses(partsArray, "tool_result_partial_batch")
 
-                            val unmatchedContent =
-                                responsesList
-                                    .filterIndexed { index, _ -> index !in matchedResultIndexes }
-                                    .joinToString("\n") { response ->
-                                        val name = response.optString("name", "").trim()
-                                        val result =
-                                            response.optJSONObject("response")?.opt("result")?.toString().orEmpty()
-                                        listOf(name, result).filter { it.isNotBlank() }.joinToString(": ")
-                                    }
-                            val userContent =
-                                listOf(unmatchedContent, textContent)
-                                    .filter { it.isNotBlank() }
-                                    .joinToString("\n")
-                            if (userContent.isNotEmpty()) {
-                                appendParts(partsArray, buildPartsArray(userContent))
+                            if (textContent.isNotEmpty()) {
+                                appendParts(partsArray, buildPartsArray(textContent))
                             }
 
                             contentsArray.put(
@@ -871,19 +856,17 @@ open class GeminiProvider(
                         } else {
                             val partsArray = JSONArray()
                             appendCancelledOpenFunctionResponses(partsArray, "tool_result_without_structured_match")
-                            val fallbackContent =
-                                when {
-                                    textContent.isNotEmpty() -> textContent
-                                    contentWithoutGeminiMeta.isNotBlank() -> contentWithoutGeminiMeta
-                                    else -> "[Empty]"
-                                }
-                            appendParts(partsArray, buildPartsArray(fallbackContent))
-                            contentsArray.put(
-                                JSONObject().apply {
-                                    put("role", "user")
-                                    put("parts", partsArray)
-                                }
-                            )
+                            if (textContent.isNotEmpty()) {
+                                appendParts(partsArray, buildPartsArray(textContent))
+                            }
+                            if (partsArray.length() > 0) {
+                                contentsArray.put(
+                                    JSONObject().apply {
+                                        put("role", "user")
+                                        put("parts", partsArray)
+                                    }
+                                )
+                            }
                         }
                     }
 

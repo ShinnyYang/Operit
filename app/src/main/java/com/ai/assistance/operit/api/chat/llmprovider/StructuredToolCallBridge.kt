@@ -249,14 +249,9 @@ internal object StructuredToolCallBridge {
             messagesArray.put(
                 JSONObject().apply {
                     put("role", "assistant")
-                    put(
-                        "content",
-                        if (!queuedAssistantToolText.isNullOrBlank()) {
-                            queuedAssistantToolText
-                        } else {
-                            JSONObject.NULL
-                        }
-                    )
+                    if (!queuedAssistantToolText.isNullOrBlank()) {
+                        put("content", queuedAssistantToolText)
+                    }
                     put("tool_calls", queuedToolCalls)
                 }
             )
@@ -367,7 +362,6 @@ internal object StructuredToolCallBridge {
                     if (resultsList.isNotEmpty() && openToolCalls.isNotEmpty()) {
                         val matchedCalls =
                             consumeMatchingToolCalls(openToolCalls, resultsList.map { it.name })
-                        val matchedResultIndexes = matchedCalls.mapTo(mutableSetOf()) { it.resultIndex }
                         matchedCalls.forEach { matchedCall ->
                             val result = resultsList[matchedCall.resultIndex]
                             val toolMessage = JSONObject().apply {
@@ -384,39 +378,25 @@ internal object StructuredToolCallBridge {
                             logDebug("发现未匹配的tool_result: ${resultsList.size - matchedCalls.size}")
                         }
 
-                        // Close the batch before any user message, otherwise the leftover calls are
-                        // answered after it and their `tool` messages no longer follow their call.
                         flushOpenToolCallsAsCancelled()
-                        val unmatchedContent =
-                            resultsList
-                                .filterIndexed { index, _ -> index !in matchedResultIndexes }
-                                .joinToString("\n") { nonEmptyContent(it.content) }
-                        val userContent =
-                            listOf(unmatchedContent, textContent)
-                                .filter { it.isNotBlank() }
-                                .joinToString("\n")
-                        if (userContent.isNotBlank()) {
+                        if (textContent.isNotBlank()) {
                             messagesArray.put(
                                 JSONObject().apply {
                                     put("role", "user")
-                                    put("content", userContent)
+                                    put("content", textContent)
                                 }
                             )
                         }
                     } else {
                         flushOpenToolCallsAsCancelled()
-                        messagesArray.put(
-                            JSONObject().apply {
-                                put("role", "user")
-                                put(
-                                    "content",
-                                    when {
-                                        textContent.isNotBlank() -> textContent
-                                        else -> nonEmptyContent(content)
-                                    }
-                                )
-                            }
-                        )
+                        if (textContent.isNotBlank()) {
+                            messagesArray.put(
+                                JSONObject().apply {
+                                    put("role", "user")
+                                    put("content", textContent)
+                                }
+                            )
+                        }
                     }
                 }
             }
