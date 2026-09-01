@@ -375,7 +375,11 @@ internal object StructuredToolCallBridge {
                             messagesArray.put(toolMessage)
                         }
                         if (matchedCalls.size < resultsList.size) {
-                            logDebug("发现未匹配的tool_result: ${resultsList.size - matchedCalls.size}")
+                            // Keep diagnostics on the module logger; logDebug is not a project API.
+                            AppLogger.d(
+                                "StructuredToolCallBridge",
+                                "发现未匹配的tool_result: ${resultsList.size - matchedCalls.size}"
+                            )
                         }
 
                         flushOpenToolCallsAsCancelled()
