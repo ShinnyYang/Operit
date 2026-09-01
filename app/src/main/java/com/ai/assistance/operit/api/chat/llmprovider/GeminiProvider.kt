@@ -636,7 +636,7 @@ open class GeminiProvider(
         var queuedAssistantToolText: String? = null
         var queuedAssistantThoughtSignature: String? = null
         val queuedFunctionCalls = mutableListOf<JSONObject>()
-        val openFunctionCallNames = mutableListOf<String>()
+        val openFunctionCalls = mutableListOf<StructuredToolCallBridge.OpenToolCall>()
 
         fun appendParts(target: JSONArray, parts: JSONArray) {
             for (index in 0 until parts.length()) {
@@ -694,7 +694,10 @@ open class GeminiProvider(
             )
 
             queuedFunctionCalls.forEach { functionCall ->
-                openFunctionCallNames.add(functionCall.optString("name", "").trim())
+                val functionName = functionCall.optString("name", "").trim()
+                openFunctionCalls.add(
+                    StructuredToolCallBridge.OpenToolCall(functionName, functionName)
+                )
             }
             queuedAssistantToolText = null
             queuedAssistantThoughtSignature = null
@@ -703,16 +706,16 @@ open class GeminiProvider(
 
         fun appendCancelledOpenFunctionResponses(target: JSONArray, reason: String): Boolean {
             emitQueuedFunctionCallsIfNeeded()
-            if (openFunctionCallNames.isEmpty()) return false
+            if (openFunctionCalls.isEmpty()) return false
 
-            logDebug("发现未完成的Gemini functionCall，按取消处理: count=${openFunctionCallNames.size}, reason=$reason")
-            openFunctionCallNames.forEach { functionName ->
+            logDebug("发现未完成的Gemini functionCall，按取消处理: count=${openFunctionCalls.size}, reason=$reason")
+            openFunctionCalls.forEach { openFunctionCall ->
                 target.put(
                     JSONObject().apply {
                         put(
                             "functionResponse",
                             JSONObject().apply {
-                                put("name", functionName.ifBlank { "cancelled_function" })
+                                put("name", openFunctionCall.name.ifBlank { "cancelled_function" })
                                 put(
                                     "response",
                                     JSONObject().apply {
@@ -724,7 +727,7 @@ open class GeminiProvider(
                     }
                 )
             }
-            openFunctionCallNames.clear()
+            openFunctionCalls.clear()
             return true
         }
 
@@ -753,7 +756,7 @@ open class GeminiProvider(
                     PromptTurnKind.ASSISTANT -> {
                         val functionCallPayload = parseXmlToolCalls(content)
                         if (functionCallPayload.functionCalls.isNotEmpty()) {
-                            if (openFunctionCallNames.isNotEmpty()) {
+                            if (openFunctionCalls.isNotEmpty()) {
                                 flushOpenFunctionCallsAsCancelled("assistant_function_call_before_result")
                             }
                             queueFunctionCalls(
@@ -775,7 +778,7 @@ open class GeminiProvider(
                     PromptTurnKind.TOOL_CALL -> {
                         val functionCallPayload = parseXmlToolCalls(content)
                         if (functionCallPayload.functionCalls.isNotEmpty()) {
-                            if (openFunctionCallNames.isNotEmpty()) {
+                            if (openFunctionCalls.isNotEmpty()) {
                                 flushOpenFunctionCallsAsCancelled("typed_function_call_before_result")
                             }
                             queueFunctionCalls(
@@ -812,13 +815,17 @@ open class GeminiProvider(
                         val (textContent, functionResponses) = parseXmlToolResults(contentWithoutGeminiMeta)
                         val responsesList = functionResponses ?: emptyList()
 
-                        if (responsesList.isNotEmpty() && openFunctionCallNames.isNotEmpty()) {
+                        if (responsesList.isNotEmpty() && openFunctionCalls.isNotEmpty()) {
                             val partsArray = JSONArray()
-                            val validCount = minOf(responsesList.size, openFunctionCallNames.size)
-
-                            repeat(validCount) { index ->
-                                val response = JSONObject(responsesList[index].toString())
-                                val pendingName = openFunctionCallNames[index]
+                            val resultNames = responsesList.map { it.optString("name", "") }
+                            val matchedCalls =
+                                StructuredToolCallBridge.consumeMatchingToolCalls(
+                                    openFunctionCalls,
+                                    resultNames
+                                )
+                            matchedCalls.forEach { matchedCall ->
+                                val response = JSONObject(responsesList[matchedCall.resultIndex].toString())
+                                val pendingName = matchedCall.call.name
                                 if (pendingName.isNotBlank()) {
                                     response.put("name", pendingName)
                                 }
@@ -830,13 +837,11 @@ open class GeminiProvider(
                                 logDebug("历史XML→GeminiFunctionResponse: ${response.optString("name")}")
                             }
 
-                            repeat(validCount) {
-                                openFunctionCallNames.removeAt(0)
+                            if (matchedCalls.size < responsesList.size) {
+                                logDebug("发现未匹配的Gemini functionResponse: ${responsesList.size - matchedCalls.size}")
                             }
 
-                            if (responsesList.size > validCount) {
-                                logDebug("发现多余的Gemini functionResponse: ${responsesList.size} results vs ${validCount} pending functionCalls")
-                            }
+                            appendCancelledOpenFunctionResponses(partsArray, "tool_result_partial_batch")
 
                             if (textContent.isNotEmpty()) {
                                 appendParts(partsArray, buildPartsArray(textContent))
@@ -851,19 +856,17 @@ open class GeminiProvider(
                         } else {
                             val partsArray = JSONArray()
                             appendCancelledOpenFunctionResponses(partsArray, "tool_result_without_structured_match")
-                            val fallbackContent =
-                                when {
-                                    textContent.isNotEmpty() -> textContent
-                                    contentWithoutGeminiMeta.isNotBlank() -> contentWithoutGeminiMeta
-                                    else -> "[Empty]"
-                                }
-                            appendParts(partsArray, buildPartsArray(fallbackContent))
-                            contentsArray.put(
-                                JSONObject().apply {
-                                    put("role", "user")
-                                    put("parts", partsArray)
-                                }
-                            )
+                            if (textContent.isNotEmpty()) {
+                                appendParts(partsArray, buildPartsArray(textContent))
+                            }
+                            if (partsArray.length() > 0) {
+                                contentsArray.put(
+                                    JSONObject().apply {
+                                        put("role", "user")
+                                        put("parts", partsArray)
+                                    }
+                                )
+                            }
                         }
                     }
 
