@@ -138,9 +138,9 @@ open class GeminiProvider(
     @Volatile private var isManuallyCancelled = false
 
     /**
-     * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
+     * 带 HTTP 状态码的 API 异常，供统一重试日志和最终错误展示使用。
      */
-    class NonRetriableException(
+    class HttpStatusException(
         message: String,
         override val statusCode: Int,
         cause: Throwable? = null
@@ -216,12 +216,14 @@ open class GeminiProvider(
                             PromptTurnKind.TOOL_RESULT -> "tool_result"
                             PromptTurnKind.SUMMARY -> "summary"
                         }
-                    val comparableContent =
+                    val rawComparableContent =
                         if (turn.kind == PromptTurnKind.ASSISTANT) {
                             ChatUtils.removeThinkingContent(turn.content)
                         } else {
                             turn.content
                         }
+                    val comparableContent =
+                        ChatUtils.stripOpenAiResponsesProtocolMarkup(rawComparableContent)
                     comparableRole to comparableContent
                 }
             )
@@ -602,12 +604,14 @@ open class GeminiProvider(
                             PromptTurnKind.TOOL_RESULT -> "tool_result"
                             PromptTurnKind.SUMMARY -> "summary"
                         }
-                    val comparableContent =
+                    val rawComparableContent =
                         if (!preserveThinkInHistory && turn.kind == PromptTurnKind.ASSISTANT) {
                             ChatUtils.removeThinkingContent(turn.content)
                         } else {
                             turn.content
                         }
+                    val comparableContent =
+                        ChatUtils.stripOpenAiResponsesProtocolMarkup(rawComparableContent)
                     comparableRole to comparableContent
                 }
             )
@@ -621,7 +625,10 @@ open class GeminiProvider(
         // Find and process system message first
         val systemMessages = effectiveHistory.filter { it.kind == PromptTurnKind.SYSTEM }
         if (systemMessages.isNotEmpty()) {
-            val systemContent = systemMessages.joinToString("\n\n") { it.content }
+            val systemContent =
+                systemMessages.joinToString("\n\n") { turn ->
+                    ChatUtils.stripOpenAiResponsesProtocolMarkup(turn.content)
+                }
             logDebug("发现系统消息: ${systemContent.take(50)}...")
 
             systemInstruction = JSONObject().apply {
@@ -743,12 +750,13 @@ open class GeminiProvider(
         }
 
         for (turn in historyWithoutSystem) {
-            val content =
+            val rawContent =
                 if (!preserveThinkInHistory && turn.kind == PromptTurnKind.ASSISTANT) {
                     ChatUtils.removeThinkingContent(turn.content)
                 } else {
                     turn.content
                 }
+            val content = ChatUtils.stripOpenAiResponsesProtocolMarkup(rawContent)
             val contentWithoutGeminiMeta = ChatMarkupRegex.removeGeminiThoughtSignatureMeta(content)
 
             if (enableToolCall) {
@@ -1212,14 +1220,13 @@ open class GeminiProvider(
                         if (!response.isSuccessful) {
                             val errorBody = response.body?.string() ?: context.getString(R.string.gemini_error_no_error_details)
                             logError("API请求失败: ${response.code}, $errorBody")
-                            // 4xx错误仍保留单独的异常类型，具体是否重试由统一策略决定
+                            // 状态码错误保留状态码信息，随后进入统一重试循环。
                             if (response.code in 400..499) {
-                                throw NonRetriableException(
+                                throw HttpStatusException(
                                     context.getString(R.string.gemini_error_api_request_failed, response.code, errorBody),
                                     statusCode = response.code
                                 )
                             }
-                            // 对于5xx等服务端错误，允许重试
                             throw IOException(context.getString(R.string.gemini_error_api_request_failed, response.code, errorBody))
                         }
 

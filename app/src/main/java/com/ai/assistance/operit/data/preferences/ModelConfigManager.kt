@@ -35,13 +35,14 @@ import org.json.JSONObject
 private val Context.modelConfigDataStore: DataStore<Preferences> by
         versionedPreferencesDataStore(
                 name = "model_configs",
-                currentVersion = 3,
+                currentVersion = 4,
         ) { appContext ->
             preferenceSchemaMigration { version, preferences ->
                 when (version) {
                     0 -> ModelConfigManager.migratePreferencesFromVersionZero(appContext, preferences)
                     1 -> ModelConfigManager.migratePreferencesFromVersionOne(preferences)
                     2 -> ModelConfigManager.migratePreferencesFromVersionTwo(preferences)
+                    3 -> ModelConfigManager.migratePreferencesFromVersionThree(preferences)
                     else -> missingPreferencesSchemaMigration(version)
                 }
             }
@@ -70,6 +71,8 @@ class ModelConfigManager(
         // Default API provider type
         private val DEFAULT_API_PROVIDER_TYPE = ApiProviderType.DEEPSEEK
         private const val OPENAI_CHAT_REASONING_EFFORT_RULE_ID = "openai-chat-reasoning-effort"
+        private const val DEEPSEEK_CHAT_REASONING_EFFORT_RULE_ID = "deepseek-reasoning-effort"
+        private const val DEEPSEEK_RESPONSES_REASONING_EFFORT_RULE_ID = "deepseek-responses-reasoning-effort"
         private val OPENAI_CHAT_PROVIDER_TYPES =
                 setOf(ApiProviderType.OPENAI.name, ApiProviderType.OPENAI_GENERIC.name)
         private val OPENAI_CHAT_MATCHER_FIELDS =
@@ -286,24 +289,101 @@ class ModelConfigManager(
             }
         }
 
+        internal fun migratePreferencesFromVersionThree(preferences: MutablePreferences) {
+            val configIds = preferences[CONFIG_LIST_KEY]?.let { json.decodeFromString<List<String>>(it) }
+                    ?: emptyList()
+
+            configIds.forEach { configId ->
+                val configKey = stringPreferencesKey("config_${configId}")
+                val configJson = preferences[configKey] ?: return@forEach
+                val config = json.decodeFromString<ModelConfigData>(configJson)
+                if (!isDeepSeekProvider(config.apiProviderTypeId)) {
+                    return@forEach
+                }
+
+                val thinkingConfigurations =
+                        addDeepSeekResponsesThinkingRule(config.thinkingConfigurations)
+                if (thinkingConfigurations == config.thinkingConfigurations) {
+                    return@forEach
+                }
+
+                preferences[configKey] =
+                        json.encodeToString(
+                                config.copy(thinkingConfigurations = thinkingConfigurations)
+                        )
+            }
+        }
+
+        private fun isDeepSeekProvider(providerTypeId: String): Boolean =
+                providerTypeId.equals(ApiProviderType.DEEPSEEK.name, ignoreCase = true)
+
+        private fun isDeepSeekResponsesEndpoint(apiEndpoint: String): Boolean =
+                apiEndpoint.trim()
+                        .substringBefore('?')
+                        .substringBefore('#')
+                        .trimEnd('/')
+                        .endsWith("/responses", ignoreCase = true)
+
+        internal fun addDeepSeekResponsesThinkingRule(thinkingConfigurations: String): String {
+            val sourceRules = thinkingRulesJsonArray(thinkingConfigurations)
+            if (sourceRules.hasThinkingRuleId(DEEPSEEK_RESPONSES_REASONING_EFFORT_RULE_ID)) {
+                return thinkingConfigurations
+            }
+
+            val defaultRules = thinkingRulesJsonArray(thinkingRulesForProvider(ApiProviderType.DEEPSEEK.name))
+            val responsesRule = defaultRules.firstThinkingRuleById(DEEPSEEK_RESPONSES_REASONING_EFFORT_RULE_ID)
+                    ?: return thinkingConfigurations
+
+            val targetRules = JSONArray()
+            var inserted = false
+            for (index in 0 until sourceRules.length()) {
+                val rule = sourceRules.optJSONObject(index)
+                if (!inserted && rule?.optString("id", "") == DEEPSEEK_CHAT_REASONING_EFFORT_RULE_ID) {
+                    targetRules.put(JSONObject(responsesRule.toString()))
+                    inserted = true
+                }
+                targetRules.put(sourceRules.get(index))
+            }
+
+            return if (inserted) targetRules.toString() else thinkingConfigurations
+        }
+
+        private fun JSONArray.hasThinkingRuleId(ruleId: String): Boolean =
+                firstThinkingRuleById(ruleId) != null
+
+        private fun JSONArray.firstThinkingRuleById(ruleId: String): JSONObject? {
+            for (index in 0 until length()) {
+                val rule = optJSONObject(index) ?: continue
+                if (rule.optString("id", "") == ruleId) {
+                    return rule
+                }
+            }
+            return null
+        }
+
         internal fun thinkingRulesForProvider(providerTypeId: String): String =
                 ModelThinkingConfigDefaults.forProvider(providerTypeId)
 
         internal fun firstThinkingOptionIdForProvider(providerTypeId: String): String =
                 firstThinkingOptionIdForModel(providerTypeId, "")
 
-        internal fun firstThinkingOptionIdForModel(providerTypeId: String, modelName: String): String {
+        internal fun firstThinkingOptionIdForModel(
+                providerTypeId: String,
+                modelName: String,
+                apiEndpoint: String = ""
+        ): String {
                 val rules = thinkingRulesForProvider(providerTypeId)
-                return firstThinkingOptionIdForRules(providerTypeId, modelName, rules)
+                return firstThinkingOptionIdForRules(providerTypeId, modelName, rules, apiEndpoint)
         }
 
         internal fun firstThinkingOptionIdForRules(
                 providerTypeId: String,
                 modelName: String,
-                thinkingConfigurations: String
+                thinkingConfigurations: String,
+                apiEndpoint: String = ""
         ): String {
                 return ThinkingQualityMappingRegistry
-                        .resolve(providerTypeId, modelName, thinkingConfigurations)
+                        .resolve(providerTypeId, modelName, apiEndpoint, thinkingConfigurations)
                         .options
                         .firstOrNull()
                         ?.id
@@ -312,10 +392,15 @@ class ModelConfigManager(
 
         internal fun nextThinkingRulesForProvider(
                 current: ModelConfigData,
-                providerTypeId: String
+                providerTypeId: String,
+                apiEndpoint: String = ""
         ): String =
                 if (current.apiProviderTypeId == providerTypeId) {
-                    current.thinkingConfigurations
+                    if (isDeepSeekProvider(providerTypeId) && isDeepSeekResponsesEndpoint(apiEndpoint)) {
+                        addDeepSeekResponsesThinkingRule(current.thinkingConfigurations)
+                    } else {
+                        current.thinkingConfigurations
+                    }
                 } else {
                     thinkingRulesForProvider(providerTypeId)
                 }
@@ -323,13 +408,14 @@ class ModelConfigManager(
         internal fun nextThinkingOptionIdForProvider(
                 current: ModelConfigData,
                 providerTypeId: String,
-                modelName: String
+                modelName: String,
+                apiEndpoint: String = ""
         ): String =
                 // Keep a model's choice while editing it; built-in defaults apply only on provider changes.
                 if (current.apiProviderTypeId == providerTypeId) {
                     current.thinkingOptionId
                 } else {
-                    firstThinkingOptionIdForModel(providerTypeId, modelName)
+                    firstThinkingOptionIdForModel(providerTypeId, modelName, apiEndpoint)
                 }
     }
 
@@ -594,8 +680,8 @@ class ModelConfigManager(
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
-                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
-                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName)
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId, apiEndpoint),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName, apiEndpoint)
             )
         }
     }
@@ -618,8 +704,8 @@ class ModelConfigManager(
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
-                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
-                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName),
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId, apiEndpoint),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName, apiEndpoint),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount
             )
@@ -654,8 +740,8 @@ class ModelConfigManager(
                     modelName = modelName,
                     apiProviderType = apiProviderType,
                     apiProviderTypeId = apiProviderTypeId,
-                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId),
-                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName),
+                    thinkingConfigurations = nextThinkingRulesForProvider(it, apiProviderTypeId, apiEndpoint),
+                    thinkingOptionId = nextThinkingOptionIdForProvider(it, apiProviderTypeId, modelName, apiEndpoint),
                     mnnForwardType = mnnForwardType,
                     mnnThreadCount = mnnThreadCount,
                     llamaThreadCount = llamaThreadCount.coerceAtLeast(1),

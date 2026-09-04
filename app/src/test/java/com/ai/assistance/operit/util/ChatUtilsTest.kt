@@ -40,14 +40,6 @@ class ChatUtilsTest {
         assertFalse(ChatUtils.isGeminiProviderModel("OPENAI:gpt-4"))
     }
 
-    @Test fun shouldPreserveResponsesProtocolMeta_recognizesDeepSeekProvider() {
-        assertTrue(ChatUtils.shouldPreserveResponsesProtocolMeta("DEEPSEEK:deepseek-chat"))
-    }
-
-    @Test fun shouldPreserveResponsesProtocolMeta_rejectsChatCompletionsOpenAiProvider() {
-        assertFalse(ChatUtils.shouldPreserveResponsesProtocolMeta("OPENAI:gpt-4o"))
-    }
-
     @Test fun stripOpenAiResponsesProtocolMarkup_removesMetaAndSearchDisplay() {
         val content =
             "<meta provider=\"openai:responses_output_item\">payload</meta>" +

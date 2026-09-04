@@ -279,12 +279,13 @@ internal object StructuredToolCallBridge {
         }
 
         for (turn in mergedHistory) {
-            val content =
+            val rawContent =
                 if (!preserveThinkInHistory && turn.kind == PromptTurnKind.ASSISTANT) {
                     ChatUtils.removeThinkingContent(turn.content)
                 } else {
                     turn.content
                 }
+            val content = ChatUtils.stripOpenAiResponsesProtocolMarkup(rawContent)
 
             when (turn.kind) {
                 PromptTurnKind.SYSTEM -> {

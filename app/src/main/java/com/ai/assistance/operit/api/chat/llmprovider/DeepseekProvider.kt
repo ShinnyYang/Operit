@@ -47,6 +47,7 @@ class DeepseekProvider(
         thinkingConfigurations = thinkingConfigurations,
         thinkingOptionId = thinkingOptionId
     ) {
+    private val configuredApiEndpoint = apiEndpoint
 
     companion object {
         fun create(
@@ -114,7 +115,7 @@ class DeepseekProvider(
                 requestJson = jsonObject,
                 providerTypeId = ApiProviderType.DEEPSEEK.name,
                 modelName = modelName,
-                apiEndpoint = "",
+                apiEndpoint = configuredApiEndpoint,
                 thinkingConfigurations = thinkingConfigurations,
                 enableThinking = enableThinking,
                 optionId = thinkingOptionId,

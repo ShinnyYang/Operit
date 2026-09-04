@@ -1393,6 +1393,7 @@ my_toolpkg/
 - `ToolPkg.registerMessageProcessingPlugin(...)`
 - `ToolPkg.registerXmlRenderPlugin(...)`
 - `ToolPkg.registerInputMenuTogglePlugin(...)`
+- `ToolPkg.registerChatRuntimeHook(...)`
 - `ToolPkg.registerToolLifecycleHook(...)`
 - Prompt 相关 hook
 

@@ -115,9 +115,9 @@ open class OpenAIProvider(
     private var isManuallyCancelled = false
 
     /**
-     * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
+     * 带 HTTP 状态码的 API 异常，供统一重试日志和最终错误展示使用。
      */
-    class NonRetriableException(
+    class HttpStatusException(
         message: String,
         override val statusCode: Int,
         cause: Throwable? = null
@@ -1536,6 +1536,16 @@ open class OpenAIProvider(
             receivedContent.append(tag)
         }
 
+        /**
+         * Provider protocol metadata must occupy its own line so the XML splitter does not
+         * interpret it as ordinary response text when it follows content or tool arguments.
+         */
+        suspend fun emitMetadataTag(tag: String) {
+            emitTag("\n")
+            emitTag(tag)
+            emitTag("\n")
+        }
+
         suspend fun emitSavepoint(id: String) {
             savepointLengths[id] = receivedContent.length
             eventChannel.emit(TextStreamEvent(TextStreamEventType.SAVEPOINT, id))
@@ -2357,7 +2367,7 @@ open class OpenAIProvider(
             return
         }
         closeReasoningModeIfOpen(state, emitter)
-        emitter.emitTag(metadataTag)
+        emitter.emitMetadataTag(metadataTag)
     }
 
     private suspend fun emitResponsesOutputItemMetadataFromResponse(
@@ -2645,7 +2655,7 @@ open class OpenAIProvider(
                         )
                         closeReasoningModeIfOpen(state, emitter)
                         OpenAIResponsesPayloadAdapter.createReasoningMetadataTag(item)?.let { metadataTag ->
-                            emitter.emitTag(metadataTag)
+                            emitter.emitMetadataTag(metadataTag)
                         }
                     }
                     return
@@ -3221,14 +3231,13 @@ open class OpenAIProvider(
                                 "AIService",
                                 "【发送消息】API请求失败，状态码: ${response.code}，错误信息: $errorBody"
                             )
-                            // 4xx错误仍保留单独的异常类型，具体是否重试由统一策略决定
+                            // 状态码错误保留状态码信息，随后进入统一重试循环。
                             if (response.code in 400..499) {
-                                throw NonRetriableException(
+                                throw HttpStatusException(
                                     context.getString(R.string.openai_error_api_request_failed_with_status, response.code, errorBody),
                                     statusCode = response.code
                                 )
                             }
-                            // 对于5xx等服务端错误，允许重试
                             throw IOException(context.getString(R.string.openai_error_api_request_failed_with_status, response.code, errorBody))
                         }
 
@@ -3272,10 +3281,10 @@ open class OpenAIProvider(
                                         }
                                     }
                                     parsed.reasoningMetadataTags.forEach { metadataTag ->
-                                        emitter.emitTag(metadataTag)
+                                        emitter.emitMetadataTag(metadataTag)
                                     }
                                     parsed.outputItemMetadataTags.forEach { metadataTag ->
-                                        emitter.emitTag(metadataTag)
+                                        emitter.emitMetadataTag(metadataTag)
                                     }
                                     emitResponsesWebSearchDisplayFromResponse(
                                         context,

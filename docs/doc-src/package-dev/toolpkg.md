@@ -13,6 +13,7 @@
 - 输入菜单开关插件。
 - AI 聊天输入框监听和提交 Hook。
 - 聊天消息持久化通知 Hook。
+- 聊天运行态变化通知 Hook。
 - 工具执行生命周期钩子。
 - Prompt 输入、历史、系统提示词、工具提示词、最终发送前的各类钩子。
 - 摘要生成阶段的各类钩子。
@@ -52,6 +53,7 @@ ToolPkg.registerMessageProcessingPlugin(...)
 - `registerToolPkgInputMenuTogglePlugin(...)`
 - `registerToolPkgChatInputHook(...)`
 - `registerToolPkgChatMessageHook(...)`
+- `registerToolPkgChatRuntimeHook(...)`
 - `registerToolPkgToolLifecycleHook(...)`
 - `registerToolPkgPromptInputHook(...)`
 - `registerToolPkgPromptHistoryHook(...)`
@@ -481,6 +483,13 @@ interface PromptTurn {
 - `id`
 - `function`
 
+### `ChatRuntimeHookRegistration`
+
+字段：
+
+- `id`
+- `function`
+
 ### 其余注册对象
 
 以下注册对象结构都很简单，字段都是：`id` + `function`：
@@ -509,6 +518,7 @@ interface PromptTurn {
 - `registerInputMenuTogglePlugin(definition)`
 - `registerChatInputHook(definition)`
 - `registerChatMessageHook(definition)`
+- `registerChatRuntimeHook(definition)`
 - `registerToolLifecycleHook(definition)`
 - `registerPromptInputHook(definition)`
 - `registerPromptHistoryHook(definition)`
@@ -804,6 +814,31 @@ ToolPkg.registerChatMessageHook({
       roleName: message.roleName,
       completedAt: message.completedAt,
       length: message.content.length
+    });
+  }
+});
+```
+
+### 注册聊天运行态 Hook
+
+聊天运行态 Hook 会在宿主聊天运行状态变化时触发。事件名当前为 `state_changed`。
+
+```ts
+ToolPkg.registerChatRuntimeHook({
+  id: 'demo_chat_runtime',
+  function(event) {
+    if (event.eventName !== 'state_changed') {
+      return;
+    }
+
+    const state = event.eventPayload;
+    console.log('chat runtime:', {
+      chatId: state.chatId,
+      slot: state.slot,
+      state: state.state,
+      toolName: state.toolName,
+      progress: state.progress,
+      isActive: state.isActive
     });
   }
 });

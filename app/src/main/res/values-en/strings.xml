@@ -727,8 +727,10 @@
     <!-- Context Menu -->
     <string name="copy_message">Copy Message</string>
     <string name="markdown_source">Markdown source</string>
+    <string name="xml_source">XML source</string>
     <string name="copy_plain_text">Copy plain text</string>
     <string name="copy_markdown_source">Copy Markdown source</string>
+    <string name="copy_xml_source">Copy XML source</string>
     <string name="chat_hidden_user_message_placeholder">Auto-triggered user message (content hidden)</string>
     <string name="chat_hidden_user_message_badge">AUTO</string>
     <string name="info">Info</string>
@@ -8305,4 +8307,22 @@
     <string name="codex_reset_after_days">Resets in %1$d days</string>
     <string name="codex_reset_after_clock">Resets in %1$02d:%2$02d</string>
     <string name="conversation_media_file_link">&lt;link type=&quot;file&quot; id=&quot;%1$s&quot; filename=&quot;%2$s&quot;&gt;PDF&lt;/link&gt;</string>
+
+    <string name="package_market_origin_title">External Package Source Notice</string>
+    <string name="package_market_origin_message">This package is from the Operit market.\nPackage name: %1$s\nVersion: %2$s\nAuthor: %3$s\nPlease support the original author and be cautious of unauthorized resale.</string>
+    <string name="thinking_config_title">Thinking Configuration</string>
+    <string name="thinking_config_subtitle">Matches thinking parameters in rule order; first match takes effect</string>
+    <string name="thinking_config_rule_order_hint">Rules are matched from top to bottom; the first enabled and matching rule takes effect. Use the arrows on the right side of each rule to adjust the order.</string>
+    <string name="thinking_config_rule_move_up">Move rule up</string>
+    <string name="thinking_config_rule_move_down">Move rule down</string>
+    <string name="token_stats_unit_millions">M</string>
+    <string name="token_stats_unit_billions">B</string>
+    <string name="token_stats_unit_toggle_description">Current token unit is %1$s, click to switch to %2$s</string>
+    <string name="market_manage_submit_revision">Submit new version after modification</string>
+    <string name="market_manage_loading_request_title">Loading Request</string>
+    <string name="market_manage_loading_request_message">Request is being processed, please wait…</string>
+    <string name="market_version_incompatible_title">Cannot Download: Client Version Not Supported</string>
+    <string name="market_version_too_low_message">Current client version %1$s is lower than the minimum required version %2$s for this resource. Please update the client before downloading.</string>
+    <string name="market_version_too_high_message">Current client version %1$s is higher than the maximum supported version %2$s for this resource. Please use a supported client version.</string>
+    <string name="thinking_config_invalid_json">Invalid Thinking Configuration</string>
 </resources>

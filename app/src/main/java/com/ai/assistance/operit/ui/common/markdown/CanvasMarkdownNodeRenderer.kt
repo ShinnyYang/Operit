@@ -528,17 +528,14 @@ private fun renderNodeContent(
     fillMaxWidth: Boolean,
     isLastNode: Boolean = false
 ) {
-    // 【关键优化】只要节点内容不变，就记住原始节点实例，防止不必要的重组
-    val stableNode = remember(content) { node }
-
-    when (stableNode.type) {
+    when (node.type) {
         // ========== 简单文本类型：使用单个大 Canvas 绘制 ==========
         MarkdownProcessorType.HEADER,
         MarkdownProcessorType.ORDERED_LIST,
         MarkdownProcessorType.UNORDERED_LIST -> {
             UnifiedCanvasRenderer(
                 nodeKey = nodeKey,
-                node = stableNode,
+                node = node,
                 textColor = textColor,
                 bodyMediumSize = fontSizes.bodyMedium,
                 headlineLargeSize = fontSizes.headlineLarge,
@@ -558,7 +555,7 @@ private fun renderNodeContent(
         MarkdownProcessorType.PLAIN_TEXT -> {
             UnifiedCanvasRenderer(
                 nodeKey = nodeKey,
-                node = stableNode,
+                node = node,
                 textColor = textColor,
                 bodyMediumSize = fontSizes.bodyMedium,
                 headlineLargeSize = fontSizes.headlineLarge,

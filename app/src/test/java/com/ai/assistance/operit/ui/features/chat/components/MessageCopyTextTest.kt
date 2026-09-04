@@ -49,6 +49,19 @@ class MessageCopyTextTest {
         assertEquals("answer", cleanMessageContentForCopy(content))
     }
 
+    @Test fun cleanMessageContentForXmlCopy_preservesToolMarkupWithoutProviderMetadata() {
+        val content =
+            "<meta provider=\"openai:responses_output_item\">payload</meta>" +
+                "<tool name=\"run\"><param name=\"command\">pwd</param></tool>" +
+                "<tool_result name=\"run\"><content>ok</content></tool_result>"
+
+        assertEquals(
+            "<tool name=\"run\"><param name=\"command\">pwd</param></tool>" +
+                "<tool_result name=\"run\"><content>ok</content></tool_result>",
+            cleanMessageContentForXmlCopy(content),
+        )
+    }
+
     @Test fun buildSelectedMessagesPlainText_usesMessageOrderAndPlainTextConversion() = runTest {
         val chatHistory =
             listOf(

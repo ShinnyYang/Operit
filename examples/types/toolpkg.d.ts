@@ -34,6 +34,7 @@ export namespace ToolPkg {
         | ChatInputEventName
         | ChatViewEventName
         | ChatMessageEventName
+        | ChatRuntimeEventName
         | "navigation_entry_action"
         | ToolLifecycleEventName
         | PromptInputEventName
@@ -129,6 +130,26 @@ export namespace ToolPkg {
 
     export type ChatMessageEventName =
         | "message_persisted";
+
+    export type ChatRuntimeEventName =
+        | "state_changed";
+
+    export type ChatRuntimeSlotName =
+        | "main"
+        | "floating";
+
+    export type ChatRuntimeStateName =
+        | "idle"
+        | "processing"
+        | "connecting"
+        | "receiving"
+        | "executing_tool"
+        | "tool_progress"
+        | "processing_tool_result"
+        | "summarizing"
+        | "executing_plan"
+        | "completed"
+        | "error";
 
     export interface ChatInputHookObjectResult extends JsonObject {
         action?: "allow" | "block" | "replace" | "consume";
@@ -379,6 +400,9 @@ export namespace ToolPkg {
     export type ChatMessageHookHandler =
         (event: ChatMessageHookEvent) => HookReturn;
 
+    export type ChatRuntimeHookHandler =
+        (event: ChatRuntimeHookEvent) => HookReturn;
+
     export type NavigationEntryActionHookHandler =
         (event: NavigationEntryActionHookEvent) => HookReturn;
 
@@ -493,6 +517,21 @@ export namespace ToolPkg {
         isFavorite: boolean;
     }
 
+    export interface ChatRuntimeEventPayload extends JsonObject {
+        chatId: string;
+        slot: ChatRuntimeSlotName;
+        state: ChatRuntimeStateName;
+        message?: string;
+        toolName?: string;
+        progress?: number;
+        isActive: boolean;
+        activeChatIds: string[];
+        currentTurnToolInvocationCount: number;
+        activeConversationCount: number;
+        currentSessionToolCount: number;
+        timestamp: number;
+    }
+
     export interface NavigationEntryActionEventPayload extends JsonObject {
         entryId?: string;
         routeId?: string;
@@ -521,6 +560,9 @@ export namespace ToolPkg {
 
     export interface ChatMessageHookEvent
         extends HookEventBase<ChatMessageEventName, ChatMessageEventPayload> {}
+
+    export interface ChatRuntimeHookEvent
+        extends HookEventBase<ChatRuntimeEventName, ChatRuntimeEventPayload> {}
 
     export interface NavigationEntryActionHookEvent
         extends HookEventBase<"navigation_entry_action", NavigationEntryActionEventPayload> {}
@@ -761,6 +803,11 @@ export namespace ToolPkg {
         function: ChatMessageHookHandler;
     }
 
+    export interface ChatRuntimeHookRegistration {
+        id: string;
+        function: ChatRuntimeHookHandler;
+    }
+
     export interface ToolLifecycleHookRegistration {
         id: string;
         function: ToolLifecycleHookHandler;
@@ -899,6 +946,7 @@ export namespace ToolPkg {
         registerChatInputHook(definition: ChatInputHookRegistration): void;
         registerChatViewHook(definition: ChatViewHookRegistration): void;
         registerChatMessageHook(definition: ChatMessageHookRegistration): void;
+        registerChatRuntimeHook(definition: ChatRuntimeHookRegistration): void;
         registerToolLifecycleHook(definition: ToolLifecycleHookRegistration): void;
         registerPromptInputHook(definition: PromptInputHookRegistration): void;
         registerPromptHistoryHook(definition: PromptHistoryHookRegistration): void;
@@ -938,6 +986,8 @@ declare global {
     function registerToolPkgChatViewHook(definition: ToolPkg.ChatViewHookRegistration): void;
 
     function registerToolPkgChatMessageHook(definition: ToolPkg.ChatMessageHookRegistration): void;
+
+    function registerToolPkgChatRuntimeHook(definition: ToolPkg.ChatRuntimeHookRegistration): void;
 
     function registerToolPkgToolLifecycleHook(definition: ToolPkg.ToolLifecycleHookRegistration): void;
 

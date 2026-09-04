@@ -55,11 +55,6 @@ object ChatUtils {
         }
     }
 
-    fun shouldPreserveResponsesProtocolMeta(providerModel: String): Boolean {
-        return providerModel.substringBefore(":").uppercase() in
-            setOf("OPENAI_RESPONSES", "OPENAI_CODEX", "DEEPSEEK")
-    }
-
     /** 过滤掉内容中的思考部分和搜索来源 移除<think></think>、<thinking></thinking>和<search></search>标签及其中的内容，并处理未闭合的情况 */
     fun removeThinkingContent(content: String): String {
         // 使用正则表达式匹配<think>、<thinking>和<search>标签及其内容

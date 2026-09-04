@@ -850,10 +850,6 @@ class EnhancedAIService private constructor(private val context: Context) {
             finalProcessedInput = ChatUtils.stripGeminiThoughtSignatureMeta(finalProcessedInput)
             finalPreparedHistory = ChatUtils.stripGeminiThoughtSignatureMetaTurns(finalPreparedHistory)
         }
-        if (!ChatUtils.shouldPreserveResponsesProtocolMeta(serviceForFunction.providerModel)) {
-            finalProcessedInput = ChatUtils.stripOpenAiResponsesProtocolMarkup(finalProcessedInput)
-            finalPreparedHistory = ChatUtils.stripOpenAiResponsesProtocolMarkupTurns(finalPreparedHistory)
-        }
 
         val requestHistory =
             applyFinalizedCurrentUserTurn(
@@ -1070,10 +1066,6 @@ class EnhancedAIService private constructor(private val context: Context) {
                     if (!ChatUtils.isGeminiProviderModel(serviceForFunction.providerModel)) {
                         finalProcessedInput = ChatUtils.stripGeminiThoughtSignatureMeta(finalProcessedInput)
                         finalPreparedHistory = ChatUtils.stripGeminiThoughtSignatureMetaTurns(finalPreparedHistory)
-                    }
-                    if (!ChatUtils.shouldPreserveResponsesProtocolMeta(serviceForFunction.providerModel)) {
-                        finalProcessedInput = ChatUtils.stripOpenAiResponsesProtocolMarkup(finalProcessedInput)
-                        finalPreparedHistory = ChatUtils.stripOpenAiResponsesProtocolMarkupTurns(finalPreparedHistory)
                     }
                     val requestHistory =
                         applyFinalizedCurrentUserTurn(

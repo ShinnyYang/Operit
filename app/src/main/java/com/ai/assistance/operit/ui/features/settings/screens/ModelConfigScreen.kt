@@ -3,6 +3,7 @@ package com.ai.assistance.operit.ui.features.settings.screens
 import android.annotation.SuppressLint
 import androidx.compose.animation.*
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
@@ -10,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -22,6 +24,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.ai.assistance.operit.ui.components.CustomScaffold
 import androidx.compose.ui.platform.LocalContext
@@ -78,6 +81,9 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 private data class HeaderPreset(val nameResId: Int, val headers: Map<String, String>)
 
@@ -1066,7 +1072,8 @@ private data class ThinkingOptionEditor(
     val id: String = "",
     val label: String = "",
     val path: String = "",
-    val value: String = ""
+    val value: String = "",
+    val editorKey: String = UUID.randomUUID().toString()
 )
 
 private val thinkingControlChoices =
@@ -1081,7 +1088,8 @@ private val thinkingMatchFieldChoices =
         "firstSegment" to "斜杠前段",
         "lastSegmentPrefix" to "后段前缀",
         "lastSegmentContains" to "后段包含",
-        "lastSegmentRegex" to "后段正则"
+        "lastSegmentRegex" to "后段正则",
+        "endpointSuffix" to "端点后缀"
     )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -1554,6 +1562,15 @@ private fun ThinkingCompactOptionsEditor(
     defaultPath: String,
     onOptionsChange: (List<ThinkingOptionEditor>) -> Unit
 ) {
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        onOptionsChange(
+            options.toMutableList().also {
+                it.add(to.index, it.removeAt(from.index))
+            }
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("滑块档位", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
@@ -1563,37 +1580,79 @@ private fun ThinkingCompactOptionsEditor(
                 Text("添加档位")
             }
         }
-        options.forEachIndexed { index, option ->
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
-            ) {
-                Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("档位 ${index + 1}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        IconButton(onClick = { onOptionsChange(options.toMutableList().also { it.removeAt(index) }) }, modifier = Modifier.size(28.dp)) {
-                            Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+        LazyColumn(
+            state = lazyListState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(max = 420.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            itemsIndexed(
+                items = options,
+                key = { _, option -> option.editorKey },
+            ) { index, option ->
+                ReorderableItem(
+                    reorderableState,
+                    key = option.editorKey,
+                    animateItemModifier = Modifier.animateItem(
+                        fadeInSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
+                        placementSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow),
+                        fadeOutSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
+                    )
+                ) { isDragging ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(
+                                if (isDragging) {
+                                    Modifier.shadow(8.dp, RoundedCornerShape(8.dp))
+                                } else {
+                                    Modifier
+                                }
+                            ),
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (isDragging) {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
+                        }
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.DragHandle,
+                                    contentDescription = "拖动排序",
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .longPressDraggableHandle(),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("档位 ${index + 1}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                IconButton(onClick = { onOptionsChange(options.toMutableList().also { it.removeAt(index) }) }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                            SettingsTextField(
+                                title = "显示名",
+                                value = option.label,
+                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(label = value) }) },
+                                placeholder = "例如：高"
+                            )
+                            SettingsTextField(
+                                title = "写入路径",
+                                value = option.path,
+                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(path = value) }) },
+                                placeholder = defaultPath
+                            )
+                            SettingsTextField(
+                                title = "写入值",
+                                value = option.value,
+                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(value = value) }) },
+                                placeholder = "例如：high"
+                            )
                         }
                     }
-                    SettingsTextField(
-                        title = "显示名",
-                        value = option.label,
-                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(label = value) }) },
-                        placeholder = "例如：高"
-                    )
-                    SettingsTextField(
-                        title = "写入路径",
-                        value = option.path,
-                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(path = value) }) },
-                        placeholder = defaultPath
-                    )
-                    SettingsTextField(
-                        title = "写入值",
-                        value = option.value,
-                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(value = value) }) },
-                        placeholder = "例如：high"
-                    )
                 }
             }
         }

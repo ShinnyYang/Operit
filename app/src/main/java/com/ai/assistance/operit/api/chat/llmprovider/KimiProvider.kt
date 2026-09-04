@@ -46,6 +46,7 @@ open class KimiProvider(
         thinkingConfigurations = thinkingConfigurations,
         thinkingOptionId = thinkingOptionId
 ) {
+    private val configuredApiEndpoint = apiEndpoint
 
     override fun createRequestBody(
         context: Context,
@@ -62,7 +63,7 @@ open class KimiProvider(
                 requestJson = jsonObject,
                 providerTypeId = providerType.name,
                 modelName = modelName,
-                apiEndpoint = "",
+                apiEndpoint = configuredApiEndpoint,
                 thinkingConfigurations = thinkingConfigurations,
                 enableThinking = enableThinking,
                 optionId = thinkingOptionId,

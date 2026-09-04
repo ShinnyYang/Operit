@@ -237,11 +237,11 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
             )
         }
 
-        val hasPermission = runBlocking {
+        val permissionResult = runBlocking {
             handler.getToolPermissionSystem().checkToolPermission(proxiedTool)
         }
-        if (!hasPermission) {
-            val errorMessage = "User cancelled the tool execution."
+        if (!permissionResult.isGranted) {
+            val errorMessage = context.getString(requireNotNull(permissionResult.errorMessageResId))
             handler.notifyToolPermissionChecked(
                 proxiedTool,
                 granted = false,
