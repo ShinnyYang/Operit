@@ -1437,6 +1437,23 @@ private constructor(private val context: Context, private val aiToolHandler: AIT
         return toolPkgFacade.getToolPkgContainerDetails(packageName, resolveContext)
     }
 
+    /**
+     * Resolves the manifest API version for either a ToolPkg container or one of its subpackages.
+     * Execution code should use this package-centric lookup instead of inferring the container
+     * from UI-only runtime parameters.
+     */
+    internal fun getToolPkgApiVersion(packageName: String): String? {
+        ensureInitialized()
+        val normalizedPackageName = normalizePackageName(packageName)
+        val containerPackageName =
+            if (toolPkgContainers.containsKey(normalizedPackageName)) {
+                normalizedPackageName
+            } else {
+                toolPkgSubpackageByPackageName[normalizedPackageName]?.containerPackageName
+            }
+        return containerPackageName?.let { toolPkgContainers[it]?.apiVersion }
+    }
+
     fun readToolPkgLogoBytes(packageName: String): ToolPkgLogoBytes? {
         ensureInitialized()
         val normalizedPackageName = normalizePackageName(packageName)
