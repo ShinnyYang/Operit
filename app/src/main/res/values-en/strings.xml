@@ -727,8 +727,10 @@
     <!-- Context Menu -->
     <string name="copy_message">Copy Message</string>
     <string name="markdown_source">Markdown source</string>
+    <string name="xml_source">XML source</string>
     <string name="copy_plain_text">Copy plain text</string>
     <string name="copy_markdown_source">Copy Markdown source</string>
+    <string name="copy_xml_source">Copy XML source</string>
     <string name="chat_hidden_user_message_placeholder">Auto-triggered user message (content hidden)</string>
     <string name="chat_hidden_user_message_badge">AUTO</string>
     <string name="info">Info</string>
@@ -1099,6 +1101,10 @@
     <string name="open_file_manager">Open File Manager</string>
     <string name="navigate_to_external_files">Please navigate to Android/data/com.ai.assistance.operit/files/packages directory</string>
     <string name="package_js_only">Only JavaScript (.js) and ToolPkg (.toolpkg) files are supported</string>
+    <string name="pkg_toolpkg_api_version">ToolPkg API: %1$s</string>
+    <string name="toolpkg_api_version_label">ToolPkg API version</string>
+    <string name="toolpkg_api_version_value">ToolPkg API version: %1$s</string>
+    <string name="pkg_toolpkg_requires">Required packages: %1$s</string>
     <string name="pkg_toolpkg_subpackages">ToolPkg Subpackages</string>
     <string name="pkg_toolpkg_version">Version: %1$s</string>
     <string name="pkg_toolpkg_resources">Resources: %1$d</string>
@@ -4007,6 +4013,10 @@
     <string name="enable_direct_video_processing_desc">When enabled, video will be sent directly to the AI for processing instead of tool-based frame extraction/analysis</string>
     <string name="enable_google_search">Enable Google Search</string>
     <string name="enable_google_search_desc">When enabled, Gemini will use Google Search to enhance responses (may incur additional charges)</string>
+    <string name="enable_deepseek_web_search">Enable DeepSeek web search</string>
+    <string name="enable_deepseek_web_search_desc">When using a DeepSeek Responses endpoint, allow the model to use server-side web search.</string>
+    <string name="enable_codex_web_search">Enable Codex web search</string>
+    <string name="enable_codex_web_search_desc">When signed in to Codex, allow the model to use server-side web search.</string>
     <string name="enable_claude_1h_prompt_cache">Enable Claude 1-hour prompt cache</string>
     <string name="enable_claude_1h_prompt_cache_desc">When enabled, Claude and Claude-compatible providers use a 1-hour prompt cache TTL</string>
     <string name="enable_tool_call">Model supports ToolCall</string>
@@ -4014,6 +4024,10 @@
     <string name="enable_deepseek_reasoning">Enable DeepSeek Reasoning Mode</string>
     <string name="enable_deepseek_reasoning_desc">When enabled, content within &lt;think&gt; tags will be sent as reasoning_content to DeepSeek models, supporting tool invocation for reasoning models like DeepSeek-R1</string>
     <string name="search_sources">Search Sources</string>
+    <string name="search_query_label">Query</string>
+    <string name="search_action_label">Action</string>
+    <string name="search_status_label">Status</string>
+    <string name="search_source_count">%1$d sources</string>
     <string name="api_settings_saved">API settings saved</string>
     <string name="save_api_settings">Save API Settings</string>
     <string name="available_models_list">Available Models List</string>
@@ -5249,6 +5263,9 @@
     <string name="mood_tag_block">Mood Tag</string>
     <string name="thinking_tools_group_title_with_count">Thinking &amp; Tool Calls (%1$d)</string>
     <string name="tools_group_title_with_count">Tool Calls (%1$d)</string>
+    <string name="search_group_title">Search</string>
+    <string name="thinking_search_group_title">Thinking and searching</string>
+    <string name="thinking_search_tools_group_title_with_count">Thinking, searching, and calling tools (%1$d)</string>
     
     <!-- Backup Settings Screen -->
     <string name="backup_data_overview">Data Overview</string>
@@ -5625,6 +5642,7 @@
     <string name="toolreg_update_chat_title_desc">Update chat title: %1$s</string>
     <string name="toolreg_delete_chat_desc">Delete chat: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Send message to AI: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Call function model: %1$s</string>
     <string name="toolreg_list_character_cards_desc">List all character cards</string>
     <string name="toolreg_get_chat_messages_desc">Get chat messages: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">List directory: %1$s%2$s</string>
@@ -6288,6 +6306,13 @@
 
     <!-- Workflow -->
     <string name="workflow_load_failed">Failed to load workflow</string>
+    <string name="workflow_storage_dir_unavailable">Unable to create workflow directory: %1$s</string>
+    <string name="workflow_storage_dir_unreadable">Unable to read workflow directory: %1$s</string>
+    <string name="workflow_storage_path_not_directory">Workflow storage path is not a directory: %1$s</string>
+    <string name="workflow_storage_file_parent_missing">Workflow file has no parent directory: %1$s</string>
+    <string name="workflow_storage_file_root_invalid">Workflow file format is invalid: %1$s is not a JSON object</string>
+    <string name="workflow_storage_invalid_files">Found %1$d invalid workflow file(s), skipped: %2$s</string>
+    <string name="workflow_storage_single_file_invalid">Workflow file format is invalid and cannot be opened: %1$s</string>
     <string name="workflow_create_failed">Failed to create workflow</string>
     <string name="workflow_update_condition_failed">Failed to update connection condition</string>
     <string name="workflow_update_failed">Failed to update workflow</string>
@@ -8054,6 +8079,7 @@
     <string name="artifact_publish_locked_name_must_match_source">When publishing based on a version, the plugin name must match the source version</string>
     <string name="artifact_publish_published_version_readonly">The version number of a published node cannot be modified</string>
     <string name="artifact_publish_toolpkg_version_readonly">ToolPkg publish version comes from the package manifest and cannot be edited before publishing</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">ToolPkg API version comes from the package manifest and cannot be edited before publishing</string>
     <string name="artifact_publish_save_artifact_info">Save artifact info</string>
     <string name="artifact_publish_publish_update_version">Publish update version</string>
     <string name="artifact_publish_confirm_save_artifact_info">Confirm save artifact info</string>
@@ -8287,4 +8313,22 @@
     <string name="codex_reset_after_days">Resets in %1$d days</string>
     <string name="codex_reset_after_clock">Resets in %1$02d:%2$02d</string>
     <string name="conversation_media_file_link">&lt;link type=&quot;file&quot; id=&quot;%1$s&quot; filename=&quot;%2$s&quot;&gt;PDF&lt;/link&gt;</string>
+
+    <string name="package_market_origin_title">External Package Source Notice</string>
+    <string name="package_market_origin_message">This package is from the Operit market.\nPackage name: %1$s\nVersion: %2$s\nAuthor: %3$s\nPlease support the original author and be cautious of unauthorized resale.</string>
+    <string name="thinking_config_title">Thinking Configuration</string>
+    <string name="thinking_config_subtitle">Matches thinking parameters in rule order; first match takes effect</string>
+    <string name="thinking_config_rule_order_hint">Rules are matched from top to bottom; the first enabled and matching rule takes effect. Use the arrows on the right side of each rule to adjust the order.</string>
+    <string name="thinking_config_rule_move_up">Move rule up</string>
+    <string name="thinking_config_rule_move_down">Move rule down</string>
+    <string name="token_stats_unit_millions">M</string>
+    <string name="token_stats_unit_billions">B</string>
+    <string name="token_stats_unit_toggle_description">Current token unit is %1$s, click to switch to %2$s</string>
+    <string name="market_manage_submit_revision">Submit new version after modification</string>
+    <string name="market_manage_loading_request_title">Loading Request</string>
+    <string name="market_manage_loading_request_message">Request is being processed, please wait…</string>
+    <string name="market_version_incompatible_title">Cannot Download: Client Version Not Supported</string>
+    <string name="market_version_too_low_message">Current client version %1$s is lower than the minimum required version %2$s for this resource. Please update the client before downloading.</string>
+    <string name="market_version_too_high_message">Current client version %1$s is higher than the maximum supported version %2$s for this resource. Please use a supported client version.</string>
+    <string name="thinking_config_invalid_json">Invalid Thinking Configuration</string>
 </resources>

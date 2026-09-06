@@ -138,9 +138,9 @@ open class GeminiProvider(
     @Volatile private var isManuallyCancelled = false
 
     /**
-     * 由客户端错误（如4xx状态码）触发的API异常，是否重试由统一策略决定
+     * 带 HTTP 状态码的 API 异常，供统一重试日志和最终错误展示使用。
      */
-    class NonRetriableException(
+    class HttpStatusException(
         message: String,
         override val statusCode: Int,
         cause: Throwable? = null
@@ -216,12 +216,14 @@ open class GeminiProvider(
                             PromptTurnKind.TOOL_RESULT -> "tool_result"
                             PromptTurnKind.SUMMARY -> "summary"
                         }
-                    val comparableContent =
+                    val rawComparableContent =
                         if (turn.kind == PromptTurnKind.ASSISTANT) {
                             ChatUtils.removeThinkingContent(turn.content)
                         } else {
                             turn.content
                         }
+                    val comparableContent =
+                        ChatUtils.stripOpenAiResponsesProtocolMarkup(rawComparableContent)
                     comparableRole to comparableContent
                 }
             )
@@ -602,12 +604,14 @@ open class GeminiProvider(
                             PromptTurnKind.TOOL_RESULT -> "tool_result"
                             PromptTurnKind.SUMMARY -> "summary"
                         }
-                    val comparableContent =
+                    val rawComparableContent =
                         if (!preserveThinkInHistory && turn.kind == PromptTurnKind.ASSISTANT) {
                             ChatUtils.removeThinkingContent(turn.content)
                         } else {
                             turn.content
                         }
+                    val comparableContent =
+                        ChatUtils.stripOpenAiResponsesProtocolMarkup(rawComparableContent)
                     comparableRole to comparableContent
                 }
             )
@@ -621,7 +625,10 @@ open class GeminiProvider(
         // Find and process system message first
         val systemMessages = effectiveHistory.filter { it.kind == PromptTurnKind.SYSTEM }
         if (systemMessages.isNotEmpty()) {
-            val systemContent = systemMessages.joinToString("\n\n") { it.content }
+            val systemContent =
+                systemMessages.joinToString("\n\n") { turn ->
+                    ChatUtils.stripOpenAiResponsesProtocolMarkup(turn.content)
+                }
             logDebug("发现系统消息: ${systemContent.take(50)}...")
 
             systemInstruction = JSONObject().apply {
@@ -636,7 +643,7 @@ open class GeminiProvider(
         var queuedAssistantToolText: String? = null
         var queuedAssistantThoughtSignature: String? = null
         val queuedFunctionCalls = mutableListOf<JSONObject>()
-        val openFunctionCallNames = mutableListOf<String>()
+        val openFunctionCalls = mutableListOf<StructuredToolCallBridge.OpenToolCall>()
 
         fun appendParts(target: JSONArray, parts: JSONArray) {
             for (index in 0 until parts.length()) {
@@ -694,7 +701,10 @@ open class GeminiProvider(
             )
 
             queuedFunctionCalls.forEach { functionCall ->
-                openFunctionCallNames.add(functionCall.optString("name", "").trim())
+                val functionName = functionCall.optString("name", "").trim()
+                openFunctionCalls.add(
+                    StructuredToolCallBridge.OpenToolCall(functionName, functionName)
+                )
             }
             queuedAssistantToolText = null
             queuedAssistantThoughtSignature = null
@@ -703,16 +713,16 @@ open class GeminiProvider(
 
         fun appendCancelledOpenFunctionResponses(target: JSONArray, reason: String): Boolean {
             emitQueuedFunctionCallsIfNeeded()
-            if (openFunctionCallNames.isEmpty()) return false
+            if (openFunctionCalls.isEmpty()) return false
 
-            logDebug("发现未完成的Gemini functionCall，按取消处理: count=${openFunctionCallNames.size}, reason=$reason")
-            openFunctionCallNames.forEach { functionName ->
+            logDebug("发现未完成的Gemini functionCall，按取消处理: count=${openFunctionCalls.size}, reason=$reason")
+            openFunctionCalls.forEach { openFunctionCall ->
                 target.put(
                     JSONObject().apply {
                         put(
                             "functionResponse",
                             JSONObject().apply {
-                                put("name", functionName.ifBlank { "cancelled_function" })
+                                put("name", openFunctionCall.name.ifBlank { "cancelled_function" })
                                 put(
                                     "response",
                                     JSONObject().apply {
@@ -724,7 +734,7 @@ open class GeminiProvider(
                     }
                 )
             }
-            openFunctionCallNames.clear()
+            openFunctionCalls.clear()
             return true
         }
 
@@ -740,12 +750,13 @@ open class GeminiProvider(
         }
 
         for (turn in historyWithoutSystem) {
-            val content =
+            val rawContent =
                 if (!preserveThinkInHistory && turn.kind == PromptTurnKind.ASSISTANT) {
                     ChatUtils.removeThinkingContent(turn.content)
                 } else {
                     turn.content
                 }
+            val content = ChatUtils.stripOpenAiResponsesProtocolMarkup(rawContent)
             val contentWithoutGeminiMeta = ChatMarkupRegex.removeGeminiThoughtSignatureMeta(content)
 
             if (enableToolCall) {
@@ -753,7 +764,7 @@ open class GeminiProvider(
                     PromptTurnKind.ASSISTANT -> {
                         val functionCallPayload = parseXmlToolCalls(content)
                         if (functionCallPayload.functionCalls.isNotEmpty()) {
-                            if (openFunctionCallNames.isNotEmpty()) {
+                            if (openFunctionCalls.isNotEmpty()) {
                                 flushOpenFunctionCallsAsCancelled("assistant_function_call_before_result")
                             }
                             queueFunctionCalls(
@@ -775,7 +786,7 @@ open class GeminiProvider(
                     PromptTurnKind.TOOL_CALL -> {
                         val functionCallPayload = parseXmlToolCalls(content)
                         if (functionCallPayload.functionCalls.isNotEmpty()) {
-                            if (openFunctionCallNames.isNotEmpty()) {
+                            if (openFunctionCalls.isNotEmpty()) {
                                 flushOpenFunctionCallsAsCancelled("typed_function_call_before_result")
                             }
                             queueFunctionCalls(
@@ -812,13 +823,17 @@ open class GeminiProvider(
                         val (textContent, functionResponses) = parseXmlToolResults(contentWithoutGeminiMeta)
                         val responsesList = functionResponses ?: emptyList()
 
-                        if (responsesList.isNotEmpty() && openFunctionCallNames.isNotEmpty()) {
+                        if (responsesList.isNotEmpty() && openFunctionCalls.isNotEmpty()) {
                             val partsArray = JSONArray()
-                            val validCount = minOf(responsesList.size, openFunctionCallNames.size)
-
-                            repeat(validCount) { index ->
-                                val response = JSONObject(responsesList[index].toString())
-                                val pendingName = openFunctionCallNames[index]
+                            val resultNames = responsesList.map { it.optString("name", "") }
+                            val matchedCalls =
+                                StructuredToolCallBridge.consumeMatchingToolCalls(
+                                    openFunctionCalls,
+                                    resultNames
+                                )
+                            matchedCalls.forEach { matchedCall ->
+                                val response = JSONObject(responsesList[matchedCall.resultIndex].toString())
+                                val pendingName = matchedCall.call.name
                                 if (pendingName.isNotBlank()) {
                                     response.put("name", pendingName)
                                 }
@@ -830,13 +845,11 @@ open class GeminiProvider(
                                 logDebug("历史XML→GeminiFunctionResponse: ${response.optString("name")}")
                             }
 
-                            repeat(validCount) {
-                                openFunctionCallNames.removeAt(0)
+                            if (matchedCalls.size < responsesList.size) {
+                                logDebug("发现未匹配的Gemini functionResponse: ${responsesList.size - matchedCalls.size}")
                             }
 
-                            if (responsesList.size > validCount) {
-                                logDebug("发现多余的Gemini functionResponse: ${responsesList.size} results vs ${validCount} pending functionCalls")
-                            }
+                            appendCancelledOpenFunctionResponses(partsArray, "tool_result_partial_batch")
 
                             if (textContent.isNotEmpty()) {
                                 appendParts(partsArray, buildPartsArray(textContent))
@@ -851,19 +864,17 @@ open class GeminiProvider(
                         } else {
                             val partsArray = JSONArray()
                             appendCancelledOpenFunctionResponses(partsArray, "tool_result_without_structured_match")
-                            val fallbackContent =
-                                when {
-                                    textContent.isNotEmpty() -> textContent
-                                    contentWithoutGeminiMeta.isNotBlank() -> contentWithoutGeminiMeta
-                                    else -> "[Empty]"
-                                }
-                            appendParts(partsArray, buildPartsArray(fallbackContent))
-                            contentsArray.put(
-                                JSONObject().apply {
-                                    put("role", "user")
-                                    put("parts", partsArray)
-                                }
-                            )
+                            if (textContent.isNotEmpty()) {
+                                appendParts(partsArray, buildPartsArray(textContent))
+                            }
+                            if (partsArray.length() > 0) {
+                                contentsArray.put(
+                                    JSONObject().apply {
+                                        put("role", "user")
+                                        put("parts", partsArray)
+                                    }
+                                )
+                            }
                         }
                     }
 
@@ -1209,14 +1220,13 @@ open class GeminiProvider(
                         if (!response.isSuccessful) {
                             val errorBody = response.body?.string() ?: context.getString(R.string.gemini_error_no_error_details)
                             logError("API请求失败: ${response.code}, $errorBody")
-                            // 4xx错误仍保留单独的异常类型，具体是否重试由统一策略决定
+                            // 状态码错误保留状态码信息，随后进入统一重试循环。
                             if (response.code in 400..499) {
-                                throw NonRetriableException(
+                                throw HttpStatusException(
                                     context.getString(R.string.gemini_error_api_request_failed, response.code, errorBody),
                                     statusCode = response.code
                                 )
                             }
-                            // 对于5xx等服务端错误，允许重试
                             throw IOException(context.getString(R.string.gemini_error_api_request_failed, response.code, errorBody))
                         }
 

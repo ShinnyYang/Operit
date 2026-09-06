@@ -839,6 +839,7 @@ fun PackageManagerScreen(
                              pluginOrder = pluginOrder,
                             onSavePluginOrder = { newOrder ->
                                 pluginOrder = newOrder
+                                packageManager.updateToolPkgPluginOrder(newOrder)
                                 scope.launch {
                                     apiPreferences.savePluginOrder(newOrder)
                                 }

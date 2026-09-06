@@ -209,6 +209,14 @@ fun ModelApiSettingsSection(
     // Google Search Grounding 配置状态 (仅Gemini)
     var enableGoogleSearchInput by remember(config.id) { mutableStateOf(config.enableGoogleSearch) }
 
+    var enableDeepSeekWebSearchInput by remember(config.id) {
+        mutableStateOf(config.enableDeepSeekWebSearch)
+    }
+
+    var enableCodexWebSearchInput by remember(config.id) {
+        mutableStateOf(config.enableCodexWebSearch)
+    }
+
     // Claude 1小时提示缓存配置状态 (仅Claude)
     var enableClaude1hPromptCacheInput by remember(config.id) {
         mutableStateOf(config.enableClaude1hPromptCache)
@@ -241,6 +249,8 @@ fun ModelApiSettingsSection(
         val enableDirectAudioProcessing: Boolean,
         val enableDirectVideoProcessing: Boolean,
         val enableGoogleSearch: Boolean,
+        val enableDeepSeekWebSearch: Boolean,
+        val enableCodexWebSearch: Boolean,
         val enableClaude1hPromptCache: Boolean,
         val enableToolCall: Boolean,
     )
@@ -265,6 +275,8 @@ fun ModelApiSettingsSection(
                     enableDirectAudioProcessing = state.enableDirectAudioProcessing,
                     enableDirectVideoProcessing = state.enableDirectVideoProcessing,
                     enableGoogleSearch = state.enableGoogleSearch,
+                    enableDeepSeekWebSearch = state.enableDeepSeekWebSearch,
+                    enableCodexWebSearch = state.enableCodexWebSearch,
                     enableClaude1hPromptCache = state.enableClaude1hPromptCache,
                     enableToolCall = state.enableToolCall,
                 )
@@ -292,6 +304,8 @@ fun ModelApiSettingsSection(
             enableDirectAudioProcessing = enableDirectAudioProcessingInput,
             enableDirectVideoProcessing = enableDirectVideoProcessingInput,
             enableGoogleSearch = enableGoogleSearchInput,
+            enableDeepSeekWebSearch = enableDeepSeekWebSearchInput,
+            enableCodexWebSearch = enableCodexWebSearchInput,
             enableClaude1hPromptCache = enableClaude1hPromptCacheInput,
             enableToolCall = enableToolCallInput,
         )
@@ -472,6 +486,8 @@ fun ModelApiSettingsSection(
                                 enableDirectAudioProcessing = enableDirectAudioProcessingInput,
                                 enableDirectVideoProcessing = enableDirectVideoProcessingInput,
                                 enableGoogleSearch = enableGoogleSearchInput,
+                                enableDeepSeekWebSearch = enableDeepSeekWebSearchInput,
+                                enableCodexWebSearch = enableCodexWebSearchInput,
                                 enableClaude1hPromptCache = enableClaude1hPromptCacheInput,
                                 enableToolCall = enableToolCallInput
                             ),
@@ -837,6 +853,12 @@ fun ModelApiSettingsSection(
                      checked = enableDirectImageProcessingInput,
                      onCheckedChange = { enableDirectImageProcessingInput = it }
                  )
+                 SettingsSwitchRow(
+                     title = stringResource(R.string.enable_codex_web_search),
+                     subtitle = stringResource(R.string.enable_codex_web_search_desc),
+                     checked = enableCodexWebSearchInput,
+                     onCheckedChange = { enableCodexWebSearchInput = it }
+                 )
              } else {
                  SettingsSwitchRow(
                      title = stringResource(R.string.enable_direct_image_processing),
@@ -868,6 +890,15 @@ fun ModelApiSettingsSection(
                             checked = enableGoogleSearchInput,
                             onCheckedChange = { enableGoogleSearchInput = it }
                     )
+            }
+
+            if (selectedApiProvider == ApiProviderType.DEEPSEEK) {
+                SettingsSwitchRow(
+                    title = stringResource(R.string.enable_deepseek_web_search),
+                    subtitle = stringResource(R.string.enable_deepseek_web_search_desc),
+                    checked = enableDeepSeekWebSearchInput,
+                    onCheckedChange = { enableDeepSeekWebSearchInput = it }
+                )
             }
 
             // Claude 1小时提示缓存开关 (仅Claude支持)
