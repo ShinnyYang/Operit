@@ -5215,6 +5215,7 @@
     <string name="toolreg_update_chat_title_desc">채팅 제목 업데이트: %1$s</string>
     <string name="toolreg_delete_chat_desc">채팅 삭제: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">AI에게 메시지 보내기: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">기능 모델 호출: %1$s</string>
     <string name="toolreg_list_character_cards_desc">모든 캐릭터 카드 나열</string>
     <string name="toolreg_get_chat_messages_desc">채팅 메시지 받기: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">디렉터리 나열: %1$s%2$s</string>
@@ -7068,6 +7069,10 @@
     <string name="artifact_publish_published_name_readonly">게시된 작품의 이름은 수정할 수 없습니다</string>
     <string name="artifact_publish_locked_name_must_match_source">버전 기반 게시 시 플러그인 이름은 원본 버전과 일치해야 합니다</string>
     <string name="artifact_publish_published_version_readonly">게시된 노드의 버전 번호는 수정할 수 없습니다</string>
+    <string name="pkg_toolpkg_api_version">ToolPkg API: %1$s</string>
+    <string name="toolpkg_api_version_label">ToolPkg API 버전</string>
+    <string name="toolpkg_api_version_value">ToolPkg API 버전: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">ToolPkg API 버전은 패키지 내 매니페스트에서 가져오므로 게시 전에 수동으로 수정할 수 없습니다</string>
     <string name="artifact_publish_save_artifact_info">작품 정보 저장</string>
     <string name="artifact_publish_publish_update_version">업데이트 버전 게시</string>
     <string name="artifact_publish_confirm_save_artifact_info">작품 정보 저장 확인</string>

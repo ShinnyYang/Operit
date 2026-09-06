@@ -4792,6 +4792,7 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="toolreg_update_chat_title_desc">Atualizar título da conversa: %1$s</string>
     <string name="toolreg_delete_chat_desc">Excluir conversa: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Enviar mensagem para IA: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Chamar modelo de função: %1$s</string>
     <string name="toolreg_list_character_cards_desc">Listar todas as cartas de personagem</string>
     <string name="toolreg_get_chat_messages_desc">Receber mensagem de conversa: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">Listar conteúdo do diretório: %1$s%2$s</string>
@@ -7027,6 +7028,10 @@ Agora é possível usar o modo AutoGLM na interface de diálogo.</string>
     <string name="artifact_publish_published_name_readonly">O nome de uma obra publicada não pode ser modificado.</string>
     <string name="artifact_publish_locked_name_must_match_source">Ao publicar com base em uma versão, o nome do plugin deve corresponder ao da versão de origem.</string>
     <string name="artifact_publish_published_version_readonly">O número de versão de um nó publicado não pode ser modificado.</string>
+    <string name="pkg_toolpkg_api_version">API do ToolPkg: %1$s</string>
+    <string name="toolpkg_api_version_label">Versão da API do ToolPkg</string>
+    <string name="toolpkg_api_version_value">Versão da API do ToolPkg: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">A versão da API do ToolPkg vem do manifesto do pacote e não pode ser alterada manualmente antes da publicação</string>
     <string name="artifact_publish_save_artifact_info">Salvar informações da obra</string>
     <string name="artifact_publish_publish_update_version">Publicar versão de atualização</string>
     <string name="artifact_publish_confirm_save_artifact_info">Confirmar salvamento das informações da obra</string>

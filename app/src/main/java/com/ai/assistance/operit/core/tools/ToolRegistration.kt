@@ -1724,6 +1724,15 @@ fun registerAllTools(handler: AIToolHandler, context: Context) {
                     }
     )
 
+    handler.registerTool(
+            name = "call_chat_model",
+            descriptionGenerator = { tool ->
+                val functionType = tool.parameters.find { it.name == "function_type" }?.value ?: ""
+                s(R.string.toolreg_call_chat_model_desc, functionType)
+            },
+            executor = { tool -> runBlocking(Dispatchers.IO) { chatManagerTool.callChatModel(tool) } }
+    )
+
     // 列出所有角色卡
     handler.registerTool(
             name = "list_character_cards",

@@ -5139,6 +5139,7 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="toolreg_update_chat_title_desc">Perbarui judul obrolan: %1$s</string>
     <string name="toolreg_delete_chat_desc">Hapus obrolan: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Kirim pesan ke AI: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Panggil model fungsi: %1$s</string>
     <string name="toolreg_list_character_cards_desc">Daftar semua kartu karakter</string>
     <string name="toolreg_get_chat_messages_desc">Dapatkan pesan obrolan: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">Daftar isi direktori: %1$s%2$s</string>
@@ -7189,6 +7190,10 @@ Sekarang Anda dapat menggunakan mode AutoGLM di antarmuka percakapan.</string>
     <string name="artifact_publish_published_name_readonly">Nama karya yang sudah diterbitkan tidak dapat diubah</string>
     <string name="artifact_publish_locked_name_must_match_source">Saat menerbitkan berdasarkan versi, nama plugin harus sama dengan versi sumber</string>
     <string name="artifact_publish_published_version_readonly">Nomor versi node yang sudah diterbitkan tidak dapat diubah</string>
+    <string name="pkg_toolpkg_api_version">API ToolPkg: %1$s</string>
+    <string name="toolpkg_api_version_label">Versi API ToolPkg</string>
+    <string name="toolpkg_api_version_value">Versi API ToolPkg: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">Versi API ToolPkg berasal dari manifes paket dan tidak dapat diubah secara manual sebelum publikasi</string>
     <string name="artifact_publish_save_artifact_info">Simpan Informasi Karya</string>
     <string name="artifact_publish_publish_update_version">Terbitkan Versi Pembaruan</string>
     <string name="artifact_publish_confirm_save_artifact_info">Konfirmasi Simpan Informasi Karya</string>

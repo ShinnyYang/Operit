@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -54,7 +55,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
@@ -99,11 +99,18 @@ import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Summarize
 import androidx.compose.ui.draw.alpha
 import com.ai.assistance.operit.api.chat.llmprovider.MediaLinkParser
+import com.ai.assistance.operit.plugins.chatmessage.ChatMessageMenuDialogRequest
+import com.ai.assistance.operit.plugins.chatmessage.ChatMessageMenuItemDefinition
+import com.ai.assistance.operit.plugins.chatmessage.ChatMessageMenuItemParams
+import com.ai.assistance.operit.plugins.chatmessage.ChatMessageMenuItemRegistry
+import com.ai.assistance.operit.ui.common.composedsl.ToolPkgComposeDslDialogHost
+import com.ai.assistance.operit.ui.common.icons.MaterialIconNameResolver
 import com.ai.assistance.operit.ui.common.markdown.markdownToPlainTextForCopy
 import com.ai.assistance.operit.ui.features.chat.components.style.cursor.CursorStyleChatMessage
 import com.ai.assistance.operit.ui.features.chat.components.style.bubble.BubbleImageStyleConfig
 import com.ai.assistance.operit.ui.features.chat.components.style.bubble.BubbleStyleChatMessage
 import com.ai.assistance.operit.ui.theme.LocalThemePreferenceSnapshot
+import com.ai.assistance.operit.util.AppLogger
 import com.ai.assistance.operit.util.ChatMarkupRegex
 import com.ai.assistance.operit.util.LatexMathMlConverter
 import java.text.SimpleDateFormat
@@ -432,6 +439,7 @@ fun ChatArea(
                     ) {
                         MessageItem(
                             index = actualIndex,
+                            currentChatId = currentChatId,
                             message = message,
                             enableDialogs = enableDialogs,
                             userMessageColor = userMessageColor,
@@ -601,6 +609,7 @@ fun ChatArea(
 @Composable
 private fun MessageItem(
     index: Int,
+    currentChatId: String,
     message: ChatMessage,
     enableDialogs: Boolean,
     userMessageColor: Color,
@@ -655,12 +664,27 @@ private fun MessageItem(
     var showHiddenUserMessageDialog by remember { mutableStateOf(false) }
     var showDeleteMessageConfirmDialog by remember { mutableStateOf(false) }
     var copyPreviewContent by remember { mutableStateOf<MessageCopyContent?>(null) }
+    var toolPkgDialogRequest by remember(currentChatId, message.timestamp) {
+        mutableStateOf<ChatMessageMenuDialogRequest?>(null)
+    }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val messageInteractionSource = remember { MutableInteractionSource() }
 
     // 只有用户和AI的消息才能被操作
     val isActionable = message.sender == "user" || message.sender == "ai"
     val isHiddenUserMessage = isHiddenUserPlaceholder(message)
+    var pluginMenuItems by remember(currentChatId, message.timestamp) {
+        mutableStateOf<List<ChatMessageMenuItemDefinition>>(emptyList())
+    }
+
+    fun buildPluginMenuItemParams(): ChatMessageMenuItemParams =
+        ChatMessageMenuItemParams(
+            context = context,
+            chatId = currentChatId,
+            messageIndex = messageIndex,
+            message = message
+        )
 
     Box(
         modifier =
@@ -686,6 +710,14 @@ private fun MessageItem(
                 },
                 onLongClick = { 
                     if (!isMultiSelectMode && isActionable) {
+                        pluginMenuItems =
+                            if (!isHiddenUserMessage) {
+                                ChatMessageMenuItemRegistry.createMenuItems(
+                                    buildPluginMenuItemParams()
+                                )
+                            } else {
+                                emptyList()
+                            }
                         showContextMenu = true
                     }
                 },
@@ -833,6 +865,57 @@ private fun MessageItem(
                     },
                     modifier = Modifier.height(36.dp)
                 )
+            }
+
+            if (isActionable && !isHiddenUserMessage && pluginMenuItems.isNotEmpty()) {
+                pluginMenuItems.forEach { pluginMenuItem ->
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                pluginMenuItem.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontSize = 13.sp
+                            )
+                        },
+                        onClick = {
+                            val clickParams = buildPluginMenuItemParams()
+                            showContextMenu = false
+                            coroutineScope.launch {
+                                try {
+                                    val result = pluginMenuItem.onClick(clickParams)
+                                    val dialogRequest = result?.dialog
+                                    if (dialogRequest != null && enableDialogs) {
+                                        toolPkgDialogRequest = dialogRequest
+                                    }
+                                } catch (error: Exception) {
+                                    AppLogger.e(
+                                        "ChatArea",
+                                        "chat message menu item failed: ${pluginMenuItem.id}",
+                                        error
+                                    )
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.operation_failed),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                            }
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector =
+                                    MaterialIconNameResolver.resolveOrDefault(
+                                        pluginMenuItem.icon,
+                                        Icons.Default.Extension
+                                    ),
+                                contentDescription = pluginMenuItem.title,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.height(36.dp)
+                    )
+                }
             }
 
             // 根据消息发送者显示不同的操作
@@ -1160,6 +1243,13 @@ private fun MessageItem(
             MessageCopyPreviewBottomSheet(
                 content = previewContent,
                 onDismiss = { copyPreviewContent = null }
+            )
+        }
+
+        toolPkgDialogRequest?.let { dialogRequest ->
+            ToolPkgComposeDslDialogHost(
+                request = dialogRequest,
+                onDismiss = { toolPkgDialogRequest = null }
             )
         }
     }

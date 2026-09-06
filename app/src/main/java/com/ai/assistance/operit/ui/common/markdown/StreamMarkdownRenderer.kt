@@ -362,6 +362,20 @@ class StreamMarkdownRendererState {
     }
 }
 
+private fun StreamMarkdownRendererState.replaceStaticNodes(
+    rendererId: String,
+    parsedNodes: List<MarkdownNode>
+) {
+    nodes.clear()
+    nodes.addAll(parsedNodes)
+    renderNodes.clear()
+    renderNodes.addAll(parsedNodes.map { it.toStableNode() })
+    nodeAnimationStates.clear()
+    parsedNodes.forEachIndexed { index, _ ->
+        nodeAnimationStates["static-node-$rendererId-$index"] = true
+    }
+}
+
 /** 高性能流式Markdown渲染组件 通过Jetpack Compose实现，支持流式渲染Markdown内容 使用Stream处理系统，实现高效的异步处理 */
 @Composable
 fun StreamMarkdownRenderer(
@@ -871,15 +885,21 @@ fun StreamMarkdownRenderer(
         enableDialogs: Boolean = true,
         fillMaxWidth: Boolean = true,
 ) {
-    // 使用传入的state或创建新的state
-    val rendererState = state ?: remember(content) { StreamMarkdownRendererState() }
-    
     // 使用流式版本相同的渲染器ID生成逻辑
-    val rendererId = remember(content) { 
-        val id = "static-renderer-${content.hashCode()}"
-        rendererState.updateRendererId(id)
-        id
+    val rendererId = remember(content) { "static-renderer-${content.hashCode()}" }
+
+    // 使用传入的state或创建新的state。静态内容完成过解析时，创建组合阶段直接
+    // 带入缓存节点；LazyColumn 首帧用空节点测量会形成 0 高度 item，节点离开活跃组合后
+    // 后台解析结果无法驱动当前可见项重新布局。
+    val rendererState = state ?: remember(content) {
+        StreamMarkdownRendererState().also { newState ->
+            val cachedNodes = MarkdownNodeCache.get(content)
+            if (cachedNodes != null) {
+                newState.replaceStaticNodes(rendererId, cachedNodes)
+            }
+        }
     }
+    rendererState.updateRendererId(rendererId)
 
     // 使用与流式版本相同的节点列表结构
     val nodes = rendererState.nodes
@@ -908,25 +928,11 @@ fun StreamMarkdownRenderer(
         }
 
         xmlNodeStreams.clear()
-        
-        // 移除时间计算相关变量
+
         val cachedNodes = MarkdownNodeCache.get(content)
 
         if (cachedNodes != null) {
-            // 移除时间计算相关的日志
-            // 移除时间计算变量
-            nodes.clear()
-            nodes.addAll(cachedNodes)
-            renderNodes.clear()
-            renderNodes.addAll(cachedNodes.map { it.toStableNode() })
-            // 确保动画状态也被设置
-            val newStates = mutableMapOf<String, Boolean>()
-            cachedNodes.forEachIndexed { index, node ->
-                val nodeKey = "static-node-$rendererId-$index"
-                newStates[nodeKey] = true
-            }
-            nodeAnimationStates.putAll(newStates)
-            // 移除应用缓存节点相关时间日志
+            rendererState.replaceStaticNodes(rendererId, cachedNodes)
             return@LaunchedEffect
         }
 
@@ -939,23 +945,7 @@ fun StreamMarkdownRenderer(
                     // 保存到缓存，这样下次渲染同样内容时可以直接使用
                     MarkdownNodeCache.put(content, parsedNodes)
 
-                    // 更新UI状态
-                    // 清除现有节点
-                    nodes.clear()
-                    // 批量添加所有节点以减少UI重组次数
-                    nodes.addAll(parsedNodes)
-                    renderNodes.clear()
-                    renderNodes.addAll(parsedNodes.map { it.toStableNode() })
-
-                    // 更新所有节点的动画状态为可见
-                    val newStates = mutableMapOf<String, Boolean>()
-                    parsedNodes.forEachIndexed { index, node ->
-                        val nodeKey = "static-node-$rendererId-$index"
-                        newStates[nodeKey] = true
-                    }
-                    nodeAnimationStates.putAll(newStates)
-
-                    // 移除UI更新时间相关日志
+                    rendererState.replaceStaticNodes(rendererId, parsedNodes)
                 }
             } catch (e: CancellationException) {
                 throw e

@@ -5817,6 +5817,7 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="toolreg_update_chat_title_desc">Actualizar título de la conversación: %1$s</string>
     <string name="toolreg_delete_chat_desc">Eliminar conversación: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Enviar mensaje a la IA: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Llamar al modelo de función: %1$s</string>
     <string name="toolreg_list_character_cards_desc">Listar todas las tarjetas de personaje</string>
     <string name="toolreg_get_chat_messages_desc">Obtener mensajes de la conversación: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">Listar contenido del directorio: %1$s%2$s</string>
@@ -7257,6 +7258,10 @@ Ahora puede usar el modo AutoGLM en la interfaz de conversación.</string>
     <string name="artifact_publish_published_name_readonly">El nombre de una obra publicada no se puede modificar</string>
     <string name="artifact_publish_locked_name_must_match_source">Al publicar basado en una versión, el nombre del complemento debe coincidir con el de la versión de origen</string>
     <string name="artifact_publish_published_version_readonly">El número de versión de un nodo publicado no se puede modificar</string>
+    <string name="pkg_toolpkg_api_version">API de ToolPkg: %1$s</string>
+    <string name="toolpkg_api_version_label">Versión de API de ToolPkg</string>
+    <string name="toolpkg_api_version_value">Versión de API de ToolPkg: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">La versión de API de ToolPkg proviene del manifiesto del paquete y no se puede modificar manualmente antes de publicar</string>
     <string name="artifact_publish_save_artifact_info">Guardar información de la obra</string>
     <string name="artifact_publish_publish_update_version">Publicar versión actualizada</string>
     <string name="artifact_publish_confirm_save_artifact_info">Confirmar guardar información de la obra</string>

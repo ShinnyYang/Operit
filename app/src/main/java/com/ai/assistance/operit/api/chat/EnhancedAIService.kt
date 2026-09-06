@@ -664,6 +664,35 @@ class EnhancedAIService private constructor(private val context: Context) {
         }
     }
 
+    suspend fun callFunctionModel(
+        functionType: FunctionType,
+        turns: List<PromptTurn>,
+        enableThinking: Boolean = false,
+        recordTokenUsage: Boolean = true
+    ): String {
+        ensureInitialized()
+        val serviceForFunction = getAIServiceForFunction(functionType)
+        val modelParameters = getModelParametersForFunction(functionType)
+        val output = StringBuilder()
+
+        serviceForFunction
+            .sendMessage(
+                context = context,
+                chatHistory = turns,
+                modelParameters = modelParameters,
+                enableThinking = enableThinking,
+                stream = false,
+                availableTools = emptyList(),
+                preserveThinkInHistory = true,
+                recordTokenUsage = recordTokenUsage
+            )
+            .collect { chunk ->
+                output.append(chunk)
+            }
+
+        return output.toString()
+    }
+
     private fun publishRequestWindowEstimate(windowSize: Long) {
         _requestWindowEstimate.value = windowSize
     }

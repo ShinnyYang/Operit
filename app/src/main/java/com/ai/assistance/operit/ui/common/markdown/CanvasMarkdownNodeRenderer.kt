@@ -837,7 +837,12 @@ private fun UnifiedCanvasRenderer(
                         node.type == MarkdownProcessorType.ORDERED_LIST ||
                         node.type == MarkdownProcessorType.UNORDERED_LIST)
 
-        val contentKey = node.content.length
+        val contentKey: Any =
+            if (nodeKey.startsWith("static-node-")) {
+                node.content
+            } else {
+                node.content.length
+            }
 
         // 计算布局和绘制指令（用于稳定高度/宽度）
         val layoutResult = remember(
@@ -873,7 +878,6 @@ private fun UnifiedCanvasRenderer(
                 globalParagraphSpacingDp = textLayoutSettings.paragraphSpacingDp
             )
         }
-
         val textLayoutInstructions = layoutResult.instructions.filterIsInstance<DrawInstruction.TextLayout>()
         val textLayoutLengths =
             remember(layoutResult.instructions) {

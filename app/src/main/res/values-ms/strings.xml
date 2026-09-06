@@ -5138,6 +5138,7 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="toolreg_update_chat_title_desc">Kemas kini tajuk perbualan: %1$s</string>
     <string name="toolreg_delete_chat_desc">Padam perbualan: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Hantar mesej kepada AI: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Panggil model fungsi: %1$s</string>
     <string name="toolreg_list_character_cards_desc">Senaraikan semua kad watak</string>
     <string name="toolreg_get_chat_messages_desc">Dapatkan mesej perbualan: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">Senaraikan kandungan direktori: %1$s%2$s</string>
@@ -7186,6 +7187,10 @@ Kini anda boleh menggunakan mod AutoGLM di antara muka perbualan.</string>
     <string name="artifact_publish_published_name_readonly">Penamaan karya yang telah diterbitkan tidak boleh diubah suai</string>
     <string name="artifact_publish_locked_name_must_match_source">Apabila menerbitkan berdasarkan versi, nama pemalam mesti konsisten dengan versi sumber</string>
     <string name="artifact_publish_published_version_readonly">Nombor versi nod yang telah diterbitkan tidak boleh diubah suai</string>
+    <string name="pkg_toolpkg_api_version">API ToolPkg: %1$s</string>
+    <string name="toolpkg_api_version_label">Versi API ToolPkg</string>
+    <string name="toolpkg_api_version_value">Versi API ToolPkg: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">Versi API ToolPkg berasal daripada manifest pakej dan tidak boleh diubah suai secara manual sebelum penerbitan</string>
     <string name="artifact_publish_save_artifact_info">Simpan maklumat karya</string>
     <string name="artifact_publish_publish_update_version">Terbitkan versi kemas kini</string>
     <string name="artifact_publish_confirm_save_artifact_info">Sahkan simpan maklumat karya</string>

@@ -1600,6 +1600,9 @@ private fun ThinkingCompactOptionsEditor(
                         fadeOutSpec = spring(stiffness = androidx.compose.animation.core.Spring.StiffnessMediumLow)
                     )
                 ) { isDragging ->
+                    var expanded by rememberSaveable(option.editorKey) {
+                        mutableStateOf(index == 0)
+                    }
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1611,14 +1614,20 @@ private fun ThinkingCompactOptionsEditor(
                                 }
                             ),
                         shape = RoundedCornerShape(8.dp),
+                        // Keep the dragged item opaque so its elevation shadow remains clean over translucent surfaces.
                         color = if (isDragging) {
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                            MaterialTheme.colorScheme.surfaceVariant
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.28f)
                         }
                     ) {
-                        Column(modifier = Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 8.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Icon(
                                     imageVector = Icons.Default.DragHandle,
                                     contentDescription = "拖动排序",
@@ -1628,29 +1637,69 @@ private fun ThinkingCompactOptionsEditor(
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("档位 ${index + 1}", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                IconButton(onClick = { onOptionsChange(options.toMutableList().also { it.removeAt(index) }) }, modifier = Modifier.size(28.dp)) {
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clickable { expanded = !expanded }
+                                        .padding(vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        "档位 ${index + 1}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (!expanded && option.label.isNotBlank()) {
+                                        Text(
+                                            option.label,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+                                IconButton(
+                                    onClick = { onOptionsChange(options.toMutableList().also { it.removeAt(index) }) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
                                     Icon(Icons.Default.Delete, contentDescription = "删除", modifier = Modifier.size(16.dp), tint = MaterialTheme.colorScheme.error)
                                 }
+                                IconButton(
+                                    onClick = { expanded = !expanded },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                        contentDescription = if (expanded) "收起" else "展开",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
                             }
-                            SettingsTextField(
-                                title = "显示名",
-                                value = option.label,
-                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(label = value) }) },
-                                placeholder = "例如：高"
-                            )
-                            SettingsTextField(
-                                title = "写入路径",
-                                value = option.path,
-                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(path = value) }) },
-                                placeholder = defaultPath
-                            )
-                            SettingsTextField(
-                                title = "写入值",
-                                value = option.value,
-                                onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(value = value) }) },
-                                placeholder = "例如：high"
-                            )
+                            AnimatedVisibility(visible = expanded) {
+                                Column(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    SettingsTextField(
+                                        title = "显示名",
+                                        value = option.label,
+                                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(label = value) }) },
+                                        placeholder = "例如：高"
+                                    )
+                                    SettingsTextField(
+                                        title = "写入路径",
+                                        value = option.path,
+                                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(path = value) }) },
+                                        placeholder = defaultPath
+                                    )
+                                    SettingsTextField(
+                                        title = "写入值",
+                                        value = option.value,
+                                        onValueChange = { value -> onOptionsChange(options.toMutableList().also { it[index] = option.copy(value = value) }) },
+                                        placeholder = "例如：high"
+                                    )
+                                }
+                            }
                         }
                     }
                 }

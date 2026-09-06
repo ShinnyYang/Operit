@@ -82,11 +82,10 @@ internal object ToolPkgChatRuntimeHookBridge : ChatRuntimeHook {
                         functionSource = hook.functionSource
                     )
                 }
-            }.sortedWith(
-                compareBy(
-                    ToolPkgChatRuntimeHookRegistration::containerPackageName,
-                    ToolPkgChatRuntimeHookRegistration::hookId
-                )
+            }.sortedByToolPkgLoadOrder(
+                activeContainers = activeContainers,
+                containerPackageName = ToolPkgChatRuntimeHookRegistration::containerPackageName,
+                registrationId = ToolPkgChatRuntimeHookRegistration::hookId
             )
     }
 

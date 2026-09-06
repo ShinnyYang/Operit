@@ -4584,6 +4584,10 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="artifact_publish_published_name_readonly">Denumirea lucrărilor deja publicate nu poate fi modificată</string>
     <string name="artifact_publish_locked_name_must_match_source">La lansarea unei versiuni, numele pluginului trebuie să fie identic cu cel al versiunii sursă</string>
     <string name="artifact_publish_published_version_readonly">Numărul de versiune al unui nod deja publicat nu poate fi modificat</string>
+    <string name="pkg_toolpkg_api_version">API ToolPkg: %1$s</string>
+    <string name="toolpkg_api_version_label">Versiunea API ToolPkg</string>
+    <string name="toolpkg_api_version_value">Versiunea API ToolPkg: %1$s</string>
+    <string name="artifact_publish_toolpkg_api_version_readonly">Versiunea API ToolPkg provine din manifestul pachetului și nu poate fi modificată manual înainte de publicare</string>
     <string name="artifact_publish_save_artifact_info">Salvare informații despre lucrare</string>
     <string name="artifact_publish_publish_update_version">Lansarea unei versiuni actualizate</string>
     <string name="artifact_publish_confirm_save_artifact_info">Confirmare salvarea informațiilor despre operă</string>
@@ -5959,6 +5963,7 @@ Acum poate fi utilizat în interfața de dialog AutoGLM A devenit un model.</str
     <string name="toolreg_update_chat_title_desc">Actualizarea titlului conversației: %1$s</string>
     <string name="toolreg_delete_chat_desc">Șterge conversația: %1$s</string>
     <string name="toolreg_send_message_to_ai_desc">Trimite un mesaj cătreAI: %1$s</string>
+    <string name="toolreg_call_chat_model_desc">Apelează modelul funcției: %1$s</string>
     <string name="toolreg_list_character_cards_desc">Afișează toate cărțile de personaj</string>
     <string name="toolreg_get_chat_messages_desc">Preluarea mesajelor din conversație: %1$s%2$s%3$s</string>
     <string name="toolreg_list_files_desc">Afișează conținutul cuprinsului: %1$s%2$s</string>

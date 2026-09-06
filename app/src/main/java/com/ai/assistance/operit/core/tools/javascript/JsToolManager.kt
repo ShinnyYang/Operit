@@ -435,6 +435,7 @@ class JsToolManager private constructor(
         }
         if (toolPkgId.isNotBlank()) {
             runtimeOptions["toolPkgId"] = toolPkgId
+            runtimeOptions["__operit_ui_package_name"] = toolPkgId
         }
         if (state.isNotEmpty()) {
             runtimeOptions["state"] = state
